@@ -10,7 +10,7 @@ use crate::modules::oauth::provider::oauth_provider::OAuthProvider;
 use crate::modules::oauth::provider::oauth_provider_repository::{
     ProviderKey, ProviderRegistration, client_secret_context, upsert_provider_credentials,
 };
-use crate::modules::tenants::access::api_key_tenant::ApiKeyTenant;
+use crate::modules::tenants::access::tenant_admin::TenantAdmin;
 use crate::shared::http::api_error::ApiError;
 use crate::shared::http::validated_json::ValidatedJson;
 
@@ -27,22 +27,21 @@ pub struct ProviderCredentialsBody {
     put,
     path = "/auth/v1/admin/oauth/{provider}",
     tag = "tenant-admin",
-    security(("api_key" = [])),
+    security(("api_key" = []), ("platform_account" = [], "project" = [])),
     request_body = ProviderCredentialsBody,
     params(("provider" = String, Path, description = "`google` or `github`")),
     responses(
         (status = 204, description = "Provider configured with the tenant's own OAuth app"),
-        (status = 403, description = "Requires the secret API key", body = ErrorBody),
+        (status = 403, description = "Requires the secret API key, or membership in the project", body = ErrorBody),
         (status = 404, description = "Unknown provider", body = ErrorBody),
     )
 )]
 pub async fn configure_oauth_provider(
     State(state): State<AppState>,
-    tenant: ApiKeyTenant,
+    admin: TenantAdmin,
     Path(provider_name): Path<String>,
     ValidatedJson(body): ValidatedJson<ProviderCredentialsBody>,
 ) -> Result<StatusCode, ApiError> {
-    tenant.require_secret_key()?;
     let Some(provider) = OAuthProvider::parse(&provider_name) else {
         return Err(ApiError::UnknownOAuthProvider);
     };
@@ -57,7 +56,7 @@ pub async fn configure_oauth_provider(
     }
 
     let key = ProviderKey {
-        tenant_id: tenant.tenant_id,
+        tenant_id: admin.tenant_id,
         provider,
     };
     let client_secret_ciphertext = state
@@ -65,7 +64,7 @@ pub async fn configure_oauth_provider(
         .seal(client_secret.as_bytes(), &client_secret_context(key))
         .map_err(ApiError::internal)?;
     let registration = ProviderRegistration {
-        tenant_id: tenant.tenant_id,
+        tenant_id: admin.tenant_id,
         provider,
         client_id,
         client_secret_ciphertext: &client_secret_ciphertext,

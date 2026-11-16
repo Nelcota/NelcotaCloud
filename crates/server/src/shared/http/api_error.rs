@@ -42,8 +42,20 @@ pub enum ApiError {
     InvalidOAuthCode,
     #[error("the email address must be verified before logging in")]
     EmailNotVerified,
+    #[error("the authentication code is invalid")]
+    InvalidMfaCode,
+    #[error("this user is banned")]
+    UserBanned,
     #[error("too many attempts, try again later")]
     RateLimited,
+    #[error("{0} not found")]
+    NotFound(&'static str),
+    #[error("{0}")]
+    Conflict(String),
+    #[error("the platform API is not configured on this server")]
+    PlatformNotConfigured,
+    #[error("you are not a member of this project")]
+    ProjectAccessDenied,
     #[error("internal server error")]
     Internal,
 }
@@ -89,7 +101,15 @@ impl ApiError {
             Self::InvalidToken => (StatusCode::BAD_REQUEST, "invalid_token"),
             Self::InvalidOAuthCode => (StatusCode::UNAUTHORIZED, "invalid_oauth_code"),
             Self::EmailNotVerified => (StatusCode::FORBIDDEN, "email_not_verified"),
+            Self::InvalidMfaCode => (StatusCode::UNAUTHORIZED, "invalid_mfa_code"),
+            Self::UserBanned => (StatusCode::FORBIDDEN, "user_banned"),
             Self::RateLimited => (StatusCode::TOO_MANY_REQUESTS, "too_many_requests"),
+            Self::NotFound(_) => (StatusCode::NOT_FOUND, "not_found"),
+            Self::Conflict(_) => (StatusCode::CONFLICT, "conflict"),
+            Self::PlatformNotConfigured => {
+                (StatusCode::SERVICE_UNAVAILABLE, "platform_not_configured")
+            }
+            Self::ProjectAccessDenied => (StatusCode::FORBIDDEN, "project_access_denied"),
             Self::Internal => (StatusCode::INTERNAL_SERVER_ERROR, "internal_error"),
         }
     }

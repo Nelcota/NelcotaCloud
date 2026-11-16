@@ -44,6 +44,16 @@ pub async fn find_tenant_slug(
         .await
 }
 
+pub async fn find_tenant_id_by_slug(
+    pool: &PgPool,
+    slug: &TenantSlug,
+) -> Result<Option<Uuid>, sqlx::Error> {
+    sqlx::query_scalar("SELECT id FROM tenants WHERE slug = $1")
+        .bind(slug.as_str())
+        .fetch_optional(pool)
+        .await
+}
+
 pub async fn slug_exists<'e>(
     executor: impl PgExecutor<'e>,
     slug: &TenantSlug,

@@ -1,18 +1,98 @@
-import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router'
+import { createRootRoute, createRoute, createRouter, redirect } from '@tanstack/react-router'
 
+import { ProjectLayout } from '@/app/project-layout'
 import { RootLayout } from '@/app/root-layout'
+import { nelcota } from '@/shared/auth/nelcota'
+import { tokenSearch } from '@/shared/routing/token-search'
 
 /**
- * Maps URLs to module pages; no logic lives here. Every page is a lazy route: its code is
- * downloaded the first time it is visited, or earlier when the user hovers a link to it.
+ * Maps URLs to module pages; no logic lives here besides the login guard. Every page is a lazy
+ * route: its code is downloaded the first time it is visited, or when a link to it is hovered.
  */
 const rootRoute = createRootRoute({ component: RootLayout })
 
-const dashboardRoute = createRoute({ getParentRoute: () => rootRoute, path: '/' }).lazy(() =>
-  import('@/app/lazy-routes/dashboard-lazy-route').then((module) => module.dashboardLazyRoute),
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/login',
+  beforeLoad: () => {
+    if (nelcota.auth.getSession() !== null) {
+      throw redirect({ to: '/' })
+    }
+  },
+}).lazy(() => import('@/app/lazy-routes/login').then((module) => module.loginLazyRoute))
+
+const verifyEmailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/auth/verify-email',
+  validateSearch: tokenSearch,
+}).lazy(() =>
+  import('@/app/lazy-routes/verify-email').then((module) => module.verifyEmailLazyRoute),
 )
 
-const routeTree = rootRoute.addChildren([dashboardRoute])
+const resetPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/auth/reset-password',
+  validateSearch: tokenSearch,
+}).lazy(() =>
+  import('@/app/lazy-routes/reset-password').then((module) => module.resetPasswordLazyRoute),
+)
+
+/** Everything below needs a console session. */
+const authenticatedRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: '_authenticated',
+  beforeLoad: () => {
+    if (nelcota.auth.getSession() === null) {
+      throw redirect({ to: '/login' })
+    }
+  },
+})
+
+const projectsRoute = createRoute({ getParentRoute: () => authenticatedRoute, path: '/' }).lazy(
+  () => import('@/app/lazy-routes/projects').then((module) => module.projectsLazyRoute),
+)
+
+const newProjectRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: '/projects/new',
+}).lazy(() => import('@/app/lazy-routes/new-project').then((module) => module.newProjectLazyRoute))
+
+const projectRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: '/projects/$projectId',
+  component: ProjectLayout,
+})
+
+const apiKeysRoute = createRoute({ getParentRoute: () => projectRoute, path: '/' }).lazy(() =>
+  import('@/app/lazy-routes/api-keys').then((module) => module.apiKeysLazyRoute),
+)
+
+const usersRoute = createRoute({ getParentRoute: () => projectRoute, path: '/users' }).lazy(() =>
+  import('@/app/lazy-routes/users').then((module) => module.usersLazyRoute),
+)
+
+const providersRoute = createRoute({ getParentRoute: () => projectRoute, path: '/providers' }).lazy(
+  () => import('@/app/lazy-routes/providers').then((module) => module.providersLazyRoute),
+)
+
+const emailRoute = createRoute({ getParentRoute: () => projectRoute, path: '/email' }).lazy(() =>
+  import('@/app/lazy-routes/email').then((module) => module.emailLazyRoute),
+)
+
+const settingsRoute = createRoute({ getParentRoute: () => projectRoute, path: '/settings' }).lazy(
+  () => import('@/app/lazy-routes/settings').then((module) => module.settingsLazyRoute),
+)
+
+const routeTree = rootRoute.addChildren([
+  loginRoute,
+  verifyEmailRoute,
+  resetPasswordRoute,
+  authenticatedRoute.addChildren([
+    projectsRoute,
+    newProjectRoute,
+    projectRoute.addChildren([apiKeysRoute, usersRoute, providersRoute, emailRoute, settingsRoute]),
+  ]),
+])
 
 export const router = createRouter({ routeTree, defaultPreload: 'intent' })
 

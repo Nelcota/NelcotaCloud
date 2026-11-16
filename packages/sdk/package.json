@@ -1,0 +1,37 @@
+{
+  "name": "@nelcota/sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TypeScript client for NelcotaCloud Auth: sessions, OAuth with PKCE, magic links and MFA.",
+  "license": "UNLICENSED",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "oxlint",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "api:types": "openapi-typescript ../../crates/server/openapi.json -o src/generated/api-schema.d.ts"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0",
+    "oxfmt": "^0.79.0",
+    "oxlint": "^1.94.0",
+    "tsdown": "^0.23.7",
+    "typescript": "~5.9",
+    "vitest": "^5.1.0"
+  }
+}

@@ -60,6 +60,8 @@ pub struct ErrorBody {
 pub struct TestServer {
     pub client: Client,
     pub fake_github: FakeGitHub,
+    /// Slug the server treats as the platform tenant; created on demand by tests.
+    pub platform_slug: String,
     base_url: String,
     admin_token: String,
     mailpit_api_url: String,
@@ -99,6 +101,7 @@ impl TestServer {
         }
 
         let admin_token = encode_hex(&random_bytes::<SECRET_BYTES>());
+        let platform_slug = random_slug();
         let config = AppConfig {
             control_plane_database_url: std::env::var("CONTROL_PLANE_DATABASE_URL")?,
             tenant_database_base_url: std::env::var("TENANT_DATABASE_BASE_URL")?,
@@ -109,6 +112,8 @@ impl TestServer {
             smtp_url: std::env::var("SMTP_URL")?,
             email_from: std::env::var("EMAIL_FROM")?,
             client_ip_header: None,
+            tenant_smtp_allow_any_host: Some(true),
+            platform_tenant_slug: Some(platform_slug.clone()),
         };
         let fake_github = FakeGitHub::start().await;
         let endpoints = fake_endpoints(&fake_github);
@@ -131,6 +136,7 @@ impl TestServer {
         Ok(Self {
             client,
             fake_github,
+            platform_slug,
             base_url,
             admin_token,
             mailpit_api_url: std::env::var("MAILPIT_API_URL")?,
@@ -167,6 +173,17 @@ impl TestServer {
     }
 
     /// Creates a tenant with a given slug (e.g. one whose orphan database already exists).
+    /// Creates the platform tenant (whose users are console accounts) and one account in it.
+    pub async fn create_platform_account(
+        &self,
+        email: &str,
+    ) -> TestResult<(CreatedTenant, Session)> {
+        let platform = self.create_tenant_with_slug(&self.platform_slug).await?;
+        let session = self.sign_up(&platform, email).await?;
+
+        Ok((platform, session))
+    }
+
     pub async fn create_tenant_with_slug(&self, slug: &str) -> TestResult<CreatedTenant> {
         let body = json!({
             "slug": slug,
@@ -300,6 +317,19 @@ impl TestServer {
         Ok(Some(message.text))
     }
 
+    pub async fn tenant_database_exists(&self, slug: &str) -> TestResult<bool> {
+        let base_url = self.config.tenant_database_base_url.trim_end_matches('/');
+        let mut maintenance = PgConnection::connect(&format!("{base_url}/postgres")).await?;
+        let exists: bool =
+            sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname = $1)")
+                .bind(format!("tenant_{slug}"))
+                .fetch_one(&mut maintenance)
+                .await?;
+        maintenance.close().await?;
+
+        Ok(exists)
+    }
+
     /// Removes the tenant row and its database so test runs do not pile up databases.
     pub async fn drop_tenant(&self, tenant: &CreatedTenant) -> TestResult {
         let base_url = self.config.tenant_database_base_url.trim_end_matches('/');
@@ -360,4 +390,9 @@ pub async fn error_code(response: Response) -> TestResult<String> {
     let body: ErrorBody = response.json().await?;
 
     Ok(body.error)
+}
+
+/// A JSON field by pointer (`/user/email`), `null` when missing, so tests never index-panic.
+pub fn field<'a>(value: &'a Value, pointer: &str) -> &'a Value {
+    value.pointer(pointer).unwrap_or(&Value::Null)
 }

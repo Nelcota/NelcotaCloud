@@ -6,6 +6,7 @@ pub enum OneTimeTokenPurpose {
     EmailVerification,
     PasswordReset,
     OAuthLogin,
+    MagicLink,
 }
 
 impl OneTimeTokenPurpose {
@@ -14,6 +15,7 @@ impl OneTimeTokenPurpose {
             Self::EmailVerification => "email_verification",
             Self::PasswordReset => "password_reset",
             Self::OAuthLogin => "oauth_login",
+            Self::MagicLink => "magic_link",
         }
     }
 
@@ -22,13 +24,14 @@ impl OneTimeTokenPurpose {
             Self::EmailVerification => "nc_ev_",
             Self::PasswordReset => "nc_pr_",
             Self::OAuthLogin => "nc_oc_",
+            Self::MagicLink => "nc_ml_",
         }
     }
 
     /// Emailed links replace each other; OAuth login codes are independent per device.
     pub fn supersedes_pending_tokens(self) -> bool {
         match self {
-            Self::EmailVerification | Self::PasswordReset => true,
+            Self::EmailVerification | Self::PasswordReset | Self::MagicLink => true,
             Self::OAuthLogin => false,
         }
     }
@@ -39,6 +42,8 @@ impl OneTimeTokenPurpose {
             Self::PasswordReset => Duration::hours(1),
             // Only bridges the OAuth redirect to the app's code exchange.
             Self::OAuthLogin => Duration::minutes(2),
+            // Logs in without a password, so it must not linger in an inbox.
+            Self::MagicLink => Duration::minutes(15),
         }
     }
 }

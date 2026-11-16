@@ -83,4 +83,11 @@ impl TenantPoolRegistry {
 
         Ok(pool)
     }
+
+    /// Closes and forgets the tenant's pool, before its database is dropped.
+    pub async fn forget(&self, tenant_id: Uuid) {
+        if let Some(pool) = self.pools.remove(&tenant_id).await {
+            pool.close().await;
+        }
+    }
 }

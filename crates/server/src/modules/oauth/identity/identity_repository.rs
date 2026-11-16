@@ -1,7 +1,7 @@
 use sqlx::PgConnection;
 use uuid::Uuid;
 
-use crate::modules::auth::user::user_record::User;
+use crate::modules::auth::user::user_record::{User, user_columns};
 
 /// A user's account at an external provider (`provider_user_id` is the provider's stable id).
 pub struct IdentityKey<'a> {
@@ -13,9 +13,11 @@ pub async fn find_identity_user(
     connection: &mut PgConnection,
     key: &IdentityKey<'_>,
 ) -> Result<Option<User>, sqlx::Error> {
-    sqlx::query_as(
-        "SELECT users.id, users.email, users.email_verified_at, users.created_at FROM identities JOIN users ON users.id = identities.user_id WHERE identities.provider = $1 AND identities.provider_user_id = $2",
-    )
+    sqlx::query_as(concat!(
+        "SELECT ",
+        user_columns!(),
+        " FROM users WHERE id = (SELECT user_id FROM identities WHERE provider = $1 AND provider_user_id = $2)"
+    ))
     .bind(key.provider)
     .bind(key.provider_user_id)
     .fetch_optional(connection)

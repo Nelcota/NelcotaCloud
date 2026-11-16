@@ -4,6 +4,7 @@ use utoipa::{Modify, OpenApi};
 
 use crate::modules::tenants::access::admin_access::ADMIN_TOKEN_HEADER;
 use crate::modules::tenants::access::api_key_tenant::API_KEY_HEADER;
+use crate::modules::tenants::access::tenant_admin::PROJECT_HEADER;
 use crate::router::api_routes;
 
 /// File the console generates its API types from; `export-openapi` rewrites it.
@@ -18,8 +19,11 @@ pub const OPENAPI_FILE: &str = "openapi.json";
     modifiers(&SecuritySchemes),
     tags(
         (name = "auth", description = "Signup, login and sessions of a tenant's users"),
+        (name = "mfa", description = "TOTP second factor of a tenant's users"),
+        (name = "sessions", description = "Devices where a user is logged in"),
         (name = "oauth", description = "Login with Google or GitHub through the tenant's own OAuth app"),
         (name = "tenant-admin", description = "A tenant's own configuration (secret API key)"),
+        (name = "platform", description = "Projects of a console account (platform access token)"),
         (name = "platform-admin", description = "Operations of the platform operator (admin token)"),
         (name = "system", description = "Health of the API")
     )
@@ -49,7 +53,20 @@ impl Modify for SecuritySchemes {
             .build();
         components.add_security_scheme("api_key", SecurityScheme::ApiKey(api_key));
         components.add_security_scheme("admin_token", SecurityScheme::ApiKey(admin_token));
+        let platform_account = HttpBuilder::new()
+            .scheme(HttpAuthScheme::Bearer)
+            .bearer_format("JWT")
+            .description(Some(
+                "Access token of a console account (a user of the platform tenant)",
+            ))
+            .build();
+        let project = ApiKey::Header(ApiKeyValue::with_description(
+            PROJECT_HEADER,
+            "Id of the project a console account manages; it must be a member",
+        ));
         components.add_security_scheme("bearer", SecurityScheme::Http(bearer));
+        components.add_security_scheme("platform_account", SecurityScheme::Http(platform_account));
+        components.add_security_scheme("project", SecurityScheme::ApiKey(project));
     }
 }
 

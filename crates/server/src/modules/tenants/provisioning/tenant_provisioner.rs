@@ -22,6 +22,8 @@ pub struct NewTenantRequest {
     pub name: String,
     pub site_url: SiteUrl,
     pub require_email_verification: bool,
+    /// The platform account that becomes the owner, when created from the console.
+    pub owner_account_id: Option<Uuid>,
 }
 
 /// API keys are returned in plaintext only here; afterwards only their hashes exist.

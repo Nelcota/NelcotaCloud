@@ -1,3 +1,4 @@
+use crate::modules::tenants::provisioning::tenant_slug::InvalidTenantSlug;
 use axum::http::header::InvalidHeaderName;
 
 use crate::app_config::ConfigError;
@@ -31,6 +32,8 @@ pub enum StartupError {
     RateLimits(#[from] InvalidQuota),
     #[error("CLIENT_IP_HEADER is not a valid header name: {0}")]
     ClientIpHeader(#[from] InvalidHeaderName),
+    #[error("PLATFORM_TENANT_SLUG is invalid: {0}")]
+    PlatformTenantSlug(#[from] InvalidTenantSlug),
     #[error("server I/O error: {0}")]
     Io(#[from] std::io::Error),
 }

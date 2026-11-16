@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use lettre::message::Mailbox;
-use lettre::message::header::ContentType;
+use lettre::message::MultiPart;
 use lettre::{Address, AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 use tracing::{Instrument, Span};
 
@@ -43,8 +43,10 @@ impl EmailSender {
             // A bare address, so a "Name <address>" string can never redirect the email.
             .to(Mailbox::new(None, email.to.parse::<Address>()?))
             .subject(email.subject)
-            .header(ContentType::TEXT_PLAIN)
-            .body(email.body)?;
+            .multipart(MultiPart::alternative_plain_html(
+                email.text_body,
+                email.html_body,
+            ))?;
         self.transport.send(message).await?;
 
         Ok(())

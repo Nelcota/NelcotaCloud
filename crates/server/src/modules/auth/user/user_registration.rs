@@ -51,6 +51,21 @@ pub async fn insert_oauth_user(
     insertion.map_err(map_unique_violation)
 }
 
+/// A user without password or provider, for magic-link logins. `None` when the email is taken.
+pub async fn insert_passwordless_user(
+    connection: &mut PgConnection,
+    email: &EmailAddress,
+) -> Result<Option<User>, sqlx::Error> {
+    sqlx::query_as(concat!(
+        "INSERT INTO users (id, email) VALUES ($1, $2) ON CONFLICT (email) DO NOTHING RETURNING ",
+        user_columns!()
+    ))
+    .bind(Uuid::new_v4())
+    .bind(email.as_str())
+    .fetch_optional(connection)
+    .await
+}
+
 fn map_unique_violation(error: sqlx::Error) -> InsertUserError {
     let database_error = error.as_database_error();
 

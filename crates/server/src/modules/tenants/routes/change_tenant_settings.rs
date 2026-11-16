@@ -6,7 +6,7 @@ use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::app_state::AppState;
-use crate::modules::tenants::access::api_key_tenant::ApiKeyTenant;
+use crate::modules::tenants::access::tenant_admin::TenantAdmin;
 use crate::modules::tenants::settings::site_url::SiteUrl;
 use crate::modules::tenants::settings::tenant_settings_repository::{
     TenantSettings, TenantSettingsChange, update_tenant_settings,
@@ -28,20 +28,19 @@ pub struct TenantSettingsBody {
     patch,
     path = "/auth/v1/admin/settings",
     tag = "tenant-admin",
-    security(("api_key" = [])),
+    security(("api_key" = []), ("platform_account" = [], "project" = [])),
     request_body = TenantSettingsBody,
     responses(
         (status = 200, description = "Updated settings", body = TenantSettings),
         (status = 400, description = "Invalid name or site URL", body = ErrorBody),
-        (status = 403, description = "Requires the secret API key", body = ErrorBody),
+        (status = 403, description = "Requires the secret API key, or membership in the project", body = ErrorBody),
     )
 )]
 pub async fn change_tenant_settings(
     State(state): State<AppState>,
-    tenant: ApiKeyTenant,
+    admin: TenantAdmin,
     ValidatedJson(body): ValidatedJson<TenantSettingsBody>,
 ) -> Result<Json<TenantSettings>, ApiError> {
-    tenant.require_secret_key()?;
     let name = body.name.as_deref().map(str::trim);
 
     if name.is_some_and(str::is_empty) {
@@ -56,13 +55,13 @@ pub async fn change_tenant_settings(
         site_url: site_url.as_ref(),
         require_email_verification: body.require_email_verification,
     };
-    let settings = update_tenant_settings(&state.control_plane_pool, tenant.tenant_id, change)
+    let settings = update_tenant_settings(&state.control_plane_pool, admin.tenant_id, change)
         .await
         .map_err(ApiError::internal)?;
     let Some(settings) = settings else {
         return Err(ApiError::internal(format!(
             "tenant {} not found",
-            tenant.tenant_id
+            admin.tenant_id
         )));
     };
 

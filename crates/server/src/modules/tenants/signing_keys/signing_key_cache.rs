@@ -54,4 +54,10 @@ impl SigningKeyCache {
 
         self.entries.try_get_with(tenant_id, load).await
     }
+
+    /// Drops the cached keys, so this instance uses a rotated key right away. Other instances
+    /// pick it up within the cache lifetime; tokens of the old key keep verifying meanwhile.
+    pub async fn forget(&self, tenant_id: Uuid) {
+        self.entries.invalidate(&tenant_id).await;
+    }
 }

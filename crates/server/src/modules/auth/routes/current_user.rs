@@ -27,5 +27,9 @@ pub async fn current_user(authenticated: AuthenticatedUser) -> Result<Json<User>
         return Err(ApiError::InvalidAccessToken);
     };
 
+    if user.banned_at.is_some() {
+        return Err(ApiError::UserBanned);
+    }
+
     Ok(Json(user))
 }

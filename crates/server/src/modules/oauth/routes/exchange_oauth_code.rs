@@ -6,11 +6,11 @@ use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::app_state::AppState;
+use crate::modules::auth::login::login_completion::{LoginResponse, complete_login};
 use crate::modules::auth::one_time_token::one_time_token_purpose::OneTimeTokenPurpose;
 use crate::modules::auth::one_time_token::one_time_token_repository::consume_one_time_token;
 use crate::modules::auth::session::session_family::SessionFamily;
-use crate::modules::auth::session::session_grant::{SessionGrant, issue_session};
-use crate::modules::auth::session::session_issuer::SessionTokens;
+use crate::modules::auth::session::session_grant::{SessionGrant, SessionRequest};
 use crate::modules::auth::user::user_lookup::find_user_by_id;
 use crate::modules::oauth::login::app_pkce::verifier_matches;
 use crate::modules::tenants::access::tenant_context::TenantContext;
@@ -34,7 +34,7 @@ pub struct OAuthCodeBody {
     security(("api_key" = [])),
     request_body = OAuthCodeBody,
     responses(
-        (status = 200, description = "Logged in", body = SessionTokens),
+        (status = 200, description = "Logged in, or the MFA step that must come first", body = LoginResponse),
         (status = 401, description = "Invalid or expired code, or wrong code verifier", body = ErrorBody),
     )
 )]
@@ -42,7 +42,7 @@ pub async fn exchange_oauth_code(
     State(state): State<AppState>,
     tenant: TenantContext,
     ValidatedJson(body): ValidatedJson<OAuthCodeBody>,
-) -> Result<Json<SessionTokens>, ApiError> {
+) -> Result<Json<LoginResponse>, ApiError> {
     let mut connection = tenant.pool.acquire().await.map_err(ApiError::internal)?;
     let purpose = OneTimeTokenPurpose::OAuthLogin;
     let consumed = consume_one_time_token(&mut connection, purpose, &body.code)
@@ -65,10 +65,14 @@ pub async fn exchange_oauth_code(
     let Some(user) = user else {
         return Err(ApiError::InvalidOAuthCode);
     };
-    let grant = SessionGrant {
-        user,
-        family: SessionFamily::new_login(),
+    let request = SessionRequest {
+        tenant_id: tenant.tenant_id,
+        connection: &mut connection,
+        grant: SessionGrant {
+            user,
+            family: SessionFamily::new_login(),
+        },
     };
 
-    Ok(Json(issue_session(&state, &tenant, grant).await?))
+    Ok(Json(complete_login(&state, request).await?))
 }

@@ -33,6 +33,12 @@ pub struct AppConfig {
     /// Header set by a trusted proxy with the client IP (e.g. `cf-connecting-ip`). Leave unset
     /// unless the server is reachable only through that proxy, or clients could spoof it.
     pub client_ip_header: Option<String>,
+    /// Development only: lets tenants point their own SMTP settings at local or private hosts
+    /// and any port. Never enable it in production (it would allow SSRF into the network).
+    pub tenant_smtp_allow_any_host: Option<bool>,
+    /// Slug of the tenant whose users are the platform accounts that log into the console.
+    /// Unset, the platform API answers 503.
+    pub platform_tenant_slug: Option<String>,
 }
 
 impl AppConfig {
@@ -57,6 +63,11 @@ impl AppConfig {
             smtp_url: self.smtp_url.trim().to_owned(),
             email_from: self.email_from.trim().to_owned(),
             client_ip_header: self.client_ip_header.map(|header| header.trim().to_owned()),
+            tenant_smtp_allow_any_host: self.tenant_smtp_allow_any_host,
+            platform_tenant_slug: self
+                .platform_tenant_slug
+                .map(|slug| slug.trim().to_owned())
+                .filter(|slug| slug.is_empty() == false),
         }
     }
 
@@ -173,6 +184,8 @@ mod tests {
             smtp_url: "smtp://localhost:1026".to_owned(),
             email_from: "Auth <auth@example.com>".to_owned(),
             client_ip_header: None,
+            tenant_smtp_allow_any_host: None,
+            platform_tenant_slug: None,
         }
     }
 

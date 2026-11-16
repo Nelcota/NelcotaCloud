@@ -6,16 +6,14 @@ use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::app_state::AppState;
+use crate::modules::auth::login::login_completion::{LoginResponse, complete_login};
 use crate::modules::auth::password::password_authentication::{
     PasswordAuthenticationError, VerifiedCredentials, authenticate_with_password,
 };
 use crate::modules::auth::rate_limiting::attempt_limiter::Attempt;
 use crate::modules::auth::rate_limiting::client_ip::ClientIp;
 use crate::modules::auth::session::session_family::SessionFamily;
-use crate::modules::auth::session::session_grant::{
-    SessionGrant, SessionRequest, issue_session_with,
-};
-use crate::modules::auth::session::session_issuer::SessionTokens;
+use crate::modules::auth::session::session_grant::{SessionGrant, SessionRequest};
 use crate::modules::auth::user::email_address::EmailAddress;
 use crate::modules::auth::user::user_lookup::{
     find_credentials_by_email, lock_if_password_unchanged,
@@ -42,7 +40,7 @@ pub struct LogInBody {
     security(("api_key" = [])),
     request_body = LogInBody,
     responses(
-        (status = 200, description = "Logged in", body = SessionTokens),
+        (status = 200, description = "Logged in, or the MFA step that must come first", body = LoginResponse),
         (status = 401, description = "Invalid email or password", body = ErrorBody),
         (status = 403, description = "Email not verified yet", body = ErrorBody),
         (status = 429, description = "Too many attempts", body = ErrorBody),
@@ -53,7 +51,7 @@ pub async fn log_in(
     tenant: TenantContext,
     ClientIp(client_ip): ClientIp,
     ValidatedJson(body): ValidatedJson<LogInBody>,
-) -> Result<Json<SessionTokens>, ApiError> {
+) -> Result<Json<LoginResponse>, ApiError> {
     let attempt = Attempt {
         tenant_id: tenant.tenant_id,
         email: &body.email,
@@ -77,7 +75,7 @@ async fn open_session(
     state: &AppState,
     tenant: &TenantContext,
     verified: VerifiedCredentials,
-) -> Result<SessionTokens, ApiError> {
+) -> Result<LoginResponse, ApiError> {
     let user = verified.user;
     let mut transaction = tenant.pool.begin().await.map_err(ApiError::internal)?;
     let password_check =
@@ -95,10 +93,10 @@ async fn open_session(
             family: SessionFamily::new_login(),
         },
     };
-    let tokens = issue_session_with(state, request).await?;
+    let response = complete_login(state, request).await?;
     transaction.commit().await.map_err(ApiError::internal)?;
 
-    Ok(tokens)
+    Ok(response)
 }
 
 async fn authenticate(

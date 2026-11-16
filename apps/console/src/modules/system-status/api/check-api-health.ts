@@ -7,7 +7,11 @@ export async function checkApiHealth(): Promise<ApiHealth> {
   const { response } = await apiClient.GET('/health', { parseAs: 'text' })
 
   if (response.ok === false) {
-    throw new ApiError(response.status, `API answered ${response.status}`)
+    throw new ApiError({
+      status: response.status,
+      code: 'unhealthy',
+      message: `API answered ${response.status}`,
+    })
   }
 
   return { checkedAt: new Date() }

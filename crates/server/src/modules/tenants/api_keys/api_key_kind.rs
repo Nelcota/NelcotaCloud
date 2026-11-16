@@ -1,5 +1,9 @@
+use serde::Deserialize;
+use utoipa::ToSchema;
+
 /// Publishable keys ship inside client apps; secret keys stay on the tenant's own servers.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, ToSchema)]
+#[serde(rename_all = "lowercase")]
 pub enum ApiKeyKind {
     Publishable,
     Secret,

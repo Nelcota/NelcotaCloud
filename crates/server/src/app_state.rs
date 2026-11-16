@@ -9,9 +9,10 @@ use crate::modules::auth::rate_limiting::auth_rate_limits::RateLimits;
 use crate::modules::oauth::login::oauth_login_context::OAuthLoginContext;
 use crate::modules::oauth::provider::provider_endpoints::OAuthEndpoints;
 use crate::modules::tenants::database::tenant_pool_registry::TenantPoolRegistry;
+use crate::modules::tenants::provisioning::tenant_slug::TenantSlug;
 use crate::modules::tenants::signing_keys::signing_key_cache::SigningKeyCache;
+use crate::modules::tenants::smtp::tenant_email_senders::TenantEmailSenders;
 use crate::shared::crypto::opaque_token::TokenHash;
-use crate::shared::email::email_sender::EmailSender;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -20,7 +21,8 @@ pub struct AppState {
     pub secret_box: Arc<SecretBox>,
     pub signing_keys: Arc<SigningKeyCache>,
     pub rate_limits: Arc<RateLimits>,
-    pub email_sender: Arc<EmailSender>,
+    /// Each tenant's SMTP sender: its own server, or the platform's.
+    pub email_senders: Arc<TenantEmailSenders>,
     /// Outbound calls to OAuth providers. Never follows redirects (OAuth security guidance).
     pub http_client: reqwest::Client,
     pub settings: Arc<AppSettings>,
@@ -50,4 +52,6 @@ pub struct AppSettings {
     pub oauth_endpoints: OAuthEndpoints,
     pub oauth_callback_url: String,
     pub client_ip_header: Option<HeaderName>,
+    /// The tenant whose users log into the console; `None` disables the platform API.
+    pub platform_tenant_slug: Option<TenantSlug>,
 }

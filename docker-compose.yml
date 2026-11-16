@@ -18,6 +18,10 @@ services:
   # Local SMTP server that captures every email; web UI and API on http://localhost:8026.
   mailpit:
     image: axllent/mailpit:v1.27
+    environment:
+      # Accept any (or no) SMTP credentials over plain connections, like a tenant's own server.
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
     ports:
       - "127.0.0.1:1026:1025"
       - "127.0.0.1:8026:8025"

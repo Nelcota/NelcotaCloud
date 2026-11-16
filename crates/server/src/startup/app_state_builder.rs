@@ -11,6 +11,9 @@ use crate::modules::oauth::login::oauth_state_repository::delete_expired_authori
 use crate::modules::oauth::provider::provider_endpoints::OAuthEndpoints;
 use crate::modules::tenants::database::tenant_pool_registry::TenantPoolRegistry;
 use crate::modules::tenants::signing_keys::signing_key_cache::SigningKeyCache;
+use crate::modules::tenants::smtp::tenant_email_senders::{
+    TenantEmailSenders, TenantEmailSendersConfig,
+};
 use crate::shared::crypto::hex_encoding::decode_hex;
 use crate::shared::crypto::secret_box::SecretBox;
 use crate::shared::database::migrators::CONTROL_PLANE_MIGRATOR;
@@ -36,6 +39,12 @@ pub async fn build_app_state_with_endpoints(
     let control_plane_pool = connect_control_plane(config).await?;
     let settings = build_settings(config, oauth_endpoints).await?;
     let rate_limits = Arc::new(RateLimits::new()?);
+    let email_senders = TenantEmailSenders::new(TenantEmailSendersConfig {
+        control_plane_pool: control_plane_pool.clone(),
+        secret_box: Arc::clone(&secret_box),
+        platform_sender: Arc::new(EmailSender::new(&config.smtp_url, &config.email_from)?),
+        allow_any_host: config.tenant_smtp_allow_any_host.unwrap_or(false),
+    });
     spawn_maintenance(control_plane_pool.clone(), Arc::clone(&rate_limits));
 
     Ok(AppState {
@@ -45,7 +54,7 @@ pub async fn build_app_state_with_endpoints(
         )),
         signing_keys: Arc::new(signing_key_cache(&control_plane_pool, &secret_box)),
         rate_limits,
-        email_sender: Arc::new(EmailSender::new(&config.smtp_url, &config.email_from)?),
+        email_senders: Arc::new(email_senders),
         http_client: build_http_client()?,
         settings: Arc::new(settings),
         control_plane_pool,

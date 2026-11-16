@@ -1,0 +1,53 @@
+import type { FormEvent, JSX } from 'react'
+import { useState } from 'react'
+
+import { nelcota } from '@/shared/auth/nelcota'
+import { Button } from '@/shared/ui/button'
+import { ErrorAlert } from '@/shared/ui/error-alert'
+import { FormField } from '@/shared/ui/form-field'
+
+type MfaChallengeFormProps = {
+  mfaToken: string
+  onSignedIn: () => void
+}
+
+/** Second step of a login when the account has TOTP on. */
+export function MfaChallengeForm({ mfaToken, onSignedIn }: MfaChallengeFormProps): JSX.Element {
+  const [code, setCode] = useState('')
+  const [error, setError] = useState<unknown>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault()
+    setError(null)
+    setIsSubmitting(true)
+
+    try {
+      await nelcota.auth.verifyMfa({ mfaToken, code })
+      onSignedIn()
+    } catch (caught) {
+      setError(caught)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <form className="grid gap-4" onSubmit={submit}>
+      <FormField
+        label="Código do autenticador"
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        pattern="[0-9 ]{6,7}"
+        required
+        autoFocus
+        value={code}
+        onChange={(event) => setCode(event.target.value)}
+      />
+      <ErrorAlert error={error} />
+      <Button type="submit" disabled={isSubmitting} aria-busy={isSubmitting}>
+        Confirmar
+      </Button>
+    </form>
+  )
+}

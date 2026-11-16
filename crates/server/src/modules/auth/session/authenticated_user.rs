@@ -3,10 +3,10 @@ use axum::http::header::AUTHORIZATION;
 use axum::http::request::Parts;
 
 use crate::app_state::AppState;
-use crate::modules::auth::session::access_token::{
+use crate::modules::tenants::access::tenant_context::TenantContext;
+use crate::modules::tenants::signing_keys::access_token::{
     AccessTokenClaims, TokenAudience, verify_access_token,
 };
-use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::shared::http::api_error::ApiError;
 
 const BEARER_SCHEME: &str = "Bearer";

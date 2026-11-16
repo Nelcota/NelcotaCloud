@@ -1,0 +1,132 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    name: API (fmt, clippy, tests)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: nelcota
+          POSTGRES_PASSWORD: nelcota
+          POSTGRES_DB: nelcota_control
+        ports:
+          - 5434:5432
+        options: >-
+          --health-cmd "pg_isready -U nelcota -d nelcota_control"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+      mailpit:
+        image: axllent/mailpit:v1.27
+        env:
+          MP_SMTP_AUTH_ACCEPT_ANY: "1"
+          MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+        ports:
+          - 1026:1025
+          - 8026:8025
+    env:
+      CONTROL_PLANE_DATABASE_URL: postgres://nelcota:nelcota@localhost:5434/nelcota_control
+      TENANT_DATABASE_BASE_URL: postgres://nelcota:nelcota@localhost:5434
+      SMTP_URL: smtp://localhost:1026
+      EMAIL_FROM: NelcotaCloud <no-reply@nelcota.local>
+      MAILPIT_API_URL: http://localhost:8026
+      CARGO_TERM_COLOR: always
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.99.1
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+      # Includes the check that crates/server/openapi.json matches the annotated routes.
+      - run: cargo test --workspace --locked
+
+  console:
+    name: Console (format, lint, types, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/console
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: apps/console/package-lock.json
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - name: Generated API types match openapi.json
+        run: |
+          npm run api:types
+          git diff --exit-code -- src/shared/api/api-schema.d.ts
+      - run: npm run build
+
+  sdk:
+    name: SDK (format, lint, types, tests, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/sdk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: packages/sdk/package-lock.json
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - name: Generated API types match openapi.json
+        run: |
+          npm run api:types
+          git diff --exit-code -- src/generated/api-schema.d.ts
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  images:
+    name: Docker images build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: crates/server/Dockerfile
+          push: false
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/caddy/Dockerfile
+          build-args: VITE_API_URL=https://api.example.com
+          push: false
+          cache-from: type=gha,scope=caddy
+          cache-to: type=gha,mode=max,scope=caddy
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/backup/Dockerfile
+          push: false
+          cache-from: type=gha,scope=backup
+          cache-to: type=gha,mode=max,scope=backup

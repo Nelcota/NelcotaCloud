@@ -1,11 +1,10 @@
-use std::sync::Arc;
-
 use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::modules::auth::email::auth_email::{
-    AuthEmailContext, password_reset_email, verification_email,
+    AuthEmailContext, magic_link_email, password_reset_email, verification_email,
 };
+use crate::modules::auth::email::auth_email_template::render_auth_email;
 use crate::modules::auth::one_time_token::one_time_token_purpose::OneTimeTokenPurpose;
 use crate::modules::auth::one_time_token::one_time_token_repository::{
     OneTimeTokenRequest, issue_one_time_token,
@@ -20,6 +19,7 @@ use crate::shared::http::api_error::ApiError;
 pub enum AuthEmailKind {
     Verification,
     PasswordReset,
+    MagicLink,
 }
 
 impl AuthEmailKind {
@@ -27,6 +27,7 @@ impl AuthEmailKind {
         match self {
             Self::Verification => OneTimeTokenPurpose::EmailVerification,
             Self::PasswordReset => OneTimeTokenPurpose::PasswordReset,
+            Self::MagicLink => OneTimeTokenPurpose::MagicLink,
         }
     }
 }
@@ -83,15 +84,21 @@ pub async fn email_auth_link(
     let token = link.token;
     let settings = load_tenant_settings(state, tenant_id).await?;
     let context = AuthEmailContext {
-        recipient: &user.email,
         tenant_name: &settings.name,
         site_url: &settings.site_url,
     };
-    let email = match link.kind {
+    let content = match link.kind {
         AuthEmailKind::Verification => verification_email(&context, token),
         AuthEmailKind::PasswordReset => password_reset_email(&context, token),
+        AuthEmailKind::MagicLink => magic_link_email(&context, token),
     };
-    send_in_background(Arc::clone(&state.email_sender), email);
+    let email = render_auth_email(content, &user.email).map_err(ApiError::internal)?;
+    let sender = state
+        .email_senders
+        .sender_for(tenant_id)
+        .await
+        .map_err(ApiError::internal)?;
+    send_in_background(sender, email);
 
     Ok(())
 }

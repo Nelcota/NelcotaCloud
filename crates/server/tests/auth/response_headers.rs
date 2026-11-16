@@ -62,3 +62,25 @@ async fn preflight_answers_are_cacheable() -> TestResult {
     assert_eq!(max_age.and_then(|value| value.to_str().ok()), Some("7200"));
     Ok(())
 }
+
+/// Browser apps delete keys, users and sessions, so DELETE must pass the CORS preflight.
+#[tokio::test]
+async fn preflight_allows_delete() -> TestResult {
+    let server = TestServer::start().await?;
+
+    let response = server
+        .client
+        .request(reqwest::Method::OPTIONS, server.url("/auth/v1/sessions"))
+        .header("origin", "https://app.example.com")
+        .header("access-control-request-method", "DELETE")
+        .header("access-control-request-headers", "apikey, authorization")
+        .send()
+        .await?;
+
+    let allowed = response.headers().get("access-control-allow-methods");
+    let allowed = allowed
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or_default();
+    assert!(allowed.contains("DELETE"));
+    Ok(())
+}

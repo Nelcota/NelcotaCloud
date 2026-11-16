@@ -2,6 +2,8 @@ use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
 use crate::modules::tenants::api_keys::api_key_kind::ApiKeyKind;
+use crate::modules::tenants::api_keys::api_key_summary::ApiKeySummary;
+use crate::shared::crypto::opaque_token::TokenHash;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ApiKeyLookupError {
@@ -17,18 +19,27 @@ pub struct ApiKeyOwner {
     pub kind: ApiKeyKind,
 }
 
+/// A key ready to store: only its hash and last characters are kept.
+pub struct StoredApiKey<'a> {
+    pub id: Uuid,
+    pub owner: ApiKeyOwner,
+    pub key_hash: &'a TokenHash,
+    pub key_hint: &'a str,
+}
+
 pub async fn insert_api_key(
     connection: &mut PgConnection,
-    owner: ApiKeyOwner,
-    key_hash: &[u8],
+    key: StoredApiKey<'_>,
 ) -> Result<(), sqlx::Error> {
+    let owner = key.owner;
     sqlx::query(
-        "INSERT INTO tenant_api_keys (id, tenant_id, kind, key_hash) VALUES ($1, $2, $3, $4)",
+        "INSERT INTO tenant_api_keys (id, tenant_id, kind, key_hash, key_hint) VALUES ($1, $2, $3, $4, $5)",
     )
-    .bind(Uuid::new_v4())
+    .bind(key.id)
     .bind(owner.tenant_id)
     .bind(owner.kind.as_str())
-    .bind(key_hash)
+    .bind(key.key_hash)
+    .bind(key.key_hint)
     .execute(connection)
     .await?;
 
@@ -53,4 +64,17 @@ pub async fn find_active_api_key_owner(
     };
 
     Ok(Some(ApiKeyOwner { tenant_id, kind }))
+}
+
+/// Every key of the tenant, newest first, revoked ones included.
+pub async fn list_api_keys(
+    pool: &PgPool,
+    tenant_id: Uuid,
+) -> Result<Vec<ApiKeySummary>, sqlx::Error> {
+    sqlx::query_as(
+        "SELECT id, kind, COALESCE(key_hint, '') AS hint, created_at, revoked_at FROM tenant_api_keys WHERE tenant_id = $1 ORDER BY created_at DESC",
+    )
+    .bind(tenant_id)
+    .fetch_all(pool)
+    .await
 }

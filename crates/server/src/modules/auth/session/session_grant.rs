@@ -37,10 +37,16 @@ pub async fn issue_session(
     issue_session_with(state, request).await
 }
 
+/// Every way to obtain tokens (login, signup, refresh, OAuth, magic link) ends here, so a ban
+/// is enforced in one place.
 pub async fn issue_session_with(
     state: &AppState,
     request: SessionRequest<'_>,
 ) -> Result<SessionTokens, ApiError> {
+    if request.grant.user.banned_at.is_some() {
+        return Err(ApiError::UserBanned);
+    }
+
     let signing_keys = state
         .signing_keys
         .keys_for(request.tenant_id)

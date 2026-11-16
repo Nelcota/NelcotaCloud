@@ -1,3 +1,14 @@
 pub mod change_tenant_settings;
+pub mod configure_smtp;
+pub mod create_api_key;
+pub mod create_project;
 pub mod create_tenant;
+pub mod delete_project;
+pub mod delete_tenant;
+pub mod list_api_keys;
+pub mod list_projects;
+pub mod read_smtp_settings;
 pub mod read_tenant_settings;
+pub mod reset_smtp;
+pub mod revoke_api_key;
+pub mod rotate_signing_key;

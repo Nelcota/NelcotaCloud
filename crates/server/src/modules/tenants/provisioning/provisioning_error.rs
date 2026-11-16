@@ -6,6 +6,8 @@ use crate::shared::crypto::secret_box::SecretBoxError;
 pub enum ProvisioningError {
     #[error("tenant slug is already taken")]
     SlugTaken,
+    #[error("an account can own at most {0} projects")]
+    ProjectLimitReached(i64),
     #[error("database error while provisioning tenant: {0}")]
     Database(#[from] sqlx::Error),
     #[error(transparent)]

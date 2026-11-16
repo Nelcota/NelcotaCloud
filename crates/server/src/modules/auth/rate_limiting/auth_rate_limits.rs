@@ -32,6 +32,15 @@ const SIGNUP_PER_CLIENT_IP: QuotaSpec = QuotaSpec {
     burst: 10,
     replenish_every: Duration::from_secs(60),
 };
+/// MFA codes: six digits, so an account gets few guesses before slowing down.
+const MFA_PER_ACCOUNT: QuotaSpec = QuotaSpec {
+    burst: 5,
+    replenish_every: Duration::from_secs(60),
+};
+const MFA_PER_CLIENT_IP: QuotaSpec = QuotaSpec {
+    burst: 20,
+    replenish_every: Duration::from_secs(6),
+};
 /// Starting an OAuth login writes a pending authorization to the control plane.
 const OAUTH_START_PER_CLIENT_IP: QuotaSpec = QuotaSpec {
     burst: 20,
@@ -44,6 +53,8 @@ pub struct RateLimits {
     pub login: AttemptLimiter,
     pub email_delivery: AttemptLimiter,
     pub signup: AttemptLimiter,
+    /// Keyed by the account's email, like login.
+    pub mfa: AttemptLimiter,
     /// Starting a login carries no email, so it is limited per client IP only.
     pub oauth_authorization: ClientIpLimiter,
 }
@@ -54,6 +65,7 @@ impl RateLimits {
             login: AttemptLimiter::new(&LOGIN_PER_EMAIL, &LOGIN_PER_CLIENT_IP)?,
             email_delivery: AttemptLimiter::new(&EMAIL_PER_ADDRESS, &EMAIL_PER_CLIENT_IP)?,
             signup: AttemptLimiter::new(&SIGNUP_PER_EMAIL, &SIGNUP_PER_CLIENT_IP)?,
+            mfa: AttemptLimiter::new(&MFA_PER_ACCOUNT, &MFA_PER_CLIENT_IP)?,
             oauth_authorization: ClientIpLimiter::new(&OAUTH_START_PER_CLIENT_IP)?,
         })
     }
@@ -62,6 +74,7 @@ impl RateLimits {
         self.login.forget_idle_keys();
         self.email_delivery.forget_idle_keys();
         self.signup.forget_idle_keys();
+        self.mfa.forget_idle_keys();
         self.oauth_authorization.forget_idle_keys();
     }
 }

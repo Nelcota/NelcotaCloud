@@ -1,4 +1,6 @@
 pub mod email;
+pub mod login;
+pub mod mfa;
 pub mod one_time_token;
 pub mod password;
 pub mod rate_limiting;

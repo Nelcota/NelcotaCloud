@@ -32,14 +32,17 @@ pub async fn find_user_by_email<'e>(
     .await
 }
 
-pub async fn find_user_by_id(pool: &PgPool, user_id: Uuid) -> Result<Option<User>, sqlx::Error> {
+pub async fn find_user_by_id<'e>(
+    executor: impl PgExecutor<'e>,
+    user_id: Uuid,
+) -> Result<Option<User>, sqlx::Error> {
     sqlx::query_as(concat!(
         "SELECT ",
         user_columns!(),
         " FROM users WHERE id = $1"
     ))
     .bind(user_id)
-    .fetch_optional(pool)
+    .fetch_optional(executor)
     .await
 }
 

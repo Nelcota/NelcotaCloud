@@ -9,13 +9,16 @@
 
 NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multitenant Auth.
 
-- Control plane database: tenants, API key hashes, JWT signing keys, OAuth configs, pending OAuth
-  authorizations.
-- One Postgres database per tenant (`tenant_<slug>`): users, identities, refresh and one-time tokens.
+- Control plane database: tenants, API key hashes (with a hint of their last characters), JWT
+  signing keys, OAuth configs, pending OAuth authorizations, tenant SMTP settings, and
+  `tenant_members` (which console accounts manage which tenant, as owner or member).
+- One Postgres database per tenant (`tenant_<slug>`): users, identities, refresh and one-time tokens,
+  TOTP factors and MFA challenges.
   Its URL is derived from the slug and the current `TENANT_DATABASE_BASE_URL`, never stored.
 - Provisioning holds a per-slug advisory lock in the registration transaction; a database without a
   tenant row is an orphan that the next provisioning of the slug recreates.
-- Tenant secrets (signing keys, OAuth client secrets, PKCE verifiers) are encrypted with AES-GCM,
+- Tenant secrets (signing keys, OAuth client secrets, PKCE verifiers, SMTP URLs, TOTP secrets) are
+  encrypted with AES-GCM,
   each bound to a context (tenant, record) as associated data.
 - Access tokens: short-lived EdDSA JWTs signed with the tenant's active key, public keys as JWKS.
   Refresh tokens: opaque, rotated on every use, stored only as SHA-256 hashes, grouped in families.
@@ -25,7 +28,19 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
   reverse), expiries are computed with the database clock (`now() + interval`), and login keeps
   the checked password hash locked (`FOR SHARE`) while it stores the new session.
 - Each tenant has a required `site_url`: email links point to it and OAuth only redirects under it.
-- Email (verification, password reset) is sent via SMTP with lettre, in the background.
+- Auth emails (verification, password reset, magic link) are HTML + text (askama template
+  `templates/auth_email.html`, auto-escaped), sent in the background through the tenant's own SMTP
+  server when configured (`tenants/smtp`), the platform's otherwise. Tenant SMTP hosts must be
+  public and on an SMTP port (SSRF guard, re-checked when a sender is built);
+  `TENANT_SMTP_ALLOW_ANY_HOST=true` lifts it for local development only.
+- Every way to obtain tokens ends in `complete_login` (password, magic link, OAuth): users with a
+  verified TOTP factor get `{mfa_required, mfa_token}` instead, redeemed at `/auth/v1/mfa/challenge`
+  (5 wrong codes per challenge, each TOTP time step accepted once). `issue_session_with` refuses
+  banned users. Access tokens carry `sid` (the session, i.e. refresh token family).
+- Magic links sign unknown emails up (passwordless account); opening one verifies the email and,
+  on an unverified account, drops its password and ends its sessions (like an OAuth takeover).
+- Key rotation: API keys are created and revoked individually (the last active secret key cannot
+  be revoked); rotating the signing key keeps retired keys in the JWKS for a day.
 - OAuth (Google, GitHub) uses each tenant's own OAuth app, PKCE and a one-time `state`. The callback
   returns a short-lived one-time code to the app, never tokens in the URL; the app redeems it with
   its own PKCE verifier (`code_challenge` at `/authorize`, `code_verifier` at `/oauth/token`).
@@ -33,12 +48,18 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
 - Account linking by verified email refuses a second identity of the same provider, and taking over
   an unverified account drops its password and ends its sessions. A new signup for an unverified
   email takes the account over (latest signup wins until someone verifies the inbox).
-- Tenant settings (`GET/PATCH /auth/v1/admin/settings`, secret key): name, `site_url`,
+- Admin routes (`/auth/v1/admin/*`) use `TenantAdmin`/`TenantAdminContext`: either the tenant's
+  secret key, or a console account's access token plus `x-nelcota-project`, with membership checked
+  on every request. Console accounts are users of the platform tenant named by
+  `PLATFORM_TENANT_SLUG`; `/platform/v1/projects` lists, creates (owner, max 10 per account) and
+  deletes (owners only) their projects.
+- Tenant settings (`GET/PATCH /auth/v1/admin/settings`): name, `site_url`,
   `require_email_verification` (default true: password login and refresh need a verified email,
   and signup answers the same for new and existing emails).
-- Routes that only touch tenant configuration use `ApiKeyTenant` (no tenant database needed);
-  routes on tenant data use `TenantContext`.
-- Rate limits (`governor`, in memory, single instance) on signup, login, auth emails and OAuth start,
+- Routes that only touch tenant configuration use `ApiKeyTenant` or `TenantAdmin` (no tenant
+  database needed); routes on tenant data use `TenantContext` or `TenantAdminContext`.
+- Rate limits (`governor`, in memory, single instance) on signup, login, MFA codes, auth emails and
+  OAuth start,
   per tenant + email and per tenant + client IP (IPv6 per /64). Behind Cloudflare set
   `CLIENT_IP_HEADER=cf-connecting-ip`.
 - Signing keys are cached per tenant for 5 minutes and tenant pools while in use, with `moka`
@@ -48,17 +69,26 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
 - The API is described with OpenAPI (`utoipa`): each handler has a `#[utoipa::path]` and is
   registered with `routes!` in `router.rs`, so the documented path is the served one. The API
   serves it at `/openapi.json`; `crates/server/openapi.json` is the committed copy the console
-  generates its types from (a test fails when it is stale).
+  and the SDK generate their types from (a test fails when it is stale).
 - Stack: Rust, tokio, axum, sqlx (PostgreSQL 17 in Docker), validator, argon2, jsonwebtoken, oauth2,
-  reqwest, lettre, thiserror, tracing, tower-http, moka, utoipa; tests use wiremock for OAuth
-  providers.
+  reqwest, lettre, askama, totp-rs, thiserror, tracing, tower-http, moka, utoipa; tests use
+  wiremock for OAuth providers.
+- SDK (`packages/sdk`, `@nelcota/sdk`): TypeScript client for tenant apps, no runtime
+  dependencies. It keeps the session, renews it before expiry (one refresh in flight), handles
+  OAuth with PKCE, magic links, MFA and sessions. Types are generated from `openapi.json`. Uses
+  TypeScript 5.9 (tsdown and openapi-typescript need its compiler API).
 - Console (`apps/console/`): React + TypeScript SPA built with Vite, TanStack Router and TanStack
   Query, Tailwind CSS and shadcn/ui; see "Console structure". It talks to the API only; the API
-  address is fixed at build time by `VITE_API_URL`. Never put a secret key or the admin token in
-  the browser.
+  address is fixed at build time by `VITE_API_URL`. It logs in with the SDK (compiled from
+  `packages/sdk/src` through a path alias) using the platform tenant's publishable key
+  (`VITE_PLATFORM_PUBLISHABLE_KEY`). Never put a secret key or the admin token in the browser.
 - Deploy: one VPS with `docker-compose.prod.yml`. Caddy (`deploy/caddy/`) is the only public
   service: it serves the built console, proxies the API, and obtains TLS certificates. The API
-  trusts the address Caddy appends to `X-Forwarded-For` (`CLIENT_IP_HEADER`).
+  trusts the address Caddy appends to `X-Forwarded-For` (`CLIENT_IP_HEADER`). The `backup`
+  service sends daily encrypted dumps of every database to Cloudflare R2 (`deploy/backup/`).
+  Operations (first boot, platform tenant, backups, staging): `docs/deploy.md`.
+- CI (`.github/workflows/ci.yml`): API (fmt, clippy, tests with Postgres and Mailpit), console and
+  SDK (format, lint, generated types, tests, build), Docker images on pushes to `main`.
 - Behind Cloudflare (proxied DNS records, recommended so console assets come from the edge):
   SSL/TLS mode "Full (strict)", `CLIENT_IP_HEADER=cf-connecting-ip`, and the VPS firewall allows
   ports 80/443 only from Cloudflare's IP ranges. Caching needs no rule: hashed assets are
@@ -74,8 +104,13 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
 - Console, in `apps/console/`: `npm install`, `npm run dev` (http://localhost:5173, API from
   `VITE_API_URL`, default http://localhost:8080), `npm run build` (type check + bundle),
   `npm run lint`, `npm run format` / `npm run format:check` (oxfmt).
+- SDK, in `packages/sdk/`: `npm test`, `npm run typecheck`, `npm run lint`, `npm run format`,
+  `npm run build`.
 - After changing an endpoint or its types: `cargo run -p server --bin export-openapi` (rewrites
-  `crates/server/openapi.json`), then `npm run api:types` in `apps/console/`.
+  `crates/server/openapi.json`), then `npm run api:types` in `apps/console/` and `packages/sdk/`.
+- Local console login: create the platform tenant (slug `console`, `site_url`
+  http://localhost:5173) with `POST /admin/v1/tenants`, and put its publishable key in
+  `apps/console/.env.local` as `VITE_PLATFORM_PUBLISHABLE_KEY`.
 - Production: copy `.env.production.example` to `.env.production`, fill it, then
   `docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build`.
 
@@ -89,10 +124,15 @@ Modular monolith in `crates/server/src/`: one folder per business context under 
   `bin/export_openapi.rs`.
 - `modules/<module>/`: everything one context owns, grouped in sub-packages by subject, plus its
   handlers in `routes/` (one file per endpoint, no business logic beyond request/response mapping).
-  - `tenants/`: `access` (TenantContext, AdminAccess), `api_keys`, `signing_keys`, `database`
-    (tenant pools, create/migrate/drop), `provisioning`, `settings` (site URL, tenant settings).
-  - `auth/`: `user` (record, lookup, registration, account updates), `password`, `session`
-    (JWT, refresh tokens, issuing), `one_time_token`, `email` (auth emails), `rate_limiting`.
+  - `tenants/`: `access` (TenantContext, AdminAccess, TenantAdmin), `api_keys` (issuance,
+    revocation), `signing_keys` (keys, cache, rotation, access token JWTs), `database` (tenant
+    pools, create/migrate/drop), `provisioning` (creation, deletion), `settings` (site URL, tenant
+    settings), `smtp` (tenant SMTP settings, host policy, senders), `platform` (console accounts,
+    memberships, roles).
+  - `auth/`: `user` (record, lookup, registration, account updates, listing, administration),
+    `password`, `session` (refresh tokens, issuing, session listing), `login` (completion with the
+    MFA step), `mfa` (TOTP codes, factors, challenges), `one_time_token`, `email` (auth emails and
+    template), `rate_limiting`.
   - `oauth/`: `provider` (providers, endpoints, credentials), `client`, `login` (start, completion,
     state), `profile` (one file per provider), `identity` (identities, account linking).
 - `shared/`: infrastructure with no business rules (`crypto`, `http` errors, JSON validation,
@@ -114,18 +154,23 @@ The console mirrors the API: modules per business context, shared infrastructure
 dependencies. In `apps/console/src/`:
 
 - `main.tsx`: mounts the app with its providers; nothing else.
-- `app/`: composition root. `router.tsx` maps URLs to module pages (no logic), `root-layout.tsx`
-  is the shell, `query-client.ts` the shared cache, `global.css` the global styles.
-- `modules/<module>/`: everything one context owns (e.g. `projects`, `users`, `oauth-providers`):
+- `app/`: composition root. `router.tsx` maps URLs to module pages (only logic: the login guard),
+  `lazy-routes/` one lazy route per page, `root-layout.tsx` the shell with the account menu,
+  `project-layout.tsx` a project's sections, `query-client.ts` the shared cache, `global.css`.
+- `modules/<module>/`: everything one context owns (`account`, `projects`, `api-keys`, `users`,
+  `project-settings`, `system-status`):
   - `pages/`: one file per route; composes components, no fetching or business logic.
   - `components/`: UI of the module, one component per file.
   - `queries/`: TanStack Query hooks (`use-*-query.ts`, `use-*-mutation.ts`); the only place that
     calls `api/`.
   - `api/`: one file per API call; the only place that calls `fetch`.
   - Create these sub-folders only when the module has something for them.
-- `shared/`: infrastructure with no business rules: `api` (typed `apiClient` from `openapi-fetch`,
-  generated `api-schema.d.ts` that is never edited by hand, base URL, `ApiError`), `ui` (shadcn
-  components; add new ones with `npx shadcn@latest add`), `lib`. `shared` never imports from
+- `shared/`: infrastructure with no business rules: `api` (typed `apiClient` from `openapi-fetch`
+  that sends the console session's token, `projectHeaders`, `dataOf`/`ensureSuccess`, generated
+  `api-schema.d.ts` that is never edited by hand, base URL, `ApiError`), `auth` (the SDK client
+  and `useSession`), `routing` (route params and search), `ui` (shadcn components, plus
+  `FormField`, `SwitchField`, `ErrorAlert`, `ConfirmButton`; add shadcn ones with
+  `npx shadcn@latest add`, then move any exported `cva` variants to their own file), `lib`. `shared` never imports from
   `modules` or `app`.
 - Dependencies point one way: `app → modules → shared`. A module may use another module's
   components; never create a cycle (`import/no-cycle` enforces it).
@@ -139,7 +184,9 @@ clauses, no boolean variables for conditions, max 3 parameters, small files and 
 - Named exports only (no `export default`, except tool configs like `vite.config.ts`).
 - Exported functions and components declare their return type (`JSX.Element`, `Promise<void>`).
 - File names in kebab-case; components in PascalCase; hooks start with `use`.
-- Validate API responses before using them, like any data crossing a boundary.
+- Validate data from outside the app before using it (URL search params, storage); API responses
+  are typed from the OpenAPI document.
+- Destructive actions (revoke, delete, ban) go through `ConfirmButton`.
 - Call the API only through `apiClient` (typed paths and bodies), inside a module's `api/` file.
 - `npm run format`, `npm run lint` (oxlint, `.oxlintrc.json`) and `npm run build` (type check)
   must pass with zero warnings before finishing.

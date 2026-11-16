@@ -13,6 +13,8 @@ use crate::modules::auth::email::auth_email_dispatch::{
 use crate::modules::auth::rate_limiting::attempt_limiter::Attempt;
 use crate::modules::auth::user::email_address::EmailAddress;
 use crate::modules::auth::user::user_lookup::find_user_by_email;
+use crate::modules::auth::user::user_record::User;
+use crate::modules::auth::user::user_registration::insert_passwordless_user;
 use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::shared::http::api_error::ApiError;
 
@@ -72,12 +74,13 @@ impl EmailLinkJob {
         let Ok(email) = EmailAddress::parse(&self.raw_email) else {
             return Ok(());
         };
-        let user = find_user_by_email(&self.tenant.pool, &email)
-            .await
-            .map_err(ApiError::internal)?;
-        let Some(user) = user else {
+        let Some(user) = self.recipient(&email).await? else {
             return Ok(());
         };
+
+        if user.banned_at.is_some() {
+            return Ok(());
+        }
 
         if matches!(self.kind, AuthEmailKind::Verification) && user.email_verified_at.is_some() {
             return Ok(());
@@ -89,5 +92,31 @@ impl EmailLinkJob {
         };
 
         send_auth_email(&self.state, &self.tenant, request).await
+    }
+
+    /// Magic links also sign people up: an unknown email gets a passwordless account.
+    async fn recipient(&self, email: &EmailAddress) -> Result<Option<User>, ApiError> {
+        let pool = &self.tenant.pool;
+        let user = find_user_by_email(pool, email)
+            .await
+            .map_err(ApiError::internal)?;
+
+        if user.is_some() || matches!(self.kind, AuthEmailKind::MagicLink) == false {
+            return Ok(user);
+        }
+
+        let mut connection = pool.acquire().await.map_err(ApiError::internal)?;
+        let created = insert_passwordless_user(&mut connection, email)
+            .await
+            .map_err(ApiError::internal)?;
+
+        if created.is_some() {
+            return Ok(created);
+        }
+
+        // Another request created the account meanwhile.
+        find_user_by_email(pool, email)
+            .await
+            .map_err(ApiError::internal)
     }
 }

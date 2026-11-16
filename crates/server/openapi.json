@@ -74,6 +74,213 @@
         ]
       }
     },
+    "/admin/v1/tenants/{tenant_id}": {
+      "delete": {
+        "tags": [
+          "platform-admin"
+        ],
+        "summary": "`DELETE /admin/v1/tenants/{tenant_id}`: deletes the tenant, its users and its database.",
+        "operationId": "delete_tenant",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "description": "Id of the tenant",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Tenant deleted"
+          },
+          "401": {
+            "description": "Missing or wrong admin token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such tenant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "admin_token": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/api-keys": {
+      "get": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`GET /admin/api-keys`: every key of the tenant, newest first, without the keys themselves.",
+        "operationId": "list_api_keys",
+        "responses": {
+          "200": {
+            "description": "The tenant's API keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApiKeySummary"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`POST /admin/api-keys`: a new key next to the existing ones, so apps can switch to it\nbefore the old one is revoked. The key is shown only in this response.",
+        "operationId": "create_api_key",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateApiKeyBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Key created; store it now, it is not shown again",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedApiKey"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/api-keys/{key_id}": {
+      "delete": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`DELETE /admin/api-keys/{key_id}`: the key stops working at once.",
+        "operationId": "revoke_api_key",
+        "parameters": [
+          {
+            "name": "key_id",
+            "in": "path",
+            "description": "Id of the key to revoke",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Key revoked"
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No active key with this id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "It is the last active secret key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
     "/auth/v1/admin/oauth/{provider}": {
       "put": {
         "tags": [
@@ -107,7 +314,7 @@
             "description": "Provider configured with the tenant's own OAuth app"
           },
           "403": {
-            "description": "Requires the secret API key",
+            "description": "Requires the secret API key, or membership in the project",
             "content": {
               "application/json": {
                 "schema": {
@@ -130,6 +337,10 @@
         "security": [
           {
             "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
           }
         ]
       }
@@ -153,7 +364,7 @@
             }
           },
           "403": {
-            "description": "Requires the secret API key",
+            "description": "Requires the secret API key, or membership in the project",
             "content": {
               "application/json": {
                 "schema": {
@@ -166,6 +377,10 @@
         "security": [
           {
             "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
           }
         ]
       },
@@ -207,7 +422,7 @@
             }
           },
           "403": {
-            "description": "Requires the secret API key",
+            "description": "Requires the secret API key, or membership in the project",
             "content": {
               "application/json": {
                 "schema": {
@@ -220,6 +435,608 @@
         "security": [
           {
             "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/signing-keys/rotate": {
+      "post": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`POST /admin/signing-keys/rotate`: a new key signs from now on; tokens signed by the\nprevious key keep verifying until they expire.",
+        "operationId": "rotate_signing_key",
+        "responses": {
+          "200": {
+            "description": "Key rotated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RotatedSigningKey"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/smtp": {
+      "get": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`GET /admin/smtp`: where the tenant's auth emails are sent from, without credentials.",
+        "operationId": "read_smtp_settings",
+        "responses": {
+          "200": {
+            "description": "Current SMTP settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmtpSettingsView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`PUT /admin/smtp`: auth emails of the tenant go through its own SMTP server.",
+        "description": "The server must be on a public host and an SMTP port, so the API cannot be used to reach\nservices inside its own network.",
+        "operationId": "configure_smtp",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SmtpSettingsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "SMTP settings saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmtpSettingsView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid URL or sender, or a private host or port",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`DELETE /admin/smtp`: auth emails go through the platform's SMTP server again.",
+        "operationId": "reset_smtp",
+        "responses": {
+          "204": {
+            "description": "Back to the platform's SMTP server"
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/users": {
+      "get": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`GET /admin/users`: the tenant's users, newest first, optionally searched by email.",
+        "operationId": "list_users",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "query",
+            "description": "Part of the email to search for.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid search, limit or offset",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/users/{user_id}": {
+      "get": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`GET /admin/users/{user_id}`.",
+        "operationId": "get_user",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "Id of the user",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`DELETE /admin/users/{user_id}`: removes the user with their identities and sessions.",
+        "operationId": "delete_user",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "Id of the user",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "User deleted"
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/users/{user_id}/ban": {
+      "post": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`POST /admin/users/{user_id}/ban`: no more logins or refreshes, and every session ends.",
+        "operationId": "ban_user",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "Id of the user",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User banned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/users/{user_id}/logout": {
+      "post": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`POST /admin/users/{user_id}/logout`: ends every session; access tokens expire on their own.",
+        "operationId": "end_user_sessions",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "Id of the user",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Every session ended"
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/users/{user_id}/mfa": {
+      "delete": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`DELETE /admin/users/{user_id}/mfa`: removes the user's authenticator (e.g. a lost phone),\nafter the tenant confirmed who they are by its own means.",
+        "operationId": "reset_user_mfa",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "Id of the user",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Authenticator removed"
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The user has no authenticator",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/users/{user_id}/unban": {
+      "post": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`POST /admin/users/{user_id}/unban`: the user can log in again.",
+        "operationId": "unban_user",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "Id of the user",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User unbanned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
           }
         ]
       }
@@ -269,11 +1086,11 @@
         },
         "responses": {
           "200": {
-            "description": "Logged in",
+            "description": "Logged in, or the MFA step that must come first",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SessionTokens"
+                  "$ref": "#/components/schemas/LoginResponse"
                 }
               }
             }
@@ -345,6 +1162,370 @@
         ]
       }
     },
+    "/auth/v1/magic-link": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "`POST /magic-link`: emails a one-time login link. An unknown email gets a passwordless\naccount, so the same call signs people up; the answer never reveals which case it was.",
+        "operationId": "request_magic_link",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "A login link is on its way"
+          },
+          "429": {
+            "description": "Too many emails requested",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/magic-link/verify": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "`POST /magic-link/verify`: trades the token from the emailed link for a session.",
+        "description": "Opening the link proves control of the inbox. On an account nobody verified, whoever set\nits password may not own the email, so the password is dropped and its sessions end.",
+        "operationId": "verify_magic_link",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OneTimeTokenBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Logged in, or the MFA step that must come first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid, used or expired link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The user is banned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/mfa": {
+      "get": {
+        "tags": [
+          "mfa"
+        ],
+        "summary": "`GET /mfa`: the second factors of the logged-in user.",
+        "operationId": "read_mfa_status",
+        "responses": {
+          "200": {
+            "description": "MFA status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MfaStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": [],
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/mfa/challenge": {
+      "post": {
+        "tags": [
+          "mfa"
+        ],
+        "summary": "`POST /mfa/challenge`: the second step of a login with MFA on. Each challenge allows a few\nwrong codes; after that the login starts over.",
+        "operationId": "complete_mfa_challenge",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaChallengeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionTokens"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown, expired or exhausted MFA token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wrong code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/mfa/totp": {
+      "post": {
+        "tags": [
+          "mfa"
+        ],
+        "summary": "`POST /mfa/totp`: starts adding a TOTP authenticator (replacing a pending one). Shown once.",
+        "operationId": "enroll_totp",
+        "responses": {
+          "201": {
+            "description": "Authenticator created; verify it with a first code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpEnrollmentResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "TOTP is already enabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": [],
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "mfa"
+        ],
+        "summary": "`DELETE /mfa/totp`: turns TOTP off. A current code is required, so a stolen access token\nalone cannot remove the second factor.",
+        "operationId": "disable_totp",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaCodeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "TOTP disabled"
+          },
+          "401": {
+            "description": "Wrong code or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "TOTP is not enabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": [],
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/mfa/totp/verify": {
+      "post": {
+        "tags": [
+          "mfa"
+        ],
+        "summary": "`POST /mfa/totp/verify`: the first code turns the pending authenticator on.",
+        "operationId": "verify_totp_enrollment",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaCodeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "TOTP enabled; logins now ask for a code"
+          },
+          "401": {
+            "description": "Wrong code or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No pending authenticator",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": [],
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/auth/v1/oauth/callback": {
       "get": {
         "tags": [
@@ -407,11 +1588,11 @@
         },
         "responses": {
           "200": {
-            "description": "Logged in",
+            "description": "Logged in, or the MFA step that must come first",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SessionTokens"
+                  "$ref": "#/components/schemas/LoginResponse"
                 }
               }
             }
@@ -667,6 +1848,126 @@
         ]
       }
     },
+    "/auth/v1/sessions": {
+      "get": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "`GET /sessions`: where the logged-in user is logged in, most recently used first.",
+        "operationId": "list_sessions",
+        "responses": {
+          "200": {
+            "description": "Active sessions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SessionSummary"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": [],
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "`DELETE /sessions`: logs out every other device, keeping the session of this request.",
+        "operationId": "end_other_sessions",
+        "responses": {
+          "204": {
+            "description": "Other sessions ended"
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": [],
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/sessions/{session_id}": {
+      "delete": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "`DELETE /sessions/{session_id}`: logs one device out; its access token expires on its own.",
+        "operationId": "end_session",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "description": "Id of the session",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Session ended"
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such session of this user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": [],
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/auth/v1/signup": {
       "post": {
         "tags": [
@@ -759,6 +2060,34 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": [],
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "`DELETE /user`: the logged-in user deletes their own account and all its data (the right\nto erasure). Their access token stops working once it no longer matches a user.",
+        "operationId": "delete_own_account",
+        "responses": {
+          "204": {
+            "description": "Account deleted"
           },
           "401": {
             "description": "Missing or invalid access token",
@@ -883,10 +2212,228 @@
           }
         }
       }
+    },
+    "/platform/v1/projects": {
+      "get": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "`GET /platform/v1/projects`: the projects the console account is a member of.",
+        "operationId": "list_projects",
+        "responses": {
+          "200": {
+            "description": "The account's projects, newest first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectSummary"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid platform access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The platform API is not configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platform_account": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "`POST /platform/v1/projects`: a new project (tenant) owned by the console account. Its API\nkeys are shown only in this response.",
+        "operationId": "create_project",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTenantBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Project created; store its keys now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedTenantResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid slug, name or site URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid platform access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Slug taken, or the account's project limit was reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platform_account": []
+          }
+        ]
+      }
+    },
+    "/platform/v1/projects/{project_id}": {
+      "delete": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "`DELETE /platform/v1/projects/{project_id}`: deletes the project, its users and its\ndatabase. Owners only.",
+        "operationId": "delete_project",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "description": "Id of the project",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Project deleted"
+          },
+          "401": {
+            "description": "Missing or invalid platform access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an owner of this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platform_account": []
+          }
+        ]
+      }
     }
   },
   "components": {
     "schemas": {
+      "ApiKeyKind": {
+        "type": "string",
+        "description": "Publishable keys ship inside client apps; secret keys stay on the tenant's own servers.",
+        "enum": [
+          "publishable",
+          "secret"
+        ]
+      },
+      "ApiKeySummary": {
+        "type": "object",
+        "description": "What an owner sees about a key: never the key itself, only its last characters.",
+        "required": [
+          "id",
+          "kind",
+          "hint",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "hint": {
+            "type": "string",
+            "description": "Last characters of the key; empty for keys created before hints existed."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "description": "`publishable` or `secret`."
+          },
+          "revoked_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateApiKeyBody": {
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/ApiKeyKind"
+          }
+        }
+      },
       "CreateTenantBody": {
         "type": "object",
         "required": [
@@ -964,6 +2511,32 @@
           }
         }
       },
+      "IssuedApiKey": {
+        "type": "object",
+        "description": "A new key. Its plaintext is shown only here; afterwards only its hash exists.",
+        "required": [
+          "id",
+          "kind",
+          "key",
+          "hint"
+        ],
+        "properties": {
+          "hint": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "description": "`publishable` or `secret`."
+          }
+        }
+      },
       "LogInBody": {
         "type": "object",
         "required": [
@@ -976,6 +2549,79 @@
           },
           "password": {
             "type": "string"
+          }
+        }
+      },
+      "LoginResponse": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/SessionTokens"
+          },
+          {
+            "$ref": "#/components/schemas/MfaRequired"
+          }
+        ],
+        "description": "A session, or the MFA step that must come first."
+      },
+      "MfaChallengeBody": {
+        "type": "object",
+        "required": [
+          "mfa_token",
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "mfa_token": {
+            "type": "string",
+            "description": "The `mfa_token` returned by the login."
+          }
+        }
+      },
+      "MfaCodeBody": {
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "The 6-digit code shown by the authenticator app."
+          }
+        }
+      },
+      "MfaRequired": {
+        "type": "object",
+        "description": "The first factor passed; with MFA on, a TOTP code is still needed at `POST /mfa/challenge`.",
+        "required": [
+          "mfa_required",
+          "mfa_token"
+        ],
+        "properties": {
+          "mfa_required": {
+            "type": "boolean"
+          },
+          "mfa_token": {
+            "type": "string",
+            "description": "Short-lived token that identifies this login attempt at the challenge endpoint."
+          }
+        }
+      },
+      "MfaStatus": {
+        "type": "object",
+        "required": [
+          "totp_enabled",
+          "totp_pending"
+        ],
+        "properties": {
+          "totp_enabled": {
+            "type": "boolean",
+            "description": "Logins ask for a TOTP code."
+          },
+          "totp_pending": {
+            "type": "boolean",
+            "description": "An authenticator was added but its first code was not verified yet."
           }
         }
       },
@@ -1001,6 +2647,48 @@
         ],
         "properties": {
           "token": {
+            "type": "string"
+          }
+        }
+      },
+      "ProjectRole": {
+        "type": "string",
+        "description": "What a platform account may do in a project: owners can also delete it.",
+        "enum": [
+          "owner",
+          "member"
+        ]
+      },
+      "ProjectSummary": {
+        "type": "object",
+        "description": "A project (tenant) as one of its members sees it in the console.",
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "site_url",
+          "role",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/ProjectRole"
+          },
+          "site_url": {
+            "type": "string"
+          },
+          "slug": {
             "type": "string"
           }
         }
@@ -1043,6 +2731,52 @@
           },
           "token": {
             "type": "string"
+          }
+        }
+      },
+      "RotatedSigningKey": {
+        "type": "object",
+        "required": [
+          "key_id"
+        ],
+        "properties": {
+          "key_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The `kid` of the key that now signs access tokens."
+          }
+        }
+      },
+      "SessionSummary": {
+        "type": "object",
+        "description": "One logged-in device or browser: a refresh token family that can still be used.",
+        "required": [
+          "id",
+          "started_at",
+          "last_refreshed_at",
+          "expires_at",
+          "is_current"
+        ],
+        "properties": {
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "is_current": {
+            "type": "boolean",
+            "description": "The session of the access token used for this request."
+          },
+          "last_refreshed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -1109,6 +2843,55 @@
         ],
         "description": "A session when the tenant lets unverified users in; otherwise only a note to check the inbox."
       },
+      "SmtpSettingsBody": {
+        "type": "object",
+        "required": [
+          "smtp_url",
+          "email_from"
+        ],
+        "properties": {
+          "email_from": {
+            "type": "string",
+            "description": "The sender, e.g. `Acme <no-reply@acme.com>`."
+          },
+          "smtp_url": {
+            "type": "string",
+            "description": "`smtps://user:password@host:465` (implicit TLS) or `smtp://user:password@host:587`."
+          }
+        }
+      },
+      "SmtpSettingsView": {
+        "type": "object",
+        "description": "What the owner sees: where emails go, never the credentials.",
+        "required": [
+          "is_custom"
+        ],
+        "properties": {
+          "email_from": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "is_custom": {
+            "type": "boolean",
+            "description": "False while the tenant uses the platform's SMTP server."
+          },
+          "smtp_host": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "smtp_port": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "TenantSettings": {
         "type": "object",
         "description": "Settings a tenant manages itself with its secret key.",
@@ -1152,14 +2935,46 @@
           }
         }
       },
+      "TotpEnrollmentResponse": {
+        "type": "object",
+        "description": "The authenticator to add to an app; it becomes active after its first code is verified.",
+        "required": [
+          "factor_id",
+          "secret",
+          "otpauth_uri"
+        ],
+        "properties": {
+          "factor_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "otpauth_uri": {
+            "type": "string",
+            "description": "`otpauth://` URI, usually shown as a QR code."
+          },
+          "secret": {
+            "type": "string",
+            "description": "Base32 secret, for typing into an authenticator app by hand."
+          }
+        }
+      },
       "User": {
         "type": "object",
         "required": [
           "id",
           "email",
-          "created_at"
+          "created_at",
+          "mfa_enabled"
         ],
         "properties": {
+          "banned_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Set while the user is banned: no login, no refresh."
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -1177,6 +2992,30 @@
           "id": {
             "type": "string",
             "format": "uuid"
+          },
+          "mfa_enabled": {
+            "type": "boolean",
+            "description": "A verified TOTP authenticator is required at login."
+          }
+        }
+      },
+      "UserPage": {
+        "type": "object",
+        "description": "One page of users, newest first, and how many match in total.",
+        "required": [
+          "users",
+          "total"
+        ],
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "users": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/User"
+            }
           }
         }
       }
@@ -1197,6 +3036,18 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT"
+      },
+      "platform_account": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Access token of a console account (a user of the platform tenant)"
+      },
+      "project": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-nelcota-project",
+        "description": "Id of the project a console account manages; it must be a member"
       }
     }
   },
@@ -1206,12 +3057,24 @@
       "description": "Signup, login and sessions of a tenant's users"
     },
     {
+      "name": "mfa",
+      "description": "TOTP second factor of a tenant's users"
+    },
+    {
+      "name": "sessions",
+      "description": "Devices where a user is logged in"
+    },
+    {
       "name": "oauth",
       "description": "Login with Google or GitHub through the tenant's own OAuth app"
     },
     {
       "name": "tenant-admin",
       "description": "A tenant's own configuration (secret API key)"
+    },
+    {
+      "name": "platform",
+      "description": "Projects of a console account (platform access token)"
     },
     {
       "name": "platform-admin",

@@ -4,14 +4,14 @@ use time::{Duration, OffsetDateTime};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::modules::auth::session::access_token::{
-    AccessTokenClaims, AccessTokenError, sign_access_token,
-};
 use crate::modules::auth::session::refresh_token_repository::{
     NewRefreshToken, insert_refresh_token,
 };
 use crate::modules::auth::session::session_family::SessionFamily;
 use crate::modules::auth::user::user_record::User;
+use crate::modules::tenants::signing_keys::access_token::{
+    AccessTokenClaims, AccessTokenError, sign_access_token,
+};
 use crate::modules::tenants::signing_keys::prepared_signing_key::PreparedSigningKey;
 use crate::shared::crypto::opaque_token::OpaqueToken;
 use crate::shared::time::expiry::{ExpiryOutOfRange, expiry_after};
@@ -64,6 +64,7 @@ impl SessionIssuer<'_> {
             iat: now.unix_timestamp(),
             exp: expiry_after(now, ACCESS_TOKEN_LIFETIME)?.unix_timestamp(),
             email: user.email.clone(),
+            sid: family.id,
         };
         let access_token = sign_access_token(&claims, self.signing_key)?;
         let refresh_token = OpaqueToken::generate(REFRESH_TOKEN_PREFIX);

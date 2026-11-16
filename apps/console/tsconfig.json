@@ -1,7 +1,7 @@
 {
   "files": [],
   "compilerOptions": {
-    "paths": { "@/*": ["./src/*"] }
+    "paths": { "@/*": ["./src/*"], "@nelcota/sdk": ["../../packages/sdk/src/index.ts"] }
   },
   "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }]
 }
