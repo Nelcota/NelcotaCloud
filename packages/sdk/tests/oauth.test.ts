@@ -4,6 +4,8 @@ import { challengeFor } from '../src/auth/pkce'
 import { createClient, memoryStorage } from '../src/index'
 import { FakeApi, sessionTokens } from './fake-api'
 
+const CALLBACK_URL = 'https://app.test/callback'
+
 function clientFor(api: FakeApi): ReturnType<typeof createClient> {
   return createClient({
     url: 'https://api.test',
@@ -30,10 +32,10 @@ describe('OAuth', () => {
     const authorizeUrl = new URL(
       await client.auth.oauth.getAuthorizeUrl({
         provider: 'github',
-        redirectTo: 'https://app.test/callback',
+        redirectTo: CALLBACK_URL,
       }),
     )
-    const result = await client.auth.oauth.exchangeCode({ code: 'nc_oc_code' })
+    const result = await client.auth.oauth.exchangeCode(`${CALLBACK_URL}?code=nc_oc_code`)
 
     expect(authorizeUrl.pathname).toBe('/auth/v1/oauth/github/authorize')
     expect(authorizeUrl.searchParams.get('code_challenge_method')).toBe('S256')
@@ -47,8 +49,33 @@ describe('OAuth', () => {
   it('refuses a code when no login was started here', async () => {
     const client = clientFor(new FakeApi())
 
-    await expect(client.auth.oauth.exchangeCode({ code: 'nc_oc_code' })).rejects.toMatchObject({
+    await expect(
+      client.auth.oauth.exchangeCode(`${CALLBACK_URL}?code=nc_oc_code`),
+    ).rejects.toMatchObject({
       code: 'missing_pkce_verifier',
+    })
+  })
+
+  it('throws the error the API sent back and forgets the verifier', async () => {
+    const api = new FakeApi()
+    const client = clientFor(api)
+    await client.auth.oauth.getAuthorizeUrl({ provider: 'google', redirectTo: CALLBACK_URL })
+
+    await expect(
+      client.auth.oauth.exchangeCode(`${CALLBACK_URL}?error=access_denied`),
+    ).rejects.toMatchObject({ code: 'access_denied' })
+    await expect(
+      client.auth.oauth.exchangeCode(`${CALLBACK_URL}?code=nc_oc_code`),
+    ).rejects.toMatchObject({ code: 'missing_pkce_verifier' })
+    expect(api.calls).toHaveLength(0)
+  })
+
+  it('refuses a callback URL without a code', async () => {
+    const client = clientFor(new FakeApi())
+    await client.auth.oauth.getAuthorizeUrl({ provider: 'google', redirectTo: CALLBACK_URL })
+
+    await expect(client.auth.oauth.exchangeCode(CALLBACK_URL)).rejects.toMatchObject({
+      code: 'missing_oauth_code',
     })
   })
 })

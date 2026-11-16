@@ -2,8 +2,11 @@ import type { components } from '../generated/api-schema'
 import type { HttpClient } from '../http/http-client'
 import { NelcotaError } from '../http/nelcota-error'
 import type { AuthEvent, AuthStateListener, Session } from '../types'
+import { AuthListeners } from './auth-listeners'
 import { toSession } from './login-results'
+import { sessionChangeEvent } from './session-change'
 import type { SessionStore } from './session-store'
+import { withTabLock } from './tab-lock'
 
 type SessionTokens = components['schemas']['SessionTokens']
 
@@ -16,7 +19,7 @@ const FORBIDDEN = 403
 export class SessionManager {
   private readonly http: HttpClient
   private readonly store: SessionStore
-  private readonly listeners = new Set<AuthStateListener>()
+  private readonly listeners = new AuthListeners()
   private session: Session | null
   private refreshing: Promise<Session | null> | null = null
 
@@ -24,6 +27,7 @@ export class SessionManager {
     this.http = http
     this.store = store
     this.session = store.load()
+    store.watchOtherTabs((stored) => this.followOtherTab(stored))
   }
 
   current(): Session | null {
@@ -33,13 +37,13 @@ export class SessionManager {
   start(session: Session, event: AuthEvent): void {
     this.session = session
     this.store.save(session)
-    this.notify(event)
+    this.listeners.notify(event, session)
   }
 
   end(): void {
     this.session = null
     this.store.clear()
-    this.notify('SIGNED_OUT')
+    this.listeners.notify('SIGNED_OUT', null)
   }
 
   /** A valid access token, renewed first when it is about to expire. */
@@ -77,11 +81,7 @@ export class SessionManager {
   }
 
   subscribe(listener: AuthStateListener): () => void {
-    this.listeners.add(listener)
-
-    return () => {
-      this.listeners.delete(listener)
-    }
+    return this.listeners.add(listener)
   }
 
   /**
@@ -96,14 +96,18 @@ export class SessionManager {
       return null
     }
 
-    return withLock(this.store.lockName(), () => this.refreshOrAdopt(session))
+    return withTabLock(this.store.lockName(), () => this.refreshOrAdopt(session))
   }
 
   private async refreshOrAdopt(session: Session): Promise<Session | null> {
     const stored = this.store.load()
 
+    if (this.session !== session) {
+      return this.session
+    }
+
     if (stored !== null && stored.refreshToken !== session.refreshToken) {
-      this.start(stored, 'TOKEN_REFRESHED')
+      this.start(stored, sessionChangeEvent(session, stored))
       return stored
     }
 
@@ -113,17 +117,30 @@ export class SessionManager {
         path: '/auth/v1/refresh',
         body: { refresh_token: session.refreshToken },
       })
-      const renewed = toSession(tokens)
-      this.start(renewed, 'TOKEN_REFRESHED')
 
-      return renewed
+      return this.adoptRenewal(session, toSession(tokens))
     } catch (error) {
-      return this.endIfRejected(error)
+      return this.endIfRejected(session, error)
     }
   }
 
+  /** The user may sign out or in while the refresh is in flight; what they did wins. */
+  private adoptRenewal(original: Session, renewed: Session): Session | null {
+    if (this.session !== original) {
+      return this.session
+    }
+
+    this.start(renewed, 'TOKEN_REFRESHED')
+
+    return renewed
+  }
+
   /** A refused refresh token (revoked, reused, banned user) ends the session; other errors propagate. */
-  private endIfRejected(error: unknown): null {
+  private endIfRejected(original: Session, error: unknown): Session | null {
+    if (this.session !== original) {
+      return this.session
+    }
+
     if (error instanceof NelcotaError && [UNAUTHORIZED, FORBIDDEN].includes(error.status)) {
       this.end()
       return null
@@ -132,10 +149,16 @@ export class SessionManager {
     throw error
   }
 
-  private notify(event: AuthEvent): void {
-    for (const listener of this.listeners) {
-      listener(event, this.session)
+  /** Another tab already wrote the change to storage, so this tab only mirrors it. */
+  private followOtherTab(stored: Session | null): void {
+    const previous = this.session
+
+    if (previous === null && stored === null) {
+      return
     }
+
+    this.session = stored
+    this.listeners.notify(sessionChangeEvent(previous, stored), stored)
   }
 }
 
@@ -146,15 +169,4 @@ function notAuthenticated(): NelcotaError {
     message: 'No active session; sign in first',
     requestId: null,
   })
-}
-
-/** Runs `task` while holding a lock shared by every tab of the origin, when the browser has one. */
-async function withLock<T>(name: string, task: () => Promise<T>): Promise<T> {
-  const locks = globalThis.navigator?.locks
-
-  if (locks === undefined) {
-    return task()
-  }
-
-  return locks.request(name, task)
 }

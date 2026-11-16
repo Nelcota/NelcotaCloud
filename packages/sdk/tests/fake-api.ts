@@ -6,7 +6,13 @@ export type RecordedCall = {
   body: unknown
 }
 
-type Reply = { status: number; body?: unknown; headers?: Record<string, string> }
+type Reply = {
+  status: number
+  body?: unknown
+  headers?: Record<string, string>
+  /** Holds the reply back until it settles, to act while the request is in flight. */
+  delay?: Promise<void>
+}
 
 /** A `fetch` stand-in that answers queued replies per `METHOD /path` and records every call. */
 export class FakeApi {
@@ -34,6 +40,8 @@ export class FakeApi {
         status: 404,
       })
     }
+
+    await reply.delay
 
     return toResponse(reply)
   }

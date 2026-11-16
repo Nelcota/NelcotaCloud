@@ -1,8 +1,8 @@
 import type { components } from '../generated/api-schema'
 import type { HttpClient } from '../http/http-client'
-import { NelcotaError } from '../http/nelcota-error'
 import type { OAuthProvider, SignInResult } from '../types'
 import { toSignInResult } from './login-results'
+import { oauthCallbackError } from './oauth-callback-error'
 import { createPkcePair } from './pkce'
 import type { SessionManager } from './session-manager'
 import type { SessionStore } from './session-store'
@@ -39,23 +39,34 @@ export class OAuthApi {
     return `${this.http.baseUrl}/auth/v1/oauth/${request.provider}/authorize?${query.toString()}`
   }
 
-  /** Call on the redirect page with its `code` query parameter. */
-  async exchangeCode(callback: { code: string }): Promise<SignInResult> {
+  /**
+   * Call on the redirect page with its full URL (`location.href`). The API comes back with a
+   * one-time `code`, or an `error` (e.g. `access_denied`) that is thrown as a `NelcotaError`.
+   */
+  async exchangeCode(callbackUrl: string | URL): Promise<SignInResult> {
+    const parameters = new URL(callbackUrl).searchParams
+    // Taken first so a failed or cancelled login never leaves the verifier behind.
     const verifier = this.store.takeVerifier()
+    const error = parameters.get('error')
+
+    if (error !== null) {
+      throw oauthCallbackError(error)
+    }
+
+    const code = parameters.get('code')
+
+    if (code === null) {
+      throw oauthCallbackError('missing_oauth_code')
+    }
 
     if (verifier === null) {
-      throw new NelcotaError({
-        status: 400,
-        code: 'missing_pkce_verifier',
-        message: 'No OAuth login was started in this browser',
-        requestId: null,
-      })
+      throw oauthCallbackError('missing_pkce_verifier')
     }
 
     const response = await this.http.request<LoginResponse>({
       method: 'POST',
       path: '/auth/v1/oauth/token',
-      body: { code: callback.code, code_verifier: verifier },
+      body: { code, code_verifier: verifier },
     })
     const result = toSignInResult(response)
 

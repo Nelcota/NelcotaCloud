@@ -36,6 +36,26 @@ export class SessionStore {
     return `${this.key}-refresh`
   }
 
+  /** Calls `listener` when another tab of the origin changes the stored session (browsers only). */
+  watchOtherTabs(listener: (stored: Session | null) => void): void {
+    if (typeof globalThis.addEventListener !== 'function') {
+      return
+    }
+
+    globalThis.addEventListener('storage', (event) => {
+      if (event.storageArea !== this.storage) {
+        return
+      }
+
+      // A null key means the whole storage was cleared.
+      if (event.key !== this.key && event.key !== null) {
+        return
+      }
+
+      listener(this.load())
+    })
+  }
+
   takeVerifier(): string | null {
     const verifierKey = `${this.key}${PKCE_SUFFIX}`
     const verifier = this.storage.getItem(verifierKey)
