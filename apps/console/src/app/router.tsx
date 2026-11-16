@@ -73,6 +73,11 @@ const newProjectRoute = createRoute({
   path: '/projects/new',
 }).lazy(() => import('@/app/lazy-routes/new-project').then((module) => module.newProjectLazyRoute))
 
+const accountRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: '/account',
+}).lazy(() => import('@/app/lazy-routes/account').then((module) => module.accountLazyRoute))
+
 const projectRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: '/projects/$projectId',
@@ -98,6 +103,10 @@ const emailRoute = createRoute({ getParentRoute: () => projectRoute, path: '/ema
   import('@/app/lazy-routes/email').then((module) => module.emailLazyRoute),
 )
 
+const teamRoute = createRoute({ getParentRoute: () => projectRoute, path: '/team' }).lazy(() =>
+  import('@/app/lazy-routes/team').then((module) => module.teamLazyRoute),
+)
+
 const settingsRoute = createRoute({ getParentRoute: () => projectRoute, path: '/settings' }).lazy(
   () => import('@/app/lazy-routes/settings').then((module) => module.settingsLazyRoute),
 )
@@ -107,12 +116,14 @@ const routeTree = rootRoute.addChildren([
   authenticatedRoute.addChildren([
     projectsRoute,
     newProjectRoute,
+    accountRoute,
     projectRoute.addChildren([
       overviewRoute,
       apiKeysRoute,
       usersRoute,
       providersRoute,
       emailRoute,
+      teamRoute,
       settingsRoute,
     ]),
   ]),

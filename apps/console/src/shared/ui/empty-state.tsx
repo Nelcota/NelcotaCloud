@@ -1,8 +1,8 @@
-import type { LucideIcon } from 'lucide-react'
+import type { IconComponent } from '@/shared/ui/icon-component'
 import type { JSX, ReactNode } from 'react'
 
 type EmptyStateProps = {
-  icon: LucideIcon
+  icon: IconComponent
   title: string
   description: string
   action?: ReactNode
@@ -17,10 +17,10 @@ export function EmptyState({
 }: EmptyStateProps): JSX.Element {
   return (
     <div className="flex flex-col items-center rounded-xl border border-dashed px-6 py-12 text-center">
-      <span className="bg-secondary flex size-11 items-center justify-center rounded-xl">
-        <Icon className="text-muted-foreground size-5" strokeWidth={1.75} />
-      </span>
-      <h2 className="mt-4 text-sm font-semibold">{title}</h2>
+      <h2 className="flex items-center gap-2 text-sm">
+        <Icon aria-hidden="true" className="text-muted-foreground size-5" />
+        {title}
+      </h2>
       <p className="text-muted-foreground mt-1 max-w-sm text-sm text-pretty">{description}</p>
       <EmptyAction action={action} />
     </div>

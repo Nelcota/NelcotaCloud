@@ -1,4 +1,9 @@
-import { Ban, LogOut, MoreHorizontal, ShieldOff, Trash2, UserCheck } from 'lucide-react'
+import Ban from '~icons/solar/forbidden-circle-linear'
+import LogOut from '~icons/solar/logout-2-linear'
+import MoreHorizontal from '~icons/solar/menu-dots-linear'
+import ShieldOff from '~icons/solar/shield-cross-linear'
+import Trash2 from '~icons/solar/trash-bin-trash-linear'
+import UserCheck from '~icons/solar/user-check-linear'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
@@ -38,7 +43,7 @@ export function UserActionsMenu({ user, isPending, onAction }: UserActionsMenuPr
           aria-label={`Ações para ${user.email}`}
           className="hover:bg-accent aria-expanded:bg-accent text-muted-foreground hover:text-foreground flex size-9 items-center justify-center rounded-md transition-colors"
         >
-          <MoreHorizontal className="size-4" strokeWidth={1.75} />
+          <MoreHorizontal className="size-5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
           <BanItem
@@ -47,13 +52,13 @@ export function UserActionsMenu({ user, isPending, onAction }: UserActionsMenuPr
             onBan={() => setConfirming('ban')}
           />
           <DropdownMenuItem onClick={() => onAction('end-sessions')}>
-            <LogOut strokeWidth={1.75} />
+            <LogOut />
             Encerrar sessões
           </DropdownMenuItem>
           <ResetMfaItem isShown={user.mfa_enabled} onSelect={() => setConfirming('reset-mfa')} />
           <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" onClick={() => setConfirming('delete')}>
-            <Trash2 strokeWidth={1.75} />
+            <Trash2 />
             Excluir usuário
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -74,7 +79,7 @@ function BanItem({ isBanned, onBan, onUnban }: BanItemProps): JSX.Element {
   if (isBanned) {
     return (
       <DropdownMenuItem onClick={onUnban}>
-        <UserCheck strokeWidth={1.75} />
+        <UserCheck />
         Desbloquear
       </DropdownMenuItem>
     )
@@ -82,7 +87,7 @@ function BanItem({ isBanned, onBan, onUnban }: BanItemProps): JSX.Element {
 
   return (
     <DropdownMenuItem onClick={onBan}>
-      <Ban strokeWidth={1.75} />
+      <Ban />
       Bloquear
     </DropdownMenuItem>
   )
@@ -101,7 +106,7 @@ function ResetMfaItem({
 
   return (
     <DropdownMenuItem onClick={onSelect}>
-      <ShieldOff strokeWidth={1.75} />
+      <ShieldOff />
       Remover MFA
     </DropdownMenuItem>
   )

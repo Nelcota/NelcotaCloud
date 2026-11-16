@@ -1,4 +1,4 @@
-import { RefreshCw } from 'lucide-react'
+import RefreshCw from '~icons/solar/refresh-linear'
 import type { JSX } from 'react'
 
 import { useRotateSigningKeyMutation } from '@/modules/api-keys/queries/use-api-keys'
@@ -12,11 +12,11 @@ export function SigningKeyCard({ projectId }: { projectId: string }): JSX.Elemen
     <section className="bg-card grid gap-4 rounded-xl border p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex gap-3">
-          <span className="bg-secondary flex size-9 shrink-0 items-center justify-center rounded-lg">
-            <RefreshCw className="text-muted-foreground size-4" strokeWidth={1.75} />
+          <span className="bg-secondary flex size-11 shrink-0 items-center justify-center rounded-lg">
+            <RefreshCw className="text-muted-foreground size-5" />
           </span>
           <div>
-            <h2 className="text-sm font-semibold">Chave de assinatura dos tokens</h2>
+            <h2 className="text-sm">Chave de assinatura dos tokens</h2>
             <p className="text-muted-foreground mt-1 max-w-xl text-sm text-pretty">
               Rotacione se suspeitar de vazamento. Tokens já emitidos valem até expirar; os novos
               usam a chave nova, publicada no JWKS.
@@ -41,6 +41,7 @@ export function SigningKeyCard({ projectId }: { projectId: string }): JSX.Elemen
   )
 }
 
+/** Confirms the rotation in words; the raw key ID means nothing to most readers. */
 function RotatedKey({ keyId }: { keyId: string | undefined }): JSX.Element | null {
   if (keyId === undefined) {
     return null
@@ -48,7 +49,10 @@ function RotatedKey({ keyId }: { keyId: string | undefined }): JSX.Element | nul
 
   return (
     <p role="status" className="text-sm">
-      Nova chave ativa: <code className="font-mono text-xs break-all">{keyId}</code>
+      Chave nova ativa. Os próximos tokens já saem assinados por ela.{' '}
+      <span className="text-muted-foreground">
+        ID no JWKS: <code className="font-mono text-xs break-all">{keyId}</code>
+      </span>
     </p>
   )
 }

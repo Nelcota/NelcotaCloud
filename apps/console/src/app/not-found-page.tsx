@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { Compass } from 'lucide-react'
+import Compass from '~icons/solar/compass-linear'
 import type { JSX } from 'react'
 
 import { StatusScreen } from '@/app/status-screen'

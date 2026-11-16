@@ -1,5 +1,7 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowUpRight, FolderKanban, Plus } from 'lucide-react'
+import ArrowUpRight from '~icons/solar/arrow-right-up-linear'
+import FolderKanban from '~icons/solar/folder-with-files-linear'
+import Plus from '~icons/solar/add-linear'
 import type { JSX } from 'react'
 
 import type { components } from '@/shared/api/api-schema'
@@ -20,7 +22,7 @@ export function ProjectList({ projects }: { projects: ProjectSummary[] }): JSX.E
         description="Crie o primeiro para ter usuários, chaves de API e login social prontos para o seu app."
         action={
           <Link to="/projects/new" className={buttonVariants()}>
-            <Plus strokeWidth={2} />
+            <Plus />
             Criar o primeiro projeto
           </Link>
         }
@@ -47,17 +49,14 @@ function ProjectCard({ project }: { project: ProjectSummary }): JSX.Element {
       className="group bg-card hover:border-primary/50 flex h-full flex-col rounded-xl border p-5 transition-[border-color,box-shadow,transform] hover:shadow-lg hover:shadow-black/5 motion-safe:hover:-translate-y-0.5 motion-safe:active:scale-[0.99]"
     >
       <div className="flex items-start justify-between gap-3">
-        <span className="bg-primary/10 flex size-10 items-center justify-center rounded-lg">
-          <FolderKanban className="text-primary size-5" strokeWidth={1.75} />
+        <span className="bg-secondary flex size-12 items-center justify-center rounded-lg">
+          <FolderKanban className="text-muted-foreground size-6" />
         </span>
         <Badge variant="outline">{ROLE_LABELS[project.role]}</Badge>
       </div>
       <span className="mt-4 flex items-center gap-1 font-semibold">
         <span className="truncate">{project.name}</span>
-        <ArrowUpRight
-          className="text-muted-foreground size-4 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
-          strokeWidth={1.75}
-        />
+        <ArrowUpRight className="text-muted-foreground size-5 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
       </span>
       <span className="text-muted-foreground mt-0.5 truncate font-mono text-xs">
         {project.slug}

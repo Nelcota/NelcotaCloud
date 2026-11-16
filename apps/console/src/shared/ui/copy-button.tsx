@@ -1,4 +1,5 @@
-import { Check, Copy } from 'lucide-react'
+import Check from '~icons/solar/check-linear'
+import Copy from '~icons/solar/copy-linear'
 import type { JSX } from 'react'
 import { useEffect, useState } from 'react'
 
@@ -18,10 +19,11 @@ type CopyButtonProps = {
   value: string
   /** What is copied, for screen readers ("Copiar a secret key"). */
   description: string
+  autoFocus?: boolean
 }
 
 /** Copies a value and says so for a moment; the clipboard can be blocked, so failure is shown too. */
-export function CopyButton({ value, description }: CopyButtonProps): JSX.Element {
+export function CopyButton({ value, description, autoFocus }: CopyButtonProps): JSX.Element {
   const [state, setState] = useState<CopyState>('idle')
 
   useEffect(() => {
@@ -49,6 +51,7 @@ export function CopyButton({ value, description }: CopyButtonProps): JSX.Element
       variant="outline"
       size="sm"
       onClick={copy}
+      autoFocus={autoFocus}
       aria-label={`${LABELS[state]}: ${description}`}
     >
       <CopyIcon state={state} />
@@ -59,8 +62,8 @@ export function CopyButton({ value, description }: CopyButtonProps): JSX.Element
 
 function CopyIcon({ state }: { state: CopyState }): JSX.Element {
   if (state === 'copied') {
-    return <Check className="text-emerald-500" strokeWidth={2} />
+    return <Check className="text-emerald-500" />
   }
 
-  return <Copy strokeWidth={1.75} />
+  return <Copy />
 }

@@ -14,6 +14,7 @@ export function ApiStatus(): JSX.Element {
       onClick={() => health.refetch()}
       aria-busy={health.isFetching}
       title="Verificar de novo"
+      aria-label={`${label}. Verificar de novo`}
       className="text-muted-foreground hover:text-foreground flex items-center gap-2 text-xs transition-colors"
     >
       <span

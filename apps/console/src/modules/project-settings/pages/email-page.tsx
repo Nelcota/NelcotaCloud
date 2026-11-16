@@ -2,6 +2,7 @@ import type { FormEvent, JSX } from 'react'
 import { useState } from 'react'
 
 import { CurrentSmtp } from '@/modules/project-settings/components/current-smtp'
+import { SmtpTestSection } from '@/modules/project-settings/components/smtp-test-section'
 import {
   useResetSmtpMutation,
   useSaveSmtpMutation,
@@ -42,6 +43,7 @@ export function EmailPage(): JSX.Element {
           onReset={() => reset.mutate()}
         />
       </SettingsSection>
+      <SmtpTest projectId={projectId} isCustom={smtp.data?.is_custom === true} />
       <form onSubmit={submit}>
         <SettingsSection
           title="Usar seu servidor SMTP"
@@ -77,4 +79,19 @@ export function EmailPage(): JSX.Element {
       </form>
     </div>
   )
+}
+
+/** Testing only makes sense, and is only allowed, for the project's own server. */
+function SmtpTest({
+  projectId,
+  isCustom,
+}: {
+  projectId: string
+  isCustom: boolean
+}): JSX.Element | null {
+  if (isCustom === false) {
+    return null
+  }
+
+  return <SmtpTestSection projectId={projectId} />
 }

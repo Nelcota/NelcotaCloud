@@ -1,4 +1,4 @@
-import { Menu } from 'lucide-react'
+import Menu from '~icons/solar/hamburger-menu-linear'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
@@ -15,7 +15,7 @@ export function MobileNav(): JSX.Element {
         aria-label="Abrir menu"
         className="hover:bg-accent flex size-10 shrink-0 items-center justify-center rounded-md transition-colors md:hidden"
       >
-        <Menu className="size-5" strokeWidth={1.75} />
+        <Menu className="size-6" />
       </SheetTrigger>
       <SheetContent side="left" className="bg-sidebar w-72 gap-0 p-0">
         <SheetTitle className="sr-only">Menu</SheetTitle>

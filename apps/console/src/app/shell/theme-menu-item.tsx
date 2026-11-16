@@ -1,4 +1,5 @@
-import { Moon, Sun } from 'lucide-react'
+import Moon from '~icons/solar/moon-linear'
+import Sun from '~icons/solar/sun-2-linear'
 import type { JSX } from 'react'
 
 import { type Theme, useTheme } from '@/shared/theme/use-theme'
@@ -26,8 +27,8 @@ function themeLabel(theme: Theme): string {
 
 function ThemeIcon({ theme }: { theme: Theme }): JSX.Element {
   if (theme === 'dark') {
-    return <Sun strokeWidth={1.75} />
+    return <Sun />
   }
 
-  return <Moon strokeWidth={1.75} />
+  return <Moon />
 }

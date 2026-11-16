@@ -1,0 +1,58 @@
+import type { JSX } from 'react'
+
+import type { components } from '@/shared/api/api-schema'
+import { ConfirmButton } from '@/shared/ui/confirm-button'
+
+type ApiKeySummary = components['schemas']['ApiKeySummary']
+
+type RevokeKeyActionProps = {
+  apiKey: ApiKeySummary
+  /** Active keys of the same kind, this one included. */
+  activeOfKind: number
+  isPending: boolean
+  onRevoke: () => void
+}
+
+/**
+ * Revokes one key after naming it, and says what breaks when it is the last of its kind.
+ * The last secret key cannot be revoked at all (the API refuses), so it is never offered.
+ */
+export function RevokeKeyAction(props: RevokeKeyActionProps): JSX.Element | null {
+  const { apiKey, activeOfKind } = props
+
+  if (apiKey.kind === 'secret' && activeOfKind <= 1) {
+    return <span className="text-muted-foreground text-xs">Única secret ativa</span>
+  }
+
+  return (
+    <ConfirmButton
+      title={revokeTitle(apiKey)}
+      description={revokeConsequence(apiKey.kind, activeOfKind)}
+      confirmLabel="Revogar"
+      isDestructive
+      isPending={props.isPending}
+      onConfirm={props.onRevoke}
+    >
+      Revogar
+    </ConfirmButton>
+  )
+}
+
+/** Names the key the way the list does, so the dialog cannot be mistaken for another row. */
+function revokeTitle(apiKey: ApiKeySummary): string {
+  const label = `${apiKey.kind} key …${apiKey.hint}`
+
+  if (apiKey.name === '') {
+    return `Revogar a ${label}?`
+  }
+
+  return `Revogar “${apiKey.name}” (${label})?`
+}
+
+function revokeConsequence(kind: string, activeOfKind: number): string {
+  if (kind === 'publishable' && activeOfKind <= 1) {
+    return 'É a única publishable key ativa: o app para de fazer login na hora, até você publicá-lo com uma chave nova.'
+  }
+
+  return 'Ela para de funcionar na hora. Apps e servidores que ainda a usam deixam de acessar a API.'
+}

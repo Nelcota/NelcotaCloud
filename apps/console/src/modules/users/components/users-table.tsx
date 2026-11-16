@@ -1,4 +1,5 @@
-import { SearchX, Users } from 'lucide-react'
+import SearchX from '~icons/solar/magnifier-close-linear'
+import Users from '~icons/solar/users-group-rounded-linear'
 import type { JSX } from 'react'
 
 import { UserActionsMenu } from '@/modules/users/components/user-actions-menu'
@@ -17,13 +18,20 @@ const SKELETON_ROWS = ['a', 'b', 'c', 'd']
 type UsersTableProps = {
   users: User[] | undefined
   search: string
-  isActionPending: boolean
-  onAction: (userId: string, action: UserAction) => void
+  /** A failed load shows its error above the table instead of an endless skeleton. */
+  hasFailed: boolean
+  /** The user whose action is running; only that row's menu waits. */
+  pendingUserId: string | null
+  onAction: (user: User, action: UserAction) => void
 }
 
 /** The users list, with its loading and empty states (no users yet, or none for a search). */
-export function UsersTable(props: UsersTableProps): JSX.Element {
+export function UsersTable(props: UsersTableProps): JSX.Element | null {
   const { users } = props
+
+  if (users === undefined && props.hasFailed) {
+    return null
+  }
 
   if (users === undefined) {
     return <UsersSkeleton />
@@ -65,8 +73,8 @@ export function UsersTable(props: UsersTableProps): JSX.Element {
               <TableCell className="px-4 text-right">
                 <UserActionsMenu
                   user={user}
-                  isPending={props.isActionPending}
-                  onAction={(action) => props.onAction(user.id, action)}
+                  isPending={props.pendingUserId === user.id}
+                  onAction={(action) => props.onAction(user, action)}
                 />
               </TableCell>
             </TableRow>

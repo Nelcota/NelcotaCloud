@@ -19,7 +19,7 @@ export function AuthCard(props: AuthCardProps): JSX.Element {
       <section className="bg-card rounded-2xl border p-6 shadow-xl shadow-black/5 sm:p-8">
         <header className="mb-6">
           {icon}
-          <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+          <h1 className="text-xl">{title}</h1>
           <AuthDescription description={description} />
         </header>
         <div className="grid gap-4">{children}</div>

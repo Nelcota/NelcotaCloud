@@ -1,11 +1,11 @@
-import type { LucideIcon } from 'lucide-react'
+import type { IconComponent } from '@/shared/ui/icon-component'
 import type { JSX, ReactNode } from 'react'
 
 import { cn } from '@/shared/lib/class-names'
 import { LogoMark } from '@/shared/ui/logo-mark'
 
 type StatusScreenProps = {
-  icon: LucideIcon
+  icon: IconComponent
   tone: 'danger' | 'neutral'
   title: string
   description: string
@@ -20,7 +20,7 @@ const TONES: Record<StatusScreenProps['tone'], { glow: string; badge: string }> 
   },
   neutral: {
     glow: 'bg-primary/10',
-    badge: 'bg-primary/10 text-primary ring-primary/20',
+    badge: 'bg-primary/10 text-primary-ink ring-primary/20',
   },
 }
 
@@ -49,9 +49,9 @@ export function StatusScreen(props: StatusScreenProps): JSX.Element {
             tone.badge,
           )}
         >
-          <Icon className="size-7" strokeWidth={1.75} />
+          <Icon className="size-7" />
         </span>
-        <h1 className="mt-6 text-2xl font-semibold tracking-tight">{props.title}</h1>
+        <h1 className="mt-6 text-2xl">{props.title}</h1>
         <p className="text-muted-foreground mt-2 text-sm text-balance">{props.description}</p>
         <div className="mt-8 flex flex-col justify-center gap-2 sm:flex-row">{props.actions}</div>
         {props.children}

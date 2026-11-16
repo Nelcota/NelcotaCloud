@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useSearch } from '@tanstack/react-router'
-import { CircleCheck, CircleX, LoaderCircle, type LucideIcon } from 'lucide-react'
+import CircleCheck from '~icons/solar/check-circle-linear'
+import CircleX from '~icons/solar/close-circle-linear'
+import LoaderCircle from '~icons/solar/refresh-linear'
+import type { IconComponent } from '@/shared/ui/icon-component'
 import type { JSX } from 'react'
 
 import { AuthCard } from '@/modules/account/components/auth-card'
@@ -13,7 +16,7 @@ type VerificationState = 'incomplete' | 'pending' | 'failed' | 'verified'
 
 const STATES: Record<
   VerificationState,
-  { title: string; description: string; icon: LucideIcon; iconClass: string }
+  { title: string; description: string; icon: IconComponent; iconClass: string }
 > = {
   incomplete: {
     title: 'Link incompleto',
@@ -59,13 +62,7 @@ export function VerifyEmailPage(): JSX.Element {
     <AuthCard
       title={content.title}
       description={content.description}
-      icon={
-        <Icon
-          aria-hidden="true"
-          className={cn('mb-4 size-10', content.iconClass)}
-          strokeWidth={1.5}
-        />
-      }
+      icon={<Icon aria-hidden="true" className={cn('mb-4 size-10', content.iconClass)} />}
     >
       <ErrorAlert error={verification.error} />
       <Link to="/login" className={buttonVariants({ size: 'lg' })}>

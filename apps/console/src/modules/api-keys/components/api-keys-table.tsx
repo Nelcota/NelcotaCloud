@@ -1,12 +1,12 @@
-import { KeyRound } from 'lucide-react'
+import KeyRound from '~icons/solar/key-linear'
 import type { JSX } from 'react'
 
+import { RevokeKeyAction } from '@/modules/api-keys/components/revoke-key-action'
 import { useRevokeApiKeyMutation } from '@/modules/api-keys/queries/use-api-keys'
 import type { components } from '@/shared/api/api-schema'
 import { cn } from '@/shared/lib/class-names'
 import { formatDateTime } from '@/shared/lib/format-date'
 import { Badge } from '@/shared/ui/badge'
-import { ConfirmButton } from '@/shared/ui/confirm-button'
 import { EmptyState } from '@/shared/ui/empty-state'
 import { ErrorAlert } from '@/shared/ui/error-alert'
 import { Skeleton } from '@/shared/ui/skeleton'
@@ -46,7 +46,7 @@ export function ApiKeysTable({ projectId, keys }: ApiKeysTableProps): JSX.Elemen
         <Table>
           <TableHeader className="bg-muted/40">
             <TableRow>
-              <TableHead className="px-3 sm:px-4">Tipo</TableHead>
+              <TableHead className="px-3 sm:px-4">Chave</TableHead>
               <TableHead>Final</TableHead>
               <TableHead className="hidden sm:table-cell">Criada em</TableHead>
               <TableHead>Situação</TableHead>
@@ -59,7 +59,7 @@ export function ApiKeysTable({ projectId, keys }: ApiKeysTableProps): JSX.Elemen
             {keys.map((key) => (
               <TableRow key={key.id} className={cn(isRevokedKey(key) && 'text-muted-foreground')}>
                 <TableCell className="px-3 sm:px-4">
-                  <Badge variant="secondary">{key.kind}</Badge>
+                  <KeyName apiKey={key} />
                 </TableCell>
                 <TableCell className="font-mono text-xs">…{key.hint}</TableCell>
                 <TableCell className="text-muted-foreground hidden sm:table-cell">
@@ -69,9 +69,10 @@ export function ApiKeysTable({ projectId, keys }: ApiKeysTableProps): JSX.Elemen
                   <StatusBadge isRevoked={isRevokedKey(key)} />
                 </TableCell>
                 <TableCell className="px-3 text-right sm:px-4">
-                  <RevokeAction
-                    isRevoked={isRevokedKey(key)}
-                    isPending={revocation.isPending}
+                  <RowAction
+                    apiKey={key}
+                    activeOfKind={countActive(keys, key.kind)}
+                    isPending={revocation.isPending && revocation.variables === key.id}
                     onRevoke={() => revocation.mutate(key.id)}
                   />
                 </TableCell>
@@ -82,6 +83,24 @@ export function ApiKeysTable({ projectId, keys }: ApiKeysTableProps): JSX.Elemen
       </div>
     </div>
   )
+}
+
+/** The owner's name for the key, with its kind; keys created without a name say so. */
+function KeyName({ apiKey }: { apiKey: ApiKeySummary }): JSX.Element {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <NameText name={apiKey.name} />
+      <Badge variant="secondary">{apiKey.kind}</Badge>
+    </div>
+  )
+}
+
+function NameText({ name }: { name: string }): JSX.Element {
+  if (name === '') {
+    return <span className="text-muted-foreground italic">Sem nome</span>
+  }
+
+  return <span className="font-medium">{name}</span>
 }
 
 function isRevokedKey(key: ApiKeySummary): boolean {
@@ -96,29 +115,23 @@ function StatusBadge({ isRevoked }: { isRevoked: boolean }): JSX.Element {
   return <Badge variant="success">Ativa</Badge>
 }
 
-type RevokeActionProps = {
-  isRevoked: boolean
+function countActive(keys: ApiKeySummary[], kind: string): number {
+  return keys.filter((key) => key.kind === kind && isRevokedKey(key) === false).length
+}
+
+type RowActionProps = {
+  apiKey: ApiKeySummary
+  activeOfKind: number
   isPending: boolean
   onRevoke: () => void
 }
 
-function RevokeAction({ isRevoked, isPending, onRevoke }: RevokeActionProps): JSX.Element | null {
-  if (isRevoked) {
+function RowAction(props: RowActionProps): JSX.Element | null {
+  if (isRevokedKey(props.apiKey)) {
     return null
   }
 
-  return (
-    <ConfirmButton
-      title="Revogar esta chave?"
-      description="Ela para de funcionar na hora. Apps que ainda a usam deixam de acessar a API."
-      confirmLabel="Revogar"
-      isDestructive
-      isPending={isPending}
-      onConfirm={onRevoke}
-    >
-      Revogar
-    </ConfirmButton>
-  )
+  return <RevokeKeyAction {...props} />
 }
 
 function KeysSkeleton(): JSX.Element {

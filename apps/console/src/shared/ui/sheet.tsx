@@ -5,7 +5,7 @@ import { Dialog as SheetPrimitive } from '@base-ui/react/dialog'
 import { cn } from '@/shared/lib/class-names'
 
 import { Button } from '@/shared/ui/button'
-import { XIcon } from 'lucide-react'
+import XIcon from '~icons/solar/close-linear'
 
 function Sheet({ ...props }: SheetPrimitive.Root.Props) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />

@@ -1,5 +1,6 @@
 import { useRouter, type ErrorComponentProps } from '@tanstack/react-router'
-import { RotateCcw, TriangleAlert } from 'lucide-react'
+import RotateCcw from '~icons/solar/restart-linear'
+import TriangleAlert from '~icons/solar/danger-triangle-linear'
 import type { JSX } from 'react'
 
 import { StatusScreen } from '@/app/status-screen'
@@ -29,7 +30,7 @@ export function RouteErrorPage({ error, reset }: ErrorComponentProps): JSX.Eleme
       actions={
         <>
           <Button onClick={retry}>
-            <RotateCcw className="size-4" strokeWidth={1.75} />
+            <RotateCcw className="size-5" />
             Tentar de novo
           </Button>
           <a href="/" className={buttonVariants({ variant: 'outline' })}>

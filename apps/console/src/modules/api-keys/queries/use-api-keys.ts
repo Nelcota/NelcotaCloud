@@ -25,11 +25,11 @@ export function useApiKeysQuery(projectId: string): UseQueryResult<Schemas['ApiK
 
 export function useCreateApiKeyMutation(
   projectId: string,
-): UseMutationResult<Schemas['IssuedApiKey'], Error, ApiKeyKind> {
+): UseMutationResult<Schemas['IssuedApiKey'], Error, { kind: ApiKeyKind; name: string }> {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (kind: ApiKeyKind) => createApiKey(projectId, { kind }),
+    mutationFn: (body: { kind: ApiKeyKind; name: string }) => createApiKey(projectId, body),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: apiKeysQueryKey(projectId) }),
   })
 }
