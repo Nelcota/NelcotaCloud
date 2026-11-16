@@ -23,13 +23,11 @@ await nelcota.auth.verifyMagicLink({ token })
 
 // OAuth (Google, GitHub) with PKCE
 location.assign(await nelcota.auth.oauth.getAuthorizeUrl({ provider: 'github', redirectTo }))
-// …on the redirect page:
-await nelcota.auth.oauth.exchangeCode({
-  code: new URLSearchParams(location.search).get('code') ?? '',
-})
+// …on the redirect page (throws a NelcotaError such as `access_denied` when the login failed):
+await nelcota.auth.oauth.exchangeCode(location.href)
 
 // Session
-nelcota.auth.onAuthStateChange((event, session) => {})
+nelcota.auth.onAuthStateChange((event, session) => {}) // also hears other tabs
 const token = await nelcota.auth.getAccessToken() // renewed before it expires
 await nelcota.auth.signOut()
 ```
