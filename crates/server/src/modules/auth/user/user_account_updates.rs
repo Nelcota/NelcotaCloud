@@ -1,17 +1,13 @@
 use sqlx::PgConnection;
 use uuid::Uuid;
 
-use crate::modules::auth::user::user_record::{USER_COLUMNS, User};
+use crate::modules::auth::user::user_record::{User, user_columns};
 
 pub async fn mark_email_verified(
     connection: &mut PgConnection,
     user_id: Uuid,
 ) -> Result<Option<User>, sqlx::Error> {
-    let query = format!(
-        "UPDATE users SET email_verified_at = COALESCE(email_verified_at, now()), updated_at = now() WHERE id = $1 RETURNING {USER_COLUMNS}"
-    );
-
-    sqlx::query_as(sqlx::AssertSqlSafe(query))
+    sqlx::query_as(concat!("UPDATE users SET email_verified_at = COALESCE(email_verified_at, now()), updated_at = now() WHERE id = $1 RETURNING ", user_columns!()))
         .bind(user_id)
         .fetch_optional(connection)
         .await
@@ -57,11 +53,7 @@ pub async fn claim_account_for_verified_email(
     connection: &mut PgConnection,
     user_id: Uuid,
 ) -> Result<User, sqlx::Error> {
-    let query = format!(
-        "UPDATE users SET password_hash = CASE WHEN email_verified_at IS NULL THEN NULL ELSE password_hash END, email_verified_at = COALESCE(email_verified_at, now()), updated_at = now() WHERE id = $1 RETURNING {USER_COLUMNS}"
-    );
-
-    sqlx::query_as(sqlx::AssertSqlSafe(query))
+    sqlx::query_as(concat!("UPDATE users SET password_hash = CASE WHEN email_verified_at IS NULL THEN NULL ELSE password_hash END, email_verified_at = COALESCE(email_verified_at, now()), updated_at = now() WHERE id = $1 RETURNING ", user_columns!()))
         .bind(user_id)
         .fetch_one(connection)
         .await

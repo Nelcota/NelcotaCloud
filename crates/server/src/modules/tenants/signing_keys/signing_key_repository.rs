@@ -1,7 +1,9 @@
 use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
-use crate::modules::tenants::signing_keys::signing_key::SigningKey;
+use crate::modules::tenants::signing_keys::prepared_signing_key::PreparedSigningKey;
+use crate::modules::tenants::signing_keys::signing_key::{SigningKey, SigningKeyError};
+use crate::modules::tenants::signing_keys::tenant_signing_keys::TenantSigningKeys;
 use crate::shared::crypto::secret_box::{SecretBox, SecretBoxError};
 
 #[derive(Debug, thiserror::Error)]
@@ -12,6 +14,10 @@ pub enum SigningKeyStoreError {
     Encryption(#[from] SecretBoxError),
     #[error("tenant {0} has no active signing key")]
     NoActiveKey(Uuid),
+    #[error(transparent)]
+    InvalidKey(#[from] SigningKeyError),
+    #[error("failed to serialize the tenant JWKS: {0}")]
+    Jwks(#[from] serde_json::Error),
 }
 
 /// A signing key whose private part is already encrypted with the master key.
@@ -36,12 +42,6 @@ impl SealedSigningKey {
     }
 }
 
-/// The tenant's keys: `active` signs new tokens, every key in `verifying` is accepted.
-pub struct TenantSigningKeys {
-    pub active: SigningKey,
-    pub verifying: Vec<SigningKey>,
-}
-
 pub async fn insert_active_signing_key(
     connection: &mut PgConnection,
     tenant_id: Uuid,
@@ -59,58 +59,63 @@ pub async fn insert_active_signing_key(
     Ok(())
 }
 
-/// An inactive key that cannot be decrypted is skipped (only old tokens fail to verify);
-/// the active one must open, or the tenant could neither sign nor verify.
+/// An inactive key that cannot be opened is skipped (only old tokens fail to verify); the
+/// active one must open, or the tenant could neither sign nor verify.
 pub async fn load_signing_keys(
     pool: &PgPool,
     tenant_id: Uuid,
     secret_box: &SecretBox,
 ) -> Result<TenantSigningKeys, SigningKeyStoreError> {
-    let rows: Vec<(Uuid, Vec<u8>, bool)> = sqlx::query_as(
+    let rows: Vec<StoredSigningKey> = sqlx::query_as(
         "SELECT id, private_key_ciphertext, is_active FROM tenant_signing_keys WHERE tenant_id = $1 ORDER BY created_at DESC",
     )
     .bind(tenant_id)
     .fetch_all(pool)
     .await?;
     let mut active = None;
-    let mut verifying = Vec::new();
+    let mut retired = Vec::with_capacity(rows.len());
 
-    for (key_id, ciphertext, is_active) in rows {
-        let opened = secret_box.open(&ciphertext, &signing_key_context(tenant_id, key_id));
-        let Some(signing_key) = keep_usable_key(key_id, opened, is_active)? else {
-            continue;
-        };
+    for stored in rows {
+        let key_id = stored.id;
+        let is_active = stored.is_active;
 
-        if is_active {
-            active = Some(signing_key.clone());
+        match (open_and_prepare(secret_box, tenant_id, stored), is_active) {
+            (Ok(prepared), true) => active = Some(prepared),
+            (Ok(prepared), false) => retired.push(prepared),
+            (Err(error), true) => return Err(error),
+            (Err(error), false) => {
+                tracing::error!(%error, %key_id, "skipping unusable inactive signing key");
+            }
         }
-
-        verifying.push(signing_key);
     }
 
     let Some(active) = active else {
         return Err(SigningKeyStoreError::NoActiveKey(tenant_id));
     };
 
-    Ok(TenantSigningKeys { active, verifying })
+    Ok(TenantSigningKeys::new(active, retired)?)
 }
 
-fn keep_usable_key(
-    key_id: Uuid,
-    opened: Result<Vec<u8>, SecretBoxError>,
+#[derive(sqlx::FromRow)]
+struct StoredSigningKey {
+    id: Uuid,
+    private_key_ciphertext: Vec<u8>,
     is_active: bool,
-) -> Result<Option<SigningKey>, SecretBoxError> {
-    match opened {
-        Ok(private_key_der) => Ok(Some(SigningKey {
-            key_id,
-            private_key_der,
-        })),
-        Err(error) if is_active => Err(error),
-        Err(error) => {
-            tracing::error!(%error, %key_id, "skipping undecryptable inactive signing key");
-            Ok(None)
-        }
-    }
+}
+
+fn open_and_prepare(
+    secret_box: &SecretBox,
+    tenant_id: Uuid,
+    stored: StoredSigningKey,
+) -> Result<PreparedSigningKey, SigningKeyStoreError> {
+    let context = signing_key_context(tenant_id, stored.id);
+    let private_key_der = secret_box.open(&stored.private_key_ciphertext, &context)?;
+    let signing_key = SigningKey {
+        key_id: stored.id,
+        private_key_der,
+    };
+
+    Ok(PreparedSigningKey::prepare(signing_key)?)
 }
 
 /// Binds each ciphertext to its tenant and key, so it cannot be replayed in another row.

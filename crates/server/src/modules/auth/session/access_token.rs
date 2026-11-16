@@ -2,7 +2,8 @@ use jsonwebtoken::{Algorithm, Header, Validation, decode, decode_header, encode}
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::modules::tenants::signing_keys::signing_key::{SigningKey, SigningKeyError};
+use crate::modules::tenants::signing_keys::prepared_signing_key::PreparedSigningKey;
+use crate::modules::tenants::signing_keys::tenant_signing_keys::TenantSigningKeys;
 
 const REQUIRED_CLAIMS: [&str; 4] = ["exp", "aud", "iss", "sub"];
 /// Tolerated clock difference with other servers verifying our tokens. Explicit because the
@@ -17,8 +18,6 @@ pub enum AccessTokenError {
     UnknownKeyId,
     #[error("access token is invalid: {0}")]
     Invalid(#[from] jsonwebtoken::errors::Error),
-    #[error(transparent)]
-    SigningKey(#[from] SigningKeyError),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -40,27 +39,27 @@ pub struct TokenAudience<'a> {
 
 pub fn sign_access_token(
     claims: &AccessTokenClaims,
-    signing_key: &SigningKey,
+    signing_key: &PreparedSigningKey,
 ) -> Result<String, AccessTokenError> {
     let mut header = Header::new(Algorithm::EdDSA);
     header.kid = Some(signing_key.key_id.to_string());
 
-    Ok(encode(&header, claims, &signing_key.encoding_key())?)
+    Ok(encode(&header, claims, &signing_key.encoding_key)?)
 }
 
 pub fn verify_access_token(
     token: &str,
-    signing_keys: &[SigningKey],
+    signing_keys: &TenantSigningKeys,
     audience: &TokenAudience,
 ) -> Result<AccessTokenClaims, AccessTokenError> {
     let header = decode_header(token)?;
-    let Some(key_id) = header.kid else {
+    let Some(raw_key_id) = header.kid else {
         return Err(AccessTokenError::MissingKeyId);
     };
-    let Some(signing_key) = signing_keys
-        .iter()
-        .find(|key| key.key_id.to_string() == key_id)
-    else {
+    let Ok(key_id) = Uuid::parse_str(&raw_key_id) else {
+        return Err(AccessTokenError::UnknownKeyId);
+    };
+    let Some(signing_key) = signing_keys.find(key_id) else {
         return Err(AccessTokenError::UnknownKeyId);
     };
     let mut validation = Validation::new(Algorithm::EdDSA);
@@ -68,7 +67,7 @@ pub fn verify_access_token(
     validation.set_issuer(&[audience.issuer]);
     validation.set_required_spec_claims(&REQUIRED_CLAIMS);
     validation.leeway = EXPIRY_LEEWAY_SECONDS;
-    let token_data = decode::<AccessTokenClaims>(token, &signing_key.decoding_key()?, &validation)?;
+    let token_data = decode::<AccessTokenClaims>(token, &signing_key.decoding_key, &validation)?;
 
     Ok(token_data.claims)
 }
@@ -78,6 +77,15 @@ mod tests {
     use time::{Duration, OffsetDateTime};
 
     use super::*;
+    use crate::modules::tenants::signing_keys::signing_key::SigningKey;
+
+    type TestResult = Result<(), Box<dyn std::error::Error>>;
+
+    fn tenant_keys() -> Result<TenantSigningKeys, Box<dyn std::error::Error>> {
+        let active = PreparedSigningKey::prepare(SigningKey::generate()?)?;
+
+        Ok(TenantSigningKeys::new(active, Vec::new())?)
+    }
 
     const ISSUER: &str = "http://localhost/auth/v1";
 
@@ -97,62 +105,62 @@ mod tests {
     }
 
     #[test]
-    fn accepts_token_for_same_tenant() -> Result<(), AccessTokenError> {
-        let signing_key = SigningKey::generate()?;
+    fn accepts_token_for_same_tenant() -> TestResult {
+        let signing_keys = tenant_keys()?;
         let tenant_id = Uuid::new_v4();
         let claims = claims_for(tenant_id, Duration::minutes(5));
-        let token = sign_access_token(&claims, &signing_key)?;
+        let token = sign_access_token(&claims, &signing_keys.active)?;
         let audience = TokenAudience {
             issuer: ISSUER,
             tenant_id,
         };
 
-        let verified = verify_access_token(&token, &[signing_key], &audience)?;
+        let verified = verify_access_token(&token, &signing_keys, &audience)?;
 
         assert_eq!(verified.sub, claims.sub);
         Ok(())
     }
 
     #[test]
-    fn rejects_token_for_other_tenant() -> Result<(), AccessTokenError> {
-        let signing_key = SigningKey::generate()?;
+    fn rejects_token_for_other_tenant() -> TestResult {
+        let signing_keys = tenant_keys()?;
         let claims = claims_for(Uuid::new_v4(), Duration::minutes(5));
-        let token = sign_access_token(&claims, &signing_key)?;
+        let token = sign_access_token(&claims, &signing_keys.active)?;
         let audience = TokenAudience {
             issuer: ISSUER,
             tenant_id: Uuid::new_v4(),
         };
 
-        assert!(verify_access_token(&token, &[signing_key], &audience).is_err());
+        assert!(verify_access_token(&token, &signing_keys, &audience).is_err());
         Ok(())
     }
 
     #[test]
-    fn rejects_expired_token() -> Result<(), AccessTokenError> {
-        let signing_key = SigningKey::generate()?;
+    fn rejects_expired_token() -> TestResult {
+        let signing_keys = tenant_keys()?;
         let tenant_id = Uuid::new_v4();
         let claims = claims_for(tenant_id, Duration::minutes(-10));
-        let token = sign_access_token(&claims, &signing_key)?;
+        let token = sign_access_token(&claims, &signing_keys.active)?;
         let audience = TokenAudience {
             issuer: ISSUER,
             tenant_id,
         };
 
-        assert!(verify_access_token(&token, &[signing_key], &audience).is_err());
+        assert!(verify_access_token(&token, &signing_keys, &audience).is_err());
         Ok(())
     }
 
     #[test]
-    fn rejects_token_signed_by_unknown_key() -> Result<(), AccessTokenError> {
+    fn rejects_token_signed_by_unknown_key() -> TestResult {
         let tenant_id = Uuid::new_v4();
         let claims = claims_for(tenant_id, Duration::minutes(5));
-        let token = sign_access_token(&claims, &SigningKey::generate()?)?;
+        let token = sign_access_token(&claims, &tenant_keys()?.active)?;
         let audience = TokenAudience {
             issuer: ISSUER,
             tenant_id,
         };
 
-        let verification = verify_access_token(&token, &[SigningKey::generate()?], &audience);
+        let verification = verify_access_token(&token, &tenant_keys()?, &audience);
 
         assert!(matches!(verification, Err(AccessTokenError::UnknownKeyId)));
         Ok(())

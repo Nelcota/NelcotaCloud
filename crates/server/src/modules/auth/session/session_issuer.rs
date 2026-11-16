@@ -11,7 +11,7 @@ use crate::modules::auth::session::refresh_token_repository::{
 };
 use crate::modules::auth::session::session_family::SessionFamily;
 use crate::modules::auth::user::user_record::User;
-use crate::modules::tenants::signing_keys::signing_key::SigningKey;
+use crate::modules::tenants::signing_keys::prepared_signing_key::PreparedSigningKey;
 use crate::shared::crypto::opaque_token::OpaqueToken;
 use crate::shared::time::expiry::{ExpiryOutOfRange, expiry_after};
 
@@ -43,7 +43,7 @@ pub struct SessionTokens {
 pub struct SessionIssuer<'a> {
     pub tenant_id: Uuid,
     pub issuer: &'a str,
-    pub signing_key: &'a SigningKey,
+    pub signing_key: &'a PreparedSigningKey,
     pub tenant_pool: &'a PgPool,
 }
 

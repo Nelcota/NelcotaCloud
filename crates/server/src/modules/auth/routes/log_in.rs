@@ -16,7 +16,7 @@ use crate::modules::auth::user::email_address::EmailAddress;
 use crate::modules::auth::user::user_lookup::find_credentials_by_email;
 use crate::modules::auth::user::user_record::User;
 use crate::modules::tenants::access::tenant_context::TenantContext;
-use crate::modules::tenants::settings::loaded_tenant_settings::load_tenant_settings;
+use crate::modules::tenants::settings::loaded_tenant_settings::requires_email_verification;
 use crate::shared::http::api_error::ApiError;
 use crate::shared::http::validated_json::ValidatedJson;
 
@@ -81,9 +81,9 @@ async fn ensure_email_verified_if_required(
     tenant: &TenantContext,
     user: &User,
 ) -> Result<(), ApiError> {
-    let settings = load_tenant_settings(state, tenant.tenant_id).await?;
-
-    if settings.require_email_verification && user.email_verified_at.is_none() {
+    if user.email_verified_at.is_none()
+        && requires_email_verification(state, tenant.tenant_id).await?
+    {
         return Err(ApiError::EmailNotVerified);
     }
 

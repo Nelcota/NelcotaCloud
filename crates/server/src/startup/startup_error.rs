@@ -2,7 +2,7 @@ use axum::http::header::InvalidHeaderName;
 
 use crate::app_config::ConfigError;
 use crate::modules::auth::password::password_hashing::PasswordHashingError;
-use crate::modules::auth::rate_limiting::attempt_limiter::InvalidQuota;
+use crate::modules::auth::rate_limiting::quota_spec::InvalidQuota;
 use crate::shared::crypto::hex_encoding::HexDecodeError;
 use crate::shared::crypto::secret_box::SecretBoxError;
 use crate::shared::email::email_sender::EmailError;

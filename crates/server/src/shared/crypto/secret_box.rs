@@ -44,7 +44,8 @@ impl SecretBox {
             .cipher
             .encrypt(&nonce, payload)
             .map_err(|_| SecretBoxError::EncryptionFailed)?;
-        let mut sealed = nonce_bytes.to_vec();
+        let mut sealed = Vec::with_capacity(NONCE_LENGTH.saturating_add(ciphertext.len()));
+        sealed.extend_from_slice(&nonce_bytes);
         sealed.extend_from_slice(&ciphertext);
 
         Ok(sealed)

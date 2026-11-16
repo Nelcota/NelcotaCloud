@@ -42,7 +42,7 @@ pub async fn authorize_oauth(
     state
         .rate_limits
         .oauth_authorization
-        .check_client_ip(tenant.tenant_id, client_ip)
+        .check(tenant.tenant_id, client_ip)
         .map_err(|_| ApiError::RateLimited)?;
     let Some(provider) = OAuthProvider::parse(&provider_name) else {
         return Err(ApiError::UnknownOAuthProvider);

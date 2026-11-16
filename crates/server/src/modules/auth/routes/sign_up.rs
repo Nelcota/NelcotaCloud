@@ -20,7 +20,7 @@ use crate::modules::auth::user::unverified_account_takeover::take_over_unverifie
 use crate::modules::auth::user::user_record::User;
 use crate::modules::auth::user::user_registration::{InsertUserError, insert_user};
 use crate::modules::tenants::access::tenant_context::TenantContext;
-use crate::modules::tenants::settings::loaded_tenant_settings::load_tenant_settings;
+use crate::modules::tenants::settings::loaded_tenant_settings::requires_email_verification;
 use crate::shared::http::api_error::ApiError;
 use crate::shared::http::validated_json::ValidatedJson;
 
@@ -70,7 +70,6 @@ pub async fn sign_up(
         .map_err(|_| ApiError::RateLimited)?;
     let email = EmailAddress::parse(&body.email).map_err(ApiError::invalid_request)?;
     check_new_password(&body.password).map_err(ApiError::invalid_request)?;
-    let settings = load_tenant_settings(&state, tenant.tenant_id).await?;
     let password_hash = hash_password(body.password)
         .await
         .map_err(ApiError::internal)?;
@@ -81,7 +80,7 @@ pub async fn sign_up(
         insertion,
     };
 
-    if settings.require_email_verification {
+    if requires_email_verification(&state, tenant.tenant_id).await? {
         return sign_up_pending_verification(&state, &tenant, signup).await;
     }
 

@@ -17,18 +17,19 @@ pub async fn authenticate_with_password(
     password: String,
     dummy_password_hash: &str,
 ) -> Result<User, PasswordAuthenticationError> {
-    let stored_hash = credentials
-        .as_ref()
-        .and_then(|found| found.password_hash.clone());
+    let (user, stored_hash) = match credentials {
+        Some(credentials) => (Some(credentials.user), credentials.password_hash),
+        None => (None, None),
+    };
     let hash_to_check = stored_hash.unwrap_or_else(|| dummy_password_hash.to_owned());
 
     if verify_password(password, hash_to_check).await? == false {
         return Err(PasswordAuthenticationError::InvalidCredentials);
     }
 
-    let Some(credentials) = credentials else {
+    let Some(user) = user else {
         return Err(PasswordAuthenticationError::InvalidCredentials);
     };
 
-    Ok(credentials.user)
+    Ok(user)
 }

@@ -2,8 +2,14 @@ use serde::Serialize;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-/// Columns every query returning a `User` selects, in this order.
-pub(crate) const USER_COLUMNS: &str = "id, email, email_verified_at, created_at";
+/// Columns every query returning a `User` selects, in this order. A macro, so queries are
+/// built at compile time with `concat!` instead of `format!` on every call.
+macro_rules! user_columns {
+    () => {
+        "id, email, email_verified_at, created_at"
+    };
+}
+pub(crate) use user_columns;
 
 #[derive(Debug, Clone, Serialize, sqlx::FromRow)]
 pub struct User {

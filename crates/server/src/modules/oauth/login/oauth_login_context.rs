@@ -32,11 +32,11 @@ impl OAuthLoginContext<'_> {
             return Err(OAuthLoginError::ProviderNotConfigured);
         };
         let settings = OAuthClientSettings {
-            credentials: &credentials,
+            credentials,
             endpoints: self.endpoints.for_provider(key.provider),
             callback_url: self.callback_url,
         };
 
-        Ok(build_oauth_client(&settings)?)
+        Ok(build_oauth_client(settings)?)
     }
 }

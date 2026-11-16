@@ -2,7 +2,7 @@ use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
 use crate::modules::auth::user::email_address::EmailAddress;
-use crate::modules::auth::user::user_record::{USER_COLUMNS, User};
+use crate::modules::auth::user::user_record::{User, user_columns};
 
 #[derive(Debug, thiserror::Error)]
 pub enum InsertUserError {
@@ -18,15 +18,15 @@ pub async fn insert_user(
     email: &EmailAddress,
     password_hash: &str,
 ) -> Result<User, InsertUserError> {
-    let query = format!(
-        "INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3) RETURNING {USER_COLUMNS}"
-    );
-    let insertion = sqlx::query_as(sqlx::AssertSqlSafe(query))
-        .bind(Uuid::new_v4())
-        .bind(email.as_str())
-        .bind(password_hash)
-        .fetch_one(pool)
-        .await;
+    let insertion = sqlx::query_as(concat!(
+        "INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3) RETURNING ",
+        user_columns!()
+    ))
+    .bind(Uuid::new_v4())
+    .bind(email.as_str())
+    .bind(password_hash)
+    .fetch_one(pool)
+    .await;
 
     insertion.map_err(map_unique_violation)
 }
@@ -36,14 +36,14 @@ pub async fn insert_oauth_user(
     connection: &mut PgConnection,
     email: &EmailAddress,
 ) -> Result<User, InsertUserError> {
-    let query = format!(
-        "INSERT INTO users (id, email, email_verified_at) VALUES ($1, $2, now()) RETURNING {USER_COLUMNS}"
-    );
-    let insertion = sqlx::query_as(sqlx::AssertSqlSafe(query))
-        .bind(Uuid::new_v4())
-        .bind(email.as_str())
-        .fetch_one(connection)
-        .await;
+    let insertion = sqlx::query_as(concat!(
+        "INSERT INTO users (id, email, email_verified_at) VALUES ($1, $2, now()) RETURNING ",
+        user_columns!()
+    ))
+    .bind(Uuid::new_v4())
+    .bind(email.as_str())
+    .fetch_one(connection)
+    .await;
 
     insertion.map_err(map_unique_violation)
 }

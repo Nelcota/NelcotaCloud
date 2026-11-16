@@ -12,7 +12,7 @@ use crate::modules::auth::session::session_grant::{SessionGrant, issue_session};
 use crate::modules::auth::session::session_issuer::SessionTokens;
 use crate::modules::auth::user::user_lookup::find_user_by_id;
 use crate::modules::tenants::access::tenant_context::TenantContext;
-use crate::modules::tenants::settings::loaded_tenant_settings::load_tenant_settings;
+use crate::modules::tenants::settings::loaded_tenant_settings::requires_email_verification;
 use crate::shared::crypto::opaque_token::hash_opaque_token;
 use crate::shared::http::api_error::ApiError;
 use crate::shared::http::validated_json::ValidatedJson;
@@ -47,10 +47,10 @@ pub async fn refresh_session(
     let Some(user) = user else {
         return Err(ApiError::InvalidRefreshToken);
     };
-    let settings = load_tenant_settings(&state, tenant.tenant_id).await?;
-
     // Sessions issued while the tenant allowed unverified users stop renewing once it doesn't.
-    if settings.require_email_verification && user.email_verified_at.is_none() {
+    if user.email_verified_at.is_none()
+        && requires_email_verification(&state, tenant.tenant_id).await?
+    {
         return Err(ApiError::EmailNotVerified);
     }
 

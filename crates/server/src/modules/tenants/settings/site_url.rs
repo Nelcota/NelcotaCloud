@@ -52,8 +52,11 @@ impl SiteUrl {
 /// `/app/x` is under `/app`, `/application` is not; everything is under `/`.
 fn is_under_path(target_path: &str, site_path: &str) -> bool {
     let site_path = site_path.trim_end_matches('/');
+    let Some(rest) = target_path.strip_prefix(site_path) else {
+        return false;
+    };
 
-    target_path == site_path || target_path.starts_with(&format!("{site_path}/"))
+    rest.is_empty() || rest.starts_with('/')
 }
 
 #[cfg(test)]

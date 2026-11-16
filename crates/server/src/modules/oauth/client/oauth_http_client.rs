@@ -33,10 +33,11 @@ async fn send_oauth_request(
     request: HttpRequest,
 ) -> Result<HttpResponse, reqwest::Error> {
     let reqwest_request = reqwest::Request::try_from(request)?;
-    let response = client.execute(reqwest_request).await?;
+    let mut response = client.execute(reqwest_request).await?;
     let status = response.status();
-    let headers = response.headers().clone();
-    let body = response.bytes().await?.to_vec();
+    // Taken, not cloned: the body read below consumes the response anyway.
+    let headers = std::mem::take(response.headers_mut());
+    let body = Vec::from(response.bytes().await?);
     let mut http_response = HttpResponse::new(body);
     *http_response.status_mut() = status;
     *http_response.headers_mut() = headers;

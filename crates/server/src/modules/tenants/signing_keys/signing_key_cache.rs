@@ -7,8 +7,9 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::modules::tenants::signing_keys::signing_key_repository::{
-    SigningKeyStoreError, TenantSigningKeys, load_signing_keys,
+    SigningKeyStoreError, load_signing_keys,
 };
+use crate::modules::tenants::signing_keys::tenant_signing_keys::TenantSigningKeys;
 use crate::shared::crypto::secret_box::SecretBox;
 
 /// Keys are reloaded after this long, so a future key rotation reaches every instance soon.
@@ -19,8 +20,8 @@ struct CachedKeys {
     keys: Arc<TenantSigningKeys>,
 }
 
-/// Decrypted signing keys per tenant, so authenticated requests skip the control plane query
-/// and the AES-GCM decryption.
+/// Prepared signing keys per tenant, so authenticated requests skip the control plane query,
+/// the AES-GCM decryption and the key derivation.
 pub struct SigningKeyCache {
     control_plane_pool: PgPool,
     secret_box: Arc<SecretBox>,

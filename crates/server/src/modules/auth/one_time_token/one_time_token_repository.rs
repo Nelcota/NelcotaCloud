@@ -40,7 +40,7 @@ pub async fn issue_one_time_token(
     .bind(Uuid::new_v4())
     .bind(request.user_id)
     .bind(purpose.as_str())
-    .bind(&token.hash)
+    .bind(token.hash)
     .bind(expires_at)
     .bind(request.code_challenge)
     .execute(pool)
@@ -60,7 +60,7 @@ pub async fn consume_one_time_token(
     let consumed: Option<(Uuid, Option<String>)> = sqlx::query_as(
         "UPDATE one_time_tokens SET consumed_at = now() WHERE token_hash = $1 AND purpose = $2 AND consumed_at IS NULL AND expires_at > now() RETURNING user_id, code_challenge",
     )
-    .bind(&token_hash)
+    .bind(token_hash)
     .bind(purpose.as_str())
     .fetch_optional(&mut *connection)
     .await?;

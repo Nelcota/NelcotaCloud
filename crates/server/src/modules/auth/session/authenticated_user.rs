@@ -32,7 +32,7 @@ impl FromRequestParts<AppState> for AuthenticatedUser {
             issuer: &state.settings.token_issuer,
             tenant_id: tenant.tenant_id,
         };
-        let claims = verify_access_token(access_token, &signing_keys.verifying, &audience)
+        let claims = verify_access_token(access_token, &signing_keys, &audience)
             .map_err(|_| ApiError::InvalidAccessToken)?;
 
         Ok(Self { tenant, claims })

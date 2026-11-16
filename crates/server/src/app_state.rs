@@ -10,6 +10,7 @@ use crate::modules::oauth::login::oauth_login_context::OAuthLoginContext;
 use crate::modules::oauth::provider::provider_endpoints::OAuthEndpoints;
 use crate::modules::tenants::database::tenant_pool_registry::TenantPoolRegistry;
 use crate::modules::tenants::signing_keys::signing_key_cache::SigningKeyCache;
+use crate::shared::crypto::opaque_token::TokenHash;
 use crate::shared::email::email_sender::EmailSender;
 
 #[derive(Clone)]
@@ -43,7 +44,7 @@ pub struct AppSettings {
     pub token_issuer: String,
     pub tenant_database_base_url: String,
     /// Only the SHA-256 of the admin token is kept in memory and compared.
-    pub admin_token_hash: Vec<u8>,
+    pub admin_token_hash: TokenHash,
     /// Verified against when an email does not exist, so login timing does not reveal accounts.
     pub dummy_password_hash: String,
     pub oauth_endpoints: OAuthEndpoints,

@@ -1,8 +1,8 @@
 use std::time::Duration;
 
-use crate::modules::auth::rate_limiting::attempt_limiter::{
-    AttemptLimiter, InvalidQuota, QuotaSpec,
-};
+use crate::modules::auth::rate_limiting::attempt_limiter::AttemptLimiter;
+use crate::modules::auth::rate_limiting::client_ip_limiter::ClientIpLimiter;
+use crate::modules::auth::rate_limiting::quota_spec::{InvalidQuota, QuotaSpec};
 
 /// Login: an account tolerates a burst of 10 wrong passwords, then one try every 30 seconds.
 const LOGIN_PER_EMAIL: QuotaSpec = QuotaSpec {
@@ -44,8 +44,8 @@ pub struct RateLimits {
     pub login: AttemptLimiter,
     pub email_delivery: AttemptLimiter,
     pub signup: AttemptLimiter,
-    /// Only its per-client-IP limit is used: starting a login carries no email.
-    pub oauth_authorization: AttemptLimiter,
+    /// Starting a login carries no email, so it is limited per client IP only.
+    pub oauth_authorization: ClientIpLimiter,
 }
 
 impl RateLimits {
@@ -54,10 +54,7 @@ impl RateLimits {
             login: AttemptLimiter::new(&LOGIN_PER_EMAIL, &LOGIN_PER_CLIENT_IP)?,
             email_delivery: AttemptLimiter::new(&EMAIL_PER_ADDRESS, &EMAIL_PER_CLIENT_IP)?,
             signup: AttemptLimiter::new(&SIGNUP_PER_EMAIL, &SIGNUP_PER_CLIENT_IP)?,
-            oauth_authorization: AttemptLimiter::new(
-                &OAUTH_START_PER_CLIENT_IP,
-                &OAUTH_START_PER_CLIENT_IP,
-            )?,
+            oauth_authorization: ClientIpLimiter::new(&OAUTH_START_PER_CLIENT_IP)?,
         })
     }
 
