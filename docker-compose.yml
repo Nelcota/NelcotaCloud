@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: nelcota
+      POSTGRES_PASSWORD: nelcota
+      POSTGRES_DB: nelcota_control
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nelcota -d nelcota_control"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  # Local SMTP server that captures every email; web UI and API on http://localhost:8026.
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "127.0.0.1:1026:1025"
+      - "127.0.0.1:8026:8025"
+
+volumes:
+  postgres-data:

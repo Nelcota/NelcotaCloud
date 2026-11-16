@@ -1,0 +1,72 @@
+use serde::Serialize;
+use sqlx::PgPool;
+use time::{Duration, OffsetDateTime};
+use uuid::Uuid;
+
+use crate::auth::access_token::{AccessTokenClaims, AccessTokenError, sign_access_token};
+use crate::auth::refresh_token_repository::{NewRefreshToken, insert_refresh_token};
+use crate::auth::user_repository::User;
+use crate::control_plane::signing_key::SigningKey;
+use crate::crypto::opaque_token::OpaqueToken;
+
+const ACCESS_TOKEN_LIFETIME: Duration = Duration::minutes(15);
+const REFRESH_TOKEN_LIFETIME: Duration = Duration::days(30);
+const REFRESH_TOKEN_PREFIX: &str = "nc_rt_";
+const TOKEN_TYPE: &str = "bearer";
+
+#[derive(Debug, thiserror::Error)]
+pub enum SessionError {
+    #[error(transparent)]
+    AccessToken(#[from] AccessTokenError),
+    #[error("database error while storing refresh token: {0}")]
+    Database(#[from] sqlx::Error),
+}
+
+#[derive(Debug, Serialize)]
+pub struct SessionTokens {
+    pub access_token: String,
+    pub token_type: &'static str,
+    pub expires_in: i64,
+    pub refresh_token: String,
+    pub user: User,
+}
+
+/// Everything needed to issue tokens on behalf of one tenant.
+pub struct SessionIssuer<'a> {
+    pub tenant_id: Uuid,
+    pub issuer: &'a str,
+    pub signing_key: &'a SigningKey,
+    pub tenant_pool: &'a PgPool,
+}
+
+impl SessionIssuer<'_> {
+    /// `family_id` groups every rotation of one login, so reuse can revoke the whole chain.
+    pub async fn issue(&self, user: User, family_id: Uuid) -> Result<SessionTokens, SessionError> {
+        let now = OffsetDateTime::now_utc();
+        let claims = AccessTokenClaims {
+            sub: user.id,
+            aud: self.tenant_id.to_string(),
+            iss: self.issuer.to_owned(),
+            iat: now.unix_timestamp(),
+            exp: (now + ACCESS_TOKEN_LIFETIME).unix_timestamp(),
+            email: user.email.clone(),
+        };
+        let access_token = sign_access_token(&claims, self.signing_key)?;
+        let refresh_token = OpaqueToken::generate(REFRESH_TOKEN_PREFIX);
+        let new_refresh_token = NewRefreshToken {
+            user_id: user.id,
+            family_id,
+            token_hash: &refresh_token.hash,
+            expires_at: now + REFRESH_TOKEN_LIFETIME,
+        };
+        insert_refresh_token(self.tenant_pool, new_refresh_token).await?;
+
+        Ok(SessionTokens {
+            access_token,
+            token_type: TOKEN_TYPE,
+            expires_in: ACCESS_TOKEN_LIFETIME.whole_seconds(),
+            refresh_token: refresh_token.plaintext,
+            user,
+        })
+    }
+}
