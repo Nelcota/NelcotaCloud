@@ -7,9 +7,10 @@ import {
   type OAuthProviderName,
 } from '@/modules/project-settings/api/configure-provider'
 import { Button } from '@/shared/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card'
 import { ErrorAlert } from '@/shared/ui/error-alert'
 import { FormField } from '@/shared/ui/form-field'
+import { SavedNote } from '@/shared/ui/saved-note'
+import { SettingsSection } from '@/shared/ui/settings-section'
 
 const PROVIDER_NAMES: Record<OAuthProviderName, string> = { google: 'Google', github: 'GitHub' }
 
@@ -22,6 +23,7 @@ type ProviderFormProps = {
 export function ProviderForm({ projectId, provider }: ProviderFormProps): JSX.Element {
   const [clientId, setClientId] = useState('')
   const [clientSecret, setClientSecret] = useState('')
+  const providerName = PROVIDER_NAMES[provider]
   const save = useMutation({
     mutationFn: () =>
       configureProvider(projectId, provider, { client_id: clientId, client_secret: clientSecret }),
@@ -34,51 +36,36 @@ export function ProviderForm({ projectId, provider }: ProviderFormProps): JSX.El
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{PROVIDER_NAMES[provider]}</CardTitle>
-        <CardDescription>
-          Use o OAuth app do seu próprio {PROVIDER_NAMES[provider]}; salvar de novo substitui o
-          atual.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form className="grid gap-4" onSubmit={submit}>
-          <FormField
-            label="Client ID"
-            required
-            value={clientId}
-            onChange={(event) => setClientId(event.target.value)}
-          />
-          <FormField
-            label="Client secret"
-            type="password"
-            autoComplete="off"
-            required
-            value={clientSecret}
-            onChange={(event) => setClientSecret(event.target.value)}
-          />
-          <ErrorAlert error={save.error} />
-          <SavedNote isSaved={save.isSuccess} />
-          <div>
+    <form onSubmit={submit} className="h-full">
+      <SettingsSection
+        title={providerName}
+        description={`Use o OAuth app do seu próprio ${providerName}. Salvar de novo substitui o atual.`}
+        footer={
+          <>
+            <SavedNote isSaved={save.isSuccess} message="Configurado" />
             <Button type="submit" disabled={save.isPending} aria-busy={save.isPending}>
-              Salvar {PROVIDER_NAMES[provider]}
+              Salvar {providerName}
             </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
-  )
-}
-
-function SavedNote({ isSaved }: { isSaved: boolean }): JSX.Element | null {
-  if (isSaved === false) {
-    return null
-  }
-
-  return (
-    <p role="status" className="text-sm text-emerald-600 dark:text-emerald-400">
-      Provedor configurado.
-    </p>
+          </>
+        }
+      >
+        <FormField
+          label="Client ID"
+          required
+          autoComplete="off"
+          value={clientId}
+          onChange={(event) => setClientId(event.target.value)}
+        />
+        <FormField
+          label="Client secret"
+          type="password"
+          autoComplete="off"
+          required
+          value={clientSecret}
+          onChange={(event) => setClientSecret(event.target.value)}
+        />
+        <ErrorAlert error={save.error} />
+      </SettingsSection>
+    </form>
   )
 }

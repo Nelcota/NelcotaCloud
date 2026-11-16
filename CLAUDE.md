@@ -157,7 +157,8 @@ dependencies. In `apps/console/src/`:
 - `app/`: composition root. `router.tsx` maps URLs to module pages (only logic: the login guard),
   `lazy-routes/` one lazy route per page, `shell/` the signed-in layout (icon rail, project
   sidebar from `project-sections.ts`, top bar with project switcher and account menu, a sheet on
-  small screens), `auth-layout.tsx` login and email-link pages, `query-client.ts`, `global.css`
+  small screens with everything the rail and sidebar hold), `auth-layout.tsx` login and email-link
+  pages, `status-screen.tsx` with `route-error-page.tsx` and `not-found-page.tsx` (router defaults), `query-client.ts`, `global.css`
   (theme tokens: graphite neutrals, one blue accent; dark by default, light via the rail toggle;
   font Manrope).
 - `modules/<module>/`: everything one context owns (`account`, `projects`, `overview`, `api-keys`,
@@ -172,7 +173,8 @@ dependencies. In `apps/console/src/`:
   that sends the console session's token, `projectHeaders`, `dataOf`/`ensureSuccess`, generated
   `api-schema.d.ts` that is never edited by hand, base URL, `ApiError`), `auth` (the SDK client
   and `useSession`), `routing` (route params and search), `theme` (`useTheme`), `ui` (shadcn components, plus
-  `FormField`, `SwitchField`, `ErrorAlert`, `ConfirmButton`; add shadcn ones with
+  `FormField`, `SwitchField`, `ErrorAlert`, `ConfirmButton`/`ConfirmDialog`, `PageHeader` (every page
+  starts with it), `SettingsSection`, `EmptyState`, `Skeleton`, `CopyButton`, `SavedNote`; add shadcn ones with
   `npx shadcn@latest add`, then move any exported `cva` variants to their own file), `lib`. `shared` never imports from
   `modules` or `app`.
 - Dependencies point one way: `app → modules → shared`. A module may use another module's

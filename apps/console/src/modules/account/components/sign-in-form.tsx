@@ -38,24 +38,32 @@ export function SignInForm({ onResult, onForgotPassword }: SignInFormProps): JSX
         label="Email"
         type="email"
         autoComplete="email"
+        autoFocus
         required
         value={email}
         onChange={(event) => setEmail(event.target.value)}
       />
-      <FormField
-        label="Senha"
-        type="password"
-        autoComplete="current-password"
-        required
-        value={password}
-        onChange={(event) => setPassword(event.target.value)}
-      />
+      <div className="grid gap-1.5">
+        <FormField
+          label="Senha"
+          type="password"
+          autoComplete="current-password"
+          required
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+        />
+        <Button
+          type="button"
+          variant="link"
+          className="h-auto justify-self-end p-0 text-xs"
+          onClick={onForgotPassword}
+        >
+          Esqueci minha senha
+        </Button>
+      </div>
       <ErrorAlert error={error} />
-      <Button type="submit" disabled={isSubmitting} aria-busy={isSubmitting}>
+      <Button type="submit" size="lg" disabled={isSubmitting} aria-busy={isSubmitting}>
         Entrar
-      </Button>
-      <Button type="button" variant="link" onClick={onForgotPassword}>
-        Esqueci minha senha
       </Button>
     </form>
   )

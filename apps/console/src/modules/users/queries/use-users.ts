@@ -1,4 +1,5 @@
 import {
+  keepPreviousData,
   type UseMutationResult,
   type UseQueryResult,
   useMutation,
@@ -35,6 +36,8 @@ export function useUsersQuery(
   return useQuery({
     queryKey: [...usersQueryKey(projectId), email],
     queryFn: () => listUsers(projectId, email),
+    // Keeps the current rows on screen while a new search loads, instead of flashing empty.
+    placeholderData: keepPreviousData,
   })
 }
 

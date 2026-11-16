@@ -1,4 +1,4 @@
-import { KeyRound, Mail, Users } from 'lucide-react'
+import { ExternalLink, KeyRound, Mail, Users } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { useApiKeysQuery } from '@/modules/api-keys/queries/use-api-keys'
@@ -11,6 +11,8 @@ import {
 import { useUsersQuery } from '@/modules/users/queries/use-users'
 import type { components } from '@/shared/api/api-schema'
 import { useProjectId } from '@/shared/routing/use-project-id'
+import { PageHeader } from '@/shared/ui/page-header'
+import { Skeleton } from '@/shared/ui/skeleton'
 
 type ApiKeySummary = components['schemas']['ApiKeySummary']
 type SmtpSettingsView = components['schemas']['SmtpSettingsView']
@@ -27,10 +29,7 @@ export function OverviewPage(): JSX.Element {
 
   return (
     <div className="grid gap-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Visão geral</h1>
-        <p className="text-muted-foreground mt-1 text-sm">{settings.data?.site_url}</p>
-      </div>
+      <PageHeader title="Visão geral" description={<SiteUrl url={settings.data?.site_url} />} />
       <div className="grid gap-4 md:grid-cols-3">
         <OverviewCard
           icon={Users}
@@ -62,6 +61,25 @@ export function OverviewPage(): JSX.Element {
       </div>
       <ConnectAppPanel publishableKeyHint={publishableHint(activeKeys)} />
     </div>
+  )
+}
+
+/** The app this project serves; opens in a new tab, since the console stays where it is. */
+function SiteUrl({ url }: { url: string | undefined }): JSX.Element {
+  if (url === undefined) {
+    return <Skeleton className="h-4 w-48" />
+  }
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className="hover:text-foreground inline-flex items-center gap-1 underline-offset-4 transition-colors hover:underline"
+    >
+      {url}
+      <ExternalLink className="size-3.5" strokeWidth={1.75} />
+    </a>
   )
 }
 

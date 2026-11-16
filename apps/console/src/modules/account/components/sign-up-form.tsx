@@ -39,6 +39,7 @@ export function SignUpForm({
         label="Email"
         type="email"
         autoComplete="email"
+        autoFocus
         required
         value={email}
         onChange={(event) => setEmail(event.target.value)}
@@ -54,7 +55,7 @@ export function SignUpForm({
         onChange={(event) => setPassword(event.target.value)}
       />
       <ErrorAlert error={error} />
-      <Button type="submit" disabled={isSubmitting} aria-busy={isSubmitting}>
+      <Button type="submit" size="lg" disabled={isSubmitting} aria-busy={isSubmitting}>
         Criar conta
       </Button>
     </form>

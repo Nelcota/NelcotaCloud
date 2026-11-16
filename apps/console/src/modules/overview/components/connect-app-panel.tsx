@@ -1,8 +1,7 @@
 import type { JSX } from 'react'
-import { useState } from 'react'
 
 import { API_BASE_URL } from '@/shared/api/api-base-url'
-import { Button } from '@/shared/ui/button'
+import { CopyButton } from '@/shared/ui/copy-button'
 
 type ConnectAppPanelProps = {
   /** Last characters of an active publishable key, so the snippet says which key to paste. */
@@ -17,14 +16,14 @@ export function ConnectAppPanel({ publishableKeyHint }: ConnectAppPanelProps): J
     <section className="bg-card rounded-xl border">
       <header className="border-b px-5 py-4">
         <h2 className="font-semibold">Conectar seu app</h2>
-        <p className="text-muted-foreground mt-1 text-sm">
+        <p className="text-muted-foreground mt-1 text-sm text-pretty">
           Instale o SDK e use a publishable key do projeto. A secret key nunca vai para o app.
         </p>
       </header>
-      <div className="grid gap-4 p-5">
-        <CodeBlock label="1. Instale" code="npm install @nelcota/sdk" />
-        <CodeBlock label="2. Crie o cliente" code={snippet} />
-      </div>
+      <ol className="grid gap-5 p-5">
+        <CodeStep step={1} label="Instale o SDK" code="npm install @nelcota/sdk" />
+        <CodeStep step={2} label="Crie o cliente" code={snippet} />
+      </ol>
     </section>
   )
 }
@@ -44,33 +43,27 @@ function sdkSnippet(publishableKeyHint: string | null): string {
   ].join('\n')
 }
 
-function CodeBlock({ label, code }: { label: string; code: string }): JSX.Element {
-  const [isCopied, setIsCopied] = useState(false)
-
-  async function copy(): Promise<void> {
-    await navigator.clipboard.writeText(code)
-    setIsCopied(true)
-  }
-
-  return (
-    <div className="grid gap-2">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">{label}</span>
-        <Button variant="ghost" size="sm" onClick={copy}>
-          <CopyLabel isCopied={isCopied} />
-        </Button>
-      </div>
-      <pre className="bg-muted overflow-x-auto rounded-lg p-4 font-mono text-xs leading-relaxed">
-        <code>{code}</code>
-      </pre>
-    </div>
-  )
+type CodeStepProps = {
+  step: number
+  label: string
+  code: string
 }
 
-function CopyLabel({ isCopied }: { isCopied: boolean }): JSX.Element {
-  if (isCopied) {
-    return <span>Copiado</span>
-  }
-
-  return <span>Copiar</span>
+function CodeStep({ step, label, code }: CodeStepProps): JSX.Element {
+  return (
+    <li className="grid gap-2">
+      <div className="flex items-center justify-between gap-3">
+        <span className="flex items-center gap-2.5 text-sm font-medium">
+          <span className="bg-secondary text-muted-foreground flex size-6 items-center justify-center rounded-full text-xs font-semibold">
+            {step}
+          </span>
+          {label}
+        </span>
+        <CopyButton value={code} description={label} />
+      </div>
+      <pre className="bg-muted/60 overflow-x-auto rounded-lg border p-4 font-mono text-xs leading-relaxed">
+        <code>{code}</code>
+      </pre>
+    </li>
+  )
 }

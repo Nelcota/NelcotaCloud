@@ -3,12 +3,12 @@ import { useNavigate } from '@tanstack/react-router'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
+import { AuthCard } from '@/modules/account/components/auth-card'
 import { MfaChallengeForm } from '@/modules/account/components/mfa-challenge-form'
 import { RecoverPasswordForm } from '@/modules/account/components/recover-password-form'
 import { SignInForm } from '@/modules/account/components/sign-in-form'
 import { SignUpForm } from '@/modules/account/components/sign-up-form'
 import { Button } from '@/shared/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 
 type LoginStep =
   | { kind: 'sign-in' }
@@ -17,17 +17,29 @@ type LoginStep =
   | { kind: 'recover' }
   | { kind: 'notice'; message: string }
 
-const STEP_TITLES: Record<LoginStep['kind'], string> = {
-  'sign-in': 'Entrar no console',
-  'sign-up': 'Criar conta',
-  mfa: 'Verificação em duas etapas',
-  recover: 'Redefinir senha',
-  notice: 'Confira seu email',
+const STEP_HEADINGS: Record<LoginStep['kind'], { title: string; description: string }> = {
+  'sign-in': { title: 'Entrar no console', description: 'Gerencie o Auth dos seus apps.' },
+  'sign-up': { title: 'Criar conta', description: 'Uma conta para criar e gerenciar projetos.' },
+  mfa: {
+    title: 'Verificação em duas etapas',
+    description: 'Digite o código de 6 dígitos do seu app autenticador.',
+  },
+  recover: {
+    title: 'Redefinir senha',
+    description: 'Informe seu email e enviamos um link para criar uma senha nova.',
+  },
+  notice: { title: 'Confira seu email', description: 'O link chega em instantes.' },
+}
+
+const RECOVERY_SENT: LoginStep = {
+  kind: 'notice',
+  message: 'Se houver uma conta com esse email, o link de redefinição chega em instantes.',
 }
 
 export function LoginPage(): JSX.Element {
   const navigate = useNavigate()
   const [step, setStep] = useState<LoginStep>({ kind: 'sign-in' })
+  const heading = STEP_HEADINGS[step.kind]
   const goToProjects = (): void => {
     void navigate({ to: '/' })
   }
@@ -54,20 +66,19 @@ export function LoginPage(): JSX.Element {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{STEP_TITLES[step.kind]}</CardTitle>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <StepContent
-          step={step}
-          onSignIn={handleSignIn}
-          onSignUp={handleSignUp}
-          onStep={setStep}
-          onSignedIn={goToProjects}
-        />
-      </CardContent>
-    </Card>
+    <AuthCard
+      title={heading.title}
+      description={heading.description}
+      footer={<StepFooter step={step} onStep={setStep} />}
+    >
+      <StepContent
+        step={step}
+        onSignIn={handleSignIn}
+        onSignUp={handleSignUp}
+        onStep={setStep}
+        onSignedIn={goToProjects}
+      />
+    </AuthCard>
   )
 }
 
@@ -81,52 +92,58 @@ type StepContentProps = {
 
 function StepContent(props: StepContentProps): JSX.Element {
   const { step, onStep } = props
-  const backToSignIn = (
-    <Button variant="link" onClick={() => onStep({ kind: 'sign-in' })}>
-      Voltar para o login
-    </Button>
-  )
 
   switch (step.kind) {
     case 'sign-up':
-      return (
-        <>
-          <SignUpForm onResult={props.onSignUp} />
-          {backToSignIn}
-        </>
-      )
+      return <SignUpForm onResult={props.onSignUp} />
     case 'mfa':
       return <MfaChallengeForm mfaToken={step.mfaToken} onSignedIn={props.onSignedIn} />
-    case 'recover': {
-      const sent = {
-        kind: 'notice',
-        message: 'Se houver uma conta com esse email, o link chega em instantes.',
-      } as const
-      return (
-        <>
-          <RecoverPasswordForm onSent={() => onStep(sent)} />
-          {backToSignIn}
-        </>
-      )
-    }
+    case 'recover':
+      return <RecoverPasswordForm onSent={() => onStep(RECOVERY_SENT)} />
     case 'notice':
-      return (
-        <>
-          <p className="text-sm">{step.message}</p>
-          {backToSignIn}
-        </>
-      )
+      return <p className="text-sm text-pretty">{step.message}</p>
     case 'sign-in':
       return (
-        <>
-          <SignInForm
-            onResult={props.onSignIn}
-            onForgotPassword={() => onStep({ kind: 'recover' })}
-          />
-          <Button variant="outline" onClick={() => onStep({ kind: 'sign-up' })}>
-            Criar uma conta
-          </Button>
-        </>
+        <SignInForm
+          onResult={props.onSignIn}
+          onForgotPassword={() => onStep({ kind: 'recover' })}
+        />
       )
   }
+}
+
+/** Under the card: the way between signing in and signing up, or back to signing in. */
+function StepFooter({
+  step,
+  onStep,
+}: {
+  step: LoginStep
+  onStep: (step: LoginStep) => void
+}): JSX.Element {
+  if (step.kind === 'sign-in') {
+    return (
+      <>
+        Ainda não tem conta?{' '}
+        <FooterLink label="Criar conta" onClick={() => onStep({ kind: 'sign-up' })} />
+      </>
+    )
+  }
+
+  if (step.kind === 'sign-up') {
+    return (
+      <>
+        Já tem conta? <FooterLink label="Entrar" onClick={() => onStep({ kind: 'sign-in' })} />
+      </>
+    )
+  }
+
+  return <FooterLink label="Voltar para o login" onClick={() => onStep({ kind: 'sign-in' })} />
+}
+
+function FooterLink({ label, onClick }: { label: string; onClick: () => void }): JSX.Element {
+  return (
+    <Button variant="link" className="h-auto p-0" onClick={onClick}>
+      {label}
+    </Button>
+  )
 }

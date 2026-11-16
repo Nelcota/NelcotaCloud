@@ -1,10 +1,12 @@
 import { Link, useSearch } from '@tanstack/react-router'
+import { CircleCheck } from 'lucide-react'
 import type { FormEvent, JSX } from 'react'
 import { useState } from 'react'
 
+import { AuthCard } from '@/modules/account/components/auth-card'
 import { nelcota } from '@/shared/auth/nelcota'
 import { Button } from '@/shared/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
+import { buttonVariants } from '@/shared/ui/button-variants'
 import { ErrorAlert } from '@/shared/ui/error-alert'
 import { FormField } from '@/shared/ui/form-field'
 
@@ -35,39 +37,42 @@ export function ResetPasswordPage(): JSX.Element {
 
   if (isDone) {
     return (
-      <div className="text-sm">
-        <p className="mb-4">Senha alterada. Todas as sessões foram encerradas.</p>
-        <Link to="/login" className="underline underline-offset-4">
-          Entrar
+      <AuthCard
+        title="Senha alterada"
+        description="Por segurança, todas as sessões abertas foram encerradas."
+        icon={
+          <CircleCheck
+            aria-hidden="true"
+            className="mb-4 size-10 text-emerald-500"
+            strokeWidth={1.5}
+          />
+        }
+      >
+        <Link to="/login" className={buttonVariants({ size: 'lg' })}>
+          Entrar com a nova senha
         </Link>
-      </div>
+      </AuthCard>
     )
   }
 
   return (
-    <div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Nova senha</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-4" onSubmit={submit}>
-            <FormField
-              label="Nova senha"
-              type="password"
-              autoComplete="new-password"
-              required
-              minLength={MIN_PASSWORD_LENGTH}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-            <ErrorAlert error={error} />
-            <Button type="submit" disabled={isSubmitting} aria-busy={isSubmitting}>
-              Salvar senha
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+    <AuthCard title="Nova senha" description="Escolha uma senha com pelo menos 8 caracteres.">
+      <form className="grid gap-4" onSubmit={submit}>
+        <FormField
+          label="Nova senha"
+          type="password"
+          autoComplete="new-password"
+          autoFocus
+          required
+          minLength={MIN_PASSWORD_LENGTH}
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+        />
+        <ErrorAlert error={error} />
+        <Button type="submit" size="lg" disabled={isSubmitting} aria-busy={isSubmitting}>
+          Salvar senha
+        </Button>
+      </form>
+    </AuthCard>
   )
 }

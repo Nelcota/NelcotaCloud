@@ -2,9 +2,9 @@ import { useNavigate } from '@tanstack/react-router'
 import type { JSX } from 'react'
 
 import { useDeleteProjectMutation } from '@/modules/projects/queries/use-projects'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card'
 import { ConfirmButton } from '@/shared/ui/confirm-button'
 import { ErrorAlert } from '@/shared/ui/error-alert'
+import { SettingsSection } from '@/shared/ui/settings-section'
 
 export function DangerZone({
   projectId,
@@ -21,19 +21,18 @@ export function DangerZone({
   }
 
   return (
-    <Card className="border-destructive/40">
-      <CardHeader>
-        <CardTitle>Zona de perigo</CardTitle>
-        <CardDescription>
-          Excluir o projeto apaga os usuários, as chaves e o banco de dados. Só donos podem.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-3">
-        <ErrorAlert error={deletion.error} />
+    <SettingsSection title="Zona de perigo" tone="danger">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
+          <p className="text-sm font-medium">Excluir este projeto</p>
+          <p className="text-muted-foreground mt-1 text-sm text-pretty">
+            Apaga os usuários, as chaves e o banco de dados. Só donos podem fazer isso.
+          </p>
+        </div>
+        <div className="shrink-0">
           <ConfirmButton
             title={`Excluir ${projectName}?`}
-            description="Todos os dados do projeto são apagados para sempre."
+            description="Todos os dados do projeto são apagados para sempre. Apps que usam este projeto param de funcionar."
             confirmLabel="Excluir projeto"
             isDestructive
             isPending={deletion.isPending}
@@ -42,7 +41,8 @@ export function DangerZone({
             Excluir projeto
           </ConfirmButton>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+      <ErrorAlert error={deletion.error} />
+    </SettingsSection>
   )
 }
