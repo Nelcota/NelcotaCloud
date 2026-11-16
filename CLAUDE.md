@@ -52,7 +52,10 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
   secret key, or a console account's access token plus `x-nelcota-project`, with membership checked
   on every request. Console accounts are users of the platform tenant named by
   `PLATFORM_TENANT_SLUG`; `/platform/v1/projects` lists, creates (owner, max 10 per account) and
-  deletes (owners only) their projects.
+  deletes (owners only) their projects. Owners invite people by email
+  (`tenant_invitations`, accepted by the console account with that verified email, joining as
+  member) and remove members; `tenant_members.account_email` is refreshed when the account lists
+  its projects.
 - Tenant settings (`GET/PATCH /auth/v1/admin/settings`): name, `site_url`,
   `require_email_verification` (default true: password login and refresh need a verified email,
   and signup answers the same for new and existing emails).
@@ -133,8 +136,11 @@ Modular monolith in `crates/server/src/`: one folder per business context under 
     `password`, `session` (refresh tokens, issuing, session listing), `login` (completion with the
     MFA step), `mfa` (TOTP codes, factors, challenges), `one_time_token`, `email` (auth emails and
     template), `rate_limiting`.
-  - `oauth/`: `provider` (providers, endpoints, credentials), `client`, `login` (start, completion,
-    state), `profile` (one file per provider), `identity` (identities, account linking).
+  - `oauth/`: `provider` (providers, endpoints, credentials, configured providers), `client`,
+    `login` (start, completion, state), `profile` (one file per provider), `identity`
+    (identities, account linking).
+  - `team/`: `member` (team members, owner checks), `invitation` (invitations, their email,
+    answers by the invited account).
 - `shared/`: infrastructure with no business rules (`crypto`, `http` errors, JSON validation,
   request id and span, `database` migrators, `email` SMTP sender). `shared` never imports from `modules`.
 - A new file goes into the sub-package of its subject; create a sub-package when a module has
@@ -142,7 +148,8 @@ Modular monolith in `crates/server/src/`: one folder per business context under 
   declare modules.
 - Split a file when it has more than one reason to change: a type and its storage, two providers,
   two endpoints, a rule and its HTTP mapping.
-- Dependencies point one way: `tenants → shared`, `auth → tenants`, `oauth → auth, tenants`.
+- Dependencies point one way: `tenants → shared`, `auth → tenants`, `oauth → auth, tenants`,
+  `team → auth, tenants`.
   Never create a cycle; if two modules need each other, the shared piece belongs in the lower one.
 - A new product of the BaaS (storage, database, functions) starts as a new module; split modules
   into workspace crates only when the compiler-enforced boundary is worth the extra setup.
@@ -162,7 +169,7 @@ dependencies. In `apps/console/src/`:
   (theme tokens: graphite neutrals, one blue accent; dark by default, light via the account menu;
   font Manrope).
 - `modules/<module>/`: everything one context owns (`account`, `projects`, `overview`, `api-keys`,
-  `users`, `project-settings`, `system-status`):
+  `users`, `project-settings`, `system-status`, `team`):
   - `pages/`: one file per route; composes components, no fetching or business logic.
   - `components/`: UI of the module, one component per file.
   - `queries/`: TanStack Query hooks (`use-*-query.ts`, `use-*-mutation.ts`); the only place that
@@ -175,7 +182,10 @@ dependencies. In `apps/console/src/`:
   and `useSession`), `routing` (route params and search), `theme` (`useTheme`), `ui` (shadcn components, plus
   `FormField`, `SwitchField`, `ErrorAlert`, `ConfirmButton`/`ConfirmDialog`, `PageHeader` (every page
   starts with it), `SettingsSection`, `EmptyState`, `Skeleton`, `CopyButton`, `SavedNote`; add shadcn ones with
-  `npx shadcn@latest add`, then move any exported `cva` variants to their own file), `lib`. `shared` never imports from
+  `npx shadcn@latest add`, then move any exported `cva` variants to their own file and swap its
+  `lucide-react` icons for Solar), `lib`.
+- Icons: Solar Linear only, imported per icon (`import Key from '~icons/solar/key-linear'`),
+  compiled at build time by `unplugin-icons` with `icon-compiler.ts`; type `IconComponent`. `shared` never imports from
   `modules` or `app`.
 - Dependencies point one way: `app → modules → shared`. A module may use another module's
   components; never create a cycle (`import/no-cycle` enforces it).
