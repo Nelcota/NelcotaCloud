@@ -9,6 +9,13 @@ pub enum PasswordAuthenticationError {
     Hashing(#[from] PasswordHashingError),
 }
 
+/// A user whose password matched, with the hash it matched against.
+pub struct VerifiedCredentials {
+    pub user: User,
+    /// Lets the session be created only while this is still the user's password.
+    pub password_hash: String,
+}
+
 /// Checks an email's password in constant work.
 ///
 /// Always runs one Argon2 verification, even for unknown emails or passwordless (OAuth) users,
@@ -18,20 +25,26 @@ pub async fn authenticate_with_password(
     credentials: Option<UserCredentials>,
     password: String,
     dummy_password_hash: &str,
-) -> Result<User, PasswordAuthenticationError> {
+) -> Result<VerifiedCredentials, PasswordAuthenticationError> {
     let (user, stored_hash) = match credentials {
         Some(credentials) => (Some(credentials.user), credentials.password_hash),
         None => (None, None),
     };
-    let hash_to_check = stored_hash.unwrap_or_else(|| dummy_password_hash.to_owned());
+    // Verification runs on the blocking pool and takes its own copy; the original is returned.
+    let hash_to_check = stored_hash
+        .clone()
+        .unwrap_or_else(|| dummy_password_hash.to_owned());
 
     if verify_password(password, hash_to_check).await? == false {
         return Err(PasswordAuthenticationError::InvalidCredentials);
     }
 
-    let Some(user) = user else {
+    let (Some(user), Some(password_hash)) = (user, stored_hash) else {
         return Err(PasswordAuthenticationError::InvalidCredentials);
     };
 
-    Ok(user)
+    Ok(VerifiedCredentials {
+        user,
+        password_hash,
+    })
 }

@@ -1,9 +1,8 @@
 use sqlx::PgPool;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use uuid::Uuid;
 
 use crate::modules::oauth::provider::oauth_provider::OAuthProvider;
-use crate::shared::time::expiry::{ExpiryOutOfRange, expiry_after};
 
 /// Long enough to sign in at the provider, short enough to limit replay of a leaked state.
 const STATE_LIFETIME: Duration = Duration::minutes(10);
@@ -14,8 +13,6 @@ pub enum OAuthStateError {
     Database(#[from] sqlx::Error),
     #[error("stored OAuth state has an unknown provider")]
     UnknownProvider,
-    #[error(transparent)]
-    Expiry(#[from] ExpiryOutOfRange),
 }
 
 /// An authorization started by `/authorize` and waiting for the provider callback.
@@ -42,10 +39,9 @@ pub async fn insert_pending_authorization(
     state_hash: &[u8],
     pending: &PendingAuthorization,
 ) -> Result<(), OAuthStateError> {
-    let expires_at = expiry_after(OffsetDateTime::now_utc(), STATE_LIFETIME)?;
     sqlx::query(
         "INSERT INTO oauth_authorization_states (state_hash, tenant_id, provider, pkce_verifier_ciphertext, redirect_to, app_code_challenge, expires_at) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7)",
+         VALUES ($1, $2, $3, $4, $5, $6, now() + $7::bigint * interval '1 second')",
     )
     .bind(state_hash)
     .bind(pending.tenant_id)
@@ -53,7 +49,7 @@ pub async fn insert_pending_authorization(
     .bind(&pending.pkce_verifier_ciphertext)
     .bind(&pending.redirect_to)
     .bind(&pending.app_code_challenge)
-    .bind(expires_at)
+    .bind(STATE_LIFETIME.whole_seconds())
     .execute(pool)
     .await?;
 

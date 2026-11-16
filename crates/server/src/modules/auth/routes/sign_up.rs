@@ -2,23 +2,27 @@ use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
 use serde::{Deserialize, Serialize};
+use sqlx::PgConnection;
 use validator::Validate;
 
 use crate::app_state::AppState;
 use crate::modules::auth::email::auth_email_dispatch::{
-    AuthEmailKind, AuthEmailRequest, send_auth_email,
+    AuthEmailKind, AuthEmailLink, AuthEmailRequest, email_auth_link, send_auth_email,
 };
+use crate::modules::auth::one_time_token::one_time_token_repository::issue_one_time_token;
 use crate::modules::auth::password::password_hashing::hash_password;
 use crate::modules::auth::password::password_policy::check_new_password;
 use crate::modules::auth::rate_limiting::attempt_limiter::Attempt;
 use crate::modules::auth::rate_limiting::client_ip::ClientIp;
 use crate::modules::auth::session::session_family::SessionFamily;
-use crate::modules::auth::session::session_grant::{SessionGrant, issue_session};
+use crate::modules::auth::session::session_grant::{
+    SessionGrant, SessionRequest, issue_session_with,
+};
 use crate::modules::auth::session::session_issuer::SessionTokens;
 use crate::modules::auth::user::email_address::EmailAddress;
 use crate::modules::auth::user::unverified_account_takeover::take_over_unverified_account;
 use crate::modules::auth::user::user_record::User;
-use crate::modules::auth::user::user_registration::{InsertUserError, insert_user};
+use crate::modules::auth::user::user_registration::insert_user;
 use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::modules::tenants::settings::loaded_tenant_settings::requires_email_verification;
 use crate::shared::http::api_error::ApiError;
@@ -43,11 +47,10 @@ pub enum SignUpResponse {
 
 type SignUpResult = Result<(StatusCode, Json<SignUpResponse>), ApiError>;
 
-/// What the signup inserted, or found already registered.
-struct SignUpAttempt {
+/// A validated signup with its password already hashed.
+struct NewSignup {
     email: EmailAddress,
     password_hash: String,
-    insertion: Result<User, InsertUserError>,
 }
 
 /// `POST /signup`.
@@ -73,79 +76,94 @@ pub async fn sign_up(
     let password_hash = hash_password(body.password)
         .await
         .map_err(ApiError::internal)?;
-    let insertion = insert_user(&tenant.pool, &email, &password_hash).await;
-    let signup = SignUpAttempt {
+    let signup = NewSignup {
         email,
         password_hash,
-        insertion,
     };
 
     if requires_email_verification(&state, tenant.tenant_id).await? {
-        return sign_up_pending_verification(&state, &tenant, signup).await;
+        return sign_up_pending_verification(&state, &tenant, &signup).await;
     }
 
-    sign_up_with_session(&state, &tenant, signup.insertion).await
+    sign_up_with_session(&state, &tenant, &signup).await
 }
 
 async fn sign_up_with_session(
     state: &AppState,
     tenant: &TenantContext,
-    insertion: Result<User, InsertUserError>,
+    signup: &NewSignup,
 ) -> SignUpResult {
-    let user = insertion.map_err(map_insert_user_error)?;
-    send_verification_email(state, tenant, &user).await?;
-    let grant = SessionGrant {
-        user,
-        family: SessionFamily::new_login(),
+    let mut connection = tenant.pool.acquire().await.map_err(ApiError::internal)?;
+    let user = insert_user(&mut connection, &signup.email, &signup.password_hash)
+        .await
+        .map_err(ApiError::internal)?;
+    let Some(user) = user else {
+        return Err(ApiError::EmailTaken);
     };
-    let tokens = issue_session(state, tenant, grant).await?;
+    let verification = AuthEmailRequest {
+        user: &user,
+        kind: AuthEmailKind::Verification,
+    };
+    send_auth_email(state, tenant, verification).await?;
+    let request = SessionRequest {
+        tenant_id: tenant.tenant_id,
+        connection: &mut connection,
+        grant: SessionGrant {
+            user,
+            family: SessionFamily::new_login(),
+        },
+    };
+    let tokens = issue_session_with(state, request).await?;
 
     Ok((StatusCode::CREATED, Json(SignUpResponse::Session(tokens))))
 }
 
 /// Answers the same for new and already registered emails, so signup cannot be used to find
 /// out which emails have accounts. An unverified account is taken over by this signup.
+///
+/// Registering (or taking over) and issuing the verification link share one transaction, so a
+/// concurrent signup for the same email always invalidates the link this one issued.
 async fn sign_up_pending_verification(
     state: &AppState,
     tenant: &TenantContext,
-    signup: SignUpAttempt,
+    signup: &NewSignup,
 ) -> SignUpResult {
     let pending = SignUpResponse::VerificationPending {
         verification_required: true,
     };
-    let user = match signup.insertion {
-        Ok(user) => Some(user),
-        Err(InsertUserError::EmailTaken) => {
-            take_over_unverified_account(&tenant.pool, &signup.email, &signup.password_hash)
-                .await
-                .map_err(ApiError::internal)?
-        }
-        Err(InsertUserError::Database(error)) => return Err(ApiError::internal(error)),
+    let mut transaction = tenant.pool.begin().await.map_err(ApiError::internal)?;
+    let user = register_or_take_over(&mut transaction, signup)
+        .await
+        .map_err(ApiError::internal)?;
+    let Some(user) = user else {
+        return Ok((StatusCode::ACCEPTED, Json(pending)));
     };
-
-    if let Some(user) = user {
-        send_verification_email(state, tenant, &user).await?;
-    }
+    let token_request = AuthEmailKind::Verification.token_request(user.id);
+    let token = issue_one_time_token(&mut *transaction, token_request)
+        .await
+        .map_err(ApiError::internal)?;
+    transaction.commit().await.map_err(ApiError::internal)?;
+    let link = AuthEmailLink {
+        user: &user,
+        kind: AuthEmailKind::Verification,
+        token: &token,
+    };
+    email_auth_link(state, tenant.tenant_id, &link).await?;
 
     Ok((StatusCode::ACCEPTED, Json(pending)))
 }
 
-async fn send_verification_email(
-    state: &AppState,
-    tenant: &TenantContext,
-    user: &User,
-) -> Result<(), ApiError> {
-    let verification = AuthEmailRequest {
-        user,
-        kind: AuthEmailKind::Verification,
-    };
+/// `None` when the email belongs to an account that is already verified: nothing changes.
+async fn register_or_take_over(
+    transaction: &mut PgConnection,
+    signup: &NewSignup,
+) -> Result<Option<User>, sqlx::Error> {
+    let email = &signup.email;
+    let password_hash = &signup.password_hash;
 
-    send_auth_email(state, tenant, verification).await
-}
-
-fn map_insert_user_error(error: InsertUserError) -> ApiError {
-    match error {
-        InsertUserError::EmailTaken => ApiError::EmailTaken,
-        InsertUserError::Database(database_error) => ApiError::internal(database_error),
+    if let Some(user) = insert_user(transaction, email, password_hash).await? {
+        return Ok(Some(user));
     }
+
+    take_over_unverified_account(transaction, email, password_hash).await
 }

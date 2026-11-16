@@ -1,6 +1,5 @@
 use oauth2::url::ParseError;
 
-use crate::modules::auth::one_time_token::one_time_token_repository::IssueOneTimeTokenError;
 use crate::modules::oauth::identity::account_linker::AccountLinkError;
 use crate::modules::oauth::login::oauth_state_repository::OAuthStateError;
 use crate::modules::oauth::profile::provider_profile::ProfileError;
@@ -34,8 +33,6 @@ pub enum OAuthLoginError {
     TenantDatabase(#[from] TenantPoolError),
     #[error(transparent)]
     State(#[from] OAuthStateError),
-    #[error(transparent)]
-    LoginCode(#[from] IssueOneTimeTokenError),
 }
 
 impl OAuthLoginError {

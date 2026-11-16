@@ -21,6 +21,9 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
   Refresh tokens: opaque, rotated on every use, stored only as SHA-256 hashes, grouped in families.
 - Ending sessions writes markers checked when a refresh token is used (`revoked_token_families`,
   `users.sessions_invalidated_at`), so successors created by a concurrent refresh are refused too.
+- Concurrency: paths that change a user lock its `users` row before its token rows (never the
+  reverse), expiries are computed with the database clock (`now() + interval`), and login keeps
+  the checked password hash locked (`FOR SHARE`) while it stores the new session.
 - Each tenant has a required `site_url`: email links point to it and OAuth only redirects under it.
 - Email (verification, password reset) is sent via SMTP with lettre, in the background.
 - OAuth (Google, GitHub) uses each tenant's own OAuth app, PKCE and a one-time `state`. The callback

@@ -1,5 +1,5 @@
+use sqlx::PgConnection;
 use sqlx::error::DatabaseError;
-use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
 use crate::modules::auth::user::email_address::EmailAddress;
@@ -14,22 +14,24 @@ pub enum InsertUserError {
 }
 
 /// A user who signed up with email and password; the email starts unverified.
+///
+/// Returns `None`, without failing the caller's transaction, when the email is already
+/// registered (also when a concurrent signup for it commits first).
 pub async fn insert_user(
-    pool: &PgPool,
+    connection: &mut PgConnection,
     email: &EmailAddress,
     password_hash: &str,
-) -> Result<User, InsertUserError> {
-    let insertion = sqlx::query_as(concat!(
-        "INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3) RETURNING ",
+) -> Result<Option<User>, sqlx::Error> {
+    sqlx::query_as(concat!(
+        "INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3) ",
+        "ON CONFLICT (email) DO NOTHING RETURNING ",
         user_columns!()
     ))
     .bind(Uuid::new_v4())
     .bind(email.as_str())
     .bind(password_hash)
-    .fetch_one(pool)
-    .await;
-
-    insertion.map_err(map_unique_violation)
+    .fetch_optional(connection)
+    .await
 }
 
 /// Users created through OAuth have no password until they set one via password reset.

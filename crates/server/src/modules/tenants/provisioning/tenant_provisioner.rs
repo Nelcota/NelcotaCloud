@@ -88,11 +88,34 @@ impl TenantProvisioner<'_> {
         database_server: &TenantDatabaseServer<'_>,
         slug: &TenantSlug,
     ) {
-        let registration = slug_exists(self.control_plane_pool, slug).await;
+        let cleanup = self.drop_unregistered_database(database_server, slug).await;
 
-        if matches!(registration, Ok(false)) {
-            database_server.drop_database(slug).await;
+        if let Err(error) = cleanup {
+            tracing::warn!(
+                slug = slug.as_str(),
+                %error,
+                "left a possibly orphan tenant database for the next attempt"
+            );
         }
+    }
+
+    /// Checks and drops under the slug lock, so a concurrent provisioning of the same slug that
+    /// already created its database (or registered it) never loses it to this cleanup.
+    async fn drop_unregistered_database(
+        &self,
+        database_server: &TenantDatabaseServer<'_>,
+        slug: &TenantSlug,
+    ) -> Result<(), sqlx::Error> {
+        let mut transaction = self.control_plane_pool.begin().await?;
+        lock_slug(&mut transaction, slug).await?;
+
+        if slug_exists(&mut *transaction, slug).await? {
+            return Ok(());
+        }
+
+        database_server.drop_database(slug).await;
+
+        transaction.commit().await
     }
 }
 

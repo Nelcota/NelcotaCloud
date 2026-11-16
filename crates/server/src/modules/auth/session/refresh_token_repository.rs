@@ -8,7 +8,8 @@ pub struct NewRefreshToken<'a> {
     pub user_id: Uuid,
     pub family: SessionFamily,
     pub token_hash: &'a [u8],
-    pub expires_at: OffsetDateTime,
+    /// Counted from the database clock, the one that checks expiry on use.
+    pub lifetime_seconds: i64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,21 +26,21 @@ pub enum RefreshTokenStatus {
 }
 
 pub async fn insert_refresh_token(
-    pool: &PgPool,
+    connection: &mut PgConnection,
     token: NewRefreshToken<'_>,
 ) -> Result<(), sqlx::Error> {
     let family = token.family;
     sqlx::query(
         "INSERT INTO refresh_tokens (id, user_id, family_id, token_hash, expires_at, family_started_at) \
-         VALUES ($1, $2, $3, $4, $5, COALESCE($6, now()))",
+         VALUES ($1, $2, $3, $4, now() + $5::bigint * interval '1 second', COALESCE($6, now()))",
     )
     .bind(Uuid::new_v4())
     .bind(token.user_id)
     .bind(family.id)
     .bind(token.token_hash)
-    .bind(token.expires_at)
+    .bind(token.lifetime_seconds)
     .bind(family.started_at)
-    .execute(pool)
+    .execute(connection)
     .await?;
 
     Ok(())

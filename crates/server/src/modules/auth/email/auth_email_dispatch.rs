@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use uuid::Uuid;
+
 use crate::app_state::AppState;
 use crate::modules::auth::email::auth_email::{
     AuthEmailContext, password_reset_email, verification_email,
@@ -34,6 +36,23 @@ pub struct AuthEmailRequest<'a> {
     pub kind: AuthEmailKind,
 }
 
+/// An already issued link token to email to its user.
+pub struct AuthEmailLink<'a> {
+    pub user: &'a User,
+    pub kind: AuthEmailKind,
+    pub token: &'a str,
+}
+
+impl AuthEmailKind {
+    pub fn token_request(self, user_id: Uuid) -> OneTimeTokenRequest<'static> {
+        OneTimeTokenRequest {
+            user_id,
+            purpose: self.token_purpose(),
+            code_challenge: None,
+        }
+    }
+}
+
 /// Issues a one-time token and emails its link to the user, in the background.
 pub async fn send_auth_email(
     state: &AppState,
@@ -42,23 +61,35 @@ pub async fn send_auth_email(
 ) -> Result<(), ApiError> {
     let user = request.user;
     let kind = request.kind;
-    let settings = load_tenant_settings(state, tenant.tenant_id).await?;
-    let token_request = OneTimeTokenRequest {
-        user_id: user.id,
-        purpose: kind.token_purpose(),
-        code_challenge: None,
-    };
-    let token = issue_one_time_token(&tenant.pool, token_request)
+    let token = issue_one_time_token(&tenant.pool, kind.token_request(user.id))
         .await
         .map_err(ApiError::internal)?;
+    let link = AuthEmailLink {
+        user,
+        kind,
+        token: &token,
+    };
+
+    email_auth_link(state, tenant.tenant_id, &link).await
+}
+
+/// Emails a link whose token the caller issued (e.g. inside its own transaction).
+pub async fn email_auth_link(
+    state: &AppState,
+    tenant_id: Uuid,
+    link: &AuthEmailLink<'_>,
+) -> Result<(), ApiError> {
+    let user = link.user;
+    let token = link.token;
+    let settings = load_tenant_settings(state, tenant_id).await?;
     let context = AuthEmailContext {
         recipient: &user.email,
         tenant_name: &settings.name,
         site_url: &settings.site_url,
     };
-    let email = match kind {
-        AuthEmailKind::Verification => verification_email(&context, &token),
-        AuthEmailKind::PasswordReset => password_reset_email(&context, &token),
+    let email = match link.kind {
+        AuthEmailKind::Verification => verification_email(&context, token),
+        AuthEmailKind::PasswordReset => password_reset_email(&context, token),
     };
     send_in_background(Arc::clone(&state.email_sender), email);
 

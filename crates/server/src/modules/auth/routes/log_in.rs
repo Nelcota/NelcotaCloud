@@ -5,15 +5,19 @@ use validator::Validate;
 
 use crate::app_state::AppState;
 use crate::modules::auth::password::password_authentication::{
-    PasswordAuthenticationError, authenticate_with_password,
+    PasswordAuthenticationError, VerifiedCredentials, authenticate_with_password,
 };
 use crate::modules::auth::rate_limiting::attempt_limiter::Attempt;
 use crate::modules::auth::rate_limiting::client_ip::ClientIp;
 use crate::modules::auth::session::session_family::SessionFamily;
-use crate::modules::auth::session::session_grant::{SessionGrant, issue_session};
+use crate::modules::auth::session::session_grant::{
+    SessionGrant, SessionRequest, issue_session_with,
+};
 use crate::modules::auth::session::session_issuer::SessionTokens;
 use crate::modules::auth::user::email_address::EmailAddress;
-use crate::modules::auth::user::user_lookup::find_credentials_by_email;
+use crate::modules::auth::user::user_lookup::{
+    find_credentials_by_email, lock_if_password_unchanged,
+};
 use crate::modules::auth::user::user_record::User;
 use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::modules::tenants::settings::loaded_tenant_settings::requires_email_verification;
@@ -46,21 +50,47 @@ pub async fn log_in(
         .login
         .check(&attempt)
         .map_err(|_| ApiError::RateLimited)?;
-    let user = authenticate(&state, &tenant, body).await?;
-    ensure_email_verified_if_required(&state, &tenant, &user).await?;
-    let grant = SessionGrant {
-        user,
-        family: SessionFamily::new_login(),
-    };
+    let verified = authenticate(&state, &tenant, body).await?;
+    ensure_email_verified_if_required(&state, &tenant, &verified.user).await?;
 
-    Ok(Json(issue_session(&state, &tenant, grant).await?))
+    Ok(Json(open_session(&state, &tenant, verified).await?))
+}
+
+/// Creates the session while holding the user's row with the password just verified, so a
+/// password reset racing with this login either makes it fail or revokes what it created.
+async fn open_session(
+    state: &AppState,
+    tenant: &TenantContext,
+    verified: VerifiedCredentials,
+) -> Result<SessionTokens, ApiError> {
+    let user = verified.user;
+    let mut transaction = tenant.pool.begin().await.map_err(ApiError::internal)?;
+    let password_check =
+        lock_if_password_unchanged(&mut transaction, user.id, &verified.password_hash).await;
+
+    if password_check.map_err(ApiError::internal)? == false {
+        return Err(ApiError::InvalidCredentials);
+    }
+
+    let request = SessionRequest {
+        tenant_id: tenant.tenant_id,
+        connection: &mut transaction,
+        grant: SessionGrant {
+            user,
+            family: SessionFamily::new_login(),
+        },
+    };
+    let tokens = issue_session_with(state, request).await?;
+    transaction.commit().await.map_err(ApiError::internal)?;
+
+    Ok(tokens)
 }
 
 async fn authenticate(
     state: &AppState,
     tenant: &TenantContext,
     body: LogInBody,
-) -> Result<User, ApiError> {
+) -> Result<VerifiedCredentials, ApiError> {
     let email = EmailAddress::parse(&body.email).map_err(|_| ApiError::InvalidCredentials)?;
     let credentials = find_credentials_by_email(&tenant.pool, &email)
         .await

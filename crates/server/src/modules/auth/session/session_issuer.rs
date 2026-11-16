@@ -1,5 +1,5 @@
 use serde::Serialize;
-use sqlx::PgPool;
+use sqlx::PgConnection;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -44,13 +44,14 @@ pub struct SessionIssuer<'a> {
     pub tenant_id: Uuid,
     pub issuer: &'a str,
     pub signing_key: &'a PreparedSigningKey,
-    pub tenant_pool: &'a PgPool,
 }
 
 impl SessionIssuer<'_> {
-    /// `family` groups every rotation of one login, so reuse can revoke the whole chain.
+    /// `family` groups every rotation of one login, so reuse can revoke the whole chain. The
+    /// refresh token is written on `connection`, so callers can do it inside their transaction.
     pub async fn issue(
         &self,
+        connection: &mut PgConnection,
         user: User,
         family: SessionFamily,
     ) -> Result<SessionTokens, SessionError> {
@@ -69,9 +70,9 @@ impl SessionIssuer<'_> {
             user_id: user.id,
             family,
             token_hash: &refresh_token.hash,
-            expires_at: expiry_after(now, REFRESH_TOKEN_LIFETIME)?,
+            lifetime_seconds: REFRESH_TOKEN_LIFETIME.whole_seconds(),
         };
-        insert_refresh_token(self.tenant_pool, new_refresh_token).await?;
+        insert_refresh_token(connection, new_refresh_token).await?;
 
         Ok(SessionTokens {
             access_token,
