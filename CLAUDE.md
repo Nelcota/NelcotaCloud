@@ -37,6 +37,34 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
 - `cargo test --workspace`: run all tests.
 - `cargo fmt --all` and `cargo clippy --workspace --all-targets -- -D warnings`.
 
+## Folder structure
+
+Modular monolith in `crates/server/src/`: one folder per business context under `modules/`.
+
+- Root: `main.rs`, `app_config.rs`, `app_state.rs` (composition root that holds every module's
+  services), `router.rs` (maps URLs to module routes; no logic), `startup/` (error, settings and
+  state builders, HTTP server).
+- `modules/<module>/`: everything one context owns, grouped in sub-packages by subject, plus its
+  handlers in `routes/` (one file per endpoint, no business logic beyond request/response mapping).
+  - `tenants/`: `access` (TenantContext, AdminAccess), `api_keys`, `signing_keys`, `database`
+    (tenant pools, create/migrate/drop), `provisioning`, `settings` (site URL, tenant settings).
+  - `auth/`: `user` (record, lookup, registration, account updates), `password`, `session`
+    (JWT, refresh tokens, issuing), `one_time_token`, `email` (auth emails), `rate_limiting`.
+  - `oauth/`: `provider` (providers, endpoints, credentials), `client`, `login` (start, completion,
+    state), `profile` (one file per provider), `identity` (identities, account linking).
+- `shared/`: infrastructure with no business rules (`crypto`, `http` errors and JSON validation,
+  `database` migrators, `email` SMTP sender). `shared` never imports from `modules`.
+- A new file goes into the sub-package of its subject; create a sub-package when a module has
+  several files about one subject. Never leave loose files at a module root; `mod.rs` files only
+  declare modules.
+- Split a file when it has more than one reason to change: a type and its storage, two providers,
+  two endpoints, a rule and its HTTP mapping.
+- Dependencies point one way: `tenants → shared`, `auth → tenants`, `oauth → auth, tenants`.
+  Never create a cycle; if two modules need each other, the shared piece belongs in the lower one.
+- A new product of the BaaS (storage, database, functions) starts as a new module; split modules
+  into workspace crates only when the compiler-enforced boundary is worth the extra setup.
+- Migrations live in `crates/server/migrations/` (`control_plane/` and `tenant/`).
+
 ## UI design
 
 - Every clickable element shows the pointer (hand) cursor on hover; keep a global CSS rule that

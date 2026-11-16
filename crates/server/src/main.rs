@@ -1,7 +1,8 @@
 #![forbid(unsafe_code)]
 
 use server::app_config::AppConfig;
-use server::startup::{StartupError, run_server};
+use server::startup::server::run_server;
+use server::startup::startup_error::StartupError;
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]

@@ -2,15 +2,15 @@ use std::sync::Arc;
 
 use sqlx::PgPool;
 
-use crate::crypto::secret_box::SecretBox;
+use crate::shared::crypto::secret_box::SecretBox;
 use axum::http::HeaderName;
 
-use crate::control_plane::signing_key_cache::SigningKeyCache;
-use crate::email::email_sender::EmailSender;
-use crate::http::rate_limits::RateLimits;
-use crate::oauth::oauth_login::OAuthLoginContext;
-use crate::oauth::provider_endpoints::OAuthEndpoints;
-use crate::tenant_database::tenant_pool_registry::TenantPoolRegistry;
+use crate::modules::auth::rate_limiting::auth_rate_limits::RateLimits;
+use crate::modules::oauth::login::oauth_login_context::OAuthLoginContext;
+use crate::modules::oauth::provider::provider_endpoints::OAuthEndpoints;
+use crate::modules::tenants::database::tenant_pool_registry::TenantPoolRegistry;
+use crate::modules::tenants::signing_keys::signing_key_cache::SigningKeyCache;
+use crate::shared::email::email_sender::EmailSender;
 
 #[derive(Clone)]
 pub struct AppState {
