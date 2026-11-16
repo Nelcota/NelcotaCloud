@@ -1,3 +1,4 @@
+use sqlx::error::DatabaseError;
 use sqlx::{PgConnection, PgPool};
 
 use crate::modules::auth::session::refresh_token_repository::end_all_user_sessions;
@@ -111,7 +112,7 @@ fn map_insert_user_error(error: InsertUserError) -> AccountLinkError {
 fn map_unique_violation(error: sqlx::Error) -> AccountLinkError {
     let database_error = error.as_database_error();
 
-    if database_error.is_some_and(|database_error| database_error.is_unique_violation()) {
+    if database_error.is_some_and(DatabaseError::is_unique_violation) {
         return AccountLinkError::Conflict;
     }
 

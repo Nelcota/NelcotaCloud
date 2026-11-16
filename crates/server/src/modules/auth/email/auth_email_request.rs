@@ -33,7 +33,7 @@ pub struct EmailLinkRequest<'a> {
 pub fn request_email_link(
     state: &AppState,
     tenant: TenantContext,
-    request: EmailLinkRequest<'_>,
+    request: &EmailLinkRequest<'_>,
 ) -> Result<StatusCode, ApiError> {
     let attempt = Attempt {
         tenant_id: tenant.tenant_id,

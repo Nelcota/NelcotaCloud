@@ -45,6 +45,8 @@ pub async fn insert_refresh_token(
     Ok(())
 }
 
+/// Consumes a refresh token, or reports it as reused or invalid.
+///
 /// Revokes the token in one conditional UPDATE, so two concurrent refreshes cannot both win.
 /// It also refuses tokens whose family was revoked or whose user's sessions were ended, which
 /// catches successors inserted by a refresh that raced with the revocation.

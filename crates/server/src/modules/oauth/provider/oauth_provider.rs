@@ -7,15 +7,15 @@ pub enum OAuthProvider {
 impl OAuthProvider {
     pub fn as_str(self) -> &'static str {
         match self {
-            OAuthProvider::Google => "google",
-            OAuthProvider::GitHub => "github",
+            Self::Google => "google",
+            Self::GitHub => "github",
         }
     }
 
     pub fn parse(raw: &str) -> Option<Self> {
         match raw {
-            "google" => Some(OAuthProvider::Google),
-            "github" => Some(OAuthProvider::GitHub),
+            "google" => Some(Self::Google),
+            "github" => Some(Self::GitHub),
             _ => None,
         }
     }
@@ -23,8 +23,8 @@ impl OAuthProvider {
     /// The minimum needed to read a stable user id and a verified email.
     pub fn scopes(self) -> &'static [&'static str] {
         match self {
-            OAuthProvider::Google => &["openid", "email"],
-            OAuthProvider::GitHub => &["read:user", "user:email"],
+            Self::Google => &["openid", "email"],
+            Self::GitHub => &["read:user", "user:email"],
         }
     }
 }

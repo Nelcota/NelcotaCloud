@@ -74,6 +74,8 @@ pub fn verify_access_token(
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use time::{Duration, OffsetDateTime};
 
     use super::*;
@@ -82,7 +84,7 @@ mod tests {
     type TestResult = Result<(), Box<dyn std::error::Error>>;
 
     fn tenant_keys() -> Result<TenantSigningKeys, Box<dyn std::error::Error>> {
-        let active = PreparedSigningKey::prepare(SigningKey::generate()?)?;
+        let active = PreparedSigningKey::prepare(&SigningKey::generate()?)?;
 
         Ok(TenantSigningKeys::new(active, Vec::new())?)
     }
@@ -162,7 +164,7 @@ mod tests {
 
         let verification = verify_access_token(&token, &tenant_keys()?, &audience);
 
-        assert!(matches!(verification, Err(AccessTokenError::UnknownKeyId)));
+        assert_matches!(verification, Err(AccessTokenError::UnknownKeyId));
         Ok(())
     }
 }

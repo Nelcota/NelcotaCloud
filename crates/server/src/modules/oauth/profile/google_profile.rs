@@ -4,7 +4,7 @@ use crate::modules::oauth::profile::provider_profile::{
     ProfileError, ProfileRequest, ProviderProfile, get_json,
 };
 
-/// OpenID Connect userinfo response.
+/// Google OIDC `userinfo` response.
 #[derive(Deserialize)]
 struct GoogleUserInfo {
     sub: String,

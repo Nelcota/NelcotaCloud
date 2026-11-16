@@ -21,14 +21,14 @@ where
     async fn from_request(request: Request, state: &S) -> Result<Self, Self::Rejection> {
         let Json(body) = Json::<T>::from_request(request, state)
             .await
-            .map_err(map_rejection)?;
+            .map_err(|rejection| map_rejection(&rejection))?;
         body.validate().map_err(ApiError::invalid_request)?;
 
         Ok(Self(body))
     }
 }
 
-fn map_rejection(rejection: JsonRejection) -> ApiError {
+fn map_rejection(rejection: &JsonRejection) -> ApiError {
     match rejection.status() {
         StatusCode::UNSUPPORTED_MEDIA_TYPE => ApiError::UnsupportedMediaType,
         StatusCode::PAYLOAD_TOO_LARGE => ApiError::PayloadTooLarge,

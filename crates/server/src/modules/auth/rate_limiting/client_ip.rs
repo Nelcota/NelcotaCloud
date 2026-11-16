@@ -1,3 +1,4 @@
+use std::future::{Future, ready};
 use std::net::{IpAddr, SocketAddr};
 
 use axum::extract::{ConnectInfo, FromRequestParts};
@@ -14,19 +15,27 @@ pub struct ClientIp(pub IpAddr);
 impl FromRequestParts<AppState> for ClientIp {
     type Rejection = ApiError;
 
-    async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, ApiError> {
-        if let Some(header_name) = &state.settings.client_ip_header {
-            return client_ip_from_header(&parts.headers, header_name);
-        }
-
-        let Some(ConnectInfo(peer)) = parts.extensions.get::<ConnectInfo<SocketAddr>>() else {
-            return Err(ApiError::internal(
-                "connection info missing: serve the router with connect info",
-            ));
-        };
-
-        Ok(ClientIp(peer.ip()))
+    /// Nothing to wait for: the IP is read from the request, so the future is already resolved.
+    fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> impl Future<Output = Result<Self, ApiError>> + Send {
+        ready(resolve_client_ip(parts, state))
     }
+}
+
+fn resolve_client_ip(parts: &Parts, state: &AppState) -> Result<ClientIp, ApiError> {
+    if let Some(header_name) = &state.settings.client_ip_header {
+        return client_ip_from_header(&parts.headers, header_name);
+    }
+
+    let Some(ConnectInfo(peer)) = parts.extensions.get::<ConnectInfo<SocketAddr>>() else {
+        return Err(ApiError::internal(
+            "connection info missing: serve the router with connect info",
+        ));
+    };
+
+    Ok(ClientIp(peer.ip()))
 }
 
 /// A request without the proxy header did not come through the proxy, so it is rejected.

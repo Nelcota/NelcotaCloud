@@ -9,6 +9,8 @@ pub enum PasswordAuthenticationError {
     Hashing(#[from] PasswordHashingError),
 }
 
+/// Checks an email's password in constant work.
+///
 /// Always runs one Argon2 verification, even for unknown emails or passwordless (OAuth) users,
 /// so response time does not reveal which accounts exist. `dummy_password_hash` is the hash of
 /// a random password nobody knows.

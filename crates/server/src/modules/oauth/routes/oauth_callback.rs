@@ -27,9 +27,11 @@ pub struct CallbackQuery {
     pub code: Option<String>,
 }
 
-/// `GET /oauth/callback`: the provider sends the browser here. On success the browser goes back
-/// to the app with a short-lived `code` (exchanged at `POST /oauth/token` with the app's PKCE
-/// verifier), never with tokens in the URL; on failure, with an `error` code.
+/// `GET /oauth/callback`: the provider sends the browser here.
+///
+/// On success the browser goes back to the app with a short-lived `code` (exchanged at
+/// `POST /oauth/token` with the app's PKCE verifier), never with tokens in the URL; on
+/// failure, with an `error` code.
 pub async fn oauth_callback(
     State(state): State<AppState>,
     Query(query): Query<CallbackQuery>,

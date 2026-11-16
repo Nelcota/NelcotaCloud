@@ -6,7 +6,7 @@ const MIN_ADMIN_TOKEN_LENGTH: usize = 32;
 const PUBLIC_URL_SCHEMES: [&str; 2] = ["http", "https"];
 const POSTGRES_URL_SCHEMES: [&str; 2] = ["postgres", "postgresql"];
 
-#[derive(Debug, thiserror::Error, PartialEq)]
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum ConfigError {
     #[error("invalid environment: {0}")]
     Environment(String),
@@ -37,7 +37,7 @@ pub struct AppConfig {
 
 impl AppConfig {
     pub fn from_environment() -> Result<Self, ConfigError> {
-        let config: AppConfig =
+        let config: Self =
             envy::from_env().map_err(|error| ConfigError::Environment(error.to_string()))?;
         let config = config.trimmed();
         config.validate()?;
@@ -158,6 +158,8 @@ fn validate_tenant_database_base_url(raw_url: &str) -> Result<(), ConfigError> {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use super::*;
 
     fn valid_config() -> AppConfig {
@@ -206,10 +208,10 @@ mod tests {
                 ..valid_config()
             };
 
-            assert!(matches!(
+            assert_matches!(
                 config.validate(),
                 Err(ConfigError::InvalidUrl("PUBLIC_BASE_URL", _))
-            ));
+            );
         }
     }
 
@@ -226,10 +228,10 @@ mod tests {
                 ..valid_config()
             };
 
-            assert!(matches!(
+            assert_matches!(
                 config.validate(),
                 Err(ConfigError::InvalidUrl("TENANT_DATABASE_BASE_URL", _))
-            ));
+            );
         }
     }
 

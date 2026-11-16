@@ -4,8 +4,11 @@ members = ["crates/server"]
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
+future_incompatible = { level = "warn", priority = -1 }
+nonstandard_style = { level = "deny", priority = -1 }
 
 [workspace.lints.clippy]
+perf = { level = "deny", priority = -1 }
 unwrap_used = "deny"
 expect_used = "deny"
 panic = "deny"
@@ -19,5 +22,16 @@ dbg_macro = "deny"
 print_stdout = "deny"
 print_stderr = "deny"
 let_underscore_must_use = "deny"
+# Ownership and allocation (rust-best-practices, chapters 1 and 3).
+redundant_clone = "deny"
+needless_collect = "deny"
+needless_pass_by_value = "deny"
+trivially_copy_pass_by_ref = "deny"
+redundant_closure_for_method_calls = "deny"
+unused_async = "deny"
+# Readability.
+use_self = "deny"
+doc_markdown = "deny"
+too_long_first_doc_paragraph = "deny"
 # The project style mandates explicit `== false` instead of the `!` operator (see CLAUDE.md).
 bool_comparison = "allow"

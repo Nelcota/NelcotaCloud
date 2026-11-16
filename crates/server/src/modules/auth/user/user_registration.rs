@@ -1,3 +1,4 @@
+use sqlx::error::DatabaseError;
 use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
@@ -51,7 +52,7 @@ pub async fn insert_oauth_user(
 fn map_unique_violation(error: sqlx::Error) -> InsertUserError {
     let database_error = error.as_database_error();
 
-    if database_error.is_some_and(|database_error| database_error.is_unique_violation()) {
+    if database_error.is_some_and(DatabaseError::is_unique_violation) {
         return InsertUserError::EmailTaken;
     }
 

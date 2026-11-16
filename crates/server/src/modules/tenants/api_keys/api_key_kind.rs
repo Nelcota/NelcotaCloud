@@ -8,22 +8,22 @@ pub enum ApiKeyKind {
 impl ApiKeyKind {
     pub fn as_str(self) -> &'static str {
         match self {
-            ApiKeyKind::Publishable => "publishable",
-            ApiKeyKind::Secret => "secret",
+            Self::Publishable => "publishable",
+            Self::Secret => "secret",
         }
     }
 
     pub fn token_prefix(self) -> &'static str {
         match self {
-            ApiKeyKind::Publishable => "nc_pk_",
-            ApiKeyKind::Secret => "nc_sk_",
+            Self::Publishable => "nc_pk_",
+            Self::Secret => "nc_sk_",
         }
     }
 
     pub fn parse(raw: &str) -> Option<Self> {
         match raw {
-            "publishable" => Some(ApiKeyKind::Publishable),
-            "secret" => Some(ApiKeyKind::Secret),
+            "publishable" => Some(Self::Publishable),
+            "secret" => Some(Self::Secret),
             _ => None,
         }
     }

@@ -3,9 +3,11 @@ use std::pin::Pin;
 
 use oauth2::{AsyncHttpClient, HttpRequest, HttpResponse};
 
-/// Sends oauth2's requests through our reqwest client (oauth2 itself is built without an HTTP
-/// client, which avoids pulling a second reqwest version). A named type with an explicitly
-/// `Send` future is needed: a closure makes the token exchange future non-Send for axum.
+/// Sends oauth2's requests through our reqwest client.
+///
+/// oauth2 itself is built without an HTTP client, which avoids pulling a second reqwest
+/// version. A named type with an explicitly `Send` future is needed: a closure makes the
+/// token exchange future non-Send for axum.
 pub struct OAuthHttpClient {
     client: reqwest::Client,
 }

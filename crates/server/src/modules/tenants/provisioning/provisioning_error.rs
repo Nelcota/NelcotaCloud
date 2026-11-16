@@ -20,8 +20,8 @@ impl From<TenantDatabaseError> for ProvisioningError {
     /// An existing database means another tenant already claimed the slug.
     fn from(error: TenantDatabaseError) -> Self {
         match error {
-            TenantDatabaseError::AlreadyExists => ProvisioningError::SlugTaken,
-            other => ProvisioningError::TenantDatabase(other),
+            TenantDatabaseError::AlreadyExists => Self::SlugTaken,
+            other => Self::TenantDatabase(other),
         }
     }
 }

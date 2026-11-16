@@ -1,3 +1,4 @@
+use sqlx::error::DatabaseError;
 use sqlx::postgres::{PgConnection, PgPoolOptions};
 use sqlx::{AssertSqlSafe, Connection};
 
@@ -90,7 +91,7 @@ impl<'a> TenantDatabaseServer<'a> {
 
 fn map_duplicate_database(error: sqlx::Error) -> TenantDatabaseError {
     let database_error = error.as_database_error();
-    let error_code = database_error.and_then(|database_error| database_error.code());
+    let error_code = database_error.and_then(DatabaseError::code);
 
     if error_code.is_some_and(|code| {
         code == DUPLICATE_DATABASE_ERROR_CODE || code == UNIQUE_VIOLATION_ERROR_CODE

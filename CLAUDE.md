@@ -48,7 +48,7 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
   http://localhost:8026). Copy `.env.example` to `.env` first. The integration tests need both.
 - `cargo run -p server`: run the API.
 - `cargo test --workspace`: run all tests.
-- `cargo fmt --all` and `cargo clippy --workspace --all-targets -- -D warnings`.
+- `cargo fmt --all` and `cargo clippy --workspace --all-targets --all-features --locked -- -D warnings`.
 
 ## Folder structure
 
@@ -239,9 +239,14 @@ Rules:
 After every change, before considering the task done:
 
 1. Format: `cargo fmt --all`
-2. Lint: `cargo clippy --workspace --all-targets -- -D warnings`
+2. Lint: `cargo clippy --workspace --all-targets --all-features --locked -- -D warnings`
 3. Test: `cargo test --workspace`
-4. Fix every warning. Never add `#[allow(...)]` to silence a lint.
+4. Fix every warning. Never add `#[allow(...)]` to silence a lint. Project-wide lints live in
+   `[workspace.lints]` in the root `Cargo.toml`.
+
+Follow the `rust-best-practices` skill (`.claude/skills/rust-best-practices`) for Rust idioms.
+Where it conflicts with this file, this file wins (e.g. no `else`, explicit `== false`, comments
+only for the why, `mod.rs` files only declare modules).
 
 Style: rustfmt defaults (4-space indentation).
 

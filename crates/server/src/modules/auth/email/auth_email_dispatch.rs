@@ -23,8 +23,8 @@ pub enum AuthEmailKind {
 impl AuthEmailKind {
     fn token_purpose(self) -> OneTimeTokenPurpose {
         match self {
-            AuthEmailKind::Verification => OneTimeTokenPurpose::EmailVerification,
-            AuthEmailKind::PasswordReset => OneTimeTokenPurpose::PasswordReset,
+            Self::Verification => OneTimeTokenPurpose::EmailVerification,
+            Self::PasswordReset => OneTimeTokenPurpose::PasswordReset,
         }
     }
 }

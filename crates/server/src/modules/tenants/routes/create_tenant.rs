@@ -52,7 +52,7 @@ pub async fn create_tenant(
     }
 
     let settings = &state.settings;
-    let provisioner = TenantProvisioner {
+    let tenant_provisioner = TenantProvisioner {
         control_plane_pool: &state.control_plane_pool,
         secret_box: &state.secret_box,
         tenant_database_base_url: &settings.tenant_database_base_url,
@@ -63,7 +63,7 @@ pub async fn create_tenant(
         site_url,
         require_email_verification: body.require_email_verification.unwrap_or(true),
     };
-    let provisioned = provisioner
+    let provisioned = tenant_provisioner
         .provision(request)
         .await
         .map_err(map_provisioning_error)?;

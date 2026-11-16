@@ -14,7 +14,7 @@ pub struct PreparedSigningKey {
 }
 
 impl PreparedSigningKey {
-    pub fn prepare(signing_key: SigningKey) -> Result<Self, SigningKeyError> {
+    pub fn prepare(signing_key: &SigningKey) -> Result<Self, SigningKeyError> {
         let encoding_key = EncodingKey::from_ed_der(&signing_key.private_key_der);
         let mut public_jwk = Jwk::from_encoding_key(&encoding_key, Algorithm::EdDSA)?;
         public_jwk.common.key_id = Some(signing_key.key_id.to_string());
@@ -38,7 +38,7 @@ mod tests {
     fn publishes_the_key_id_without_private_material() -> Result<(), Box<dyn std::error::Error>> {
         let signing_key = SigningKey::generate()?;
         let key_id = signing_key.key_id;
-        let prepared = PreparedSigningKey::prepare(signing_key)?;
+        let prepared = PreparedSigningKey::prepare(&signing_key)?;
         let public_jwk = serde_json::to_value(&prepared.public_jwk)?;
 
         assert_eq!(prepared.public_jwk.common.key_id, Some(key_id.to_string()));

@@ -33,7 +33,7 @@ pub fn decode_hex(text: &str) -> Result<Vec<u8>, HexDecodeError> {
 
     let (pairs, _) = bytes.as_chunks::<2>();
 
-    pairs.iter().map(decode_hex_pair).collect()
+    pairs.iter().copied().map(decode_hex_pair).collect()
 }
 
 /// `nibble` is always below 16; the fallback only satisfies the no-panic indexing rule.
@@ -43,8 +43,8 @@ fn hex_digit(nibble: u8) -> char {
     char::from(digit)
 }
 
-fn decode_hex_pair(pair: &[u8; 2]) -> Result<u8, HexDecodeError> {
-    let [high_byte, low_byte] = *pair;
+fn decode_hex_pair(pair: [u8; 2]) -> Result<u8, HexDecodeError> {
+    let [high_byte, low_byte] = pair;
     let high = char::from(high_byte).to_digit(HEX_RADIX);
     let low = char::from(low_byte).to_digit(HEX_RADIX);
     let (Some(high), Some(low)) = (high, low) else {

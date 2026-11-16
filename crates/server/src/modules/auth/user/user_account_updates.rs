@@ -46,9 +46,11 @@ pub async fn replace_unverified_password(
     .await
 }
 
-/// A provider just proved ownership of this email. If the local account never verified it,
-/// whoever registered it may not own the inbox (pre-account takeover), so their password is
-/// discarded before the identity is linked. The caller also ends their sessions.
+/// Marks an account verified after a provider proved ownership of its email.
+///
+/// If the local account never verified it, whoever registered it may not own the inbox
+/// (pre-account takeover), so their password is discarded before the identity is linked.
+/// The caller also ends their sessions.
 pub async fn claim_account_for_verified_email(
     connection: &mut PgConnection,
     user_id: Uuid,

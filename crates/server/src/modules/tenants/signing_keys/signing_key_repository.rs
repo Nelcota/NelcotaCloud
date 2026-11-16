@@ -79,7 +79,7 @@ pub async fn load_signing_keys(
         let key_id = stored.id;
         let is_active = stored.is_active;
 
-        match (open_and_prepare(secret_box, tenant_id, stored), is_active) {
+        match (open_and_prepare(secret_box, tenant_id, &stored), is_active) {
             (Ok(prepared), true) => active = Some(prepared),
             (Ok(prepared), false) => retired.push(prepared),
             (Err(error), true) => return Err(error),
@@ -106,7 +106,7 @@ struct StoredSigningKey {
 fn open_and_prepare(
     secret_box: &SecretBox,
     tenant_id: Uuid,
-    stored: StoredSigningKey,
+    stored: &StoredSigningKey,
 ) -> Result<PreparedSigningKey, SigningKeyStoreError> {
     let context = signing_key_context(tenant_id, stored.id);
     let private_key_der = secret_box.open(&stored.private_key_ciphertext, &context)?;
@@ -115,7 +115,7 @@ fn open_and_prepare(
         private_key_der,
     };
 
-    Ok(PreparedSigningKey::prepare(signing_key)?)
+    Ok(PreparedSigningKey::prepare(&signing_key)?)
 }
 
 /// Binds each ciphertext to its tenant and key, so it cannot be replayed in another row.

@@ -8,6 +8,8 @@ const MAX_PKCE_LENGTH: usize = 128;
 #[error("code_challenge and code_verifier must be 43-128 characters of [A-Za-z0-9-._~]")]
 pub struct InvalidPkceValue;
 
+/// Validates the app's PKCE challenge.
+///
 /// PKCE between the tenant's app and this server: the app sends the S256 challenge when it
 /// starts the login and must present the matching verifier to redeem the login code, so a
 /// stolen or injected code is useless to anyone but the app that started the flow.

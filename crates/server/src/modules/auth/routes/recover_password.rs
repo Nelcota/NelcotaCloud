@@ -24,5 +24,5 @@ pub async fn recover_password(
         kind: AuthEmailKind::PasswordReset,
     };
 
-    request_email_link(&state, tenant, request)
+    request_email_link(&state, tenant, &request)
 }

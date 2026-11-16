@@ -42,11 +42,9 @@ impl OAuthLoginError {
     /// The `error` query parameter sent back to the tenant's app; never internal details.
     pub fn redirect_error_code(&self) -> &'static str {
         match self {
-            OAuthLoginError::ProviderDenied => "access_denied",
-            OAuthLoginError::AccountLink(AccountLinkError::NoVerifiedEmail) => "email_not_verified",
-            OAuthLoginError::AccountLink(AccountLinkError::ProviderAccountMismatch) => {
-                "account_conflict"
-            }
+            Self::ProviderDenied => "access_denied",
+            Self::AccountLink(AccountLinkError::NoVerifiedEmail) => "email_not_verified",
+            Self::AccountLink(AccountLinkError::ProviderAccountMismatch) => "account_conflict",
             _ => "server_error",
         }
     }
