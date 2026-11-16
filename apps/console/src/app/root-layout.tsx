@@ -1,6 +1,8 @@
 import { Link, Outlet } from '@tanstack/react-router'
+import type { JSX } from 'react'
 
-export function RootLayout() {
+/** The shell around every page: header and the routed page below it. */
+export function RootLayout(): JSX.Element {
   return (
     <div className="min-h-svh">
       <header className="border-b">

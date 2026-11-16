@@ -1,17 +1,18 @@
 import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router'
 
-import { HomePage } from '@/routes/home-page'
-import { RootLayout } from '@/routes/root-layout'
+import { RootLayout } from '@/app/root-layout'
+import { DashboardPage } from '@/modules/dashboard/pages/dashboard-page'
 
+/** Maps URLs to module pages; no logic lives here. */
 const rootRoute = createRootRoute({ component: RootLayout })
 
-const homeRoute = createRoute({
+const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: HomePage,
+  component: DashboardPage,
 })
 
-const routeTree = rootRoute.addChildren([homeRoute])
+const routeTree = rootRoute.addChildren([dashboardRoute])
 
 export const router = createRouter({ routeTree })
 

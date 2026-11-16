@@ -44,10 +44,10 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
 - Signing keys are cached per tenant for 5 minutes (`SigningKeyCache`).
 - Stack: Rust, tokio, axum, sqlx (PostgreSQL 17 in Docker), validator, argon2, jsonwebtoken, oauth2,
   reqwest, lettre, thiserror, tracing.
-- Console (`apps/console/`): React + TypeScript SPA built with Vite, TanStack Router (code-based
-  routes in `src/router.tsx`, pages in `src/routes/`) and TanStack Query, Tailwind CSS and
-  shadcn/ui (`src/components/ui/`). It talks to the API only; the API address is fixed at build
-  time by `VITE_API_URL`. Never put a secret key or the admin token in the browser.
+- Console (`apps/console/`): React + TypeScript SPA built with Vite, TanStack Router and TanStack
+  Query, Tailwind CSS and shadcn/ui; see "Console structure". It talks to the API only; the API
+  address is fixed at build time by `VITE_API_URL`. Never put a secret key or the admin token in
+  the browser.
 - Deploy: one VPS with `docker-compose.prod.yml`. Caddy (`deploy/caddy/`) is the only public
   service: it serves the built console, proxies the API, and obtains TLS certificates. The API
   trusts the address Caddy appends to `X-Forwarded-For` (`CLIENT_IP_HEADER`).
@@ -91,6 +91,40 @@ Modular monolith in `crates/server/src/`: one folder per business context under 
 - A new product of the BaaS (storage, database, functions) starts as a new module; split modules
   into workspace crates only when the compiler-enforced boundary is worth the extra setup.
 - Migrations live in `crates/server/migrations/` (`control_plane/` and `tenant/`).
+
+## Console structure
+
+The console mirrors the API: modules per business context, shared infrastructure, one-way
+dependencies. In `apps/console/src/`:
+
+- `main.tsx`: mounts the app with its providers; nothing else.
+- `app/`: composition root. `router.tsx` maps URLs to module pages (no logic), `root-layout.tsx`
+  is the shell, `query-client.ts` the shared cache, `global.css` the global styles.
+- `modules/<module>/`: everything one context owns (e.g. `projects`, `users`, `oauth-providers`):
+  - `pages/`: one file per route; composes components, no fetching or business logic.
+  - `components/`: UI of the module, one component per file.
+  - `queries/`: TanStack Query hooks (`use-*-query.ts`, `use-*-mutation.ts`); the only place that
+    calls `api/`.
+  - `api/`: one file per API call; the only place that calls `fetch`.
+  - Create these sub-folders only when the module has something for them.
+- `shared/`: infrastructure with no business rules: `api` (base URL, `ApiError`), `ui` (shadcn
+  components; add new ones with `npx shadcn@latest add`), `lib`. `shared` never imports from
+  `modules` or `app`.
+- Dependencies point one way: `app → modules → shared`. A module may use another module's
+  components; never create a cycle (`import/no-cycle` enforces it).
+
+TypeScript rules (the general rules of this file apply too: no `else`, no `!` negation, guard
+clauses, no boolean variables for conditions, max 3 parameters, small files and functions):
+
+- `strict` mode; never `any`, never the non-null assertion `x!`; handle `null` with a guard.
+- `=== false` instead of `!value`; `===`/`!==` only.
+- No ternaries to pick JSX or values; use guard returns or a small component.
+- Named exports only (no `export default`, except tool configs like `vite.config.ts`).
+- Exported functions and components declare their return type (`JSX.Element`, `Promise<void>`).
+- File names in kebab-case; components in PascalCase; hooks start with `use`.
+- Validate API responses before using them, like any data crossing a boundary.
+- `npm run lint` (oxlint, config in `.oxlintrc.json`) and `npm run build` (type check) must pass
+  with zero warnings before finishing.
 
 ## UI design
 
