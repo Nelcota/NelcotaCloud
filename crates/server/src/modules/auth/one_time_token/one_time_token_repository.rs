@@ -4,15 +4,24 @@ use uuid::Uuid;
 
 use crate::modules::auth::one_time_token::one_time_token_purpose::OneTimeTokenPurpose;
 use crate::shared::crypto::opaque_token::{OpaqueToken, hash_opaque_token};
+use crate::shared::time::expiry::{ExpiryOutOfRange, expiry_after};
+
+#[derive(Debug, thiserror::Error)]
+pub enum IssueOneTimeTokenError {
+    #[error("database error while storing a one-time token: {0}")]
+    Database(#[from] sqlx::Error),
+    #[error(transparent)]
+    Expiry(#[from] ExpiryOutOfRange),
+}
 
 /// Creates a token and returns its plaintext; only the hash is stored.
 pub async fn issue_one_time_token(
     pool: &PgPool,
     user_id: Uuid,
     purpose: OneTimeTokenPurpose,
-) -> Result<String, sqlx::Error> {
+) -> Result<String, IssueOneTimeTokenError> {
     let token = OpaqueToken::generate(purpose.token_prefix());
-    let expires_at = OffsetDateTime::now_utc() + purpose.lifetime();
+    let expires_at = expiry_after(OffsetDateTime::now_utc(), purpose.lifetime())?;
     sqlx::query(
         "INSERT INTO one_time_tokens (id, user_id, purpose, token_hash, expires_at) VALUES ($1, $2, $3, $4, $5)",
     )

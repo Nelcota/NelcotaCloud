@@ -31,14 +31,24 @@ pub async fn configure_oauth_provider(
     let Some(provider) = OAuthProvider::parse(&provider_name) else {
         return Err(ApiError::UnknownOAuthProvider);
     };
+    let client_id = body.client_id.trim();
+    let client_secret = body.client_secret.trim();
+
+    // The length check accepts whitespace-only values, which would be stored as empty strings.
+    if client_id.is_empty() || client_secret.is_empty() {
+        return Err(ApiError::InvalidRequest(
+            "client_id and client_secret must not be blank".to_owned(),
+        ));
+    }
+
     let client_secret_ciphertext = state
         .secret_box
-        .seal(body.client_secret.trim().as_bytes())
+        .seal(client_secret.as_bytes())
         .map_err(ApiError::internal)?;
     let registration = ProviderRegistration {
         tenant_id: tenant.tenant_id,
         provider,
-        client_id: body.client_id.trim(),
+        client_id,
         client_secret_ciphertext: &client_secret_ciphertext,
     };
     upsert_provider_credentials(&state.control_plane_pool, registration)

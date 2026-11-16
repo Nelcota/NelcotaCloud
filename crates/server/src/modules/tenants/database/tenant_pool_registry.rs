@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
@@ -12,6 +13,9 @@ use crate::shared::database::migrators::TENANT_MIGRATOR;
 
 /// Small per-tenant pools: with one database per tenant, connections multiply by tenant count.
 const MAX_CONNECTIONS_PER_TENANT: u32 = 5;
+/// Idle tenants give their connections back quickly: the sum of every tenant's pool must stay
+/// under the Postgres server's `max_connections`.
+const TENANT_POOL_IDLE_TIMEOUT: Duration = Duration::from_secs(60);
 
 #[derive(Debug, thiserror::Error)]
 pub enum TenantPoolError {
@@ -66,6 +70,7 @@ impl TenantPoolRegistry {
             String::from_utf8(url_bytes).map_err(|_| TenantPoolError::InvalidDatabaseUrl)?;
         let pool = PgPoolOptions::new()
             .max_connections(MAX_CONNECTIONS_PER_TENANT)
+            .idle_timeout(TENANT_POOL_IDLE_TIMEOUT)
             .connect_lazy(&database_url)?;
         // Brings databases of tenants created before the latest migrations up to date.
         TENANT_MIGRATOR.run(&pool).await?;

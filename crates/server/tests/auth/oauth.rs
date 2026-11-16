@@ -93,6 +93,41 @@ async fn unverified_provider_email_is_refused() -> TestResult {
 }
 
 #[tokio::test]
+async fn blank_callback_code_counts_as_denied_access() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    configure_github(&server, &tenant).await?;
+
+    let state = start_authorization(&server, &tenant).await?;
+    let callback = call_back(&server, &state, "   ").await?;
+    assert_eq!(query_value(&callback, "error")?, "access_denied");
+
+    server.drop_tenant(&tenant).await
+}
+
+#[tokio::test]
+async fn rejects_blank_provider_credentials() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+
+    for body in [
+        json!({ "client_id": "   ", "client_secret": FAKE_CLIENT_SECRET }),
+        json!({ "client_id": FAKE_CLIENT_ID, "client_secret": " \t " }),
+    ] {
+        let response = server
+            .client
+            .put(server.url("/auth/v1/admin/oauth/github"))
+            .header("apikey", &tenant.secret_key)
+            .json(&body)
+            .send()
+            .await?;
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    server.drop_tenant(&tenant).await
+}
+
+#[tokio::test]
 async fn rejects_unsafe_or_unconfigured_authorizations() -> TestResult {
     let server = TestServer::start().await?;
     let tenant = server.create_tenant().await?;

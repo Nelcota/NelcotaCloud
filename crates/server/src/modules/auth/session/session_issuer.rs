@@ -12,6 +12,7 @@ use crate::modules::auth::session::refresh_token_repository::{
 use crate::modules::auth::user::user_record::User;
 use crate::modules::tenants::signing_keys::signing_key::SigningKey;
 use crate::shared::crypto::opaque_token::OpaqueToken;
+use crate::shared::time::expiry::{ExpiryOutOfRange, expiry_after};
 
 const ACCESS_TOKEN_LIFETIME: Duration = Duration::minutes(15);
 const REFRESH_TOKEN_LIFETIME: Duration = Duration::days(30);
@@ -24,6 +25,8 @@ pub enum SessionError {
     AccessToken(#[from] AccessTokenError),
     #[error("database error while storing refresh token: {0}")]
     Database(#[from] sqlx::Error),
+    #[error(transparent)]
+    Expiry(#[from] ExpiryOutOfRange),
 }
 
 #[derive(Debug, Serialize)]
@@ -52,7 +55,7 @@ impl SessionIssuer<'_> {
             aud: self.tenant_id.to_string(),
             iss: self.issuer.to_owned(),
             iat: now.unix_timestamp(),
-            exp: (now + ACCESS_TOKEN_LIFETIME).unix_timestamp(),
+            exp: expiry_after(now, ACCESS_TOKEN_LIFETIME)?.unix_timestamp(),
             email: user.email.clone(),
         };
         let access_token = sign_access_token(&claims, self.signing_key)?;
@@ -61,7 +64,7 @@ impl SessionIssuer<'_> {
             user_id: user.id,
             family_id,
             token_hash: &refresh_token.hash,
-            expires_at: now + REFRESH_TOKEN_LIFETIME,
+            expires_at: expiry_after(now, REFRESH_TOKEN_LIFETIME)?,
         };
         insert_refresh_token(self.tenant_pool, new_refresh_token).await?;
 

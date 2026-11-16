@@ -9,7 +9,7 @@ use crate::modules::auth::session::access_token::{
 use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::shared::http::api_error::ApiError;
 
-const BEARER_PREFIX: &str = "Bearer ";
+const BEARER_SCHEME: &str = "Bearer";
 
 /// A request with a valid API key and an access token issued by that same tenant.
 pub struct AuthenticatedUser {
@@ -47,13 +47,48 @@ fn bearer_token(parts: &Parts) -> Result<&str, ApiError> {
     let header_text = header_value
         .to_str()
         .map_err(|_| ApiError::InvalidAccessToken)?;
-    let Some(token) = header_text.strip_prefix(BEARER_PREFIX) else {
+    let Some(token) = parse_bearer_token(header_text) else {
         return Err(ApiError::InvalidAccessToken);
     };
 
-    if token.trim().is_empty() {
-        return Err(ApiError::InvalidAccessToken);
+    Ok(token)
+}
+
+/// `Bearer <token>`. The scheme is case-insensitive (RFC 7235); a blank token is no token.
+fn parse_bearer_token(header_text: &str) -> Option<&str> {
+    let (scheme, token) = header_text.trim().split_once(' ')?;
+    let token = token.trim();
+
+    if scheme.eq_ignore_ascii_case(BEARER_SCHEME) == false || token.is_empty() {
+        return None;
     }
 
-    Ok(token.trim())
+    Some(token)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn accepts_any_scheme_case() {
+        for header in ["Bearer abc", "bearer abc", "BEARER  abc ", "  Bearer abc"] {
+            assert_eq!(parse_bearer_token(header), Some("abc"));
+        }
+    }
+
+    #[test]
+    fn rejects_other_schemes_and_blank_tokens() {
+        for header in [
+            "",
+            "Bearer",
+            "Bearer ",
+            "Bearer    ",
+            "Basic abc",
+            "Bearerabc",
+            "abc",
+        ] {
+            assert_eq!(parse_bearer_token(header), None);
+        }
+    }
 }

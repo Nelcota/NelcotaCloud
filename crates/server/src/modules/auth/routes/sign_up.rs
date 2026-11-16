@@ -10,6 +10,7 @@ use crate::modules::auth::email::auth_email_dispatch::{
     AuthEmailKind, AuthEmailRequest, send_auth_email,
 };
 use crate::modules::auth::password::password_hashing::hash_password;
+use crate::modules::auth::password::password_policy::check_new_password;
 use crate::modules::auth::session::session_grant::{SessionGrant, issue_session};
 use crate::modules::auth::session::session_issuer::SessionTokens;
 use crate::modules::auth::user::email_address::EmailAddress;
@@ -45,6 +46,7 @@ pub async fn sign_up(
     ValidatedJson(body): ValidatedJson<SignUpBody>,
 ) -> SignUpResult {
     let email = EmailAddress::parse(&body.email).map_err(ApiError::invalid_request)?;
+    check_new_password(&body.password).map_err(ApiError::invalid_request)?;
     let settings = load_tenant_settings(&state, tenant.tenant_id).await?;
     let password_hash = hash_password(body.password)
         .await

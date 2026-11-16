@@ -5,6 +5,9 @@ use uuid::Uuid;
 use crate::modules::tenants::signing_keys::signing_key::{SigningKey, SigningKeyError};
 
 const REQUIRED_CLAIMS: [&str; 4] = ["exp", "aud", "iss", "sub"];
+/// Tolerated clock difference with other servers verifying our tokens. Explicit because the
+/// library default (60 s) would silently accept tokens expired for a whole minute.
+const EXPIRY_LEEWAY_SECONDS: u64 = 30;
 
 #[derive(Debug, thiserror::Error)]
 pub enum AccessTokenError {
@@ -64,6 +67,7 @@ pub fn verify_access_token(
     validation.set_audience(&[audience.tenant_id]);
     validation.set_issuer(&[audience.issuer]);
     validation.set_required_spec_claims(&REQUIRED_CLAIMS);
+    validation.leeway = EXPIRY_LEEWAY_SECONDS;
     let token_data = decode::<AccessTokenClaims>(token, &signing_key.decoding_key()?, &validation)?;
 
     Ok(token_data.claims)
@@ -85,7 +89,9 @@ mod tests {
             aud: tenant_id.to_string(),
             iss: ISSUER.to_owned(),
             iat: now.unix_timestamp(),
-            exp: (now + lifetime).unix_timestamp(),
+            exp: now
+                .unix_timestamp()
+                .saturating_add(lifetime.whole_seconds()),
             email: "ana@example.com".to_owned(),
         }
     }

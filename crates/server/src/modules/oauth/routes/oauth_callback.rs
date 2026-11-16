@@ -82,6 +82,8 @@ async fn complete_login(
     code: Option<String>,
 ) -> Result<String, OAuthLoginError> {
     let tenant_pool = state.tenant_pools.pool_for(pending.tenant_id).await?;
+    // A blank code is no code: treat it as the user denying access, not as a server error.
+    let code = code.filter(|code| code.trim().is_empty() == false);
     let callback = ProviderCallback {
         pending,
         tenant_pool: &tenant_pool,

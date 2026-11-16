@@ -5,6 +5,7 @@ use validator::Validate;
 use crate::modules::auth::one_time_token::one_time_token_purpose::OneTimeTokenPurpose;
 use crate::modules::auth::one_time_token::one_time_token_repository::consume_one_time_token;
 use crate::modules::auth::password::password_hashing::hash_password;
+use crate::modules::auth::password::password_policy::check_new_password;
 use crate::modules::auth::session::refresh_token_repository::revoke_all_user_refresh_tokens;
 use crate::modules::auth::user::user_account_updates::set_password;
 use crate::modules::tenants::access::tenant_context::TenantContext;
@@ -24,6 +25,8 @@ pub async fn reset_password(
     tenant: TenantContext,
     ValidatedJson(body): ValidatedJson<ResetPasswordBody>,
 ) -> Result<StatusCode, ApiError> {
+    // Checked before the token is consumed, so a rejected password does not burn the link.
+    check_new_password(&body.password).map_err(ApiError::invalid_request)?;
     let purpose = OneTimeTokenPurpose::PasswordReset;
     let user_id = consume_one_time_token(&tenant.pool, purpose, &body.token)
         .await

@@ -1,6 +1,7 @@
 mod email;
 mod fake_github;
 mod flow;
+mod input_edges;
 mod oauth;
 mod rate_limiting;
 mod rejections;
