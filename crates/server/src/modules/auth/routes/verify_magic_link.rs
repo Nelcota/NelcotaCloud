@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::modules::auth::login::login_completion::{LoginResponse, complete_login};
+use crate::modules::auth::mfa::mfa_factor_repository::delete_mfa_factor;
 use crate::modules::auth::one_time_token::one_time_token_purpose::OneTimeTokenPurpose;
 use crate::modules::auth::one_time_token::one_time_token_repository::consume_one_time_token;
 use crate::modules::auth::routes::verify_email::OneTimeTokenBody;
@@ -88,6 +89,9 @@ async fn verify_inbox_owner(
         .await
         .map_err(ApiError::internal)?;
     end_all_user_sessions(transaction, user_id)
+        .await
+        .map_err(ApiError::internal)?;
+    delete_mfa_factor(&mut *transaction, user_id)
         .await
         .map_err(ApiError::internal)?;
 

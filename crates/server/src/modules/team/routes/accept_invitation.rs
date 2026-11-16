@@ -37,6 +37,27 @@ pub async fn accept_invitation(
     Path(invitation_id): Path<Uuid>,
 ) -> Result<Json<AcceptedInvitation>, ApiError> {
     let email = invited_email_of(&account)?;
+    let platform_tenant_id =
+        crate::modules::tenants::platform::platform_tenant::find_platform_tenant_id(&state).await?;
+    let platform_pool = state
+        .tenant_pools
+        .pool_for(platform_tenant_id)
+        .await
+        .map_err(ApiError::internal)?;
+    let platform_user = crate::modules::auth::user::user_lookup::find_user_by_id(
+        &platform_pool,
+        account.account_id,
+    )
+    .await
+    .map_err(ApiError::internal)?;
+    let Some(platform_user) = platform_user else {
+        return Err(ApiError::InvalidAccessToken);
+    };
+
+    if platform_user.email_verified_at.is_none() {
+        return Err(ApiError::EmailNotVerified);
+    }
+
     let answer = InvitationAnswer {
         invitation_id,
         account_id: account.account_id,

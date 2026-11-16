@@ -46,9 +46,26 @@ pub async fn verify_platform_token(
     let claims = verify_access_token(access_token, &signing_keys, &audience)
         .map_err(|_| ApiError::InvalidAccessToken)?;
 
+    let tenant_pool = state
+        .tenant_pools
+        .pool_for(platform_tenant_id)
+        .await
+        .map_err(ApiError::internal)?;
+    let account =
+        crate::modules::auth::user::user_lookup::find_user_by_id(&tenant_pool, claims.sub)
+            .await
+            .map_err(ApiError::internal)?;
+    let Some(account) = account else {
+        return Err(ApiError::InvalidAccessToken);
+    };
+
+    if account.email_verified_at.is_none() || account.banned_at.is_some() {
+        return Err(ApiError::InvalidAccessToken);
+    }
+
     Ok(PlatformAccount {
         account_id: claims.sub,
-        email: claims.email,
+        email: account.email,
     })
 }
 
