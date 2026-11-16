@@ -28,7 +28,7 @@ export function TopBar(): JSX.Element {
 function Location({ location }: { location: ReturnType<typeof projectLocation> }): JSX.Element {
   if (location === null) {
     return (
-      <Link to="/" className="flex items-center gap-2 rounded-md px-1 md:hidden">
+      <Link to="/" className="flex items-center gap-2 rounded-md px-1">
         <LogoMark className="size-7" />
         <span className="text-sm font-semibold tracking-tight">NelcotaCloud</span>
       </Link>

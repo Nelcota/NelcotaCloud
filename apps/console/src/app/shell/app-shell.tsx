@@ -1,22 +1,17 @@
 import { Outlet, useLocation } from '@tanstack/react-router'
 import type { JSX } from 'react'
 
-import { ApiStatus } from '@/app/shell/api-status'
-import { IconRail } from '@/app/shell/icon-rail'
-import { ProjectNav } from '@/app/shell/project-nav'
 import { projectLocation } from '@/app/shell/project-sections'
+import { SidebarContent } from '@/app/shell/sidebar-content'
 import { TopBar } from '@/app/shell/top-bar'
 
 /**
- * The signed-in console: icon rail, the project's pages when a project is open, and the page
- * under a top bar. Below md the rail and the project column move into the top bar's menu sheet.
+ * The signed-in console: the sidebar when a project is open, and the page under a top bar.
+ * Below md the sidebar moves into the top bar's menu sheet.
  */
 export function AppShell(): JSX.Element {
   return (
     <div className="bg-background flex min-h-svh">
-      <aside className="bg-sidebar border-sidebar-border sticky top-0 hidden h-svh w-16 shrink-0 border-r md:block">
-        <IconRail />
-      </aside>
       <ProjectColumn />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />
@@ -30,22 +25,17 @@ export function AppShell(): JSX.Element {
   )
 }
 
+/** Outside a project the list of projects is the whole page, so it needs no sidebar. */
 function ProjectColumn(): JSX.Element | null {
   const { pathname } = useLocation()
-  const location = projectLocation(pathname)
 
-  if (location === null) {
+  if (projectLocation(pathname) === null) {
     return null
   }
 
   return (
-    <aside className="bg-sidebar border-sidebar-border sticky top-0 hidden h-svh w-60 shrink-0 flex-col border-r md:flex">
-      <div className="flex-1 overflow-y-auto px-3 py-4">
-        <ProjectNav projectId={location.projectId} currentSection={location.section} />
-      </div>
-      <div className="border-sidebar-border border-t px-6 py-4">
-        <ApiStatus />
-      </div>
+    <aside className="bg-sidebar border-sidebar-border sticky top-0 hidden h-svh w-60 shrink-0 border-r md:block">
+      <SidebarContent />
     </aside>
   )
 }
