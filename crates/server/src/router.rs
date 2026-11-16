@@ -1,6 +1,7 @@
 use axum::Router;
 use axum::http::header::{AUTHORIZATION, CONTENT_TYPE};
 use axum::http::{HeaderName, Method};
+use axum::middleware::map_response;
 use axum::routing::{get, post, put};
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
@@ -25,6 +26,8 @@ use crate::modules::tenants::access::api_key_tenant::API_KEY_HEADER;
 use crate::modules::tenants::routes::change_tenant_settings::change_tenant_settings;
 use crate::modules::tenants::routes::create_tenant::create_tenant;
 use crate::modules::tenants::routes::read_tenant_settings::read_tenant_settings;
+use crate::shared::http::cache_control::forbid_caching;
+use crate::shared::http::request_span::request_span;
 
 pub fn build_router(state: AppState) -> Router {
     Router::new()
@@ -51,7 +54,8 @@ pub fn build_router(state: AppState) -> Router {
         .route("/auth/v1/oauth/{provider}/authorize", get(authorize_oauth))
         .route("/auth/v1/oauth/callback", get(oauth_callback))
         .route("/auth/v1/oauth/token", post(exchange_oauth_code))
-        .layer(TraceLayer::new_for_http())
+        .layer(map_response(forbid_caching))
+        .layer(TraceLayer::new_for_http().make_span_with(request_span))
         .layer(cors_layer())
         .with_state(state)
 }

@@ -4,7 +4,7 @@ const ALLOWED_SCHEMES: [&str; 2] = ["http", "https"];
 const TOKEN_QUERY_PARAMETER: &str = "token";
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
-#[error("site URL must be an absolute http(s) URL")]
+#[error("site URL must be an absolute http(s) URL without credentials")]
 pub struct InvalidSiteUrl;
 
 /// Base URL of a tenant's app: email links point here, and OAuth only redirects back to its origin.
@@ -20,6 +20,11 @@ impl SiteUrl {
         }
 
         if url.host_str().is_none() {
+            return Err(InvalidSiteUrl);
+        }
+
+        // Every email link copies the site URL, so embedded credentials would reach each user.
+        if url.username().is_empty() == false || url.password().is_some() {
             return Err(InvalidSiteUrl);
         }
 
@@ -71,6 +76,9 @@ mod tests {
             "ftp://app.test",
             "javascript:alert(1)",
             "/relative",
+            "https://user@app.test",
+            "https://user:secret@app.test",
+            "https://:secret@app.test",
         ] {
             assert_eq!(SiteUrl::parse(raw).err(), Some(InvalidSiteUrl));
         }
