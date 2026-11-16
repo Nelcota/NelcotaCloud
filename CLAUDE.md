@@ -44,6 +44,13 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
 - Signing keys are cached per tenant for 5 minutes (`SigningKeyCache`).
 - Stack: Rust, tokio, axum, sqlx (PostgreSQL 17 in Docker), validator, argon2, jsonwebtoken, oauth2,
   reqwest, lettre, thiserror, tracing.
+- Console (`apps/console/`): React + TypeScript SPA built with Vite, TanStack Router (code-based
+  routes in `src/router.tsx`, pages in `src/routes/`) and TanStack Query, Tailwind CSS and
+  shadcn/ui (`src/components/ui/`). It talks to the API only; the API address is fixed at build
+  time by `VITE_API_URL`. Never put a secret key or the admin token in the browser.
+- Deploy: one VPS with `docker-compose.prod.yml`. Caddy (`deploy/caddy/`) is the only public
+  service: it serves the built console, proxies the API, and obtains TLS certificates. The API
+  trusts the address Caddy appends to `X-Forwarded-For` (`CLIENT_IP_HEADER`).
 
 ## Commands
 
@@ -52,6 +59,10 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
 - `cargo run -p server`: run the API.
 - `cargo test --workspace`: run all tests.
 - `cargo fmt --all` and `cargo clippy --workspace --all-targets --all-features --locked -- -D warnings`.
+- Console, in `apps/console/`: `npm install`, `npm run dev` (http://localhost:5173, API from
+  `VITE_API_URL`, default http://localhost:8080), `npm run build` (type check + bundle), `npm run lint`.
+- Production: copy `.env.production.example` to `.env.production`, fill it, then
+  `docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build`.
 
 ## Folder structure
 

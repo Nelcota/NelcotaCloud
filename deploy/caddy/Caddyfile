@@ -1,0 +1,29 @@
+{
+	email {$ACME_EMAIL}
+}
+
+# The API: tenant apps call it from any origin. Caddy terminates TLS and sets
+# X-Forwarded-For, which the API reads as CLIENT_IP_HEADER for rate limits.
+{$API_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy api:8080
+}
+
+# The console: a single-page app, so unknown paths fall back to index.html.
+{$CONSOLE_DOMAIN} {
+	encode zstd gzip
+	root * /srv/console
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+	# Vite fingerprints asset names, so they never change under the same URL.
+	header /assets/* Cache-Control "public, max-age=31536000, immutable"
+	header / Cache-Control "no-cache"
+
+	try_files {path} /index.html
+	file_server
+}
