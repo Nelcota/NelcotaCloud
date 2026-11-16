@@ -155,11 +155,11 @@ dependencies. In `apps/console/src/`:
 
 - `main.tsx`: mounts the app with its providers; nothing else.
 - `app/`: composition root. `router.tsx` maps URLs to module pages (only logic: the login guard),
-  `lazy-routes/` one lazy route per page, `shell/` the signed-in layout (icon rail, project
+  `lazy-routes/` one lazy route per page, `shell/` the signed-in layout (project
   sidebar from `project-sections.ts`, top bar with project switcher and account menu, a sheet on
-  small screens with everything the rail and sidebar hold), `auth-layout.tsx` login and email-link
+  small screens with the same sidebar content; the theme toggle is in the account menu), `auth-layout.tsx` login and email-link
   pages, `status-screen.tsx` with `route-error-page.tsx` and `not-found-page.tsx` (router defaults), `query-client.ts`, `global.css`
-  (theme tokens: graphite neutrals, one blue accent; dark by default, light via the rail toggle;
+  (theme tokens: graphite neutrals, one blue accent; dark by default, light via the account menu;
   font Manrope).
 - `modules/<module>/`: everything one context owns (`account`, `projects`, `overview`, `api-keys`,
   `users`, `project-settings`, `system-status`):

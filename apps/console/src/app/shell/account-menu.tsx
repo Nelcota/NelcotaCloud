@@ -3,6 +3,7 @@ import { ChevronDown, LogOut } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { queryClient } from '@/app/query-client'
+import { ThemeMenuItem } from '@/app/shell/theme-menu-item'
 import { nelcota } from '@/shared/auth/nelcota'
 import { useSession } from '@/shared/auth/use-session'
 import {
@@ -15,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/ui/dropdown-menu'
 
-/** The logged-in console account and the way out. */
+/** The logged-in console account, the theme and the way out. */
 export function AccountMenu(): JSX.Element | null {
   const session = useSession()
   const navigate = useNavigate()
@@ -48,6 +49,8 @@ export function AccountMenu(): JSX.Element | null {
         <DropdownMenuGroup>
           <DropdownMenuLabel className="truncate">{email}</DropdownMenuLabel>
         </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <ThemeMenuItem />
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={signOut}>
           <LogOut className="size-4" strokeWidth={1.75} />
