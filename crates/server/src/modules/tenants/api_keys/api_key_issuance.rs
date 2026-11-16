@@ -17,14 +17,27 @@ pub struct IssuedApiKey {
     pub id: Uuid,
     /// `publishable` or `secret`.
     pub kind: &'static str,
+    pub name: String,
     pub key: String,
     pub hint: String,
 }
 
+/// The longest key name accepted, in characters.
+pub const MAX_KEY_NAME_LENGTH: u64 = 64;
+
+/// What a new key is for: its owner and the label it is listed under.
+#[derive(Debug, Clone, Copy)]
+pub struct ApiKeyRequest<'a> {
+    pub owner: ApiKeyOwner,
+    pub name: &'a str,
+}
+
 pub async fn issue_api_key(
     connection: &mut PgConnection,
-    owner: ApiKeyOwner,
+    request: ApiKeyRequest<'_>,
 ) -> Result<IssuedApiKey, sqlx::Error> {
+    let owner = request.owner;
+    let name = request.name.trim();
     let kind = owner.kind;
     let token = OpaqueToken::generate(kind.token_prefix());
     let hint = key_hint(&token.plaintext);
@@ -33,6 +46,7 @@ pub async fn issue_api_key(
         owner,
         key_hash: &token.hash,
         key_hint: &hint,
+        name,
     };
     let id = stored.id;
     insert_api_key(connection, stored).await?;
@@ -40,6 +54,7 @@ pub async fn issue_api_key(
     Ok(IssuedApiKey {
         id,
         kind: kind.as_str(),
+        name: name.to_owned(),
         key: token.plaintext,
         hint,
     })

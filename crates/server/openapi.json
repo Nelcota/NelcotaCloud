@@ -281,6 +281,46 @@
         ]
       }
     },
+    "/auth/v1/admin/oauth": {
+      "get": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`GET /admin/oauth`: the providers the tenant has its own OAuth app for, without secrets.",
+        "operationId": "list_oauth_providers",
+        "responses": {
+          "200": {
+            "description": "Configured providers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfiguredProviders"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
     "/auth/v1/admin/oauth/{provider}": {
       "put": {
         "tags": [
@@ -312,6 +352,58 @@
         "responses": {
           "204": {
             "description": "Provider configured with the tenant's own OAuth app"
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown provider",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`DELETE /admin/oauth/{provider}`: the tenant stops offering login with this provider.",
+        "operationId": "remove_oauth_provider",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "description": "`google` or `github`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Provider removed (or was not configured)"
           },
           "403": {
             "description": "Requires the secret API key, or membership in the project",
@@ -593,6 +685,90 @@
           },
           "403": {
             "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/smtp/test": {
+      "post": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`POST /admin/smtp/test`: sends a test email through the tenant's own SMTP server.",
+        "description": "Waits for the server to accept the message, so the owner sees a delivery problem right\naway. Only for a configured server: the platform's server is not offered as a free relay.",
+        "operationId": "send_smtp_test",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SmtpTestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "The SMTP server accepted the test email"
+          },
+          "400": {
+            "description": "Invalid recipient",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The project uses the platform's SMTP server",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many test emails",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The SMTP server refused or could not be reached",
             "content": {
               "application/json": {
                 "schema": {
@@ -2213,6 +2389,134 @@
         }
       }
     },
+    "/platform/v1/invitations": {
+      "get": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "`GET /platform/v1/invitations`: invitations sent to the console account's email.",
+        "operationId": "list_my_invitations",
+        "responses": {
+          "200": {
+            "description": "Pending invitations, newest first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReceivedInvitation"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid platform access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platform_account": []
+          }
+        ]
+      }
+    },
+    "/platform/v1/invitations/{invitation_id}": {
+      "delete": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "`DELETE /platform/v1/invitations/{invitation_id}`: declines an invitation sent to the\naccount's email.",
+        "operationId": "decline_invitation",
+        "parameters": [
+          {
+            "name": "invitation_id",
+            "in": "path",
+            "description": "Id of the invitation",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Invitation declined"
+          },
+          "404": {
+            "description": "No pending invitation for this account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platform_account": []
+          }
+        ]
+      }
+    },
+    "/platform/v1/invitations/{invitation_id}/accept": {
+      "post": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "`POST /platform/v1/invitations/{invitation_id}/accept`: joins the project. The invitation\nmust have been sent to the email of the account's verified token.",
+        "operationId": "accept_invitation",
+        "parameters": [
+          {
+            "name": "invitation_id",
+            "in": "path",
+            "description": "Id of the invitation",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Joined the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedInvitation"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No pending invitation for this account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platform_account": []
+          }
+        ]
+      }
+    },
     "/platform/v1/projects": {
       "get": {
         "tags": [
@@ -2386,10 +2690,291 @@
           }
         ]
       }
+    },
+    "/platform/v1/projects/{project_id}/invitations": {
+      "post": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "`POST /platform/v1/projects/{project_id}/invitations`: invites someone to manage the\nproject as a member, and emails them. Owners only.",
+        "operationId": "invite_member",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "description": "Id of the project",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Invitation created and emailed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingInvitation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid email",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an owner of this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Already a member, or already invited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many invitations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platform_account": []
+          }
+        ]
+      }
+    },
+    "/platform/v1/projects/{project_id}/invitations/{invitation_id}": {
+      "delete": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "`DELETE /platform/v1/projects/{project_id}/invitations/{invitation_id}`: withdraws a\npending invitation. Owners only.",
+        "operationId": "cancel_invitation",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "description": "Id of the project",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "invitation_id",
+            "in": "path",
+            "description": "Id of the invitation",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Invitation withdrawn"
+          },
+          "403": {
+            "description": "Not an owner of this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such pending invitation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platform_account": []
+          }
+        ]
+      }
+    },
+    "/platform/v1/projects/{project_id}/members/{account_id}": {
+      "delete": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "`DELETE /platform/v1/projects/{project_id}/members/{account_id}`: takes a member's access\naway. Owners only; owners themselves cannot be removed.",
+        "operationId": "remove_member",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "description": "Id of the project",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "account_id",
+            "in": "path",
+            "description": "Console account of the member",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Member removed"
+          },
+          "403": {
+            "description": "Not an owner of this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such member (owners are never removed)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platform_account": []
+          }
+        ]
+      }
+    },
+    "/platform/v1/projects/{project_id}/team": {
+      "get": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "`GET /platform/v1/projects/{project_id}/team`: who manages the project, and who is invited.",
+        "operationId": "read_team",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "description": "Id of the project",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Members and pending invitations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid platform access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platform_account": []
+          }
+        ]
+      }
     }
   },
   "components": {
     "schemas": {
+      "AcceptedInvitation": {
+        "type": "object",
+        "required": [
+          "project_id"
+        ],
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The project the account now belongs to."
+          }
+        }
+      },
       "ApiKeyKind": {
         "type": "string",
         "description": "Publishable keys ship inside client apps; secret keys stay on the tenant's own servers.",
@@ -2404,6 +2989,7 @@
         "required": [
           "id",
           "kind",
+          "name",
           "hint",
           "created_at"
         ],
@@ -2424,12 +3010,52 @@
             "type": "string",
             "description": "`publishable` or `secret`."
           },
+          "name": {
+            "type": "string",
+            "description": "The owner's label for the key; empty for keys created without one."
+          },
           "revoked_at": {
             "type": [
               "string",
               "null"
             ],
             "format": "date-time"
+          }
+        }
+      },
+      "ConfiguredProvider": {
+        "type": "object",
+        "description": "What an owner sees about a configured provider: its public client ID, never the secret.",
+        "required": [
+          "provider",
+          "client_id",
+          "updated_at"
+        ],
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string",
+            "description": "`google` or `github`."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ConfiguredProviders": {
+        "type": "object",
+        "required": [
+          "providers"
+        ],
+        "properties": {
+          "providers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConfiguredProvider"
+            }
           }
         }
       },
@@ -2441,6 +3067,10 @@
         "properties": {
           "kind": {
             "$ref": "#/components/schemas/ApiKeyKind"
+          },
+          "name": {
+            "type": "string",
+            "description": "A label to tell the key apart (\"App iOS\"); optional, up to 64 characters."
           }
         }
       },
@@ -2521,12 +3151,24 @@
           }
         }
       },
+      "InvitationBody": {
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        }
+      },
       "IssuedApiKey": {
         "type": "object",
         "description": "A new key. Its plaintext is shown only here; afterwards only its hash exists.",
         "required": [
           "id",
           "kind",
+          "name",
           "key",
           "hint"
         ],
@@ -2544,6 +3186,9 @@
           "kind": {
             "type": "string",
             "description": "`publishable` or `secret`."
+          },
+          "name": {
+            "type": "string"
           }
         }
       },
@@ -2661,6 +3306,28 @@
           }
         }
       },
+      "PendingInvitation": {
+        "type": "object",
+        "description": "A pending invitation as the project's team sees it.",
+        "required": [
+          "id",
+          "email",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "ProjectRole": {
         "type": "string",
         "description": "What a platform account may do in a project: owners can also delete it.",
@@ -2714,6 +3381,33 @@
             "type": "string"
           },
           "client_secret": {
+            "type": "string"
+          }
+        }
+      },
+      "ReceivedInvitation": {
+        "type": "object",
+        "description": "An invitation as the invited console account sees it.",
+        "required": [
+          "id",
+          "project_id",
+          "project_name",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_name": {
             "type": "string"
           }
         }
@@ -2899,6 +3593,71 @@
               "null"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "SmtpTestBody": {
+        "type": "object",
+        "required": [
+          "to"
+        ],
+        "properties": {
+          "to": {
+            "type": "string",
+            "description": "Where the test email goes."
+          }
+        }
+      },
+      "TeamMember": {
+        "type": "object",
+        "description": "A console account with access to the project.",
+        "required": [
+          "account_id",
+          "email",
+          "role",
+          "joined_at"
+        ],
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "description": "As of the member's last console visit; empty until then."
+          },
+          "joined_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "role": {
+            "$ref": "#/components/schemas/ProjectRole"
+          }
+        }
+      },
+      "TeamView": {
+        "type": "object",
+        "required": [
+          "members",
+          "invitations",
+          "can_manage"
+        ],
+        "properties": {
+          "can_manage": {
+            "type": "boolean",
+            "description": "Whether the caller may invite and remove people (owners only)."
+          },
+          "invitations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PendingInvitation"
+            }
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TeamMember"
+            }
           }
         }
       },

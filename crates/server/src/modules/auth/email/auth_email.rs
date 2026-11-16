@@ -68,3 +68,21 @@ pub fn magic_link_email(context: &AuthEmailContext, token: &str) -> AuthEmailCon
         ignore_note: "If you did not ask to log in, ignore this email.",
     }
 }
+
+/// Sent on request from the console to check that the tenant's own SMTP server delivers.
+pub fn smtp_test_email(context: &AuthEmailContext) -> AuthEmailContent {
+    let tenant_name = context.tenant_name;
+
+    AuthEmailContent {
+        tenant_name: tenant_name.to_owned(),
+        subject: format!("Test email from {tenant_name}"),
+        heading: "Your SMTP server works".to_owned(),
+        message: format!(
+            "This test was sent through the SMTP server configured for {tenant_name}. Auth emails will reach your users the same way."
+        ),
+        action_label: "Open your app",
+        link: context.site_url.as_str().to_owned(),
+        expiry_note: "Nothing to do: this email only confirms the delivery.",
+        ignore_note: "If you did not ask for a test, someone with access to the project did.",
+    }
+}

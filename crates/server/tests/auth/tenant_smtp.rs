@@ -114,3 +114,44 @@ async fn rejects_invalid_smtp_settings() -> TestResult {
 
     server.drop_tenant(&tenant).await
 }
+
+async fn send_test(
+    server: &TestServer,
+    tenant: &CreatedTenant,
+    to: &str,
+) -> TestResult<reqwest::Response> {
+    let response = server
+        .client
+        .post(server.url("/auth/v1/admin/smtp/test"))
+        .header("apikey", &tenant.secret_key)
+        .json(&json!({ "to": to }))
+        .send()
+        .await?;
+
+    Ok(response)
+}
+
+#[tokio::test]
+async fn test_emails_go_only_through_the_tenant_smtp_server() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    let recipient = unique_email("smtp-test");
+
+    let without_server = send_test(&server, &tenant, &recipient).await?;
+    assert_eq!(without_server.status(), StatusCode::CONFLICT);
+
+    let smtp_url = std::env::var("SMTP_URL")?;
+    let settings = json!({
+        "smtp_url": smtp_url,
+        "email_from": format!("Acme Mail <{TENANT_SENDER}>"),
+    });
+    let saved = smtp_request(&server, &tenant, Method::PUT, Some(settings)).await?;
+    assert_eq!(saved.status(), StatusCode::OK);
+
+    let invalid = send_test(&server, &tenant, "not-an-email").await?;
+    assert_eq!(invalid.status(), StatusCode::BAD_REQUEST);
+    let sent = send_test(&server, &tenant, &recipient).await?;
+    assert_eq!(sent.status(), StatusCode::NO_CONTENT);
+    assert_eq!(sender_of_latest_email(&recipient).await?, TENANT_SENDER);
+    server.drop_tenant(&tenant).await
+}

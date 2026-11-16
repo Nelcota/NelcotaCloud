@@ -45,6 +45,20 @@ pub async fn upsert_provider_credentials(
     Ok(())
 }
 
+/// Removes the tenant's OAuth app, so logins with that provider stop being offered.
+pub async fn delete_provider_credentials(
+    pool: &PgPool,
+    key: ProviderKey,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("DELETE FROM tenant_oauth_providers WHERE tenant_id = $1 AND provider = $2")
+        .bind(key.tenant_id)
+        .bind(key.provider.as_str())
+        .execute(pool)
+        .await?;
+
+    Ok(())
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct ProviderKey {
     pub tenant_id: Uuid,

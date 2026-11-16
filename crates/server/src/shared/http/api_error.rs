@@ -56,6 +56,8 @@ pub enum ApiError {
     PlatformNotConfigured,
     #[error("you are not a member of this project")]
     ProjectAccessDenied,
+    #[error("the SMTP server did not accept the email")]
+    SmtpDeliveryFailed,
     #[error("internal server error")]
     Internal,
 }
@@ -110,6 +112,7 @@ impl ApiError {
                 (StatusCode::SERVICE_UNAVAILABLE, "platform_not_configured")
             }
             Self::ProjectAccessDenied => (StatusCode::FORBIDDEN, "project_access_denied"),
+            Self::SmtpDeliveryFailed => (StatusCode::BAD_GATEWAY, "smtp_delivery_failed"),
             Self::Internal => (StatusCode::INTERNAL_SERVER_ERROR, "internal_error"),
         }
     }
