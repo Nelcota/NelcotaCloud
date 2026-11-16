@@ -155,10 +155,13 @@ dependencies. In `apps/console/src/`:
 
 - `main.tsx`: mounts the app with its providers; nothing else.
 - `app/`: composition root. `router.tsx` maps URLs to module pages (only logic: the login guard),
-  `lazy-routes/` one lazy route per page, `root-layout.tsx` the shell with the account menu,
-  `project-layout.tsx` a project's sections, `query-client.ts` the shared cache, `global.css`.
-- `modules/<module>/`: everything one context owns (`account`, `projects`, `api-keys`, `users`,
-  `project-settings`, `system-status`):
+  `lazy-routes/` one lazy route per page, `shell/` the signed-in layout (icon rail, project
+  sidebar from `project-sections.ts`, top bar with project switcher and account menu, a sheet on
+  small screens), `auth-layout.tsx` login and email-link pages, `query-client.ts`, `global.css`
+  (theme tokens: graphite neutrals, one blue accent; dark by default, light via the rail toggle;
+  font Manrope).
+- `modules/<module>/`: everything one context owns (`account`, `projects`, `overview`, `api-keys`,
+  `users`, `project-settings`, `system-status`):
   - `pages/`: one file per route; composes components, no fetching or business logic.
   - `components/`: UI of the module, one component per file.
   - `queries/`: TanStack Query hooks (`use-*-query.ts`, `use-*-mutation.ts`); the only place that
@@ -168,7 +171,7 @@ dependencies. In `apps/console/src/`:
 - `shared/`: infrastructure with no business rules: `api` (typed `apiClient` from `openapi-fetch`
   that sends the console session's token, `projectHeaders`, `dataOf`/`ensureSuccess`, generated
   `api-schema.d.ts` that is never edited by hand, base URL, `ApiError`), `auth` (the SDK client
-  and `useSession`), `routing` (route params and search), `ui` (shadcn components, plus
+  and `useSession`), `routing` (route params and search), `theme` (`useTheme`), `ui` (shadcn components, plus
   `FormField`, `SwitchField`, `ErrorAlert`, `ConfirmButton`; add shadcn ones with
   `npx shadcn@latest add`, then move any exported `cva` variants to their own file), `lib`. `shared` never imports from
   `modules` or `app`.
