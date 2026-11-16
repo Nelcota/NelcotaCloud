@@ -66,12 +66,18 @@ impl<'a> TenantDatabaseServer<'a> {
 
     /// Best effort cleanup: a failure is logged, since the caller is already handling an error.
     pub async fn drop_database(&self, slug: &TenantSlug) {
+        if let Err(error) = self.try_drop_database(slug).await {
+            let database_name = slug.database_name();
+            tracing::error!(%error, %database_name, "failed to drop tenant database");
+        }
+    }
+
+    /// For callers that must not go on when the database is still there.
+    pub async fn try_drop_database(&self, slug: &TenantSlug) -> Result<(), sqlx::Error> {
         let database_name = slug.database_name();
         let statement = format!("DROP DATABASE IF EXISTS \"{database_name}\" WITH (FORCE)");
 
-        if let Err(error) = self.run_maintenance_statement(statement).await {
-            tracing::error!(%error, %database_name, "failed to drop tenant database");
-        }
+        self.run_maintenance_statement(statement).await
     }
 
     /// CREATE/DROP DATABASE cannot run inside the database being created or dropped, so they go

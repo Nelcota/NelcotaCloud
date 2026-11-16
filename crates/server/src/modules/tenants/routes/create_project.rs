@@ -1,8 +1,10 @@
 use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
+use uuid::Uuid;
 
 use crate::app_state::AppState;
+use crate::modules::auth::rate_limiting::client_ip::ClientIp;
 use crate::modules::tenants::platform::platform_account::PlatformAccount;
 use crate::modules::tenants::routes::create_tenant::{
     CreateTenantBody, CreatedTenantResponse, provision_from_body,
@@ -23,13 +25,21 @@ use crate::shared::http::validated_json::ValidatedJson;
         (status = 400, description = "Invalid slug, name or site URL", body = ErrorBody),
         (status = 401, description = "Missing or invalid platform access token", body = ErrorBody),
         (status = 409, description = "Slug taken, or the account's project limit was reached", body = ErrorBody),
+        (status = 429, description = "Too many projects created from this client", body = ErrorBody),
     )
 )]
 pub async fn create_project(
     State(state): State<AppState>,
     account: PlatformAccount,
+    ClientIp(client_ip): ClientIp,
     ValidatedJson(body): ValidatedJson<CreateTenantBody>,
 ) -> Result<(StatusCode, Json<CreatedTenantResponse>), ApiError> {
+    // Keyed by IP alone, so new accounts from the same client share the limit.
+    state
+        .rate_limits
+        .project_creation
+        .check(Uuid::nil(), client_ip)
+        .map_err(|_| ApiError::RateLimited)?;
     let created = provision_from_body(&state, body, Some(account.account_id)).await?;
 
     Ok((StatusCode::CREATED, Json(created)))

@@ -159,3 +159,38 @@ async fn tokens_of_other_tenants_are_not_platform_accounts() -> TestResult {
     server.drop_tenant(&tenant).await?;
     server.drop_tenant(&platform).await
 }
+
+/// Each project is a database, so one client cannot create them in a burst.
+#[tokio::test]
+async fn project_creation_is_rate_limited_per_client() -> TestResult {
+    let server = TestServer::start().await?;
+    let (platform, owner) = server
+        .create_platform_account(&unique_email("busy"))
+        .await?;
+    let mut project_ids = Vec::new();
+
+    for _ in 0..3 {
+        let created = create_project(&server, &owner).await?;
+        project_ids.push(
+            field(&created, "/tenant_id")
+                .as_str()
+                .unwrap_or_default()
+                .to_owned(),
+        );
+    }
+
+    let body = json!({ "slug": random_slug(), "name": "One too many", "site_url": TEST_SITE_URL });
+    let refused = as_account(
+        &server,
+        &owner,
+        (Method::POST, "/platform/v1/projects", Some(body)),
+    )
+    .await?;
+    assert_eq!(refused.status(), StatusCode::TOO_MANY_REQUESTS);
+
+    for project_id in &project_ids {
+        delete_project(&server, &owner, project_id).await?;
+    }
+
+    server.drop_tenant(&platform).await
+}

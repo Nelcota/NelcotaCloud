@@ -4,6 +4,7 @@ import { useDeferredValue, useState } from 'react'
 import { UserActions } from '@/modules/users/components/user-actions'
 import { useUserActionMutation, useUsersQuery } from '@/modules/users/queries/use-users'
 import type { components } from '@/shared/api/api-schema'
+import { formatDate } from '@/shared/lib/format-date'
 import { useProjectId } from '@/shared/routing/use-project-id'
 import { Badge } from '@/shared/ui/badge'
 import { ErrorAlert } from '@/shared/ui/error-alert'
@@ -11,8 +12,6 @@ import { FormField } from '@/shared/ui/form-field'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/ui/table'
 
 type User = components['schemas']['User']
-
-const DATE_FORMAT = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short' })
 
 export function UsersPage(): JSX.Element {
   const projectId = useProjectId()
@@ -51,7 +50,7 @@ export function UsersPage(): JSX.Element {
               <TableCell>
                 <UserBadges user={user} />
               </TableCell>
-              <TableCell>{DATE_FORMAT.format(new Date(user.created_at))}</TableCell>
+              <TableCell>{formatDate(user.created_at)}</TableCell>
               <TableCell>
                 <UserActions
                   user={user}

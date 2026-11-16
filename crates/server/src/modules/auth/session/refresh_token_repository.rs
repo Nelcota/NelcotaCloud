@@ -49,8 +49,8 @@ pub async fn insert_refresh_token(
 /// Consumes a refresh token, or reports it as reused or invalid.
 ///
 /// Revokes the token in one conditional UPDATE, so two concurrent refreshes cannot both win.
-/// It also refuses tokens whose family was revoked or whose user's sessions were ended, which
-/// catches successors inserted by a refresh that raced with the revocation.
+/// It also refuses tokens whose family was revoked, whose user's sessions were ended or whose
+/// user is banned, which catches successors inserted by a login that raced with the revocation.
 pub async fn consume_refresh_token(
     pool: &PgPool,
     token_hash: &[u8],
@@ -58,7 +58,7 @@ pub async fn consume_refresh_token(
     let consumed: Option<(Uuid, Uuid, OffsetDateTime)> = sqlx::query_as(
         "UPDATE refresh_tokens AS token SET revoked_at = now() FROM users \
          WHERE token.token_hash = $1 AND token.revoked_at IS NULL AND token.expires_at > now() \
-         AND users.id = token.user_id \
+         AND users.id = token.user_id AND users.banned_at IS NULL \
          AND (users.sessions_invalidated_at IS NULL OR token.family_started_at > users.sessions_invalidated_at) \
          AND NOT EXISTS (SELECT 1 FROM revoked_token_families revoked WHERE revoked.family_id = token.family_id) \
          RETURNING token.user_id, token.family_id, token.family_started_at",

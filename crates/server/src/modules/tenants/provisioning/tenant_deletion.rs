@@ -1,4 +1,4 @@
-use sqlx::PgPool;
+use sqlx::PgConnection;
 use uuid::Uuid;
 
 use crate::modules::tenants::provisioning::tenant_repository::lock_slug;
@@ -12,17 +12,14 @@ pub enum TenantDeletionError {
     InvalidSlug(#[from] InvalidTenantSlug),
 }
 
-/// Deletes the tenant row (its keys, OAuth apps and members go with it by cascade) under the
-/// slug lock, and returns the slug whose database the caller drops next. `None` if there is
-/// no such tenant.
+/// Deletes the tenant row inside the caller's transaction, holding the slug lock.
 ///
-/// The database is dropped after the commit: if dropping fails, what is left is an orphan that
-/// the next provisioning of the slug replaces.
+/// Its keys, OAuth apps and members go with it by cascade. Returns the slug whose database
+/// the caller drops before committing; `None` if there is no such tenant.
 pub async fn delete_tenant_row(
-    pool: &PgPool,
+    transaction: &mut PgConnection,
     tenant_id: Uuid,
 ) -> Result<Option<TenantSlug>, TenantDeletionError> {
-    let mut transaction = pool.begin().await?;
     let raw_slug: Option<String> =
         sqlx::query_scalar("SELECT slug FROM tenants WHERE id = $1 FOR UPDATE")
             .bind(tenant_id)
@@ -32,12 +29,11 @@ pub async fn delete_tenant_row(
         return Ok(None);
     };
     let slug = TenantSlug::parse(&raw_slug)?;
-    lock_slug(&mut transaction, &slug).await?;
+    lock_slug(transaction, &slug).await?;
     sqlx::query("DELETE FROM tenants WHERE id = $1")
         .bind(tenant_id)
         .execute(&mut *transaction)
         .await?;
-    transaction.commit().await?;
 
     Ok(Some(slug))
 }

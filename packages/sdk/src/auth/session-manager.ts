@@ -84,11 +84,27 @@ export class SessionManager {
     }
   }
 
+  /**
+   * Refresh tokens are single use and tabs share one stored session: a second tab refreshing
+   * the same token would look like token theft and end the session. So tabs refresh one at a
+   * time (Web Locks), and a tab adopts the session another tab already renewed.
+   */
   private async performRefresh(): Promise<Session | null> {
     const session = this.session
 
     if (session === null) {
       return null
+    }
+
+    return withLock(this.store.lockName(), () => this.refreshOrAdopt(session))
+  }
+
+  private async refreshOrAdopt(session: Session): Promise<Session | null> {
+    const stored = this.store.load()
+
+    if (stored !== null && stored.refreshToken !== session.refreshToken) {
+      this.start(stored, 'TOKEN_REFRESHED')
+      return stored
     }
 
     try {
@@ -130,4 +146,15 @@ function notAuthenticated(): NelcotaError {
     message: 'No active session; sign in first',
     requestId: null,
   })
+}
+
+/** Runs `task` while holding a lock shared by every tab of the origin, when the browser has one. */
+async function withLock<T>(name: string, task: () => Promise<T>): Promise<T> {
+  const locks = globalThis.navigator?.locks
+
+  if (locks === undefined) {
+    return task()
+  }
+
+  return locks.request(name, task)
 }

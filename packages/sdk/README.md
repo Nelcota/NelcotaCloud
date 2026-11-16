@@ -24,7 +24,9 @@ await nelcota.auth.verifyMagicLink({ token })
 // OAuth (Google, GitHub) with PKCE
 location.assign(await nelcota.auth.oauth.getAuthorizeUrl({ provider: 'github', redirectTo }))
 // …on the redirect page:
-await nelcota.auth.oauth.exchangeCode({ code: new URLSearchParams(location.search).get('code') ?? '' })
+await nelcota.auth.oauth.exchangeCode({
+  code: new URLSearchParams(location.search).get('code') ?? '',
+})
 
 // Session
 nelcota.auth.onAuthStateChange((event, session) => {})
