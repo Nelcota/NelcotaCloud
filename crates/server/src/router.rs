@@ -4,7 +4,8 @@ use axum::http::{HeaderName, Method};
 use axum::middleware::map_response;
 use axum::routing::{get, post, put};
 use tower_http::cors::{Any, CorsLayer};
-use tower_http::trace::TraceLayer;
+use tower_http::trace::{DefaultOnResponse, TraceLayer};
+use tracing::Level;
 
 use crate::app_state::AppState;
 use crate::health::health;
@@ -55,7 +56,13 @@ pub fn build_router(state: AppState) -> Router {
         .route("/auth/v1/oauth/callback", get(oauth_callback))
         .route("/auth/v1/oauth/token", post(exchange_oauth_code))
         .layer(map_response(forbid_caching))
-        .layer(TraceLayer::new_for_http().make_span_with(request_span))
+        // Access log: one INFO line per response (status, latency) inside the request span;
+        // server errors are also logged at ERROR by the default failure handler.
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(request_span)
+                .on_response(DefaultOnResponse::new().level(Level::INFO)),
+        )
         .layer(cors_layer())
         .with_state(state)
 }

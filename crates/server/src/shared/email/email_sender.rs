@@ -3,6 +3,7 @@ use std::sync::Arc;
 use lettre::message::Mailbox;
 use lettre::message::header::ContentType;
 use lettre::{Address, AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
+use tracing::{Instrument, Span};
 
 use crate::shared::email::outgoing_email::OutgoingEmail;
 
@@ -51,11 +52,38 @@ impl EmailSender {
 }
 
 /// Sends without making the request wait for SMTP, and so without the response time
-/// revealing whether an email was sent. Failures are logged without the address.
+/// revealing whether an email was sent. Runs in the caller's span, so failures keep the
+/// request's context.
 pub fn send_in_background(sender: Arc<EmailSender>, email: OutgoingEmail) {
-    tokio::spawn(async move {
+    let delivery = async move {
         if let Err(error) = sender.send(email).await {
-            tracing::error!(%error, "failed to send email");
+            log_failed_delivery(&error);
         }
-    });
+    };
+    tokio::spawn(delivery.instrument(Span::current()));
+}
+
+/// The SMTP server's reply text can quote the recipient, so a rejection is logged by its
+/// status code only; connection, TLS and timeout errors carry no address and are logged whole.
+fn log_failed_delivery(error: &EmailError) {
+    let EmailError::Delivery(smtp_error) = error else {
+        tracing::error!(%error, "failed to send email");
+        return;
+    };
+
+    if let Some(status) = smtp_error.status() {
+        tracing::error!(
+            smtp_status = %status,
+            is_permanent = smtp_error.is_permanent(),
+            "SMTP server rejected the email"
+        );
+        return;
+    }
+
+    if smtp_error.is_response() {
+        tracing::error!("SMTP server sent a response that could not be parsed");
+        return;
+    }
+
+    tracing::error!(error = %smtp_error, "failed to deliver email");
 }

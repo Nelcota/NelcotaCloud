@@ -7,6 +7,7 @@ use crate::modules::tenants::api_keys::api_key_kind::ApiKeyKind;
 use crate::modules::tenants::api_keys::api_key_repository::find_active_api_key_owner;
 use crate::shared::crypto::opaque_token::hash_opaque_token;
 use crate::shared::http::api_error::ApiError;
+use crate::shared::http::request_span::record_tenant;
 
 pub const API_KEY_HEADER: &str = "apikey";
 
@@ -41,6 +42,7 @@ impl ApiKeyTenant {
         let Some(owner) = owner else {
             return Err(ApiError::InvalidApiKey);
         };
+        record_tenant(owner.tenant_id);
 
         Ok(Self {
             tenant_id: owner.tenant_id,

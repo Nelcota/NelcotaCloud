@@ -2,6 +2,7 @@ use std::net::IpAddr;
 
 use axum::http::StatusCode;
 use serde::Deserialize;
+use tracing::{Instrument, Span};
 use validator::Validate;
 
 use crate::app_state::AppState;
@@ -52,8 +53,8 @@ pub fn request_email_link(
         raw_email: request.raw_email.to_owned(),
         kind: request.kind,
     };
-    // Failures are logged by `ApiError::internal` inside the job.
-    tokio::spawn(job.run());
+    // Failures are logged by `ApiError::internal` inside the job, under the request's span.
+    tokio::spawn(job.run().instrument(Span::current()));
 
     Ok(StatusCode::ACCEPTED)
 }

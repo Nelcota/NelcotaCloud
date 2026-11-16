@@ -45,4 +45,42 @@ impl OAuthLoginError {
             _ => "server_error",
         }
     }
+
+    /// A refusal caused by the user or their provider account, not a failure of this server.
+    pub fn is_refusal(&self) -> bool {
+        matches!(
+            self,
+            Self::ProviderDenied
+                | Self::AccountLink(
+                    AccountLinkError::NoVerifiedEmail | AccountLinkError::ProviderAccountMismatch
+                )
+        )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn user_caused_outcomes_are_refusals() {
+        for error in [
+            OAuthLoginError::ProviderDenied,
+            OAuthLoginError::AccountLink(AccountLinkError::NoVerifiedEmail),
+            OAuthLoginError::AccountLink(AccountLinkError::ProviderAccountMismatch),
+        ] {
+            assert!(error.is_refusal());
+        }
+    }
+
+    #[test]
+    fn server_failures_are_not_refusals() {
+        for error in [
+            OAuthLoginError::InvalidVerifier,
+            OAuthLoginError::TokenExchange("timeout".to_owned()),
+            OAuthLoginError::Database(sqlx::Error::PoolTimedOut),
+        ] {
+            assert!(error.is_refusal() == false);
+        }
+    }
 }

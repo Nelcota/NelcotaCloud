@@ -43,8 +43,12 @@ fn client_ip_from_header(
     headers: &HeaderMap,
     header_name: &HeaderName,
 ) -> Result<ClientIp, ApiError> {
-    let missing_header =
-        || ApiError::InvalidRequest(format!("missing or invalid {header_name} header"));
+    // Logged because it usually means traffic is bypassing the proxy or the proxy is
+    // misconfigured, which operators must notice.
+    let missing_header = || {
+        tracing::warn!(header = %header_name, "request without a valid trusted client IP header");
+        ApiError::InvalidRequest(format!("missing or invalid {header_name} header"))
+    };
     let Some(header_value) = headers.get(header_name) else {
         return Err(missing_header());
     };

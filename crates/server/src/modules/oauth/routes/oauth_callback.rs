@@ -15,6 +15,7 @@ use crate::modules::oauth::login::oauth_state_repository::{
 };
 use crate::shared::crypto::opaque_token::hash_opaque_token;
 use crate::shared::http::api_error::ApiError;
+use crate::shared::http::request_span::record_tenant;
 
 const MAX_STATE_LENGTH: usize = 256;
 /// Parameters this endpoint sets on the app's redirect; copies already in it are removed so
@@ -37,17 +38,30 @@ pub async fn oauth_callback(
     Query(query): Query<CallbackQuery>,
 ) -> Result<Redirect, ApiError> {
     let pending = take_pending(&state, query.state).await?;
+    // No API key reaches this endpoint: the tenant comes from the pending authorization.
+    record_tenant(pending.tenant_id);
     let redirect_to = Url::parse(&pending.redirect_to).map_err(ApiError::internal)?;
     let login = complete_login(&state, &pending, query.code).await;
     let target = match login {
         Ok(login_code) => redirect_with(redirect_to, "code", &login_code),
         Err(error) => {
-            tracing::warn!(%error, tenant_id = %pending.tenant_id, "OAuth login failed");
+            log_failed_login(&error);
             redirect_with(redirect_to, "error", error.redirect_error_code())
         }
     };
 
     Ok(Redirect::to(target.as_str()))
+}
+
+/// Refusals (denied access, unverified or conflicting accounts) are expected outcomes; only
+/// failures of this server or the provider are errors worth an alert.
+fn log_failed_login(error: &OAuthLoginError) {
+    if error.is_refusal() {
+        tracing::info!(%error, "OAuth login refused");
+        return;
+    }
+
+    tracing::error!(%error, "OAuth login failed");
 }
 
 fn redirect_with(redirect_to: Url, name: &str, value: &str) -> Url {
