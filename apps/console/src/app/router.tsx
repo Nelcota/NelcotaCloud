@@ -1,7 +1,14 @@
-import { createRootRoute, createRoute, createRouter, redirect } from '@tanstack/react-router'
+import {
+  Outlet,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  redirect,
+} from '@tanstack/react-router'
 
-import { ProjectLayout } from '@/app/project-layout'
-import { RootLayout } from '@/app/root-layout'
+import { AuthLayout } from '@/app/auth-layout'
+import { RouteErrorPage } from '@/app/route-error-page'
+import { AppShell } from '@/app/shell/app-shell'
 import { nelcota } from '@/shared/auth/nelcota'
 import { tokenSearch } from '@/shared/routing/token-search'
 
@@ -9,10 +16,17 @@ import { tokenSearch } from '@/shared/routing/token-search'
  * Maps URLs to module pages; no logic lives here besides the login guard. Every page is a lazy
  * route: its code is downloaded the first time it is visited, or when a link to it is hovered.
  */
-const rootRoute = createRootRoute({ component: RootLayout })
+const rootRoute = createRootRoute({ component: Outlet })
+
+/** Login and the pages opened from emails, outside the console shell. */
+const publicRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: '_public',
+  component: AuthLayout,
+})
 
 const loginRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => publicRoute,
   path: '/login',
   beforeLoad: () => {
     if (nelcota.auth.getSession() !== null) {
@@ -22,7 +36,7 @@ const loginRoute = createRoute({
 }).lazy(() => import('@/app/lazy-routes/login').then((module) => module.loginLazyRoute))
 
 const verifyEmailRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => publicRoute,
   path: '/auth/verify-email',
   validateSearch: tokenSearch,
 }).lazy(() =>
@@ -30,17 +44,18 @@ const verifyEmailRoute = createRoute({
 )
 
 const resetPasswordRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => publicRoute,
   path: '/auth/reset-password',
   validateSearch: tokenSearch,
 }).lazy(() =>
   import('@/app/lazy-routes/reset-password').then((module) => module.resetPasswordLazyRoute),
 )
 
-/** Everything below needs a console session. */
+/** Everything below needs a console session and lives in the console shell. */
 const authenticatedRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: '_authenticated',
+  component: AppShell,
   beforeLoad: () => {
     if (nelcota.auth.getSession() === null) {
       throw redirect({ to: '/login' })
@@ -60,10 +75,13 @@ const newProjectRoute = createRoute({
 const projectRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: '/projects/$projectId',
-  component: ProjectLayout,
 })
 
-const apiKeysRoute = createRoute({ getParentRoute: () => projectRoute, path: '/' }).lazy(() =>
+const overviewRoute = createRoute({ getParentRoute: () => projectRoute, path: '/' }).lazy(() =>
+  import('@/app/lazy-routes/overview').then((module) => module.overviewLazyRoute),
+)
+
+const apiKeysRoute = createRoute({ getParentRoute: () => projectRoute, path: '/keys' }).lazy(() =>
   import('@/app/lazy-routes/api-keys').then((module) => module.apiKeysLazyRoute),
 )
 
@@ -84,17 +102,26 @@ const settingsRoute = createRoute({ getParentRoute: () => projectRoute, path: '/
 )
 
 const routeTree = rootRoute.addChildren([
-  loginRoute,
-  verifyEmailRoute,
-  resetPasswordRoute,
+  publicRoute.addChildren([loginRoute, verifyEmailRoute, resetPasswordRoute]),
   authenticatedRoute.addChildren([
     projectsRoute,
     newProjectRoute,
-    projectRoute.addChildren([apiKeysRoute, usersRoute, providersRoute, emailRoute, settingsRoute]),
+    projectRoute.addChildren([
+      overviewRoute,
+      apiKeysRoute,
+      usersRoute,
+      providersRoute,
+      emailRoute,
+      settingsRoute,
+    ]),
   ]),
 ])
 
-export const router = createRouter({ routeTree, defaultPreload: 'intent' })
+export const router = createRouter({
+  routeTree,
+  defaultPreload: 'intent',
+  defaultErrorComponent: RouteErrorPage,
+})
 
 declare module '@tanstack/react-router' {
   interface Register {

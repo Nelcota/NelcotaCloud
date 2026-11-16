@@ -8,7 +8,7 @@ import { ErrorAlert } from '@/shared/ui/error-alert'
 
 /** Opened from the confirmation email: `/auth/verify-email?token=…`. */
 export function VerifyEmailPage(): JSX.Element {
-  const { token } = useSearch({ from: '/auth/verify-email' })
+  const { token } = useSearch({ from: '/_public/auth/verify-email' })
   const verification = useQuery({
     queryKey: ['account', 'verify-email', token],
     queryFn: () => nelcota.auth.verifyEmail({ token: token }),
@@ -18,7 +18,7 @@ export function VerifyEmailPage(): JSX.Element {
   })
 
   return (
-    <div className="mx-auto max-w-sm">
+    <div>
       <Card>
         <CardHeader>
           <CardTitle>Confirmação de email</CardTitle>

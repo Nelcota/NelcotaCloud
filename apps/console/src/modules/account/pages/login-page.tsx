@@ -8,7 +8,7 @@ import { RecoverPasswordForm } from '@/modules/account/components/recover-passwo
 import { SignInForm } from '@/modules/account/components/sign-in-form'
 import { SignUpForm } from '@/modules/account/components/sign-up-form'
 import { Button } from '@/shared/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 
 type LoginStep =
   | { kind: 'sign-in' }
@@ -54,23 +54,20 @@ export function LoginPage(): JSX.Element {
   }
 
   return (
-    <div className="mx-auto max-w-sm">
-      <Card>
-        <CardHeader>
-          <CardTitle>{STEP_TITLES[step.kind]}</CardTitle>
-          <CardDescription>NelcotaCloud</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <StepContent
-            step={step}
-            onSignIn={handleSignIn}
-            onSignUp={handleSignUp}
-            onStep={setStep}
-            onSignedIn={goToProjects}
-          />
-        </CardContent>
-      </Card>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>{STEP_TITLES[step.kind]}</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <StepContent
+          step={step}
+          onSignIn={handleSignIn}
+          onSignUp={handleSignUp}
+          onStep={setStep}
+          onSignedIn={goToProjects}
+        />
+      </CardContent>
+    </Card>
   )
 }
 

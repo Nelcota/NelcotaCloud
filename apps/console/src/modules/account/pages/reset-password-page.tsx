@@ -12,7 +12,7 @@ const MIN_PASSWORD_LENGTH = 8
 
 /** Opened from the reset email: `/auth/reset-password?token=…`. */
 export function ResetPasswordPage(): JSX.Element {
-  const { token } = useSearch({ from: '/auth/reset-password' })
+  const { token } = useSearch({ from: '/_public/auth/reset-password' })
   const [password, setPassword] = useState('')
   const [error, setError] = useState<unknown>(null)
   const [isDone, setIsDone] = useState(false)
@@ -35,7 +35,7 @@ export function ResetPasswordPage(): JSX.Element {
 
   if (isDone) {
     return (
-      <div className="mx-auto max-w-sm text-sm">
+      <div className="text-sm">
         <p className="mb-4">Senha alterada. Todas as sessões foram encerradas.</p>
         <Link to="/login" className="underline underline-offset-4">
           Entrar
@@ -45,7 +45,7 @@ export function ResetPasswordPage(): JSX.Element {
   }
 
   return (
-    <div className="mx-auto max-w-sm">
+    <div>
       <Card>
         <CardHeader>
           <CardTitle>Nova senha</CardTitle>
