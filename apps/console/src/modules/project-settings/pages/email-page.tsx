@@ -1,6 +1,7 @@
 import type { FormEvent, JSX } from 'react'
 import { useState } from 'react'
 
+import { CurrentSmtp } from '@/modules/project-settings/components/current-smtp'
 import {
   useResetSmtpMutation,
   useSaveSmtpMutation,
@@ -8,9 +9,11 @@ import {
 } from '@/modules/project-settings/queries/use-project-settings'
 import { useProjectId } from '@/shared/routing/use-project-id'
 import { Button } from '@/shared/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card'
 import { ErrorAlert } from '@/shared/ui/error-alert'
 import { FormField } from '@/shared/ui/form-field'
+import { PageHeader } from '@/shared/ui/page-header'
+import { SavedNote } from '@/shared/ui/saved-note'
+import { SettingsSection } from '@/shared/ui/settings-section'
 
 export function EmailPage(): JSX.Element {
   const projectId = useProjectId()
@@ -26,21 +29,32 @@ export function EmailPage(): JSX.Element {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Envio de emails</CardTitle>
-        <CardDescription>
-          Confirmação, redefinição de senha e magic link saem pelo SMTP da plataforma, ou pelo seu
-          servidor SMTP com o seu remetente.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
+    <div className="grid max-w-3xl gap-6">
+      <PageHeader
+        title="Email"
+        description="Confirmação de email, redefinição de senha e magic link saem por aqui."
+      />
+      <ErrorAlert error={smtp.error ?? reset.error} />
+      <SettingsSection title="Servidor atual">
         <CurrentSmtp
           view={smtp.data}
           isResetting={reset.isPending}
           onReset={() => reset.mutate()}
         />
-        <form className="grid gap-4" onSubmit={submit}>
+      </SettingsSection>
+      <form onSubmit={submit}>
+        <SettingsSection
+          title="Usar seu servidor SMTP"
+          description="Os emails saem com o seu domínio. Salvar de novo substitui o servidor atual."
+          footer={
+            <>
+              <SavedNote isSaved={save.isSuccess} message="Servidor salvo" />
+              <Button type="submit" disabled={save.isPending} aria-busy={save.isPending}>
+                Salvar servidor
+              </Button>
+            </>
+          }
+        >
           <FormField
             label="SMTP URL"
             type="password"
@@ -58,41 +72,9 @@ export function EmailPage(): JSX.Element {
             value={emailFrom}
             onChange={(event) => setEmailFrom(event.target.value)}
           />
-          <ErrorAlert error={save.error ?? reset.error ?? smtp.error} />
-          <div>
-            <Button type="submit" disabled={save.isPending} aria-busy={save.isPending}>
-              Usar meu SMTP
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
-  )
-}
-
-type CurrentSmtpProps = {
-  view: { is_custom: boolean; smtp_host?: string | null; email_from?: string | null } | undefined
-  isResetting: boolean
-  onReset: () => void
-}
-
-function CurrentSmtp({ view, isResetting, onReset }: CurrentSmtpProps): JSX.Element | null {
-  if (view === undefined) {
-    return null
-  }
-
-  if (view.is_custom === false) {
-    return <p className="text-sm">Usando o SMTP da plataforma.</p>
-  }
-
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm">
-      <span>
-        Usando <strong>{view.smtp_host}</strong> como <strong>{view.email_from}</strong>
-      </span>
-      <Button variant="outline" size="sm" disabled={isResetting} onClick={onReset}>
-        Voltar ao SMTP da plataforma
-      </Button>
+          <ErrorAlert error={save.error} />
+        </SettingsSection>
+      </form>
     </div>
   )
 }

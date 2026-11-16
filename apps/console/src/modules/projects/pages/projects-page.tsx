@@ -7,27 +7,31 @@ import { useProjectsQuery } from '@/modules/projects/queries/use-projects'
 import type { components } from '@/shared/api/api-schema'
 import { buttonVariants } from '@/shared/ui/button-variants'
 import { ErrorAlert } from '@/shared/ui/error-alert'
+import { PageHeader } from '@/shared/ui/page-header'
+import { Skeleton } from '@/shared/ui/skeleton'
 
 type ProjectSummary = components['schemas']['ProjectSummary']
+
+const SKELETON_CARDS = ['a', 'b', 'c']
 
 export function ProjectsPage(): JSX.Element {
   const projects = useProjectsQuery()
 
   return (
-    <section className="grid gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Projetos</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Escolha um projeto para gerenciar.</p>
-        </div>
-        <Link to="/projects/new" className={buttonVariants()}>
-          <Plus className="size-4" strokeWidth={2} />
-          Novo projeto
-        </Link>
-      </div>
+    <div className="grid gap-6">
+      <PageHeader
+        title="Projetos"
+        description="Cada projeto é o Auth de um app: usuários, chaves e login social próprios."
+        actions={
+          <Link to="/projects/new" className={buttonVariants()}>
+            <Plus strokeWidth={2} />
+            Novo projeto
+          </Link>
+        }
+      />
       <ErrorAlert error={projects.error} />
       <ProjectsContent isPending={projects.isPending} projects={projects.data} />
-    </section>
+    </div>
   )
 }
 
@@ -39,9 +43,17 @@ type ProjectsContentProps = {
 function ProjectsContent({ isPending, projects }: ProjectsContentProps): JSX.Element | null {
   if (isPending) {
     return (
-      <p aria-busy="true" className="text-muted-foreground text-sm">
-        Carregando seus projetos…
-      </p>
+      <ul
+        aria-busy="true"
+        aria-label="Carregando projetos"
+        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+      >
+        {SKELETON_CARDS.map((card) => (
+          <li key={card}>
+            <Skeleton className="h-44 rounded-xl" />
+          </li>
+        ))}
+      </ul>
     )
   }
 

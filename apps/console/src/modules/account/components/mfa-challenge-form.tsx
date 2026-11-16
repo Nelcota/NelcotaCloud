@@ -41,11 +41,13 @@ export function MfaChallengeForm({ mfaToken, onSignedIn }: MfaChallengeFormProps
         pattern="[0-9 ]{6,7}"
         required
         autoFocus
+        maxLength={7}
+        className="h-12 text-center font-mono text-xl tracking-[0.4em] md:text-xl"
         value={code}
         onChange={(event) => setCode(event.target.value)}
       />
       <ErrorAlert error={error} />
-      <Button type="submit" disabled={isSubmitting} aria-busy={isSubmitting}>
+      <Button type="submit" size="lg" disabled={isSubmitting} aria-busy={isSubmitting}>
         Confirmar
       </Button>
     </form>

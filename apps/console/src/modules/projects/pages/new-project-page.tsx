@@ -1,13 +1,14 @@
 import { Link } from '@tanstack/react-router'
+import { ArrowLeft, CircleCheck } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
 import { SecretReveal } from '@/modules/api-keys/components/secret-reveal'
 import { NewProjectForm } from '@/modules/projects/components/new-project-form'
 import type { components } from '@/shared/api/api-schema'
-import { Alert, AlertDescription } from '@/shared/ui/alert'
 import { buttonVariants } from '@/shared/ui/button-variants'
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
+import { PageHeader } from '@/shared/ui/page-header'
+import { SettingsSection } from '@/shared/ui/settings-section'
 
 type CreatedProject = components['schemas']['CreatedTenantResponse']
 
@@ -15,15 +16,15 @@ export function NewProjectPage(): JSX.Element {
   const [created, setCreated] = useState<CreatedProject | null>(null)
 
   return (
-    <div className="mx-auto max-w-lg">
-      <Card>
-        <CardHeader>
-          <CardTitle>Novo projeto</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <NewProjectContent created={created} onCreated={setCreated} />
-        </CardContent>
-      </Card>
+    <div className="mx-auto grid max-w-2xl gap-6">
+      <Link
+        to="/"
+        className="text-muted-foreground hover:text-foreground inline-flex w-fit items-center gap-1.5 rounded-md text-sm transition-colors"
+      >
+        <ArrowLeft className="size-4" strokeWidth={1.75} />
+        Projetos
+      </Link>
+      <NewProjectContent created={created} onCreated={setCreated} />
     </div>
   )
 }
@@ -35,26 +36,41 @@ type NewProjectContentProps = {
 
 function NewProjectContent({ created, onCreated }: NewProjectContentProps): JSX.Element {
   if (created === null) {
-    return <NewProjectForm onCreated={onCreated} />
+    return (
+      <>
+        <PageHeader
+          title="Novo projeto"
+          description="Um projeto é o Auth de um app, com banco de dados, usuários e chaves só dele."
+        />
+        <NewProjectForm onCreated={onCreated} />
+      </>
+    )
   }
 
   return (
-    <div className="grid gap-4">
-      <Alert>
-        <AlertDescription>
-          Guarde as chaves agora: elas não são mostradas de novo. A publishable vai no app; a secret
-          fica só no seu servidor.
-        </AlertDescription>
-      </Alert>
-      <SecretReveal label="Publishable key" value={created.publishable_key} />
-      <SecretReveal label="Secret key" value={created.secret_key} />
-      <Link
-        to="/projects/$projectId"
-        params={{ projectId: created.tenant_id }}
-        className={buttonVariants()}
+    <>
+      <div className="flex items-start gap-3">
+        <CircleCheck className="mt-1 size-6 shrink-0 text-emerald-500" strokeWidth={1.75} />
+        <PageHeader
+          title="Projeto criado"
+          description="Guarde as chaves agora: elas não aparecem de novo. A publishable vai no app; a secret fica só no seu servidor."
+        />
+      </div>
+      <SettingsSection
+        title="Chaves de API"
+        footer={
+          <Link
+            to="/projects/$projectId"
+            params={{ projectId: created.tenant_id }}
+            className={buttonVariants()}
+          >
+            Abrir o projeto
+          </Link>
+        }
       >
-        Abrir o projeto
-      </Link>
-    </div>
+        <SecretReveal label="Publishable key" value={created.publishable_key} />
+        <SecretReveal label="Secret key" value={created.secret_key} />
+      </SettingsSection>
+    </>
   )
 }

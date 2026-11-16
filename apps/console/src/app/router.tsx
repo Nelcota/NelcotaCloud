@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-router'
 
 import { AuthLayout } from '@/app/auth-layout'
+import { NotFoundPage } from '@/app/not-found-page'
 import { RouteErrorPage } from '@/app/route-error-page'
 import { AppShell } from '@/app/shell/app-shell'
 import { nelcota } from '@/shared/auth/nelcota'
@@ -121,6 +122,7 @@ export const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
   defaultErrorComponent: RouteErrorPage,
+  defaultNotFoundComponent: NotFoundPage,
 })
 
 declare module '@tanstack/react-router' {
