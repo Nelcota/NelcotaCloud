@@ -1,6 +1,6 @@
 # Build context: the repository root (the workspace Cargo.toml and Cargo.lock live there).
 
-FROM rust:1.99-slim-trixie AS builder
+FROM rust:1.100-slim-trixie AS builder
 WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
