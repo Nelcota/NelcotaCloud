@@ -10,6 +10,7 @@ use crate::modules::auth::rate_limiting::auth_rate_limits::RateLimits;
 use crate::modules::oauth::login::oauth_state_repository::delete_expired_authorizations;
 use crate::modules::oauth::provider::provider_endpoints::OAuthEndpoints;
 use crate::modules::tenants::database::tenant_pool_registry::TenantPoolRegistry;
+use crate::modules::tenants::platform::platform_tenant::PlatformTenantDirectory;
 use crate::modules::tenants::signing_keys::signing_key_cache::SigningKeyCache;
 use crate::modules::tenants::smtp::tenant_email_senders::{
     TenantEmailSenders, TenantEmailSendersConfig,
@@ -53,6 +54,7 @@ pub async fn build_app_state_with_endpoints(
             config.tenant_database_base_url.clone(),
         )),
         signing_keys: Arc::new(signing_key_cache(&control_plane_pool, &secret_box)),
+        platform_tenant: Arc::new(PlatformTenantDirectory::new()),
         rate_limits,
         email_senders: Arc::new(email_senders),
         http_client: build_http_client()?,

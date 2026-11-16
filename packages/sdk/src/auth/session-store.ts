@@ -31,6 +31,11 @@ export class SessionStore {
     this.storage.removeItem(this.key)
   }
 
+  /** Name shared by every tab using this storage key, for cross-tab locks. */
+  lockName(): string {
+    return `${this.key}-refresh`
+  }
+
   takeVerifier(): string | null {
     const verifierKey = `${this.key}${PKCE_SUFFIX}`
     const verifier = this.storage.getItem(verifierKey)
@@ -71,6 +76,7 @@ function isSession(value: unknown): value is Session {
     typeof candidate.accessToken === 'string' &&
     typeof candidate.refreshToken === 'string' &&
     typeof candidate.expiresAt === 'number' &&
+    Number.isFinite(candidate.expiresAt) &&
     typeof user === 'object' &&
     user !== null &&
     typeof user.id === 'string' &&

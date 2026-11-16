@@ -13,6 +13,8 @@ export function VerifyEmailPage(): JSX.Element {
     queryKey: ['account', 'verify-email', token],
     queryFn: () => nelcota.auth.verifyEmail({ token: token }),
     retry: false,
+    // A link without a token cannot be valid; no need to ask the API.
+    enabled: token !== '',
   })
 
   return (
@@ -22,7 +24,11 @@ export function VerifyEmailPage(): JSX.Element {
           <CardTitle>Confirmação de email</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 text-sm">
-          <VerificationStatus isPending={verification.isPending} error={verification.error} />
+          <VerificationStatus
+            hasToken={token !== ''}
+            isPending={verification.isPending}
+            error={verification.error}
+          />
           <Link to="/login" className="underline underline-offset-4">
             Ir para o login
           </Link>
@@ -33,12 +39,18 @@ export function VerifyEmailPage(): JSX.Element {
 }
 
 function VerificationStatus({
+  hasToken,
   isPending,
   error,
 }: {
+  hasToken: boolean
   isPending: boolean
   error: unknown
 }): JSX.Element {
+  if (hasToken === false) {
+    return <p>Este link de confirmação está incompleto. Abra de novo o link do email.</p>
+  }
+
   if (isPending) {
     return <p aria-busy="true">Confirmando…</p>
   }

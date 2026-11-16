@@ -41,6 +41,11 @@ const MFA_PER_CLIENT_IP: QuotaSpec = QuotaSpec {
     burst: 20,
     replenish_every: Duration::from_secs(6),
 };
+/// Each console project is a new database: a client gets a few, then one every 5 minutes.
+const PROJECT_CREATION_PER_CLIENT_IP: QuotaSpec = QuotaSpec {
+    burst: 3,
+    replenish_every: Duration::from_secs(300),
+};
 /// Starting an OAuth login writes a pending authorization to the control plane.
 const OAUTH_START_PER_CLIENT_IP: QuotaSpec = QuotaSpec {
     burst: 20,
@@ -57,6 +62,8 @@ pub struct RateLimits {
     pub mfa: AttemptLimiter,
     /// Starting a login carries no email, so it is limited per client IP only.
     pub oauth_authorization: ClientIpLimiter,
+    /// Project creation from the console, per client IP across accounts.
+    pub project_creation: ClientIpLimiter,
 }
 
 impl RateLimits {
@@ -67,6 +74,7 @@ impl RateLimits {
             signup: AttemptLimiter::new(&SIGNUP_PER_EMAIL, &SIGNUP_PER_CLIENT_IP)?,
             mfa: AttemptLimiter::new(&MFA_PER_ACCOUNT, &MFA_PER_CLIENT_IP)?,
             oauth_authorization: ClientIpLimiter::new(&OAUTH_START_PER_CLIENT_IP)?,
+            project_creation: ClientIpLimiter::new(&PROJECT_CREATION_PER_CLIENT_IP)?,
         })
     }
 
@@ -76,5 +84,6 @@ impl RateLimits {
         self.signup.forget_idle_keys();
         self.mfa.forget_idle_keys();
         self.oauth_authorization.forget_idle_keys();
+        self.project_creation.forget_idle_keys();
     }
 }

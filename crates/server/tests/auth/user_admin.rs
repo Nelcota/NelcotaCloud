@@ -180,3 +180,19 @@ async fn platform_admins_delete_tenants() -> TestResult {
     assert!(server.tenant_database_exists(&tenant.slug).await? == false);
     Ok(())
 }
+
+/// A session created while a ban was being applied must not outlive it.
+#[tokio::test]
+async fn banned_users_cannot_refresh_even_a_racing_session() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    let session = server.sign_up(&tenant, &unique_email("racing-ban")).await?;
+
+    server
+        .ban_without_ending_sessions(&tenant, session.user.id)
+        .await?;
+
+    let refresh = server.refresh(&tenant, &session.refresh_token).await?;
+    assert_eq!(refresh.status(), StatusCode::UNAUTHORIZED);
+    server.drop_tenant(&tenant).await
+}

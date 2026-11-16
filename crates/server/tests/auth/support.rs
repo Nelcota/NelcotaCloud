@@ -317,6 +317,25 @@ impl TestServer {
         Ok(Some(message.text))
     }
 
+    /// Bans a user straight in the tenant database without ending their sessions, like a ban
+    /// that raced with a login creating a new session.
+    pub async fn ban_without_ending_sessions(
+        &self,
+        tenant: &CreatedTenant,
+        user_id: Uuid,
+    ) -> TestResult {
+        let base_url = self.config.tenant_database_base_url.trim_end_matches('/');
+        let database_url = format!("{base_url}/tenant_{}", tenant.slug);
+        let mut connection = PgConnection::connect(&database_url).await?;
+        sqlx::query("UPDATE users SET banned_at = now() WHERE id = $1")
+            .bind(user_id)
+            .execute(&mut connection)
+            .await?;
+        connection.close().await?;
+
+        Ok(())
+    }
+
     pub async fn tenant_database_exists(&self, slug: &str) -> TestResult<bool> {
         let base_url = self.config.tenant_database_base_url.trim_end_matches('/');
         let mut maintenance = PgConnection::connect(&format!("{base_url}/postgres")).await?;

@@ -2317,6 +2317,16 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Too many projects created from this client",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
           }
         },
         "security": [

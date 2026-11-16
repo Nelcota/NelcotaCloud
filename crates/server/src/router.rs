@@ -1,4 +1,5 @@
 use std::future::ready;
+use std::sync::Arc;
 use std::time::Duration;
 
 use axum::http::header::{AUTHORIZATION, CACHE_CONTROL, CONTENT_TYPE};
@@ -77,9 +78,14 @@ const OPENAPI_PATH: &str = "/openapi.json";
 
 pub fn build_router(state: AppState) -> Router {
     let (router, document) = api_routes().split_for_parts();
+    // Built once and shared by every request; only the pointer is cloned.
+    let document = Arc::new(document);
 
     router
-        .route(OPENAPI_PATH, get(move || ready(Json(document.clone()))))
+        .route(
+            OPENAPI_PATH,
+            get(move || ready(Json(Arc::clone(&document)))),
+        )
         // Responses carry tokens and personal data: no browser, proxy or CDN may keep a copy
         // (RFC 6749, section 5.1). A route that sets its own Cache-Control keeps it.
         .layer(SetResponseHeaderLayer::if_not_present(

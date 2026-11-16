@@ -2,14 +2,13 @@ import type { JSX } from 'react'
 
 import { useRevokeApiKeyMutation } from '@/modules/api-keys/queries/use-api-keys'
 import type { components } from '@/shared/api/api-schema'
+import { formatDateTime } from '@/shared/lib/format-date'
 import { Badge } from '@/shared/ui/badge'
 import { ConfirmButton } from '@/shared/ui/confirm-button'
 import { ErrorAlert } from '@/shared/ui/error-alert'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/ui/table'
 
 type ApiKeySummary = components['schemas']['ApiKeySummary']
-
-const DATE_FORMAT = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 
 export function ApiKeysTable({
   projectId,
@@ -39,7 +38,7 @@ export function ApiKeysTable({
                 <Badge variant="secondary">{key.kind}</Badge>
               </TableCell>
               <TableCell className="font-mono text-xs">…{key.hint}</TableCell>
-              <TableCell>{DATE_FORMAT.format(new Date(key.created_at))}</TableCell>
+              <TableCell>{formatDateTime(key.created_at)}</TableCell>
               <TableCell className="text-right">
                 <KeyStatus
                   apiKey={key}

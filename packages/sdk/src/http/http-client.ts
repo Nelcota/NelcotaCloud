@@ -2,7 +2,6 @@ import { NelcotaError } from './nelcota-error'
 
 const API_KEY_HEADER = 'apikey'
 const REQUEST_ID_HEADER = 'x-request-id'
-const NO_CONTENT = 204
 const UNKNOWN_ERROR_CODE = 'unknown_error'
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
@@ -43,11 +42,14 @@ export class HttpClient {
       throw await toNelcotaError(response)
     }
 
-    if (response.status === NO_CONTENT) {
+    // 204 and 202 (e.g. "a link is on its way") carry no body.
+    const text = await response.text()
+
+    if (text === '') {
       return undefined as T
     }
 
-    return (await response.json()) as T
+    return JSON.parse(text) as T
   }
 
   private headersFor(request: HttpRequest): Record<string, string> {
