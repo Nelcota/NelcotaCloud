@@ -59,6 +59,10 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
 - Deploy: one VPS with `docker-compose.prod.yml`. Caddy (`deploy/caddy/`) is the only public
   service: it serves the built console, proxies the API, and obtains TLS certificates. The API
   trusts the address Caddy appends to `X-Forwarded-For` (`CLIENT_IP_HEADER`).
+- Behind Cloudflare (proxied DNS records, recommended so console assets come from the edge):
+  SSL/TLS mode "Full (strict)", `CLIENT_IP_HEADER=cf-connecting-ip`, and the VPS firewall allows
+  ports 80/443 only from Cloudflare's IP ranges. Caching needs no rule: hashed assets are
+  `immutable`, `index.html` is `no-cache` and API responses are `no-store`.
 
 ## Commands
 

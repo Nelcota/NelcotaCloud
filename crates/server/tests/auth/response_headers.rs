@@ -43,3 +43,22 @@ async fn responses_carry_a_server_generated_request_id() -> TestResult {
     assert!(uuid::Uuid::parse_str(request_id).is_ok());
     Ok(())
 }
+
+/// Browsers cache the preflight, so cross-origin calls do not pay an OPTIONS round trip each time.
+#[tokio::test]
+async fn preflight_answers_are_cacheable() -> TestResult {
+    let server = TestServer::start().await?;
+
+    let response = server
+        .client
+        .request(reqwest::Method::OPTIONS, server.url("/auth/v1/login"))
+        .header("origin", "https://app.example.com")
+        .header("access-control-request-method", "POST")
+        .header("access-control-request-headers", "apikey, content-type")
+        .send()
+        .await?;
+
+    let max_age = response.headers().get("access-control-max-age");
+    assert_eq!(max_age.and_then(|value| value.to_str().ok()), Some("7200"));
+    Ok(())
+}

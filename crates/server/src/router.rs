@@ -1,4 +1,5 @@
 use std::future::ready;
+use std::time::Duration;
 
 use axum::http::header::{AUTHORIZATION, CACHE_CONTROL, CONTENT_TYPE};
 use axum::http::{HeaderName, HeaderValue, Method};
@@ -36,6 +37,10 @@ use crate::modules::tenants::routes::create_tenant;
 use crate::modules::tenants::routes::read_tenant_settings;
 use crate::shared::http::request_id::{REQUEST_ID_HEADER, generate_request_id};
 use crate::shared::http::request_span::request_span;
+
+/// Browsers keep a preflight answer this long (Chrome caps it at two hours), so cross-origin
+/// calls with the `apikey` header skip the extra OPTIONS round trip.
+const CORS_PREFLIGHT_MAX_AGE: Duration = Duration::from_secs(2 * 60 * 60);
 
 /// Public: SDK generators and the console read the API description here.
 const OPENAPI_PATH: &str = "/openapi.json";
@@ -104,4 +109,5 @@ fn cors_layer() -> CorsLayer {
             HeaderName::from_static(API_KEY_HEADER),
         ])
         .expose_headers([REQUEST_ID_HEADER])
+        .max_age(CORS_PREFLIGHT_MAX_AGE)
 }
