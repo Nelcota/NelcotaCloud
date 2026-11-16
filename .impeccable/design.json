@@ -1,0 +1,334 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-16T19:30:00Z",
+  "title": "Design System: NelcotaCloud Console",
+  "extensions": {
+    "colorMeta": {
+      "signal-blue": {
+        "role": "primary",
+        "displayName": "Signal Blue",
+        "canonical": "oklch(0.55 0.2 262)",
+        "tonalRamp": [
+          "oklch(0.25 0.08 262)",
+          "oklch(0.35 0.12 262)",
+          "oklch(0.45 0.16 262)",
+          "oklch(0.53 0.2 262)",
+          "oklch(0.6 0.19 262)",
+          "oklch(0.7 0.14 262)",
+          "oklch(0.82 0.08 262)",
+          "oklch(0.94 0.03 262)"
+        ]
+      },
+      "signal-blue-light": {
+        "role": "primary",
+        "displayName": "Signal Blue (light theme)",
+        "canonical": "oklch(0.53 0.2 262)"
+      },
+      "focus-ring": {
+        "role": "primary",
+        "displayName": "Focus Blue",
+        "canonical": "oklch(0.66 0.16 262)"
+      },
+      "graphite-floor": {
+        "role": "neutral",
+        "displayName": "Graphite Floor",
+        "canonical": "oklch(0.165 0.004 286)",
+        "tonalRamp": [
+          "oklch(0.15 0.004 286)",
+          "oklch(0.165 0.004 286)",
+          "oklch(0.185 0.005 286)",
+          "oklch(0.2 0.005 286)",
+          "oklch(0.22 0.005 286)",
+          "oklch(0.245 0.006 286)",
+          "oklch(0.26 0.006 286)",
+          "oklch(0.3 0.008 286)"
+        ]
+      },
+      "graphite-panel": {
+        "role": "neutral",
+        "displayName": "Graphite Panel",
+        "canonical": "oklch(0.2 0.005 286)"
+      },
+      "graphite-raised": {
+        "role": "neutral",
+        "displayName": "Graphite Raised",
+        "canonical": "oklch(0.22 0.005 286)"
+      },
+      "graphite-sidebar": {
+        "role": "neutral",
+        "displayName": "Graphite Sidebar",
+        "canonical": "oklch(0.185 0.005 286)"
+      },
+      "graphite-control": {
+        "role": "neutral",
+        "displayName": "Graphite Control",
+        "canonical": "oklch(0.245 0.006 286)"
+      },
+      "graphite-hover": {
+        "role": "neutral",
+        "displayName": "Graphite Hover",
+        "canonical": "oklch(0.26 0.006 286)"
+      },
+      "instrument-white": {
+        "role": "neutral",
+        "displayName": "Instrument White",
+        "canonical": "oklch(0.95 0.003 286)"
+      },
+      "gauge-gray": {
+        "role": "neutral",
+        "displayName": "Gauge Gray",
+        "canonical": "oklch(0.7 0.012 286)"
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "oklch(1 0 0 / 8%)"
+      },
+      "input-stroke": {
+        "role": "neutral",
+        "displayName": "Input Stroke",
+        "canonical": "oklch(1 0 0 / 12%)"
+      },
+      "alarm-red": {
+        "role": "status",
+        "displayName": "Alarm Red",
+        "canonical": "oklch(0.72 0.17 24)",
+        "tonalRamp": [
+          "oklch(0.3 0.1 24)",
+          "oklch(0.4 0.14 24)",
+          "oklch(0.5 0.18 24)",
+          "oklch(0.56 0.21 25)",
+          "oklch(0.68 0.19 24)",
+          "oklch(0.76 0.13 24)",
+          "oklch(0.86 0.07 24)",
+          "oklch(0.95 0.025 24)"
+        ]
+      },
+      "logo-tile": {
+        "role": "neutral",
+        "displayName": "Logo Tile",
+        "canonical": "#18181b"
+      },
+      "paper-floor": {
+        "role": "neutral",
+        "displayName": "Paper Floor (light)",
+        "canonical": "oklch(0.985 0.002 286)"
+      },
+      "paper-panel": {
+        "role": "neutral",
+        "displayName": "Paper Panel (light)",
+        "canonical": "oklch(1 0 0)"
+      },
+      "paper-ink": {
+        "role": "neutral",
+        "displayName": "Paper Ink (light)",
+        "canonical": "oklch(0.2 0.006 286)"
+      },
+      "paper-gauge": {
+        "role": "neutral",
+        "displayName": "Paper Gauge (light)",
+        "canonical": "oklch(0.48 0.012 286)"
+      },
+      "paper-hairline": {
+        "role": "neutral",
+        "displayName": "Paper Hairline (light)",
+        "canonical": "oklch(0.905 0.005 286)"
+      },
+      "alarm-red-light": {
+        "role": "status",
+        "displayName": "Alarm Red (light)",
+        "canonical": "oklch(0.48 0.2 25)"
+      },
+      "signal-ink": {
+        "role": "primary",
+        "displayName": "Signal Ink",
+        "canonical": "oklch(0.72 0.15 262)"
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "The single h1 of every page (PageHeader)."
+      },
+      "metric": {
+        "displayName": "Metric",
+        "purpose": "Big readings on overview cards."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card and settings section titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Almost all UI text and descriptions."
+      },
+      "label": {
+        "displayName": "Readout Label",
+        "purpose": "Uppercase captions above metrics."
+      },
+      "code": {
+        "displayName": "Code",
+        "purpose": "Commands, snippets, keys and IDs."
+      }
+    },
+    "shadows": [
+      {
+        "name": "floating-md",
+        "value": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+        "purpose": "Dropdown menus."
+      },
+      {
+        "name": "floating-lg",
+        "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+        "purpose": "Popovers and the project switcher."
+      },
+      {
+        "name": "floating-xl",
+        "value": "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+        "purpose": "Dialogs and sheets."
+      }
+    ],
+    "motion": [
+      {
+        "name": "press",
+        "value": "transform 120ms ease; scale(0.97) on :active",
+        "purpose": "Tactile press on buttons, only without reduced motion."
+      },
+      {
+        "name": "overlay",
+        "value": "100-200ms",
+        "purpose": "Menus, dialogs and sheets enter/exit (tw-animate-css)."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one Signal Blue action of a view.",
+      "html": "<button class=\"ds-btn-primary\">Novo projeto</button>",
+      "css": ".ds-btn-primary { height: 40px; padding: 0 12px; border: 1px solid transparent; border-radius: 8px; background: oklch(0.55 0.2 262); color: oklch(0.99 0 0); font: 500 16px/1 'Manrope Variable', ui-sans-serif, system-ui, sans-serif; cursor: pointer; transition: background 150ms, transform 120ms ease; } .ds-btn-primary:hover { background: oklch(0.6 0.19 262 / 0.8); } .ds-btn-primary:active { transform: scale(0.97); } .ds-btn-primary:focus-visible { outline: 2px solid oklch(0.66 0.16 262); outline-offset: 2px; box-shadow: 0 0 0 3px oklch(0.66 0.16 262 / 0.5); }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary actions such as Copiar.",
+      "html": "<button class=\"ds-btn-outline\">Copiar</button>",
+      "css": ".ds-btn-outline { height: 40px; padding: 0 12px; border: 1px solid oklch(1 0 0 / 12%); border-radius: 8px; background: oklch(1 0 0 / 3.6%); color: oklch(0.95 0.003 286); font: 500 16px/1 'Manrope Variable', ui-sans-serif, system-ui, sans-serif; cursor: pointer; transition: background 150ms, transform 120ms ease; } .ds-btn-outline:hover { background: oklch(1 0 0 / 6%); } .ds-btn-outline:active { transform: scale(0.97); } .ds-btn-outline:focus-visible { outline: 2px solid oklch(0.66 0.16 262); outline-offset: 2px; }"
+    },
+    {
+      "name": "Destructive Button",
+      "kind": "button",
+      "refersTo": "button-destructive",
+      "description": "Revoke, delete, ban; always behind a confirmation.",
+      "html": "<button class=\"ds-btn-danger\">Revogar</button>",
+      "css": ".ds-btn-danger { height: 40px; padding: 0 12px; border: 1px solid transparent; border-radius: 8px; background: oklch(0.68 0.19 24 / 0.2); color: oklch(0.72 0.17 24); font: 500 16px/1 'Manrope Variable', ui-sans-serif, system-ui, sans-serif; cursor: pointer; transition: background 150ms, transform 120ms ease; } .ds-btn-danger:hover { background: oklch(0.68 0.19 24 / 0.3); } .ds-btn-danger:active { transform: scale(0.97); } .ds-btn-danger:focus-visible { outline: 2px solid oklch(0.66 0.16 262); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Every field, wrapped by FormField.",
+      "html": "<input class=\"ds-input\" placeholder=\"Buscar por email\" />",
+      "css": ".ds-input { height: 40px; width: 260px; padding: 4px 12px; border: 1px solid oklch(1 0 0 / 12%); border-radius: 8px; background: oklch(1 0 0 / 3.6%); color: oklch(0.95 0.003 286); font: 400 16px/1.4 'Manrope Variable', ui-sans-serif, system-ui, sans-serif; outline: none; transition: border-color 150ms, box-shadow 150ms; } .ds-input::placeholder { color: oklch(0.7 0.012 286); } .ds-input:focus-visible { border-color: oklch(0.66 0.16 262); box-shadow: 0 0 0 3px oklch(0.66 0.16 262 / 0.5); }"
+    },
+    {
+      "name": "Sidebar Navigation",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Project sections; the current one gets a fill, semibold and a blue icon.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item ds-nav-current\" href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"3\" y=\"14\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"14\" y=\"14\" width=\"7\" height=\"7\" rx=\"1\"/></svg>Visão geral</a><a class=\"ds-nav-item\" href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\"><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2\"/></svg>Usuários</a></nav>",
+      "css": ".ds-nav { display: grid; gap: 2px; width: 216px; padding: 12px; background: oklch(0.185 0.005 286); } .ds-nav-item { display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 0 12px; border-radius: 6.4px; color: oklch(0.82 0.008 286); font: 400 16px/1 'Manrope Variable', ui-sans-serif, system-ui, sans-serif; text-decoration: none; transition: background 150ms, color 150ms; } .ds-nav-item:hover { background: oklch(0.255 0.006 286); color: oklch(0.97 0.003 286); } .ds-nav-item:focus-visible { outline: 2px solid oklch(0.66 0.16 262); outline-offset: 2px; } .ds-nav-current { background: oklch(0.255 0.006 286); color: oklch(0.97 0.003 286); font-weight: 600; } .ds-nav-current svg { color: oklch(0.72 0.15 262); }"
+    },
+    {
+      "name": "Badge",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Roles, key types and user status.",
+      "html": "<span class=\"ds-badge\">Dono</span> <span class=\"ds-badge ds-badge-success\">Confirmado</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; height: 20px; padding: 2px 8px; border-radius: 9999px; background: oklch(0.245 0.006 286); color: oklch(0.93 0.003 286); font: 500 14px/1 'Manrope Variable', ui-sans-serif, system-ui, sans-serif; } .ds-badge-success { background: rgb(16 185 129 / 0.15); color: rgb(52 211 153); }"
+    },
+    {
+      "name": "Settings Section",
+      "kind": "card",
+      "refersTo": "settings-section",
+      "description": "A group of settings with a footer bar holding Save.",
+      "html": "<section class=\"ds-section\"><header class=\"ds-section-head\"><h2>Envio de email</h2><p>Confirmação de email, redefinição de senha e magic link saem por aqui.</p></header><div class=\"ds-section-body\">…</div><footer class=\"ds-section-foot\"><button class=\"ds-section-save\">Salvar</button></footer></section>",
+      "css": ".ds-section { width: 420px; overflow: hidden; border: 1px solid oklch(1 0 0 / 8%); border-radius: 11.2px; background: oklch(0.2 0.005 286); color: oklch(0.95 0.003 286); font-family: 'Manrope Variable', ui-sans-serif, system-ui, sans-serif; } .ds-section-head { padding: 20px 20px 0; } .ds-section-head h2 { margin: 0; font-size: 18px; font-weight: 600; } .ds-section-head p { margin: 4px 0 0; font-size: 16px; color: oklch(0.7 0.012 286); } .ds-section-body { padding: 20px; color: oklch(0.7 0.012 286); } .ds-section-foot { display: flex; justify-content: flex-end; padding: 12px 20px; border-top: 1px solid oklch(1 0 0 / 8%); background: oklch(0.245 0.006 286 / 0.3); } .ds-section-save { height: 40px; padding: 0 12px; border: 0; border-radius: 8px; background: oklch(0.55 0.2 262); color: oklch(0.99 0 0); font: 500 16px/1 inherit; cursor: pointer; } .ds-section-save:active { transform: scale(0.97); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Engine Room",
+    "overview": "The console is the room where a team keeps its app's Auth running: dim graphite walls, precise instruments, and a single signal light for the thing that needs a hand on it. Nothing glows for decoration. Surfaces step up in tiny tonal increments so the eye reads structure without lines shouting, and the one blue is reserved for the primary action and \"you are here\".\n\nDensity is moderate and operational: every page opens with the same header rhythm, then cards and settings sections laid on a 72rem column. Controls feel tactile and confident: they press down under the finger, their focus ring is unmistakable, and the primary action stands out by contrast, never by size or ornament. Dark is the default because this is a developer console; the light theme is the same room with the lights on, not a different design.",
+    "keyCharacteristics": [
+      "Graphite neutrals tinted toward violet-blue (hue 286), dark by default, light one toggle away.",
+      "One accent, Signal Blue, used for the primary action, the current navigation icon and focus.",
+      "Flat, tonal layering with hairline borders; shadows only on floating layers.",
+      "Manrope everywhere, tight tracking on headlines and metrics; system mono for code and keys.",
+      "Tactile states: a 0.97 press scale, a visible focus ring, pointer cursors on everything clickable.",
+      "Solar Linear icons (1.5px stroke, `currentColor`), 20px in controls and navigation."
+    ],
+    "rules": [
+      {
+        "name": "The One Signal Rule",
+        "body": "Signal Blue appears on at most one action per view (the primary one) plus the navigation's current icon and focus rings. A second blue button means one of them is wrong. Icon tiles, switches and status rows are graphite (`bg-secondary` + `text-muted-foreground`, a switch's on state is `foreground`), never blue.",
+        "section": "colors"
+      },
+      {
+        "name": "The AA Pair Rule",
+        "body": "Every text/background pair meets 4.5:1 in both themes: white on `--primary`, `--primary-ink` on the page, and Alarm Red on its 10–30% tint.",
+        "section": "colors"
+      },
+      {
+        "name": "The Red Means Loss Rule",
+        "body": "Alarm Red is used only where something is revoked, deleted, banned or invalid. Never for emphasis, never as a brand color.",
+        "section": "colors"
+      },
+      {
+        "name": "The Readout Rule",
+        "body": "Uppercase is reserved for tiny instrument captions above a value. Headlines, buttons and navigation stay in sentence case.",
+        "section": "typography"
+      },
+      {
+        "name": "The Grounded Rule",
+        "body": "Anything that sits on the page is flat. A shadow means \"this floats above the page and will go away\" (menu, dialog, sheet), never \"this is important\".",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do start every page with `PageHeader` and keep one `h1` per page.",
+      "Do keep Signal Blue to the primary action, the current nav icon and focus (The One Signal Rule).",
+      "Do express hierarchy with tonal steps and hairlines before reaching for a shadow.",
+      "Do give every interactive element a pointer cursor, a hover fill, a 0.97 press and a visible focus ring; respect `prefers-reduced-motion`.",
+      "Do design every screen for both themes, dark first, and keep text at WCAG AA contrast.",
+      "Do use mono only for things the user copies or reads as an identifier (commands, code, keys, IDs, database names).",
+      "Do show the logo only on its dark tile, unaltered.",
+      "Do name the target of every destructive confirmation and say what breaks."
+    ],
+    "donts": [
+      "Don't add a second accent color or use blue for decoration, gradients or large fills.",
+      "Don't use solid red buttons; destructive actions are red text on a red tint, behind a confirmation.",
+      "Don't put shadows on cards or anything that sits on the page.",
+      "Don't uppercase headlines, buttons or navigation; uppercase is only for readout captions.",
+      "Don't redraw, recolor or place the logo directly on a light surface.",
+      "Don't use `text-primary` for text or icons; use `text-primary-ink`.",
+      "Don't import `lucide-react` (shadcn's default): swap any icon a new shadcn component brings for its Solar Linear equivalent."
+    ]
+  }
+}
