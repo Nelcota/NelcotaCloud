@@ -41,9 +41,17 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
 - Rate limits (`governor`, in memory, single instance) on signup, login, auth emails and OAuth start,
   per tenant + email and per tenant + client IP (IPv6 per /64). Behind Cloudflare set
   `CLIENT_IP_HEADER=cf-connecting-ip`.
-- Signing keys are cached per tenant for 5 minutes (`SigningKeyCache`).
+- Signing keys are cached per tenant for 5 minutes and tenant pools while in use, with `moka`
+  (`SigningKeyCache`, `TenantPoolRegistry`): concurrent misses share one load.
+- Every response carries a server-generated `x-request-id` (never the client's), also logged in
+  the request span; responses default to `Cache-Control: no-store` (tower-http layers).
+- The API is described with OpenAPI (`utoipa`): each handler has a `#[utoipa::path]` and is
+  registered with `routes!` in `router.rs`, so the documented path is the served one. The API
+  serves it at `/openapi.json`; `crates/server/openapi.json` is the committed copy the console
+  generates its types from (a test fails when it is stale).
 - Stack: Rust, tokio, axum, sqlx (PostgreSQL 17 in Docker), validator, argon2, jsonwebtoken, oauth2,
-  reqwest, lettre, thiserror, tracing.
+  reqwest, lettre, thiserror, tracing, tower-http, moka, utoipa; tests use wiremock for OAuth
+  providers.
 - Console (`apps/console/`): React + TypeScript SPA built with Vite, TanStack Router and TanStack
   Query, Tailwind CSS and shadcn/ui; see "Console structure". It talks to the API only; the API
   address is fixed at build time by `VITE_API_URL`. Never put a secret key or the admin token in
@@ -60,7 +68,10 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
 - `cargo test --workspace`: run all tests.
 - `cargo fmt --all` and `cargo clippy --workspace --all-targets --all-features --locked -- -D warnings`.
 - Console, in `apps/console/`: `npm install`, `npm run dev` (http://localhost:5173, API from
-  `VITE_API_URL`, default http://localhost:8080), `npm run build` (type check + bundle), `npm run lint`.
+  `VITE_API_URL`, default http://localhost:8080), `npm run build` (type check + bundle),
+  `npm run lint`, `npm run format` / `npm run format:check` (oxfmt).
+- After changing an endpoint or its types: `cargo run -p server --bin export-openapi` (rewrites
+  `crates/server/openapi.json`), then `npm run api:types` in `apps/console/`.
 - Production: copy `.env.production.example` to `.env.production`, fill it, then
   `docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build`.
 
@@ -69,8 +80,9 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
 Modular monolith in `crates/server/src/`: one folder per business context under `modules/`.
 
 - Root: `main.rs`, `app_config.rs`, `app_state.rs` (composition root that holds every module's
-  services), `router.rs` (maps URLs to module routes; no logic), `startup/` (error, settings and
-  state builders, HTTP server).
+  services), `router.rs` (maps URLs to module routes and layers; no logic), `api_doc.rs` (OpenAPI
+  info, tags and security schemes), `startup/` (error, settings and state builders, HTTP server),
+  `bin/export_openapi.rs`.
 - `modules/<module>/`: everything one context owns, grouped in sub-packages by subject, plus its
   handlers in `routes/` (one file per endpoint, no business logic beyond request/response mapping).
   - `tenants/`: `access` (TenantContext, AdminAccess), `api_keys`, `signing_keys`, `database`
@@ -79,8 +91,8 @@ Modular monolith in `crates/server/src/`: one folder per business context under 
     (JWT, refresh tokens, issuing), `one_time_token`, `email` (auth emails), `rate_limiting`.
   - `oauth/`: `provider` (providers, endpoints, credentials), `client`, `login` (start, completion,
     state), `profile` (one file per provider), `identity` (identities, account linking).
-- `shared/`: infrastructure with no business rules (`crypto`, `http` errors and JSON validation,
-  `database` migrators, `email` SMTP sender). `shared` never imports from `modules`.
+- `shared/`: infrastructure with no business rules (`crypto`, `http` errors, JSON validation,
+  request id and span, `database` migrators, `email` SMTP sender). `shared` never imports from `modules`.
 - A new file goes into the sub-package of its subject; create a sub-package when a module has
   several files about one subject. Never leave loose files at a module root; `mod.rs` files only
   declare modules.
@@ -107,7 +119,8 @@ dependencies. In `apps/console/src/`:
     calls `api/`.
   - `api/`: one file per API call; the only place that calls `fetch`.
   - Create these sub-folders only when the module has something for them.
-- `shared/`: infrastructure with no business rules: `api` (base URL, `ApiError`), `ui` (shadcn
+- `shared/`: infrastructure with no business rules: `api` (typed `apiClient` from `openapi-fetch`,
+  generated `api-schema.d.ts` that is never edited by hand, base URL, `ApiError`), `ui` (shadcn
   components; add new ones with `npx shadcn@latest add`), `lib`. `shared` never imports from
   `modules` or `app`.
 - Dependencies point one way: `app → modules → shared`. A module may use another module's
@@ -123,8 +136,9 @@ clauses, no boolean variables for conditions, max 3 parameters, small files and 
 - Exported functions and components declare their return type (`JSX.Element`, `Promise<void>`).
 - File names in kebab-case; components in PascalCase; hooks start with `use`.
 - Validate API responses before using them, like any data crossing a boundary.
-- `npm run lint` (oxlint, config in `.oxlintrc.json`) and `npm run build` (type check) must pass
-  with zero warnings before finishing.
+- Call the API only through `apiClient` (typed paths and bodies), inside a module's `api/` file.
+- `npm run format`, `npm run lint` (oxlint, `.oxlintrc.json`) and `npm run build` (type check)
+  must pass with zero warnings before finishing.
 
 ## UI design
 

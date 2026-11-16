@@ -1,12 +1,7 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": [
-    "react",
-    "typescript",
-    "unicorn",
-    "import",
-    "oxc"
-  ],
+  "ignorePatterns": ["src/shared/api/api-schema.d.ts"],
+  "plugins": ["react", "typescript", "unicorn", "import", "oxc"],
   "categories": {
     "correctness": "error",
     "suspicious": "error"
@@ -52,17 +47,13 @@
     "import/no-unassigned-import": [
       "error",
       {
-        "allow": [
-          "**/*.css"
-        ]
+        "allow": ["**/*.css"]
       }
     ]
   },
   "overrides": [
     {
-      "files": [
-        "vite.config.ts"
-      ],
+      "files": ["vite.config.ts"],
       "rules": {
         "import/no-default-export": "off"
       }

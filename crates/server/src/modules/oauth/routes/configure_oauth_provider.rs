@@ -1,6 +1,8 @@
+use crate::shared::http::api_error::ErrorBody;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use serde::Deserialize;
+use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::app_state::AppState;
@@ -12,7 +14,7 @@ use crate::modules::tenants::access::api_key_tenant::ApiKeyTenant;
 use crate::shared::http::api_error::ApiError;
 use crate::shared::http::validated_json::ValidatedJson;
 
-#[derive(Deserialize, Validate)]
+#[derive(Deserialize, Validate, ToSchema)]
 pub struct ProviderCredentialsBody {
     #[validate(length(min = 1, max = 512))]
     pub client_id: String,
@@ -21,6 +23,19 @@ pub struct ProviderCredentialsBody {
 }
 
 /// `PUT /admin/oauth/{provider}`: the tenant registers its own OAuth app (secret key only).
+#[utoipa::path(
+    put,
+    path = "/auth/v1/admin/oauth/{provider}",
+    tag = "tenant-admin",
+    security(("api_key" = [])),
+    request_body = ProviderCredentialsBody,
+    params(("provider" = String, Path, description = "`google` or `github`")),
+    responses(
+        (status = 204, description = "Provider configured with the tenant's own OAuth app"),
+        (status = 403, description = "Requires the secret API key", body = ErrorBody),
+        (status = 404, description = "Unknown provider", body = ErrorBody),
+    )
+)]
 pub async fn configure_oauth_provider(
     State(state): State<AppState>,
     tenant: ApiKeyTenant,

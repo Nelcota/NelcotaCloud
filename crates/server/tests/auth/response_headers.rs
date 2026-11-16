@@ -22,3 +22,24 @@ async fn token_responses_forbid_caching() -> TestResult {
     );
     server.drop_tenant(&tenant).await
 }
+
+/// Every response carries a fresh request id, even when the client sent its own.
+#[tokio::test]
+async fn responses_carry_a_server_generated_request_id() -> TestResult {
+    let server = TestServer::start().await?;
+    let forged_id = "forged-by-client";
+
+    let response = reqwest::Client::new()
+        .get(server.url("/health"))
+        .header("x-request-id", forged_id)
+        .send()
+        .await?;
+
+    let request_id = response.headers().get("x-request-id");
+    let request_id = request_id
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or_default();
+    assert_ne!(request_id, forged_id);
+    assert!(uuid::Uuid::parse_str(request_id).is_ok());
+    Ok(())
+}

@@ -1,6 +1,8 @@
+use crate::shared::http::api_error::ErrorBody;
 use axum::Json;
 use axum::extract::State;
 use serde::Deserialize;
+use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::app_state::AppState;
@@ -15,7 +17,7 @@ use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::shared::http::api_error::ApiError;
 use crate::shared::http::validated_json::ValidatedJson;
 
-#[derive(Deserialize, Validate)]
+#[derive(Deserialize, Validate, ToSchema)]
 pub struct OAuthCodeBody {
     #[validate(length(min = 1, max = 256))]
     pub code: String,
@@ -25,6 +27,17 @@ pub struct OAuthCodeBody {
 
 /// `POST /oauth/token`: trades the one-time code from the OAuth redirect for a session. The
 /// code is consumed even when the verifier is wrong, so it cannot be guessed against.
+#[utoipa::path(
+    post,
+    path = "/auth/v1/oauth/token",
+    tag = "oauth",
+    security(("api_key" = [])),
+    request_body = OAuthCodeBody,
+    responses(
+        (status = 200, description = "Logged in", body = SessionTokens),
+        (status = 401, description = "Invalid or expired code, or wrong code verifier", body = ErrorBody),
+    )
+)]
 pub async fn exchange_oauth_code(
     State(state): State<AppState>,
     tenant: TenantContext,

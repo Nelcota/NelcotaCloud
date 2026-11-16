@@ -1,7 +1,9 @@
+use crate::shared::http::api_error::ErrorBody;
 use axum::extract::{Path, Query, State};
 use axum::response::Redirect;
 use oauth2::url::Url;
 use serde::Deserialize;
+use utoipa::IntoParams;
 use uuid::Uuid;
 use validator::Validate;
 
@@ -17,7 +19,8 @@ use crate::shared::http::api_error::ApiError;
 
 const S256_METHOD: &str = "S256";
 
-#[derive(Deserialize, Validate)]
+#[derive(Deserialize, Validate, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct AuthorizeQuery {
     /// The publishable key travels in the query: this endpoint is opened by a browser redirect.
     #[validate(length(min = 1, max = 256))]
@@ -31,6 +34,19 @@ pub struct AuthorizeQuery {
 }
 
 /// `GET /oauth/{provider}/authorize`: redirects the browser to the provider's sign-in page.
+#[utoipa::path(
+    get,
+    path = "/auth/v1/oauth/{provider}/authorize",
+    tag = "oauth",
+    params(("provider" = String, Path, description = "`google` or `github`"), AuthorizeQuery),
+    responses(
+        (status = 303, description = "Redirects the browser to the provider's sign-in page"),
+        (status = 400, description = "Invalid redirect, PKCE challenge or provider not configured", body = ErrorBody),
+        (status = 401, description = "Invalid API key", body = ErrorBody),
+        (status = 404, description = "Unknown provider", body = ErrorBody),
+        (status = 429, description = "Too many attempts", body = ErrorBody),
+    )
+)]
 pub async fn authorize_oauth(
     State(state): State<AppState>,
     Path(provider_name): Path<String>,

@@ -1,6 +1,7 @@
 use serde::Serialize;
 use sqlx::PgConnection;
 use time::{Duration, OffsetDateTime};
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::modules::auth::session::access_token::{
@@ -30,7 +31,7 @@ pub enum SessionError {
     Expiry(#[from] ExpiryOutOfRange),
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct SessionTokens {
     pub access_token: String,
     pub token_type: &'static str,

@@ -110,7 +110,7 @@ impl TestServer {
             email_from: std::env::var("EMAIL_FROM")?,
             client_ip_header: None,
         };
-        let fake_github = FakeGitHub::start().await?;
+        let fake_github = FakeGitHub::start().await;
         let endpoints = fake_endpoints(&fake_github);
         let state = build_app_state_with_endpoints(&config, endpoints).await?;
         let listener = TcpListener::bind(&config.bind_address).await?;

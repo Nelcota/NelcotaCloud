@@ -1,61 +1,56 @@
-use axum::Router;
-use axum::http::header::{AUTHORIZATION, CONTENT_TYPE};
-use axum::http::{HeaderName, Method};
-use axum::middleware::map_response;
-use axum::routing::{get, post, put};
+use std::future::ready;
+
+use axum::http::header::{AUTHORIZATION, CACHE_CONTROL, CONTENT_TYPE};
+use axum::http::{HeaderName, HeaderValue, Method};
+use axum::routing::get;
+use axum::{Json, Router};
 use tower_http::cors::{Any, CorsLayer};
+use tower_http::request_id::PropagateRequestIdLayer;
+use tower_http::set_header::{SetRequestHeaderLayer, SetResponseHeaderLayer};
 use tower_http::trace::{DefaultOnResponse, TraceLayer};
 use tracing::Level;
+use utoipa::OpenApi;
+use utoipa_axum::router::OpenApiRouter;
+use utoipa_axum::routes;
 
+use crate::api_doc::ApiDoc;
 use crate::app_state::AppState;
-use crate::health::health;
-use crate::modules::auth::routes::current_user::current_user;
-use crate::modules::auth::routes::jwks::jwks;
-use crate::modules::auth::routes::log_in::log_in;
-use crate::modules::auth::routes::log_out::log_out;
-use crate::modules::auth::routes::recover_password::recover_password;
-use crate::modules::auth::routes::refresh_session::refresh_session;
-use crate::modules::auth::routes::resend_verification::resend_verification;
-use crate::modules::auth::routes::reset_password::reset_password;
-use crate::modules::auth::routes::sign_up::sign_up;
-use crate::modules::auth::routes::verify_email::verify_email;
-use crate::modules::oauth::routes::authorize_oauth::authorize_oauth;
-use crate::modules::oauth::routes::configure_oauth_provider::configure_oauth_provider;
-use crate::modules::oauth::routes::exchange_oauth_code::exchange_oauth_code;
-use crate::modules::oauth::routes::oauth_callback::oauth_callback;
+use crate::health;
+use crate::modules::auth::routes::current_user;
+use crate::modules::auth::routes::jwks;
+use crate::modules::auth::routes::log_in;
+use crate::modules::auth::routes::log_out;
+use crate::modules::auth::routes::recover_password;
+use crate::modules::auth::routes::refresh_session;
+use crate::modules::auth::routes::resend_verification;
+use crate::modules::auth::routes::reset_password;
+use crate::modules::auth::routes::sign_up;
+use crate::modules::auth::routes::verify_email;
+use crate::modules::oauth::routes::authorize_oauth;
+use crate::modules::oauth::routes::configure_oauth_provider;
+use crate::modules::oauth::routes::exchange_oauth_code;
+use crate::modules::oauth::routes::oauth_callback;
 use crate::modules::tenants::access::api_key_tenant::API_KEY_HEADER;
-use crate::modules::tenants::routes::change_tenant_settings::change_tenant_settings;
-use crate::modules::tenants::routes::create_tenant::create_tenant;
-use crate::modules::tenants::routes::read_tenant_settings::read_tenant_settings;
-use crate::shared::http::cache_control::forbid_caching;
+use crate::modules::tenants::routes::change_tenant_settings;
+use crate::modules::tenants::routes::create_tenant;
+use crate::modules::tenants::routes::read_tenant_settings;
+use crate::shared::http::request_id::{REQUEST_ID_HEADER, generate_request_id};
 use crate::shared::http::request_span::request_span;
 
+/// Public: SDK generators and the console read the API description here.
+const OPENAPI_PATH: &str = "/openapi.json";
+
 pub fn build_router(state: AppState) -> Router {
-    Router::new()
-        .route("/health", get(health))
-        .route("/admin/v1/tenants", post(create_tenant))
-        .route("/auth/v1/signup", post(sign_up))
-        .route("/auth/v1/login", post(log_in))
-        .route("/auth/v1/refresh", post(refresh_session))
-        .route("/auth/v1/logout", post(log_out))
-        .route("/auth/v1/user", get(current_user))
-        .route("/auth/v1/jwks", get(jwks))
-        .route("/auth/v1/verify-email", post(verify_email))
-        .route("/auth/v1/verify-email/resend", post(resend_verification))
-        .route("/auth/v1/recover", post(recover_password))
-        .route("/auth/v1/reset-password", post(reset_password))
-        .route(
-            "/auth/v1/admin/oauth/{provider}",
-            put(configure_oauth_provider),
-        )
-        .route(
-            "/auth/v1/admin/settings",
-            get(read_tenant_settings).patch(change_tenant_settings),
-        )
-        .route("/auth/v1/oauth/{provider}/authorize", get(authorize_oauth))
-        .route("/auth/v1/oauth/callback", get(oauth_callback))
-        .route("/auth/v1/oauth/token", post(exchange_oauth_code))
-        .layer(map_response(forbid_caching))
+    let (router, document) = api_routes().split_for_parts();
+
+    router
+        .route(OPENAPI_PATH, get(move || ready(Json(document.clone()))))
+        // Responses carry tokens and personal data: no browser, proxy or CDN may keep a copy
+        // (RFC 6749, section 5.1). A route that sets its own Cache-Control keeps it.
+        .layer(SetResponseHeaderLayer::if_not_present(
+            CACHE_CONTROL,
+            HeaderValue::from_static("no-store"),
+        ))
         // Access log: one INFO line per response (status, latency) inside the request span;
         // server errors are also logged at ERROR by the default failure handler.
         .layer(
@@ -63,8 +58,38 @@ pub fn build_router(state: AppState) -> Router {
                 .make_span_with(request_span)
                 .on_response(DefaultOnResponse::new().level(Level::INFO)),
         )
+        .layer(PropagateRequestIdLayer::new(REQUEST_ID_HEADER))
+        .layer(SetRequestHeaderLayer::overriding(
+            REQUEST_ID_HEADER,
+            generate_request_id,
+        ))
         .layer(cors_layer())
         .with_state(state)
+}
+
+/// Every documented route: the path in each handler's `#[utoipa::path]` is the one served.
+pub fn api_routes() -> OpenApiRouter<AppState> {
+    OpenApiRouter::with_openapi(ApiDoc::openapi())
+        .routes(routes!(health::health))
+        .routes(routes!(create_tenant::create_tenant))
+        .routes(routes!(sign_up::sign_up))
+        .routes(routes!(log_in::log_in))
+        .routes(routes!(refresh_session::refresh_session))
+        .routes(routes!(log_out::log_out))
+        .routes(routes!(current_user::current_user))
+        .routes(routes!(jwks::jwks))
+        .routes(routes!(verify_email::verify_email))
+        .routes(routes!(resend_verification::resend_verification))
+        .routes(routes!(recover_password::recover_password))
+        .routes(routes!(reset_password::reset_password))
+        .routes(routes!(configure_oauth_provider::configure_oauth_provider))
+        .routes(routes!(
+            read_tenant_settings::read_tenant_settings,
+            change_tenant_settings::change_tenant_settings
+        ))
+        .routes(routes!(authorize_oauth::authorize_oauth))
+        .routes(routes!(oauth_callback::oauth_callback))
+        .routes(routes!(exchange_oauth_code::exchange_oauth_code))
 }
 
 /// Browser apps of any origin call the API with the publishable key; no cookies are used,
@@ -78,4 +103,5 @@ fn cors_layer() -> CorsLayer {
             AUTHORIZATION,
             HeaderName::from_static(API_KEY_HEADER),
         ])
+        .expose_headers([REQUEST_ID_HEADER])
 }

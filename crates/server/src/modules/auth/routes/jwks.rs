@@ -11,6 +11,15 @@ const JSON_CONTENT_TYPE: HeaderValue = HeaderValue::from_static("application/jso
 
 /// Public keys of the tenant, so other services can verify access tokens without calling us.
 /// The document is serialized once per key set and shared by every response.
+#[utoipa::path(
+    get,
+    path = "/auth/v1/jwks",
+    tag = "auth",
+    security(("api_key" = [])),
+    responses(
+        (status = 200, description = "The tenant's public keys (JWKS) to verify access tokens", body = Object),
+    )
+)]
 pub async fn jwks(
     State(state): State<AppState>,
     tenant: ApiKeyTenant,

@@ -1,6 +1,8 @@
+use crate::shared::http::api_error::ErrorBody;
 use axum::Json;
 use axum::extract::State;
 use serde::Deserialize;
+use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::app_state::AppState;
@@ -12,7 +14,7 @@ use crate::modules::tenants::settings::tenant_settings_repository::{
 use crate::shared::http::api_error::ApiError;
 use crate::shared::http::validated_json::ValidatedJson;
 
-#[derive(Deserialize, Validate)]
+#[derive(Deserialize, Validate, ToSchema)]
 pub struct TenantSettingsBody {
     #[validate(length(min = 1, max = 100))]
     pub name: Option<String>,
@@ -22,6 +24,18 @@ pub struct TenantSettingsBody {
 }
 
 /// `PATCH /admin/settings` (secret key only): changes only the fields that are sent.
+#[utoipa::path(
+    patch,
+    path = "/auth/v1/admin/settings",
+    tag = "tenant-admin",
+    security(("api_key" = [])),
+    request_body = TenantSettingsBody,
+    responses(
+        (status = 200, description = "Updated settings", body = TenantSettings),
+        (status = 400, description = "Invalid name or site URL", body = ErrorBody),
+        (status = 403, description = "Requires the secret API key", body = ErrorBody),
+    )
+)]
 pub async fn change_tenant_settings(
     State(state): State<AppState>,
     tenant: ApiKeyTenant,

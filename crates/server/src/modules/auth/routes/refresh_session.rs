@@ -1,6 +1,8 @@
+use crate::shared::http::api_error::ErrorBody;
 use axum::Json;
 use axum::extract::State;
 use serde::Deserialize;
+use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
 
@@ -17,7 +19,7 @@ use crate::shared::crypto::opaque_token::hash_opaque_token;
 use crate::shared::http::api_error::ApiError;
 use crate::shared::http::validated_json::ValidatedJson;
 
-#[derive(Deserialize, Validate)]
+#[derive(Deserialize, Validate, ToSchema)]
 pub struct RefreshTokenBody {
     #[validate(length(min = 1, max = 256))]
     pub refresh_token: String,
@@ -25,6 +27,18 @@ pub struct RefreshTokenBody {
 
 /// `POST /refresh`: rotates the refresh token. The presented token is consumed first, so a
 /// refused refresh (e.g. email verification now required) also ends that session.
+#[utoipa::path(
+    post,
+    path = "/auth/v1/refresh",
+    tag = "auth",
+    security(("api_key" = [])),
+    request_body = RefreshTokenBody,
+    responses(
+        (status = 200, description = "New tokens; the refresh token sent is no longer valid", body = SessionTokens),
+        (status = 401, description = "Invalid, expired, reused or revoked refresh token", body = ErrorBody),
+        (status = 403, description = "Email not verified yet", body = ErrorBody),
+    )
+)]
 pub async fn refresh_session(
     State(state): State<AppState>,
     tenant: TenantContext,

@@ -1,5 +1,7 @@
+use crate::shared::http::api_error::ErrorBody;
 use axum::http::StatusCode;
 use serde::Deserialize;
+use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::modules::auth::one_time_token::one_time_token_purpose::OneTimeTokenPurpose;
@@ -12,7 +14,7 @@ use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::shared::http::api_error::ApiError;
 use crate::shared::http::validated_json::ValidatedJson;
 
-#[derive(Deserialize, Validate)]
+#[derive(Deserialize, Validate, ToSchema)]
 pub struct ResetPasswordBody {
     #[validate(length(min = 1, max = 256))]
     pub token: String,
@@ -22,6 +24,17 @@ pub struct ResetPasswordBody {
 
 /// `POST /reset-password`: consuming the link, setting the password and ending every session
 /// happen in one transaction, so a failure leaves the link usable and nothing half done.
+#[utoipa::path(
+    post,
+    path = "/auth/v1/reset-password",
+    tag = "auth",
+    security(("api_key" = [])),
+    request_body = ResetPasswordBody,
+    responses(
+        (status = 204, description = "Password changed and every session ended"),
+        (status = 400, description = "Invalid or expired token, or weak password", body = ErrorBody),
+    )
+)]
 pub async fn reset_password(
     tenant: TenantContext,
     ValidatedJson(body): ValidatedJson<ResetPasswordBody>,

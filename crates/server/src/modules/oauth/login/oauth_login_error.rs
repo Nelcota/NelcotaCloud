@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use oauth2::url::ParseError;
 
 use crate::modules::oauth::identity::account_linker::AccountLinkError;
@@ -30,7 +32,7 @@ pub enum OAuthLoginError {
     #[error(transparent)]
     AccountLink(#[from] AccountLinkError),
     #[error(transparent)]
-    TenantDatabase(#[from] TenantPoolError),
+    TenantDatabase(#[from] Arc<TenantPoolError>),
     #[error(transparent)]
     State(#[from] OAuthStateError),
 }

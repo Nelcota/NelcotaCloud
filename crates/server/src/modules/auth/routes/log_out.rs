@@ -8,6 +8,16 @@ use crate::shared::http::api_error::ApiError;
 use crate::shared::http::validated_json::ValidatedJson;
 
 /// Always answers 204, even for unknown tokens, so the endpoint cannot be used to probe tokens.
+#[utoipa::path(
+    post,
+    path = "/auth/v1/logout",
+    tag = "auth",
+    security(("api_key" = [])),
+    request_body = RefreshTokenBody,
+    responses(
+        (status = 204, description = "Session ended (also for unknown tokens)"),
+    )
+)]
 pub async fn log_out(
     tenant: TenantContext,
     ValidatedJson(body): ValidatedJson<RefreshTokenBody>,

@@ -1,3 +1,4 @@
+use crate::shared::http::api_error::ErrorBody;
 use axum::extract::State;
 use axum::http::StatusCode;
 
@@ -12,6 +13,17 @@ use crate::shared::http::api_error::ApiError;
 use crate::shared::http::validated_json::ValidatedJson;
 
 /// `POST /verify-email/resend`: emails a new verification link to an unverified account.
+#[utoipa::path(
+    post,
+    path = "/auth/v1/verify-email/resend",
+    tag = "auth",
+    security(("api_key" = [])),
+    request_body = EmailBody,
+    responses(
+        (status = 202, description = "A link is sent if the email has an unverified account"),
+        (status = 429, description = "Too many emails requested", body = ErrorBody),
+    )
+)]
 pub async fn resend_verification(
     State(state): State<AppState>,
     tenant: TenantContext,

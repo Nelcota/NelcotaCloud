@@ -1,5 +1,7 @@
+use crate::shared::http::api_error::ErrorBody;
 use axum::Json;
 use serde::Deserialize;
+use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::modules::auth::one_time_token::one_time_token_purpose::OneTimeTokenPurpose;
@@ -10,13 +12,24 @@ use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::shared::http::api_error::ApiError;
 use crate::shared::http::validated_json::ValidatedJson;
 
-#[derive(Deserialize, Validate)]
+#[derive(Deserialize, Validate, ToSchema)]
 pub struct OneTimeTokenBody {
     #[validate(length(min = 1, max = 256))]
     pub token: String,
 }
 
 /// `POST /verify-email`: consuming the link and marking the email verified are one transaction.
+#[utoipa::path(
+    post,
+    path = "/auth/v1/verify-email",
+    tag = "auth",
+    security(("api_key" = [])),
+    request_body = OneTimeTokenBody,
+    responses(
+        (status = 200, description = "Email verified", body = User),
+        (status = 400, description = "Invalid or expired token", body = ErrorBody),
+    )
+)]
 pub async fn verify_email(
     tenant: TenantContext,
     ValidatedJson(body): ValidatedJson<OneTimeTokenBody>,

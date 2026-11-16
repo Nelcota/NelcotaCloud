@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use utoipa::ToSchema;
 
 use axum::Json;
 use axum::http::StatusCode;
@@ -47,10 +48,10 @@ pub enum ApiError {
     Internal,
 }
 
-#[derive(Serialize)]
-struct ErrorBody {
-    error: &'static str,
-    message: String,
+#[derive(Serialize, ToSchema)]
+pub struct ErrorBody {
+    pub error: &'static str,
+    pub message: String,
 }
 
 impl ApiError {

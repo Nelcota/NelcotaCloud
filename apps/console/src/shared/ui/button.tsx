@@ -1,12 +1,12 @@
-import { Button as ButtonPrimitive } from "@base-ui/react/button"
-import type { VariantProps } from "class-variance-authority"
-import { cn } from "@/shared/lib/class-names"
-import { buttonVariants } from "@/shared/ui/button-variants"
+import { Button as ButtonPrimitive } from '@base-ui/react/button'
+import type { VariantProps } from 'class-variance-authority'
+import { cn } from '@/shared/lib/class-names'
+import { buttonVariants } from '@/shared/ui/button-variants'
 
 function Button({
   className,
-  variant = "default",
-  size = "default",
+  variant = 'default',
+  size = 'default',
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
   return (

@@ -1,4 +1,5 @@
 use std::net::IpAddr;
+use utoipa::ToSchema;
 
 use axum::http::StatusCode;
 use serde::Deserialize;
@@ -16,7 +17,7 @@ use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::shared::http::api_error::ApiError;
 
 /// Body of the endpoints that email a link to an address.
-#[derive(Deserialize, Validate)]
+#[derive(Deserialize, Validate, ToSchema)]
 pub struct EmailBody {
     #[validate(length(min = 1, max = 254))]
     pub email: String,

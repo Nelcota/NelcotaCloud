@@ -1,5 +1,6 @@
 use serde::Serialize;
 use time::OffsetDateTime;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 /// Columns every query returning a `User` selects, in this order. A macro, so queries are
@@ -11,7 +12,7 @@ macro_rules! user_columns {
 }
 pub(crate) use user_columns;
 
-#[derive(Debug, Clone, Serialize, sqlx::FromRow)]
+#[derive(Debug, Clone, Serialize, sqlx::FromRow, ToSchema)]
 pub struct User {
     pub id: Uuid,
     pub email: String,

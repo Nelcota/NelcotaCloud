@@ -1,5 +1,6 @@
 use serde::Serialize;
 use sqlx::PgPool;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::modules::tenants::settings::site_url::SiteUrl;
@@ -13,7 +14,7 @@ macro_rules! settings_columns {
 }
 
 /// Settings a tenant manages itself with its secret key.
-#[derive(Debug, Clone, Serialize, sqlx::FromRow)]
+#[derive(Debug, Clone, Serialize, sqlx::FromRow, ToSchema)]
 pub struct TenantSettings {
     pub name: String,
     pub site_url: String,

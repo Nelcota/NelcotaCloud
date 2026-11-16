@@ -1,3 +1,4 @@
+use crate::shared::http::api_error::ErrorBody;
 use axum::Json;
 use axum::extract::State;
 
@@ -9,6 +10,16 @@ use crate::modules::tenants::settings::tenant_settings_repository::{
 use crate::shared::http::api_error::ApiError;
 
 /// `GET /admin/settings` (secret key only).
+#[utoipa::path(
+    get,
+    path = "/auth/v1/admin/settings",
+    tag = "tenant-admin",
+    security(("api_key" = [])),
+    responses(
+        (status = 200, description = "Current settings", body = TenantSettings),
+        (status = 403, description = "Requires the secret API key", body = ErrorBody),
+    )
+)]
 pub async fn read_tenant_settings(
     State(state): State<AppState>,
     tenant: ApiKeyTenant,

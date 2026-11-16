@@ -1,7 +1,9 @@
+use crate::shared::http::api_error::ErrorBody;
 use axum::extract::{Query, State};
 use axum::response::Redirect;
 use oauth2::url::Url;
 use serde::Deserialize;
+use utoipa::IntoParams;
 
 use crate::app_state::AppState;
 use crate::modules::auth::one_time_token::one_time_token_purpose::OneTimeTokenPurpose;
@@ -22,7 +24,8 @@ const MAX_STATE_LENGTH: usize = 256;
 /// nobody can plant a code of their own in front of the real one.
 const RESERVED_REDIRECT_PARAMETERS: [&str; 3] = ["code", "error", "state"];
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct CallbackQuery {
     pub state: Option<String>,
     pub code: Option<String>,
@@ -33,6 +36,16 @@ pub struct CallbackQuery {
 /// On success the browser goes back to the app with a short-lived `code` (exchanged at
 /// `POST /oauth/token` with the app's PKCE verifier), never with tokens in the URL; on
 /// failure, with an `error` code.
+#[utoipa::path(
+    get,
+    path = "/auth/v1/oauth/callback",
+    tag = "oauth",
+    params(CallbackQuery),
+    responses(
+        (status = 303, description = "Redirects back to the app with a one-time `code`, or an `error`"),
+        (status = 400, description = "Unknown or expired state", body = ErrorBody),
+    )
+)]
 pub async fn oauth_callback(
     State(state): State<AppState>,
     Query(query): Query<CallbackQuery>,

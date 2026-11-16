@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+pub mod api_doc;
 pub mod app_config;
 pub mod app_state;
 pub mod health;

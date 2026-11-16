@@ -1,8 +1,10 @@
+use crate::shared::http::api_error::ErrorBody;
 use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
 use serde::{Deserialize, Serialize};
 use sqlx::PgConnection;
+use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::app_state::AppState;
@@ -28,7 +30,7 @@ use crate::modules::tenants::settings::loaded_tenant_settings::requires_email_ve
 use crate::shared::http::api_error::ApiError;
 use crate::shared::http::validated_json::ValidatedJson;
 
-#[derive(Deserialize, Validate)]
+#[derive(Deserialize, Validate, ToSchema)]
 pub struct SignUpBody {
     /// Format is checked by `EmailAddress::parse`, after trimming and lowercasing.
     #[validate(length(min = 1, max = 254))]
@@ -38,7 +40,7 @@ pub struct SignUpBody {
 }
 
 /// A session when the tenant lets unverified users in; otherwise only a note to check the inbox.
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(untagged)]
 pub enum SignUpResponse {
     Session(SessionTokens),
@@ -54,6 +56,20 @@ struct NewSignup {
 }
 
 /// `POST /signup`.
+#[utoipa::path(
+    post,
+    path = "/auth/v1/signup",
+    tag = "auth",
+    security(("api_key" = [])),
+    request_body = SignUpBody,
+    responses(
+        (status = 201, description = "Account created and logged in (email verification off)", body = SignUpResponse),
+        (status = 202, description = "Check the inbox; same answer for new and existing emails", body = SignUpResponse),
+        (status = 400, description = "Invalid email or weak password", body = ErrorBody),
+        (status = 409, description = "Email already registered (email verification off)", body = ErrorBody),
+        (status = 429, description = "Too many attempts", body = ErrorBody),
+    )
+)]
 pub async fn sign_up(
     State(state): State<AppState>,
     tenant: TenantContext,

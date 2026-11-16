@@ -1,6 +1,8 @@
+use crate::shared::http::api_error::ErrorBody;
 use axum::Json;
 use axum::extract::State;
 use serde::Deserialize;
+use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::app_state::AppState;
@@ -24,7 +26,7 @@ use crate::modules::tenants::settings::loaded_tenant_settings::requires_email_ve
 use crate::shared::http::api_error::ApiError;
 use crate::shared::http::validated_json::ValidatedJson;
 
-#[derive(Deserialize, Validate)]
+#[derive(Deserialize, Validate, ToSchema)]
 pub struct LogInBody {
     #[validate(length(min = 1, max = 254))]
     pub email: String,
@@ -33,6 +35,19 @@ pub struct LogInBody {
 }
 
 /// `POST /login`: email and password.
+#[utoipa::path(
+    post,
+    path = "/auth/v1/login",
+    tag = "auth",
+    security(("api_key" = [])),
+    request_body = LogInBody,
+    responses(
+        (status = 200, description = "Logged in", body = SessionTokens),
+        (status = 401, description = "Invalid email or password", body = ErrorBody),
+        (status = 403, description = "Email not verified yet", body = ErrorBody),
+        (status = 429, description = "Too many attempts", body = ErrorBody),
+    )
+)]
 pub async fn log_in(
     State(state): State<AppState>,
     tenant: TenantContext,
