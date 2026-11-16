@@ -1,4 +1,5 @@
 import type { JSX } from 'react'
+import { useState } from 'react'
 
 import { Button } from '@/shared/ui/button'
 import {
@@ -9,9 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/ui/dialog'
-
-const SOLID_DESTRUCTIVE =
-  'bg-destructive text-white hover:bg-destructive/90 dark:bg-destructive dark:hover:bg-destructive/90'
+import { FormField } from '@/shared/ui/form-field'
 
 export type ConfirmDialogProps = {
   isOpen: boolean
@@ -21,6 +20,8 @@ export type ConfirmDialogProps = {
   confirmLabel: string
   onConfirm: () => void
   isDestructive?: boolean
+  /** Text the user must type before confirming, for actions that cannot be undone at all. */
+  confirmationText?: string
 }
 
 /**
@@ -28,25 +29,39 @@ export type ConfirmDialogProps = {
  * `ConfirmButton` wraps it for the common case of a plain button.
  */
 export function ConfirmDialog(props: ConfirmDialogProps): JSX.Element {
-  const variant = confirmVariant(props.isDestructive)
+  const [typedText, setTypedText] = useState('')
+
+  function changeOpen(isOpen: boolean): void {
+    setTypedText('')
+    props.onOpenChange(isOpen)
+  }
 
   function confirm(): void {
-    props.onOpenChange(false)
+    changeOpen(false)
     props.onConfirm()
   }
 
   return (
-    <Dialog open={props.isOpen} onOpenChange={props.onOpenChange}>
+    <Dialog open={props.isOpen} onOpenChange={changeOpen}>
       <DialogContent showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>{props.title}</DialogTitle>
           <DialogDescription>{props.description}</DialogDescription>
         </DialogHeader>
+        <TypedConfirmation
+          expected={props.confirmationText}
+          value={typedText}
+          onChange={setTypedText}
+        />
         <DialogFooter>
-          <Button variant="outline" onClick={() => props.onOpenChange(false)}>
+          <Button variant="outline" onClick={() => changeOpen(false)}>
             Cancelar
           </Button>
-          <Button variant={variant} className={confirmClass(props.isDestructive)} onClick={confirm}>
+          <Button
+            variant={confirmVariant(props.isDestructive)}
+            disabled={isConfirmationMissing(props.confirmationText, typedText)}
+            onClick={confirm}
+          >
             {props.confirmLabel}
           </Button>
         </DialogFooter>
@@ -55,13 +70,39 @@ export function ConfirmDialog(props: ConfirmDialogProps): JSX.Element {
   )
 }
 
-/** The dialog's main action is solid: it must stand out more than the button that opened it. */
-function confirmClass(isDestructive: boolean | undefined): string | undefined {
-  if (isDestructive === true) {
-    return SOLID_DESTRUCTIVE
+type TypedConfirmationProps = {
+  expected: string | undefined
+  value: string
+  onChange: (value: string) => void
+}
+
+function TypedConfirmation({
+  expected,
+  value,
+  onChange,
+}: TypedConfirmationProps): JSX.Element | null {
+  if (expected === undefined) {
+    return null
   }
 
-  return undefined
+  return (
+    <FormField
+      label={`Digite ${expected} para confirmar`}
+      autoFocus
+      value={value}
+      autoComplete="off"
+      spellCheck={false}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  )
+}
+
+function isConfirmationMissing(expected: string | undefined, typedText: string): boolean {
+  if (expected === undefined) {
+    return false
+  }
+
+  return typedText.trim() !== expected
 }
 
 function confirmVariant(isDestructive: boolean | undefined): 'destructive' | 'default' {

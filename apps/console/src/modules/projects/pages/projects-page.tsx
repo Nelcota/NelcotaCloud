@@ -1,9 +1,10 @@
 import { Link } from '@tanstack/react-router'
-import { Plus } from 'lucide-react'
+import Plus from '~icons/solar/add-linear'
 import type { JSX } from 'react'
 
 import { ProjectList } from '@/modules/projects/components/project-list'
 import { useProjectsQuery } from '@/modules/projects/queries/use-projects'
+import { ReceivedInvitations } from '@/modules/team/components/received-invitations'
 import type { components } from '@/shared/api/api-schema'
 import { buttonVariants } from '@/shared/ui/button-variants'
 import { ErrorAlert } from '@/shared/ui/error-alert'
@@ -24,12 +25,13 @@ export function ProjectsPage(): JSX.Element {
         description="Cada projeto é o Auth de um app: usuários, chaves e login social próprios."
         actions={
           <Link to="/projects/new" className={buttonVariants()}>
-            <Plus strokeWidth={2} />
+            <Plus />
             Novo projeto
           </Link>
         }
       />
       <ErrorAlert error={projects.error} />
+      <ReceivedInvitations />
       <ProjectsContent isPending={projects.isPending} projects={projects.data} />
     </div>
   )

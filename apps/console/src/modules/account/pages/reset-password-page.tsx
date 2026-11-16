@@ -1,5 +1,5 @@
 import { Link, useSearch } from '@tanstack/react-router'
-import { CircleCheck } from 'lucide-react'
+import CircleCheck from '~icons/solar/check-circle-linear'
 import type { FormEvent, JSX } from 'react'
 import { useState } from 'react'
 
@@ -40,13 +40,7 @@ export function ResetPasswordPage(): JSX.Element {
       <AuthCard
         title="Senha alterada"
         description="Por segurança, todas as sessões abertas foram encerradas."
-        icon={
-          <CircleCheck
-            aria-hidden="true"
-            className="mb-4 size-10 text-emerald-500"
-            strokeWidth={1.5}
-          />
-        }
+        icon={<CircleCheck aria-hidden="true" className="mb-4 size-10 text-emerald-500" />}
       >
         <Link to="/login" className={buttonVariants({ size: 'lg' })}>
           Entrar com a nova senha

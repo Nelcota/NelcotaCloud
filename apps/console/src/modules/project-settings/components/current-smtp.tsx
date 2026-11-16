@@ -1,4 +1,5 @@
-import { Mail, Server } from 'lucide-react'
+import Mail from '~icons/solar/letter-linear'
+import Server from '~icons/solar/server-linear'
 import type { JSX } from 'react'
 
 import type { components } from '@/shared/api/api-schema'
@@ -23,7 +24,7 @@ export function CurrentSmtp({ view, isResetting, onReset }: CurrentSmtpProps): J
   if (view.is_custom === false) {
     return (
       <ServerRow
-        icon={<Mail className="text-muted-foreground size-4" strokeWidth={1.75} />}
+        icon={<Mail className="text-muted-foreground size-5" />}
         title="SMTP da NelcotaCloud"
         detail="Funciona sem configurar nada. Para usar seu domínio no remetente, configure o seu servidor abaixo."
         badge={<Badge variant="secondary">Padrão</Badge>}
@@ -33,7 +34,7 @@ export function CurrentSmtp({ view, isResetting, onReset }: CurrentSmtpProps): J
 
   return (
     <ServerRow
-      icon={<Server className="text-primary size-4" strokeWidth={1.75} />}
+      icon={<Server className="text-muted-foreground size-5" />}
       title={view.smtp_host ?? 'Servidor próprio'}
       detail={`Remetente: ${view.email_from ?? '—'}`}
       badge={<Badge variant="success">Seu servidor</Badge>}
@@ -63,7 +64,7 @@ type ServerRowProps = {
 function ServerRow({ icon, title, detail, badge, action }: ServerRowProps): JSX.Element {
   return (
     <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center">
-      <span className="bg-secondary flex size-9 shrink-0 items-center justify-center rounded-lg">
+      <span className="bg-secondary flex size-11 shrink-0 items-center justify-center rounded-lg">
         {icon}
       </span>
       <div className="min-w-0 flex-1">

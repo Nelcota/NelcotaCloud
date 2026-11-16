@@ -9,6 +9,8 @@ type SettingsSectionProps = {
   /** Bottom bar for the section's action (usually Save), kept apart from the fields. */
   footer?: ReactNode
   tone?: 'default' | 'danger'
+  /** A mark shown before the title, such as a provider's logo. */
+  leading?: ReactNode
 }
 
 /** One group of settings: what it is, its fields, and how to apply them. */
@@ -21,7 +23,10 @@ export function SettingsSection(props: SettingsSectionProps): JSX.Element {
       )}
     >
       <header className="px-5 pt-5">
-        <h2 className="font-semibold">{props.title}</h2>
+        <h2 className="flex items-center gap-2">
+          {props.leading}
+          {props.title}
+        </h2>
         <SectionDescription description={props.description} />
       </header>
       <div className="grid gap-4 p-5">{props.children}</div>

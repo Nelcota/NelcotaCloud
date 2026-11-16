@@ -3,7 +3,7 @@ import { Dialog as DialogPrimitive } from '@base-ui/react/dialog'
 import { cn } from '@/shared/lib/class-names'
 
 import { Button } from '@/shared/ui/button'
-import { XIcon } from 'lucide-react'
+import XIcon from '~icons/solar/close-linear'
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />

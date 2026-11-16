@@ -1,10 +1,18 @@
 import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+import Icons from 'unplugin-icons/vite'
 import { defineConfig } from 'vite'
 
+import { compileReactIcon } from './icon-compiler.ts'
+
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    // Solar icons and brand logos, compiled at build time: only the icons the console imports end up in the bundle.
+    Icons({ compiler: { compiler: compileReactIcon, extension: 'js' } }),
+  ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

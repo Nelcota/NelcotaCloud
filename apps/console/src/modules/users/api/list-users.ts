@@ -4,11 +4,19 @@ import type { components } from '@/shared/api/api-schema'
 
 type UserPage = components['schemas']['UserPage']
 
-/** One page of the project's users, optionally searched by email. */
-export async function listUsers(projectId: string, email: string): Promise<UserPage> {
-  const options = { params: { query: emailQuery(email) }, headers: projectHeaders(projectId) }
+export type UserListQuery = {
+  email: string
+  offset: number
+  limit: number
+}
 
-  return dataOf(await apiClient.GET('/auth/v1/admin/users', options))
+/** One page of the project's users, newest first, optionally searched by email. */
+export async function listUsers(projectId: string, query: UserListQuery): Promise<UserPage> {
+  const params = { query: { ...emailQuery(query.email), offset: query.offset, limit: query.limit } }
+
+  return dataOf(
+    await apiClient.GET('/auth/v1/admin/users', { params, headers: projectHeaders(projectId) }),
+  )
 }
 
 /** A blank search lists everyone. */

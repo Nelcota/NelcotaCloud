@@ -1,20 +1,20 @@
 import { useNavigate } from '@tanstack/react-router'
 import type { JSX } from 'react'
 
-import { useDeleteProjectMutation } from '@/modules/projects/queries/use-projects'
+import { useDeleteProjectMutation, useProjectsQuery } from '@/modules/projects/queries/use-projects'
 import { ConfirmButton } from '@/shared/ui/confirm-button'
 import { ErrorAlert } from '@/shared/ui/error-alert'
 import { SettingsSection } from '@/shared/ui/settings-section'
 
-export function DangerZone({
-  projectId,
-  projectName,
-}: {
+type DangerZoneProps = {
   projectId: string
   projectName: string
-}): JSX.Element {
+}
+
+export function DangerZone({ projectId, projectName }: DangerZoneProps): JSX.Element {
   const navigate = useNavigate()
   const deletion = useDeleteProjectMutation()
+  const confirmationText = useProjectSlug(projectId) ?? projectName
 
   function deleteProject(): void {
     deletion.mutate(projectId, { onSuccess: () => navigate({ to: '/' }) })
@@ -31,9 +31,10 @@ export function DangerZone({
         </div>
         <div className="shrink-0">
           <ConfirmButton
-            title={`Excluir ${projectName}?`}
-            description="Todos os dados do projeto são apagados para sempre. Apps que usam este projeto param de funcionar."
+            title={`Excluir ${projectName} para sempre?`}
+            description="O banco de dados do projeto, seus usuários e suas chaves são apagados e não há como recuperar. Apps que usam este projeto param de funcionar na hora."
             confirmLabel="Excluir projeto"
+            confirmationText={confirmationText}
             isDestructive
             isPending={deletion.isPending}
             onConfirm={deleteProject}
@@ -45,4 +46,11 @@ export function DangerZone({
       <ErrorAlert error={deletion.error} />
     </SettingsSection>
   )
+}
+
+/** The slug is what the user types to confirm; the name is the fallback while it loads. */
+function useProjectSlug(projectId: string): string | undefined {
+  const projects = useProjectsQuery()
+
+  return projects.data?.find((project) => project.id === projectId)?.slug
 }

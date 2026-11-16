@@ -12,6 +12,8 @@ type ConfirmButtonProps = {
   onConfirm: () => void
   isDestructive?: boolean
   isPending?: boolean
+  /** See `ConfirmDialog`: text to type before an irreversible action. */
+  confirmationText?: string
 }
 
 /** A button whose action runs only after the user confirms it in a dialog. */
@@ -36,6 +38,7 @@ export function ConfirmButton(props: ConfirmButtonProps): JSX.Element {
         description={props.description}
         confirmLabel={props.confirmLabel}
         isDestructive={props.isDestructive}
+        confirmationText={props.confirmationText}
         onConfirm={props.onConfirm}
       />
     </>

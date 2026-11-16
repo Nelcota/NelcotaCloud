@@ -2,36 +2,33 @@ import { Link } from '@tanstack/react-router'
 import type { JSX } from 'react'
 
 import { PROJECT_SECTIONS, type ProjectSection, sectionPath } from '@/app/shell/project-sections'
+import { SectionCount } from '@/app/shell/section-count'
 import { cn } from '@/shared/lib/class-names'
 
 type ProjectNavProps = {
   projectId: string
   currentSection: ProjectSection
+  group: ProjectSection['group']
   onNavigate?: () => void
 }
 
-/** A project's pages. The current one is marked by its fill, weight and accent-colored icon. */
-export function ProjectNav({
-  projectId,
-  currentSection,
-  onNavigate,
-}: ProjectNavProps): JSX.Element {
+/** One group of a project's pages. The current one is marked by fill, weight and a filled blue icon. */
+export function ProjectNav(props: ProjectNavProps): JSX.Element {
+  const sections = PROJECT_SECTIONS.filter((section) => section.group === props.group)
+
   return (
-    <nav aria-label="Projeto">
-      <p className="text-muted-foreground px-3 pb-2 text-xs font-medium">Projeto</p>
-      <ul className="grid gap-0.5">
-        {PROJECT_SECTIONS.map((section) => (
-          <li key={section.segment}>
-            <SectionLink
-              projectId={projectId}
-              section={section}
-              isCurrent={section === currentSection}
-              onNavigate={onNavigate}
-            />
-          </li>
-        ))}
-      </ul>
-    </nav>
+    <ul className="grid gap-0.5">
+      {sections.map((section) => (
+        <li key={section.segment}>
+          <SectionLink
+            projectId={props.projectId}
+            section={section}
+            isCurrent={section === props.currentSection}
+            onNavigate={props.onNavigate}
+          />
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -43,22 +40,35 @@ type SectionLinkProps = {
 }
 
 function SectionLink({ projectId, section, isCurrent, onNavigate }: SectionLinkProps): JSX.Element {
-  const Icon = section.icon
-
   return (
     <Link
       to={sectionPath(projectId, section)}
       onClick={onNavigate}
       aria-current={ariaCurrent(isCurrent)}
       className={cn(
-        'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex min-h-10 items-center gap-3 rounded-md px-3 text-sm transition-colors',
+        'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors',
         isCurrent && 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold',
       )}
     >
-      <Icon className={cn('size-4 shrink-0', isCurrent && 'text-primary')} strokeWidth={1.75} />
-      {section.label}
+      <SectionIcon section={section} isCurrent={isCurrent} />
+      <span className="min-w-0 flex-1 truncate">{section.label}</span>
+      <SectionCount projectId={projectId} segment={section.segment} />
     </Link>
   )
+}
+
+function SectionIcon({
+  section,
+  isCurrent,
+}: {
+  section: ProjectSection
+  isCurrent: boolean
+}): JSX.Element {
+  if (isCurrent) {
+    return <section.currentIcon className="text-primary-ink size-5 shrink-0" />
+  }
+
+  return <section.icon className="size-5 shrink-0" />
 }
 
 function ariaCurrent(isCurrent: boolean): 'page' | undefined {

@@ -1,8 +1,11 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowLeft, CircleCheck } from 'lucide-react'
+import ArrowLeft from '~icons/solar/arrow-left-linear'
+import CircleCheck from '~icons/solar/check-circle-linear'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
+import { ConnectAppPanel } from '@/modules/api-keys/components/connect-app-panel'
+import { SecretLeaveGuard } from '@/modules/api-keys/components/secret-leave-guard'
 import { SecretReveal } from '@/modules/api-keys/components/secret-reveal'
 import { NewProjectForm } from '@/modules/projects/components/new-project-form'
 import type { components } from '@/shared/api/api-schema'
@@ -21,7 +24,7 @@ export function NewProjectPage(): JSX.Element {
         to="/"
         className="text-muted-foreground hover:text-foreground inline-flex w-fit items-center gap-1.5 rounded-md text-sm transition-colors"
       >
-        <ArrowLeft className="size-4" strokeWidth={1.75} />
+        <ArrowLeft className="size-5" />
         Projetos
       </Link>
       <NewProjectContent created={created} onCreated={setCreated} />
@@ -50,27 +53,30 @@ function NewProjectContent({ created, onCreated }: NewProjectContentProps): JSX.
   return (
     <>
       <div className="flex items-start gap-3">
-        <CircleCheck className="mt-1 size-6 shrink-0 text-emerald-500" strokeWidth={1.75} />
+        <CircleCheck className="mt-1 size-6 shrink-0 text-emerald-500" />
         <PageHeader
           title="Projeto criado"
           description="Guarde as chaves agora: elas não aparecem de novo. A publishable vai no app; a secret fica só no seu servidor."
         />
       </div>
+      <SecretLeaveGuard isActive />
       <SettingsSection
         title="Chaves de API"
         footer={
           <Link
             to="/projects/$projectId"
             params={{ projectId: created.tenant_id }}
+            ignoreBlocker
             className={buttonVariants()}
           >
-            Abrir o projeto
+            Já guardei as chaves, abrir o projeto
           </Link>
         }
       >
-        <SecretReveal label="Publishable key" value={created.publishable_key} />
+        <SecretReveal label="Publishable key" value={created.publishable_key} autoFocusCopy />
         <SecretReveal label="Secret key" value={created.secret_key} />
       </SettingsSection>
+      <ConnectAppPanel publishableKey={created.publishable_key} projectId={created.tenant_id} />
     </>
   )
 }
