@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use lettre::message::Mailbox;
 use lettre::message::header::ContentType;
-use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
+use lettre::{Address, AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 
 use crate::shared::email::outgoing_email::OutgoingEmail;
 
@@ -39,7 +39,8 @@ impl EmailSender {
     pub async fn send(&self, email: OutgoingEmail) -> Result<(), EmailError> {
         let message = Message::builder()
             .from(self.from.clone())
-            .to(email.to.parse::<Mailbox>()?)
+            // A bare address, so a "Name <address>" string can never redirect the email.
+            .to(Mailbox::new(None, email.to.parse::<Address>()?))
             .subject(email.subject)
             .header(ContentType::TEXT_PLAIN)
             .body(email.body)?;

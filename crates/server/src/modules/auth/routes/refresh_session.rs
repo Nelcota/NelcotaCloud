@@ -12,6 +12,7 @@ use crate::modules::auth::session::session_grant::{SessionGrant, issue_session};
 use crate::modules::auth::session::session_issuer::SessionTokens;
 use crate::modules::auth::user::user_lookup::find_user_by_id;
 use crate::modules::tenants::access::tenant_context::TenantContext;
+use crate::modules::tenants::settings::loaded_tenant_settings::load_tenant_settings;
 use crate::shared::crypto::opaque_token::hash_opaque_token;
 use crate::shared::http::api_error::ApiError;
 use crate::shared::http::validated_json::ValidatedJson;
@@ -22,6 +23,8 @@ pub struct RefreshTokenBody {
     pub refresh_token: String,
 }
 
+/// `POST /refresh`: rotates the refresh token. The presented token is consumed first, so a
+/// refused refresh (e.g. email verification now required) also ends that session.
 pub async fn refresh_session(
     State(state): State<AppState>,
     tenant: TenantContext,
@@ -31,8 +34,8 @@ pub async fn refresh_session(
     let status = consume_refresh_token(&tenant.pool, &token_hash)
         .await
         .map_err(ApiError::internal)?;
-    let (user_id, family_id) = match status {
-        RefreshTokenStatus::Consumed { user_id, family_id } => (user_id, family_id),
+    let (user_id, family) = match status {
+        RefreshTokenStatus::Consumed { user_id, family } => (user_id, family),
         RefreshTokenStatus::Reused { family_id } => {
             return Err(revoke_reused_family(&tenant, family_id).await);
         }
@@ -44,9 +47,16 @@ pub async fn refresh_session(
     let Some(user) = user else {
         return Err(ApiError::InvalidRefreshToken);
     };
-    let tokens = issue_session(&state, &tenant, SessionGrant { user, family_id }).await?;
+    let settings = load_tenant_settings(&state, tenant.tenant_id).await?;
 
-    Ok(Json(tokens))
+    // Sessions issued while the tenant allowed unverified users stop renewing once it doesn't.
+    if settings.require_email_verification && user.email_verified_at.is_none() {
+        return Err(ApiError::EmailNotVerified);
+    }
+
+    Ok(Json(
+        issue_session(&state, &tenant, SessionGrant { user, family }).await?,
+    ))
 }
 
 /// A rotated token came back: either the client retried or the token was stolen.

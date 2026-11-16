@@ -21,7 +21,7 @@ use crate::modules::oauth::routes::authorize_oauth::authorize_oauth;
 use crate::modules::oauth::routes::configure_oauth_provider::configure_oauth_provider;
 use crate::modules::oauth::routes::exchange_oauth_code::exchange_oauth_code;
 use crate::modules::oauth::routes::oauth_callback::oauth_callback;
-use crate::modules::tenants::access::tenant_context::API_KEY_HEADER;
+use crate::modules::tenants::access::api_key_tenant::API_KEY_HEADER;
 use crate::modules::tenants::routes::change_tenant_settings::change_tenant_settings;
 use crate::modules::tenants::routes::create_tenant::create_tenant;
 use crate::modules::tenants::routes::read_tenant_settings::read_tenant_settings;

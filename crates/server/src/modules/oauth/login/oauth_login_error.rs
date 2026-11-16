@@ -44,6 +44,9 @@ impl OAuthLoginError {
         match self {
             OAuthLoginError::ProviderDenied => "access_denied",
             OAuthLoginError::AccountLink(AccountLinkError::NoVerifiedEmail) => "email_not_verified",
+            OAuthLoginError::AccountLink(AccountLinkError::ProviderAccountMismatch) => {
+                "account_conflict"
+            }
             _ => "server_error",
         }
     }

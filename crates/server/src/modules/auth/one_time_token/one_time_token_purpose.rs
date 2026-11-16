@@ -25,6 +25,14 @@ impl OneTimeTokenPurpose {
         }
     }
 
+    /// Emailed links replace each other; OAuth login codes are independent per device.
+    pub fn supersedes_pending_tokens(self) -> bool {
+        match self {
+            OneTimeTokenPurpose::EmailVerification | OneTimeTokenPurpose::PasswordReset => true,
+            OneTimeTokenPurpose::OAuthLogin => false,
+        }
+    }
+
     pub fn lifetime(self) -> Duration {
         match self {
             OneTimeTokenPurpose::EmailVerification => Duration::hours(24),

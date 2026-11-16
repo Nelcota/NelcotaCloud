@@ -28,14 +28,13 @@ pub struct EmailLinkRequest<'a> {
     pub kind: AuthEmailKind,
 }
 
-/// Always answers 202, whether or not the account exists, so these endpoints cannot be used to
-/// discover registered emails.
-pub async fn request_email_link(
+/// Answers 202 right after the rate limit, before looking the account up: neither the status
+/// nor the response time can reveal whether the email has an account.
+pub fn request_email_link(
     state: &AppState,
-    tenant: &TenantContext,
+    tenant: TenantContext,
     request: EmailLinkRequest<'_>,
 ) -> Result<StatusCode, ApiError> {
-    let kind = request.kind;
     let attempt = Attempt {
         tenant_id: tenant.tenant_id,
         email: request.raw_email,
@@ -47,21 +46,46 @@ pub async fn request_email_link(
         .email_delivery
         .check(&attempt)
         .map_err(|_| ApiError::RateLimited)?;
-    let Ok(email) = EmailAddress::parse(request.raw_email) else {
-        return Ok(StatusCode::ACCEPTED);
+    let job = EmailLinkJob {
+        state: state.clone(),
+        tenant,
+        raw_email: request.raw_email.to_owned(),
+        kind: request.kind,
     };
-    let user = find_user_by_email(&tenant.pool, &email)
-        .await
-        .map_err(ApiError::internal)?;
-    let Some(user) = user else {
-        return Ok(StatusCode::ACCEPTED);
-    };
-
-    if matches!(kind, AuthEmailKind::Verification) && user.email_verified_at.is_some() {
-        return Ok(StatusCode::ACCEPTED);
-    }
-
-    send_auth_email(state, tenant, AuthEmailRequest { user: &user, kind }).await?;
+    // Failures are logged by `ApiError::internal` inside the job.
+    tokio::spawn(job.run());
 
     Ok(StatusCode::ACCEPTED)
+}
+
+struct EmailLinkJob {
+    state: AppState,
+    tenant: TenantContext,
+    raw_email: String,
+    kind: AuthEmailKind,
+}
+
+impl EmailLinkJob {
+    async fn run(self) -> Result<(), ApiError> {
+        let Ok(email) = EmailAddress::parse(&self.raw_email) else {
+            return Ok(());
+        };
+        let user = find_user_by_email(&self.tenant.pool, &email)
+            .await
+            .map_err(ApiError::internal)?;
+        let Some(user) = user else {
+            return Ok(());
+        };
+
+        if matches!(self.kind, AuthEmailKind::Verification) && user.email_verified_at.is_some() {
+            return Ok(());
+        }
+
+        let request = AuthEmailRequest {
+            user: &user,
+            kind: self.kind,
+        };
+
+        send_auth_email(&self.state, &self.tenant, request).await
+    }
 }

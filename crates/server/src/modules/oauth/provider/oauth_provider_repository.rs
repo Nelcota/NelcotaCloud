@@ -66,7 +66,7 @@ pub async fn find_provider_credentials(
     let Some((client_id, ciphertext)) = row else {
         return Ok(None);
     };
-    let secret_bytes = secret_box.open(&ciphertext)?;
+    let secret_bytes = secret_box.open(&ciphertext, &client_secret_context(key))?;
     let client_secret =
         String::from_utf8(secret_bytes).map_err(|_| ProviderCredentialsError::InvalidSecret)?;
 
@@ -74,4 +74,13 @@ pub async fn find_provider_credentials(
         client_id,
         client_secret,
     }))
+}
+
+/// Binds the encrypted client secret to its tenant and provider.
+pub fn client_secret_context(key: ProviderKey) -> String {
+    format!(
+        "oauth_client_secret:{}:{}",
+        key.tenant_id,
+        key.provider.as_str()
+    )
 }

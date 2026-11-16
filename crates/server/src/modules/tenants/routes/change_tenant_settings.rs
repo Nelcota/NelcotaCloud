@@ -4,7 +4,7 @@ use serde::Deserialize;
 use validator::Validate;
 
 use crate::app_state::AppState;
-use crate::modules::tenants::access::tenant_context::TenantContext;
+use crate::modules::tenants::access::api_key_tenant::ApiKeyTenant;
 use crate::modules::tenants::settings::site_url::SiteUrl;
 use crate::modules::tenants::settings::tenant_settings_repository::{
     TenantSettings, TenantSettingsChange, update_tenant_settings,
@@ -24,7 +24,7 @@ pub struct TenantSettingsBody {
 /// `PATCH /admin/settings` (secret key only): changes only the fields that are sent.
 pub async fn change_tenant_settings(
     State(state): State<AppState>,
-    tenant: TenantContext,
+    tenant: ApiKeyTenant,
     ValidatedJson(body): ValidatedJson<TenantSettingsBody>,
 ) -> Result<Json<TenantSettings>, ApiError> {
     tenant.require_secret_key()?;

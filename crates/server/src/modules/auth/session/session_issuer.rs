@@ -9,6 +9,7 @@ use crate::modules::auth::session::access_token::{
 use crate::modules::auth::session::refresh_token_repository::{
     NewRefreshToken, insert_refresh_token,
 };
+use crate::modules::auth::session::session_family::SessionFamily;
 use crate::modules::auth::user::user_record::User;
 use crate::modules::tenants::signing_keys::signing_key::SigningKey;
 use crate::shared::crypto::opaque_token::OpaqueToken;
@@ -47,8 +48,12 @@ pub struct SessionIssuer<'a> {
 }
 
 impl SessionIssuer<'_> {
-    /// `family_id` groups every rotation of one login, so reuse can revoke the whole chain.
-    pub async fn issue(&self, user: User, family_id: Uuid) -> Result<SessionTokens, SessionError> {
+    /// `family` groups every rotation of one login, so reuse can revoke the whole chain.
+    pub async fn issue(
+        &self,
+        user: User,
+        family: SessionFamily,
+    ) -> Result<SessionTokens, SessionError> {
         let now = OffsetDateTime::now_utc();
         let claims = AccessTokenClaims {
             sub: user.id,
@@ -62,7 +67,7 @@ impl SessionIssuer<'_> {
         let refresh_token = OpaqueToken::generate(REFRESH_TOKEN_PREFIX);
         let new_refresh_token = NewRefreshToken {
             user_id: user.id,
-            family_id,
+            family,
             token_hash: &refresh_token.hash,
             expires_at: expiry_after(now, REFRESH_TOKEN_LIFETIME)?,
         };

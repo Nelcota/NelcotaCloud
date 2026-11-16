@@ -16,23 +16,26 @@ pub struct OneTimeTokenBody {
     pub token: String,
 }
 
+/// `POST /verify-email`: consuming the link and marking the email verified are one transaction.
 pub async fn verify_email(
     tenant: TenantContext,
     ValidatedJson(body): ValidatedJson<OneTimeTokenBody>,
 ) -> Result<Json<User>, ApiError> {
+    let mut transaction = tenant.pool.begin().await.map_err(ApiError::internal)?;
     let purpose = OneTimeTokenPurpose::EmailVerification;
-    let user_id = consume_one_time_token(&tenant.pool, purpose, &body.token)
+    let consumed = consume_one_time_token(&mut transaction, purpose, &body.token)
         .await
         .map_err(ApiError::internal)?;
-    let Some(user_id) = user_id else {
+    let Some(consumed) = consumed else {
         return Err(ApiError::InvalidToken);
     };
-    let user = mark_email_verified(&tenant.pool, user_id)
+    let user = mark_email_verified(&mut transaction, consumed.user_id)
         .await
         .map_err(ApiError::internal)?;
     let Some(user) = user else {
         return Err(ApiError::InvalidToken);
     };
+    transaction.commit().await.map_err(ApiError::internal)?;
 
     Ok(Json(user))
 }

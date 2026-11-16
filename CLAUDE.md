@@ -9,22 +9,35 @@
 
 NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multitenant Auth.
 
-- Control plane database: tenants, their database URLs, API key hashes, JWT signing keys, OAuth configs.
-- One Postgres database per tenant: that tenant's users, identities and refresh tokens.
-- Tenant secrets (database passwords, signing keys, OAuth client secrets) are encrypted at rest with AES-GCM.
-- Access tokens: short-lived EdDSA JWTs signed with the tenant's key, public keys exposed as JWKS.
-  Refresh tokens: opaque, rotated on every use, stored only as SHA-256 hashes.
-- Each tenant has a `site_url`: email links point to it and OAuth only redirects back to its origin.
+- Control plane database: tenants, API key hashes, JWT signing keys, OAuth configs, pending OAuth
+  authorizations.
+- One Postgres database per tenant (`tenant_<slug>`): users, identities, refresh and one-time tokens.
+  Its URL is derived from the slug and the current `TENANT_DATABASE_BASE_URL`, never stored.
+- Provisioning holds a per-slug advisory lock in the registration transaction; a database without a
+  tenant row is an orphan that the next provisioning of the slug recreates.
+- Tenant secrets (signing keys, OAuth client secrets, PKCE verifiers) are encrypted with AES-GCM,
+  each bound to a context (tenant, record) as associated data.
+- Access tokens: short-lived EdDSA JWTs signed with the tenant's active key, public keys as JWKS.
+  Refresh tokens: opaque, rotated on every use, stored only as SHA-256 hashes, grouped in families.
+- Ending sessions writes markers checked when a refresh token is used (`revoked_token_families`,
+  `users.sessions_invalidated_at`), so successors created by a concurrent refresh are refused too.
+- Each tenant has a required `site_url`: email links point to it and OAuth only redirects under it.
 - Email (verification, password reset) is sent via SMTP with lettre, in the background.
 - OAuth (Google, GitHub) uses each tenant's own OAuth app, PKCE and a one-time `state`. The callback
-  returns a short-lived one-time code to the app, never tokens in the URL. Provider endpoints are
-  injectable (`build_app_state_with_endpoints`) so tests use a fake provider.
-- One-time tokens (verification, reset, OAuth login code) share the `one_time_tokens` table.
-- Tenant settings (`PATCH /auth/v1/admin/settings`, secret key): name, `site_url`,
-  `require_email_verification` (default true: password login needs a verified email, and signup
-  answers the same for new and existing emails).
-- Rate limits (`governor`, in memory, single instance) on login and auth emails, per tenant + email
-  and per tenant + client IP. Behind Cloudflare set `CLIENT_IP_HEADER=cf-connecting-ip`.
+  returns a short-lived one-time code to the app, never tokens in the URL; the app redeems it with
+  its own PKCE verifier (`code_challenge` at `/authorize`, `code_verifier` at `/oauth/token`).
+  Provider endpoints are injectable (`build_app_state_with_endpoints`) so tests use a fake provider.
+- Account linking by verified email refuses a second identity of the same provider, and taking over
+  an unverified account drops its password and ends its sessions. A new signup for an unverified
+  email takes the account over (latest signup wins until someone verifies the inbox).
+- Tenant settings (`GET/PATCH /auth/v1/admin/settings`, secret key): name, `site_url`,
+  `require_email_verification` (default true: password login and refresh need a verified email,
+  and signup answers the same for new and existing emails).
+- Routes that only touch tenant configuration use `ApiKeyTenant` (no tenant database needed);
+  routes on tenant data use `TenantContext`.
+- Rate limits (`governor`, in memory, single instance) on signup, login, auth emails and OAuth start,
+  per tenant + email and per tenant + client IP (IPv6 per /64). Behind Cloudflare set
+  `CLIENT_IP_HEADER=cf-connecting-ip`.
 - Signing keys are cached per tenant for 5 minutes (`SigningKeyCache`).
 - Stack: Rust, tokio, axum, sqlx (PostgreSQL 17 in Docker), validator, argon2, jsonwebtoken, oauth2,
   reqwest, lettre, thiserror, tracing.

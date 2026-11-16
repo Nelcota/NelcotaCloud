@@ -16,6 +16,7 @@ pub enum SigningKeyError {
 }
 
 /// One tenant's Ed25519 key. `key_id` is published as the JWT `kid` so verifiers pick the right key.
+#[derive(Clone)]
 pub struct SigningKey {
     pub key_id: Uuid,
     pub private_key_der: Vec<u8>,

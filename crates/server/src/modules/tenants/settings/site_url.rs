@@ -30,9 +30,10 @@ impl SiteUrl {
         self.0.as_str()
     }
 
-    /// Same origin only, so the OAuth flow cannot be abused as an open redirect.
+    /// Same origin and under the site's path, so the OAuth flow cannot be abused as an open
+    /// redirect, not even to another app hosted on the same origin (e.g. `user.github.io/other`).
     pub fn allows_redirect_to(&self, target: &Url) -> bool {
-        target.origin() == self.0.origin()
+        target.origin() == self.0.origin() && is_under_path(target.path(), self.0.path())
     }
 
     pub fn link_with_token(&self, path: &str, token: &str) -> String {
@@ -46,6 +47,13 @@ impl SiteUrl {
 
         link.into()
     }
+}
+
+/// `/app/x` is under `/app`, `/application` is not; everything is under `/`.
+fn is_under_path(target_path: &str, site_path: &str) -> bool {
+    let site_path = site_path.trim_end_matches('/');
+
+    target_path == site_path || target_path.starts_with(&format!("{site_path}/"))
 }
 
 #[cfg(test)]
@@ -73,6 +81,22 @@ mod tests {
         assert_eq!(
             link,
             "https://app.test/base/auth/verify-email?token=abc+123"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn keeps_redirects_under_the_site_path() -> Result<(), Box<dyn std::error::Error>> {
+        let site_url = SiteUrl::parse("https://user.github.io/app")?;
+
+        assert!(site_url.allows_redirect_to(&Url::parse("https://user.github.io/app")?));
+        assert!(site_url.allows_redirect_to(&Url::parse("https://user.github.io/app/callback")?));
+        assert!(
+            site_url.allows_redirect_to(&Url::parse("https://user.github.io/application")?)
+                == false
+        );
+        assert!(
+            site_url.allows_redirect_to(&Url::parse("https://user.github.io/other/cb")?) == false
         );
         Ok(())
     }

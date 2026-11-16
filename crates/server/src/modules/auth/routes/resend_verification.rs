@@ -24,5 +24,5 @@ pub async fn resend_verification(
         kind: AuthEmailKind::Verification,
     };
 
-    request_email_link(&state, &tenant, request).await
+    request_email_link(&state, tenant, request)
 }

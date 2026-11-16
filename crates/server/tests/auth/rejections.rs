@@ -1,4 +1,4 @@
-use crate::support::{TEST_PASSWORD, TestResult, TestServer, error_code};
+use crate::support::{TEST_PASSWORD, TestResult, TestServer, error_code, random_slug};
 use reqwest::StatusCode;
 use serde_json::json;
 
@@ -115,6 +115,19 @@ async fn protects_tenant_creation() -> TestResult {
         .await?;
     assert_eq!(duplicate.status(), StatusCode::CONFLICT);
     assert_eq!(error_code(duplicate).await?, "slug_taken");
+
+    server.drop_tenant(&tenant).await
+}
+
+#[tokio::test]
+async fn recovers_a_slug_left_behind_by_a_cancelled_provisioning() -> TestResult {
+    let server = TestServer::start().await?;
+    let slug = random_slug();
+    server.create_orphan_database(&slug).await?;
+
+    let tenant = server.create_tenant_with_slug(&slug).await?;
+    let session = server.sign_up(&tenant, "orphan@example.com").await?;
+    assert_eq!(session.user.email, "orphan@example.com");
 
     server.drop_tenant(&tenant).await
 }

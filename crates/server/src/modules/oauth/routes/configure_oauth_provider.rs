@@ -6,9 +6,9 @@ use validator::Validate;
 use crate::app_state::AppState;
 use crate::modules::oauth::provider::oauth_provider::OAuthProvider;
 use crate::modules::oauth::provider::oauth_provider_repository::{
-    ProviderRegistration, upsert_provider_credentials,
+    ProviderKey, ProviderRegistration, client_secret_context, upsert_provider_credentials,
 };
-use crate::modules::tenants::access::tenant_context::TenantContext;
+use crate::modules::tenants::access::api_key_tenant::ApiKeyTenant;
 use crate::shared::http::api_error::ApiError;
 use crate::shared::http::validated_json::ValidatedJson;
 
@@ -23,7 +23,7 @@ pub struct ProviderCredentialsBody {
 /// `PUT /admin/oauth/{provider}`: the tenant registers its own OAuth app (secret key only).
 pub async fn configure_oauth_provider(
     State(state): State<AppState>,
-    tenant: TenantContext,
+    tenant: ApiKeyTenant,
     Path(provider_name): Path<String>,
     ValidatedJson(body): ValidatedJson<ProviderCredentialsBody>,
 ) -> Result<StatusCode, ApiError> {
@@ -41,9 +41,13 @@ pub async fn configure_oauth_provider(
         ));
     }
 
+    let key = ProviderKey {
+        tenant_id: tenant.tenant_id,
+        provider,
+    };
     let client_secret_ciphertext = state
         .secret_box
-        .seal(client_secret.as_bytes())
+        .seal(client_secret.as_bytes(), &client_secret_context(key))
         .map_err(ApiError::internal)?;
     let registration = ProviderRegistration {
         tenant_id: tenant.tenant_id,

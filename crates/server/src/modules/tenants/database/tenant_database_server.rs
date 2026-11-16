@@ -6,6 +6,8 @@ use crate::shared::database::migrators::TENANT_MIGRATOR;
 
 const MAINTENANCE_DATABASE: &str = "postgres";
 const DUPLICATE_DATABASE_ERROR_CODE: &str = "42P04";
+/// Two concurrent CREATE DATABASE of the same name can also fail on the catalog's unique index.
+const UNIQUE_VIOLATION_ERROR_CODE: &str = "23505";
 const MIGRATION_CONNECTIONS: u32 = 1;
 
 #[derive(Debug, thiserror::Error)]
@@ -30,8 +32,13 @@ impl<'a> TenantDatabaseServer<'a> {
         }
     }
 
-    /// Creates the tenant's database and returns its connection URL.
-    pub async fn create_database(&self, slug: &TenantSlug) -> Result<String, TenantDatabaseError> {
+    /// Built from the current configuration on every use, so changing the server address or
+    /// credentials in `TENANT_DATABASE_BASE_URL` applies to every tenant.
+    pub fn database_url(&self, slug: &TenantSlug) -> String {
+        format!("{}/{}", self.base_url, slug.database_name())
+    }
+
+    pub async fn create_database(&self, slug: &TenantSlug) -> Result<(), TenantDatabaseError> {
         let database_name = slug.database_name();
         // Identifiers cannot be bound as parameters; TenantSlug only allows [a-z0-9_].
         let statement = format!("CREATE DATABASE \"{database_name}\"");
@@ -39,14 +46,15 @@ impl<'a> TenantDatabaseServer<'a> {
             .await
             .map_err(map_duplicate_database)?;
 
-        Ok(format!("{}/{database_name}", self.base_url))
+        Ok(())
     }
 
-    pub async fn migrate_database(&self, database_url: &str) -> Result<(), TenantDatabaseError> {
+    pub async fn migrate_database(&self, slug: &TenantSlug) -> Result<(), TenantDatabaseError> {
+        let database_url = self.database_url(slug);
         // Through a pool: `Migrator::run` on a bare connection yields a non-Send future.
         let tenant_pool = PgPoolOptions::new()
             .max_connections(MIGRATION_CONNECTIONS)
-            .connect(database_url)
+            .connect(&database_url)
             .await?;
         let migration = TENANT_MIGRATOR.run(&tenant_pool).await;
         tenant_pool.close().await;
@@ -84,7 +92,9 @@ fn map_duplicate_database(error: sqlx::Error) -> TenantDatabaseError {
     let database_error = error.as_database_error();
     let error_code = database_error.and_then(|database_error| database_error.code());
 
-    if error_code.is_some_and(|code| code == DUPLICATE_DATABASE_ERROR_CODE) {
+    if error_code.is_some_and(|code| {
+        code == DUPLICATE_DATABASE_ERROR_CODE || code == UNIQUE_VIOLATION_ERROR_CODE
+    }) {
         return TenantDatabaseError::AlreadyExists;
     }
 

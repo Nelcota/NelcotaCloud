@@ -6,9 +6,8 @@ use sqlx::PgPool;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use crate::modules::tenants::signing_keys::signing_key::SigningKey;
 use crate::modules::tenants::signing_keys::signing_key_repository::{
-    SigningKeyStoreError, load_signing_keys,
+    SigningKeyStoreError, TenantSigningKeys, load_signing_keys,
 };
 use crate::shared::crypto::secret_box::SecretBox;
 
@@ -17,7 +16,7 @@ const CACHE_TIME_TO_LIVE: Duration = Duration::from_secs(300);
 
 struct CachedKeys {
     loaded_at: Instant,
-    keys: Arc<Vec<SigningKey>>,
+    keys: Arc<TenantSigningKeys>,
 }
 
 /// Decrypted signing keys per tenant, so authenticated requests skip the control plane query
@@ -37,11 +36,11 @@ impl SigningKeyCache {
         }
     }
 
-    /// Every key of the tenant, active first: the first one signs, all of them verify.
+    /// The tenant's active key (signs) and every key that still verifies.
     pub async fn keys_for(
         &self,
         tenant_id: Uuid,
-    ) -> Result<Arc<Vec<SigningKey>>, SigningKeyStoreError> {
+    ) -> Result<Arc<TenantSigningKeys>, SigningKeyStoreError> {
         if let Some(cached) = self.entries.read().await.get(&tenant_id)
             && cached.loaded_at.elapsed() < CACHE_TIME_TO_LIVE
         {

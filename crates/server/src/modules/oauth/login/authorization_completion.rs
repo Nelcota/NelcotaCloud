@@ -6,7 +6,9 @@ use crate::modules::oauth::client::oauth_http_client::OAuthHttpClient;
 use crate::modules::oauth::identity::account_linker::resolve_oauth_user;
 use crate::modules::oauth::login::oauth_login_context::OAuthLoginContext;
 use crate::modules::oauth::login::oauth_login_error::OAuthLoginError;
-use crate::modules::oauth::login::oauth_state_repository::PendingAuthorization;
+use crate::modules::oauth::login::oauth_state_repository::{
+    PendingAuthorization, pkce_verifier_context,
+};
 use crate::modules::oauth::profile::provider_profile::{ProfileRequest, fetch_profile};
 use crate::modules::oauth::provider::oauth_provider_repository::ProviderKey;
 
@@ -47,7 +49,10 @@ impl OAuthLoginContext<'_> {
             provider: pending.provider,
         };
         let client = self.client_for(key).await?;
-        let verifier_bytes = self.secret_box.open(&pending.pkce_verifier_ciphertext)?;
+        let verifier_context = pkce_verifier_context(pending.tenant_id, pending.provider);
+        let verifier_bytes = self
+            .secret_box
+            .open(&pending.pkce_verifier_ciphertext, &verifier_context)?;
         let verifier =
             String::from_utf8(verifier_bytes).map_err(|_| OAuthLoginError::InvalidVerifier)?;
         let http_client = OAuthHttpClient::new(self.http_client.clone());

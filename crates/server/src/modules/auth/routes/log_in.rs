@@ -1,7 +1,6 @@
 use axum::Json;
 use axum::extract::State;
 use serde::Deserialize;
-use uuid::Uuid;
 use validator::Validate;
 
 use crate::app_state::AppState;
@@ -10,6 +9,7 @@ use crate::modules::auth::password::password_authentication::{
 };
 use crate::modules::auth::rate_limiting::attempt_limiter::Attempt;
 use crate::modules::auth::rate_limiting::client_ip::ClientIp;
+use crate::modules::auth::session::session_family::SessionFamily;
 use crate::modules::auth::session::session_grant::{SessionGrant, issue_session};
 use crate::modules::auth::session::session_issuer::SessionTokens;
 use crate::modules::auth::user::email_address::EmailAddress;
@@ -50,7 +50,7 @@ pub async fn log_in(
     ensure_email_verified_if_required(&state, &tenant, &user).await?;
     let grant = SessionGrant {
         user,
-        family_id: Uuid::new_v4(),
+        family: SessionFamily::new_login(),
     };
 
     Ok(Json(issue_session(&state, &tenant, grant).await?))

@@ -16,10 +16,25 @@ pub async fn find_identity_user(
     sqlx::query_as(
         "SELECT users.id, users.email, users.email_verified_at, users.created_at FROM identities JOIN users ON users.id = identities.user_id WHERE identities.provider = $1 AND identities.provider_user_id = $2",
     )
-        .bind(key.provider)
-        .bind(key.provider_user_id)
-        .fetch_optional(connection)
-        .await
+    .bind(key.provider)
+    .bind(key.provider_user_id)
+    .fetch_optional(connection)
+    .await
+}
+
+/// Whether the user already has an account at this provider (with any provider user id).
+pub async fn has_provider_identity(
+    connection: &mut PgConnection,
+    user_id: Uuid,
+    provider: &str,
+) -> Result<bool, sqlx::Error> {
+    sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM identities WHERE user_id = $1 AND provider = $2)",
+    )
+    .bind(user_id)
+    .bind(provider)
+    .fetch_one(connection)
+    .await
 }
 
 pub async fn insert_identity(

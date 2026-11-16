@@ -24,6 +24,17 @@ pub struct PendingAuthorization {
     pub provider: OAuthProvider,
     pub pkce_verifier_ciphertext: Vec<u8>,
     pub redirect_to: String,
+    /// The app's own PKCE challenge, carried to the login code it will redeem.
+    pub app_code_challenge: String,
+}
+
+#[derive(sqlx::FromRow)]
+struct PendingAuthorizationRow {
+    tenant_id: Uuid,
+    provider: String,
+    pkce_verifier_ciphertext: Vec<u8>,
+    redirect_to: String,
+    app_code_challenge: String,
 }
 
 pub async fn insert_pending_authorization(
@@ -32,18 +43,16 @@ pub async fn insert_pending_authorization(
     pending: &PendingAuthorization,
 ) -> Result<(), OAuthStateError> {
     let expires_at = expiry_after(OffsetDateTime::now_utc(), STATE_LIFETIME)?;
-    // Housekeeping: abandoned authorizations would otherwise accumulate forever.
-    sqlx::query("DELETE FROM oauth_authorization_states WHERE expires_at < now()")
-        .execute(pool)
-        .await?;
     sqlx::query(
-        "INSERT INTO oauth_authorization_states (state_hash, tenant_id, provider, pkce_verifier_ciphertext, redirect_to, expires_at) VALUES ($1, $2, $3, $4, $5, $6)",
+        "INSERT INTO oauth_authorization_states (state_hash, tenant_id, provider, pkce_verifier_ciphertext, redirect_to, app_code_challenge, expires_at) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7)",
     )
     .bind(state_hash)
     .bind(pending.tenant_id)
     .bind(pending.provider.as_str())
     .bind(&pending.pkce_verifier_ciphertext)
     .bind(&pending.redirect_to)
+    .bind(&pending.app_code_challenge)
     .bind(expires_at)
     .execute(pool)
     .await?;
@@ -56,23 +65,39 @@ pub async fn take_pending_authorization(
     pool: &PgPool,
     state_hash: &[u8],
 ) -> Result<Option<PendingAuthorization>, OAuthStateError> {
-    let row: Option<(Uuid, String, Vec<u8>, String)> = sqlx::query_as(
-        "DELETE FROM oauth_authorization_states WHERE state_hash = $1 AND expires_at > now() RETURNING tenant_id, provider, pkce_verifier_ciphertext, redirect_to",
+    let row: Option<PendingAuthorizationRow> = sqlx::query_as(
+        "DELETE FROM oauth_authorization_states WHERE state_hash = $1 AND expires_at > now() \
+         RETURNING tenant_id, provider, pkce_verifier_ciphertext, redirect_to, app_code_challenge",
     )
     .bind(state_hash)
     .fetch_optional(pool)
     .await?;
-    let Some((tenant_id, raw_provider, pkce_verifier_ciphertext, redirect_to)) = row else {
+    let Some(row) = row else {
         return Ok(None);
     };
-    let Some(provider) = OAuthProvider::parse(&raw_provider) else {
+    let Some(provider) = OAuthProvider::parse(&row.provider) else {
         return Err(OAuthStateError::UnknownProvider);
     };
 
     Ok(Some(PendingAuthorization {
-        tenant_id,
+        tenant_id: row.tenant_id,
         provider,
-        pkce_verifier_ciphertext,
-        redirect_to,
+        pkce_verifier_ciphertext: row.pkce_verifier_ciphertext,
+        redirect_to: row.redirect_to,
+        app_code_challenge: row.app_code_challenge,
     }))
+}
+
+/// Binds the encrypted PKCE verifier to its tenant and provider.
+pub fn pkce_verifier_context(tenant_id: Uuid, provider: OAuthProvider) -> String {
+    format!("oauth_pkce_verifier:{tenant_id}:{}", provider.as_str())
+}
+
+/// Abandoned authorizations would otherwise accumulate; run periodically, off the request path.
+pub async fn delete_expired_authorizations(pool: &PgPool) -> Result<(), sqlx::Error> {
+    sqlx::query("DELETE FROM oauth_authorization_states WHERE expires_at < now()")
+        .execute(pool)
+        .await?;
+
+    Ok(())
 }

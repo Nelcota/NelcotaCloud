@@ -5,7 +5,9 @@ use serde::Deserialize;
 
 use crate::app_state::AppState;
 use crate::modules::auth::one_time_token::one_time_token_purpose::OneTimeTokenPurpose;
-use crate::modules::auth::one_time_token::one_time_token_repository::issue_one_time_token;
+use crate::modules::auth::one_time_token::one_time_token_repository::{
+    OneTimeTokenRequest, issue_one_time_token,
+};
 use crate::modules::oauth::login::authorization_completion::ProviderCallback;
 use crate::modules::oauth::login::oauth_login_error::OAuthLoginError;
 use crate::modules::oauth::login::oauth_state_repository::{
@@ -15,6 +17,9 @@ use crate::shared::crypto::opaque_token::hash_opaque_token;
 use crate::shared::http::api_error::ApiError;
 
 const MAX_STATE_LENGTH: usize = 256;
+/// Parameters this endpoint sets on the app's redirect; copies already in it are removed so
+/// nobody can plant a code of their own in front of the real one.
+const RESERVED_REDIRECT_PARAMETERS: [&str; 3] = ["code", "error", "state"];
 
 #[derive(Deserialize)]
 pub struct CallbackQuery {
@@ -23,31 +28,40 @@ pub struct CallbackQuery {
 }
 
 /// `GET /oauth/callback`: the provider sends the browser here. On success the browser goes back
-/// to the app with a short-lived `code` (exchanged at `POST /oauth/token`), never with tokens in
-/// the URL; on failure, with an `error` code.
+/// to the app with a short-lived `code` (exchanged at `POST /oauth/token` with the app's PKCE
+/// verifier), never with tokens in the URL; on failure, with an `error` code.
 pub async fn oauth_callback(
     State(state): State<AppState>,
     Query(query): Query<CallbackQuery>,
 ) -> Result<Redirect, ApiError> {
     let pending = take_pending(&state, query.state).await?;
-    let mut redirect_to = Url::parse(&pending.redirect_to).map_err(ApiError::internal)?;
+    let redirect_to = Url::parse(&pending.redirect_to).map_err(ApiError::internal)?;
     let login = complete_login(&state, &pending, query.code).await;
-
-    match login {
-        Ok(login_code) => {
-            redirect_to
-                .query_pairs_mut()
-                .append_pair("code", &login_code);
-        }
+    let target = match login {
+        Ok(login_code) => redirect_with(redirect_to, "code", &login_code),
         Err(error) => {
             tracing::warn!(%error, tenant_id = %pending.tenant_id, "OAuth login failed");
-            redirect_to
-                .query_pairs_mut()
-                .append_pair("error", error.redirect_error_code());
+            redirect_with(redirect_to, "error", error.redirect_error_code())
         }
-    }
+    };
 
-    Ok(Redirect::to(redirect_to.as_str()))
+    Ok(Redirect::to(target.as_str()))
+}
+
+fn redirect_with(redirect_to: Url, name: &str, value: &str) -> Url {
+    let kept_pairs: Vec<(String, String)> = redirect_to
+        .query_pairs()
+        .filter(|(key, _)| RESERVED_REDIRECT_PARAMETERS.contains(&key.as_ref()) == false)
+        .map(|(key, value)| (key.into_owned(), value.into_owned()))
+        .collect();
+    let mut target = redirect_to;
+    target.set_query(None);
+    target
+        .query_pairs_mut()
+        .extend_pairs(kept_pairs)
+        .append_pair(name, value);
+
+    target
 }
 
 /// Without a valid state we do not know which app to return to, so this answers with an error.
@@ -90,8 +104,25 @@ async fn complete_login(
         code,
     };
     let user = state.oauth_login_context().finish(callback).await?;
-    let login_code =
-        issue_one_time_token(&tenant_pool, user.id, OneTimeTokenPurpose::OAuthLogin).await?;
+    let request = OneTimeTokenRequest {
+        user_id: user.id,
+        purpose: OneTimeTokenPurpose::OAuthLogin,
+        code_challenge: Some(&pending.app_code_challenge),
+    };
 
-    Ok(login_code)
+    Ok(issue_one_time_token(&tenant_pool, request).await?)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn replaces_planted_codes_and_keeps_other_parameters() -> Result<(), oauth2::url::ParseError> {
+        let planted = Url::parse("https://app.test/cb?code=nc_oc_attacker&tab=2&state=x")?;
+        let target = redirect_with(planted, "code", "nc_oc_real");
+
+        assert_eq!(target.as_str(), "https://app.test/cb?tab=2&code=nc_oc_real");
+        Ok(())
+    }
 }

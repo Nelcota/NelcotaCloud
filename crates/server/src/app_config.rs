@@ -135,7 +135,7 @@ fn validate_public_base_url(raw_url: &str) -> Result<(), ConfigError> {
 fn validate_tenant_database_base_url(raw_url: &str) -> Result<(), ConfigError> {
     let invalid = ConfigError::InvalidUrl(
         "TENANT_DATABASE_BASE_URL",
-        "a postgres:// server URL without database name or query",
+        "a postgres:// server URL without database name, query or fragment",
     );
     let Ok(url) = Url::parse(raw_url.trim()) else {
         return Err(invalid);
@@ -145,7 +145,11 @@ fn validate_tenant_database_base_url(raw_url: &str) -> Result<(), ConfigError> {
         return Err(invalid);
     }
 
-    if url.path().trim_matches('/').is_empty() == false || url.query().is_some() {
+    // A fragment would swallow the appended database name: every tenant would share one database.
+    if url.path().trim_matches('/').is_empty() == false
+        || url.query().is_some()
+        || url.fragment().is_some()
+    {
         return Err(invalid);
     }
 
@@ -215,6 +219,7 @@ mod tests {
             "postgres://localhost:5434/control",
             "postgres://localhost:5434?sslmode=require",
             "mysql://localhost:3306",
+            "postgres://localhost:5434#fragment",
         ] {
             let config = AppConfig {
                 tenant_database_base_url: raw_url.to_owned(),

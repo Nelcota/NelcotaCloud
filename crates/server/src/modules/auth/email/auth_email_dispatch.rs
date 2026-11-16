@@ -5,7 +5,9 @@ use crate::modules::auth::email::auth_email::{
     AuthEmailContext, password_reset_email, verification_email,
 };
 use crate::modules::auth::one_time_token::one_time_token_purpose::OneTimeTokenPurpose;
-use crate::modules::auth::one_time_token::one_time_token_repository::issue_one_time_token;
+use crate::modules::auth::one_time_token::one_time_token_repository::{
+    OneTimeTokenRequest, issue_one_time_token,
+};
 use crate::modules::auth::user::user_record::User;
 use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::modules::tenants::settings::loaded_tenant_settings::load_tenant_settings;
@@ -41,17 +43,18 @@ pub async fn send_auth_email(
     let user = request.user;
     let kind = request.kind;
     let settings = load_tenant_settings(state, tenant.tenant_id).await?;
-    let Some(site_url) = settings.site_url else {
-        tracing::warn!(tenant_id = %tenant.tenant_id, "tenant has no site_url; auth email skipped");
-        return Ok(());
+    let token_request = OneTimeTokenRequest {
+        user_id: user.id,
+        purpose: kind.token_purpose(),
+        code_challenge: None,
     };
-    let token = issue_one_time_token(&tenant.pool, user.id, kind.token_purpose())
+    let token = issue_one_time_token(&tenant.pool, token_request)
         .await
         .map_err(ApiError::internal)?;
     let context = AuthEmailContext {
         recipient: &user.email,
         tenant_name: &settings.name,
-        site_url: &site_url,
+        site_url: &settings.site_url,
     };
     let email = match kind {
         AuthEmailKind::Verification => verification_email(&context, &token),

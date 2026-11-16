@@ -1,12 +1,12 @@
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
-use crate::modules::tenants::database::tenant_database_server::TenantDatabaseServer;
-use crate::modules::tenants::provisioning::provisioning_error::ProvisioningError;
-use crate::modules::tenants::provisioning::tenant_registration::{
-    TenantRegistration, register_tenant,
+use crate::modules::tenants::database::tenant_database_server::{
+    TenantDatabaseError, TenantDatabaseServer,
 };
-use crate::modules::tenants::provisioning::tenant_repository::slug_exists;
+use crate::modules::tenants::provisioning::provisioning_error::ProvisioningError;
+use crate::modules::tenants::provisioning::tenant_registration::register_tenant;
+use crate::modules::tenants::provisioning::tenant_repository::{lock_slug, slug_exists};
 use crate::modules::tenants::provisioning::tenant_slug::TenantSlug;
 use crate::modules::tenants::settings::site_url::SiteUrl;
 use crate::shared::crypto::secret_box::SecretBox;
@@ -33,41 +33,83 @@ pub struct ProvisionedTenant {
 }
 
 impl TenantProvisioner<'_> {
-    /// Creates and migrates the tenant's database, then registers the tenant. Any failure after
-    /// the database exists drops it, so no database is left without a tenant.
+    /// Provisions under a per-slug lock held by the registration transaction. A failure (or a
+    /// cancelled request) rolls the registration back; the database left behind is an orphan
+    /// that is dropped right away when possible and recreated by the next attempt otherwise.
     pub async fn provision(
         &self,
         request: NewTenantRequest,
     ) -> Result<ProvisionedTenant, ProvisioningError> {
-        if slug_exists(self.control_plane_pool, &request.slug).await? {
+        let database_server = TenantDatabaseServer::new(self.tenant_database_base_url);
+        let slug = request.slug.clone();
+        let mut transaction = self.control_plane_pool.begin().await?;
+        lock_slug(&mut transaction, &slug).await?;
+
+        if slug_exists(&mut *transaction, &slug).await? {
             return Err(ProvisioningError::SlugTaken);
         }
 
-        let database_server = TenantDatabaseServer::new(self.tenant_database_base_url);
-        let slug = request.slug.clone();
-        let database_url = database_server.create_database(&slug).await?;
-        let registration = TenantRegistration {
-            request,
-            database_url,
+        let provisioning = self
+            .create_and_register(&database_server, &mut transaction, request)
+            .await;
+        let provisioned = match provisioning {
+            Ok(provisioned) => provisioned,
+            Err(error) => {
+                database_server.drop_database(&slug).await;
+                return Err(error);
+            }
         };
-        let setup = self.set_up_tenant(&database_server, registration).await;
 
-        if setup.is_err() {
-            database_server.drop_database(&slug).await;
+        if let Err(error) = transaction.commit().await {
+            self.drop_database_unless_registered(&database_server, &slug)
+                .await;
+            return Err(ProvisioningError::Database(error));
         }
 
-        setup
+        Ok(provisioned)
     }
 
-    async fn set_up_tenant(
+    async fn create_and_register(
         &self,
         database_server: &TenantDatabaseServer<'_>,
-        registration: TenantRegistration,
+        transaction: &mut PgConnection,
+        request: NewTenantRequest,
     ) -> Result<ProvisionedTenant, ProvisioningError> {
-        database_server
-            .migrate_database(&registration.database_url)
-            .await?;
+        create_fresh_database(database_server, &request.slug).await?;
+        database_server.migrate_database(&request.slug).await?;
 
-        register_tenant(self.control_plane_pool, self.secret_box, registration).await
+        register_tenant(transaction, self.secret_box, request).await
     }
+
+    /// A failed COMMIT may still have been applied by the server, so a registered tenant's
+    /// database is never dropped. When unsure, it is left: the next attempt recreates it.
+    async fn drop_database_unless_registered(
+        &self,
+        database_server: &TenantDatabaseServer<'_>,
+        slug: &TenantSlug,
+    ) {
+        let registration = slug_exists(self.control_plane_pool, slug).await;
+
+        if matches!(registration, Ok(false)) {
+            database_server.drop_database(slug).await;
+        }
+    }
+}
+
+/// Called under the slug lock with no tenant row for the slug, so an existing database is an
+/// orphan of an earlier failed or cancelled attempt: it is replaced, never reused.
+async fn create_fresh_database(
+    database_server: &TenantDatabaseServer<'_>,
+    slug: &TenantSlug,
+) -> Result<(), ProvisioningError> {
+    let creation = database_server.create_database(slug).await;
+    let Err(TenantDatabaseError::AlreadyExists) = creation else {
+        return Ok(creation?);
+    };
+
+    tracing::warn!(slug = slug.as_str(), "replacing orphan tenant database");
+    database_server.drop_database(slug).await;
+    database_server.create_database(slug).await?;
+
+    Ok(())
 }

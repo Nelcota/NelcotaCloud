@@ -9,6 +9,10 @@ use serde::Serialize;
 pub enum ApiError {
     #[error("{0}")]
     InvalidRequest(String),
+    #[error("the request body must be JSON (Content-Type: application/json)")]
+    UnsupportedMediaType,
+    #[error("the request body is too large")]
+    PayloadTooLarge,
     #[error("missing apikey header")]
     MissingApiKey,
     #[error("invalid API key")]
@@ -64,6 +68,10 @@ impl ApiError {
     fn status_and_code(&self) -> (StatusCode, &'static str) {
         match self {
             ApiError::InvalidRequest(_) => (StatusCode::BAD_REQUEST, "invalid_request"),
+            ApiError::UnsupportedMediaType => {
+                (StatusCode::UNSUPPORTED_MEDIA_TYPE, "unsupported_media_type")
+            }
+            ApiError::PayloadTooLarge => (StatusCode::PAYLOAD_TOO_LARGE, "payload_too_large"),
             ApiError::MissingApiKey => (StatusCode::UNAUTHORIZED, "missing_api_key"),
             ApiError::InvalidApiKey => (StatusCode::UNAUTHORIZED, "invalid_api_key"),
             ApiError::InvalidAccessToken => (StatusCode::UNAUTHORIZED, "invalid_access_token"),

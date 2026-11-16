@@ -166,6 +166,32 @@ impl TestServer {
         self.create_tenant_from(body).await
     }
 
+    /// Creates a tenant with a given slug (e.g. one whose orphan database already exists).
+    pub async fn create_tenant_with_slug(&self, slug: &str) -> TestResult<CreatedTenant> {
+        let body = json!({
+            "slug": slug,
+            "name": "Test tenant",
+            "site_url": TEST_SITE_URL,
+            "require_email_verification": false,
+        });
+
+        self.create_tenant_from(body).await
+    }
+
+    /// Leaves a tenant database without a tenant row, like a cancelled provisioning would.
+    pub async fn create_orphan_database(&self, slug: &str) -> TestResult {
+        let base_url = self.config.tenant_database_base_url.trim_end_matches('/');
+        let mut maintenance = PgConnection::connect(&format!("{base_url}/postgres")).await?;
+        // The slug comes from `random_slug`: `t_` plus hex characters.
+        let statement = format!("CREATE DATABASE \"tenant_{slug}\"");
+        sqlx::raw_sql(AssertSqlSafe(statement))
+            .execute(&mut maintenance)
+            .await?;
+        maintenance.close().await?;
+
+        Ok(())
+    }
+
     async fn create_tenant_from(&self, body: Value) -> TestResult<CreatedTenant> {
         let response = self
             .client
@@ -300,7 +326,7 @@ impl TestServer {
     }
 }
 
-fn random_slug() -> String {
+pub fn random_slug() -> String {
     format!("t_{}", encode_hex(&random_bytes::<SLUG_SUFFIX_BYTES>()))
 }
 

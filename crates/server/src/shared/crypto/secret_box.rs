@@ -1,4 +1,4 @@
-use aes_gcm::aead::Aead;
+use aes_gcm::aead::{Aead, Payload};
 use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
 
 use crate::shared::crypto::random_bytes::random_bytes;
@@ -11,11 +11,16 @@ pub enum SecretBoxError {
     InvalidKeyLength,
     #[error("failed to encrypt secret")]
     EncryptionFailed,
-    #[error("failed to decrypt secret: ciphertext is corrupted or the master key changed")]
+    #[error(
+        "failed to decrypt secret: corrupted, moved to another record, or the master key changed"
+    )]
     DecryptionFailed,
 }
 
 /// Encrypts tenant secrets at rest with AES-256-GCM. Output layout: nonce || ciphertext+tag.
+///
+/// Every secret is bound to a `context` (associated data) naming where it belongs, e.g. the
+/// tenant and column. A ciphertext copied into another record then fails to open.
 pub struct SecretBox {
     cipher: Aes256Gcm,
 }
@@ -28,12 +33,16 @@ impl SecretBox {
         Ok(Self { cipher })
     }
 
-    pub fn seal(&self, plaintext: &[u8]) -> Result<Vec<u8>, SecretBoxError> {
+    pub fn seal(&self, plaintext: &[u8], context: &str) -> Result<Vec<u8>, SecretBoxError> {
         let nonce_bytes = random_bytes::<NONCE_LENGTH>();
         let nonce = Nonce::from(nonce_bytes);
+        let payload = Payload {
+            msg: plaintext,
+            aad: context.as_bytes(),
+        };
         let ciphertext = self
             .cipher
-            .encrypt(&nonce, plaintext)
+            .encrypt(&nonce, payload)
             .map_err(|_| SecretBoxError::EncryptionFailed)?;
         let mut sealed = nonce_bytes.to_vec();
         sealed.extend_from_slice(&ciphertext);
@@ -41,14 +50,18 @@ impl SecretBox {
         Ok(sealed)
     }
 
-    pub fn open(&self, sealed: &[u8]) -> Result<Vec<u8>, SecretBoxError> {
+    pub fn open(&self, sealed: &[u8], context: &str) -> Result<Vec<u8>, SecretBoxError> {
         let Some((nonce_bytes, ciphertext)) = sealed.split_at_checked(NONCE_LENGTH) else {
             return Err(SecretBoxError::DecryptionFailed);
         };
         let nonce = Nonce::try_from(nonce_bytes).map_err(|_| SecretBoxError::DecryptionFailed)?;
+        let payload = Payload {
+            msg: ciphertext,
+            aad: context.as_bytes(),
+        };
 
         self.cipher
-            .decrypt(&nonce, ciphertext)
+            .decrypt(&nonce, payload)
             .map_err(|_| SecretBoxError::DecryptionFailed)
     }
 }
@@ -58,26 +71,36 @@ mod tests {
     use super::*;
 
     const TEST_KEY: [u8; 32] = [7u8; 32];
+    const CONTEXT: &str = "signing_key:tenant-a";
 
     #[test]
     fn round_trips_plaintext() -> Result<(), SecretBoxError> {
         let secret_box = SecretBox::new(&TEST_KEY)?;
-        let sealed = secret_box.seal(b"postgres://secret")?;
+        let sealed = secret_box.seal(b"secret", CONTEXT)?;
 
-        assert_eq!(secret_box.open(&sealed)?, b"postgres://secret");
+        assert_eq!(secret_box.open(&sealed, CONTEXT)?, b"secret");
+        Ok(())
+    }
+
+    #[test]
+    fn rejects_a_ciphertext_moved_to_another_context() -> Result<(), SecretBoxError> {
+        let secret_box = SecretBox::new(&TEST_KEY)?;
+        let sealed = secret_box.seal(b"secret", CONTEXT)?;
+
+        assert!(secret_box.open(&sealed, "signing_key:tenant-b").is_err());
         Ok(())
     }
 
     #[test]
     fn rejects_tampered_ciphertext() -> Result<(), SecretBoxError> {
         let secret_box = SecretBox::new(&TEST_KEY)?;
-        let mut sealed = secret_box.seal(b"secret")?;
+        let mut sealed = secret_box.seal(b"secret", CONTEXT)?;
         let Some(last_byte) = sealed.last_mut() else {
             return Err(SecretBoxError::EncryptionFailed);
         };
         *last_byte ^= 0x01;
 
-        assert!(secret_box.open(&sealed).is_err());
+        assert!(secret_box.open(&sealed, CONTEXT).is_err());
         Ok(())
     }
 
@@ -85,7 +108,7 @@ mod tests {
     fn rejects_short_input() -> Result<(), SecretBoxError> {
         let secret_box = SecretBox::new(&TEST_KEY)?;
 
-        assert!(secret_box.open(&[1, 2, 3]).is_err());
+        assert!(secret_box.open(&[1, 2, 3], CONTEXT).is_err());
         Ok(())
     }
 

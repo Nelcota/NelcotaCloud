@@ -40,11 +40,12 @@ fn client_ip_from_header(
         return Err(missing_header());
     };
     let header_text = header_value.to_str().map_err(|_| missing_header())?;
-    // X-Forwarded-For style lists put the original client first.
-    let Some(first_address) = header_text.split(',').next() else {
+    // In X-Forwarded-For style lists the client controls every entry but the last one, which
+    // the trusted proxy in front of us appended.
+    let Some(proxy_seen_address) = header_text.rsplit(',').next() else {
         return Err(missing_header());
     };
-    let client_ip = first_address
+    let client_ip = proxy_seen_address
         .trim()
         .parse::<IpAddr>()
         .map_err(|_| missing_header())?;
@@ -61,13 +62,25 @@ mod tests {
     const HEADER: HeaderName = HeaderName::from_static("cf-connecting-ip");
 
     #[test]
-    fn reads_the_first_address_of_the_header() -> Result<(), ApiError> {
+    fn reads_the_address_appended_by_the_trusted_proxy() -> Result<(), ApiError> {
         let mut headers = HeaderMap::new();
-        headers.insert(HEADER, HeaderValue::from_static("203.0.113.7, 10.0.0.1"));
+        // The client forged the first entry; the proxy appended the real peer last.
+        headers.insert(HEADER, HeaderValue::from_static("1.2.3.4, 203.0.113.7"));
 
         let ClientIp(client_ip) = client_ip_from_header(&headers, &HEADER)?;
 
         assert_eq!(client_ip.to_string(), "203.0.113.7");
+        Ok(())
+    }
+
+    #[test]
+    fn reads_a_single_address() -> Result<(), ApiError> {
+        let mut headers = HeaderMap::new();
+        headers.insert(HEADER, HeaderValue::from_static(" 2001:db8::1 "));
+
+        let ClientIp(client_ip) = client_ip_from_header(&headers, &HEADER)?;
+
+        assert_eq!(client_ip.to_string(), "2001:db8::1");
         Ok(())
     }
 

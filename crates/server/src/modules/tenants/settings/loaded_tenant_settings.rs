@@ -8,8 +8,7 @@ use crate::shared::http::api_error::ApiError;
 /// Tenant settings with the site URL already validated.
 pub struct LoadedTenantSettings {
     pub name: String,
-    /// `None` for tenants created before the site URL became required.
-    pub site_url: Option<SiteUrl>,
+    pub site_url: SiteUrl,
     pub require_email_verification: bool,
 }
 
@@ -23,12 +22,7 @@ pub async fn load_tenant_settings(
     let Some(settings) = settings else {
         return Err(ApiError::internal(format!("tenant {tenant_id} not found")));
     };
-    let site_url = settings
-        .site_url
-        .as_deref()
-        .map(SiteUrl::parse)
-        .transpose()
-        .map_err(ApiError::internal)?;
+    let site_url = SiteUrl::parse(&settings.site_url).map_err(ApiError::internal)?;
 
     Ok(LoadedTenantSettings {
         name: settings.name,

@@ -1,4 +1,4 @@
-use sqlx::PgPool;
+use sqlx::PgConnection;
 use uuid::Uuid;
 
 use crate::modules::tenants::api_keys::api_key_kind::ApiKeyKind;
@@ -15,51 +15,44 @@ use crate::modules::tenants::signing_keys::signing_key_repository::{
 use crate::shared::crypto::opaque_token::OpaqueToken;
 use crate::shared::crypto::secret_box::SecretBox;
 
-/// A tenant whose database is ready and that only needs its control plane records.
-pub struct TenantRegistration {
-    pub request: NewTenantRequest,
-    pub database_url: String,
-}
-
 /// Secrets generated for a new tenant, already encrypted or hashed for storage.
 struct TenantCredentials {
-    database_url_ciphertext: Vec<u8>,
     sealed_signing_key: SealedSigningKey,
     publishable_key: OpaqueToken,
     secret_key: OpaqueToken,
 }
 
 impl TenantCredentials {
-    fn generate(database_url: &str, secret_box: &SecretBox) -> Result<Self, ProvisioningError> {
+    fn generate(tenant_id: Uuid, secret_box: &SecretBox) -> Result<Self, ProvisioningError> {
+        let signing_key = SigningKey::generate()?;
+
         Ok(Self {
-            database_url_ciphertext: secret_box.seal(database_url.as_bytes())?,
-            sealed_signing_key: SealedSigningKey::seal(&SigningKey::generate()?, secret_box)?,
+            sealed_signing_key: SealedSigningKey::seal(&signing_key, tenant_id, secret_box)?,
             publishable_key: OpaqueToken::generate(ApiKeyKind::Publishable.token_prefix()),
             secret_key: OpaqueToken::generate(ApiKeyKind::Secret.token_prefix()),
         })
     }
 }
 
-struct StoredTenant<'a> {
-    tenant_id: Uuid,
-    request: &'a NewTenantRequest,
-    credentials: &'a TenantCredentials,
-}
-
+/// Writes the tenant row, its signing key and both API keys inside the caller's transaction,
+/// so they become visible together, or not at all.
 pub async fn register_tenant(
-    control_plane_pool: &PgPool,
+    transaction: &mut PgConnection,
     secret_box: &SecretBox,
-    registration: TenantRegistration,
+    request: NewTenantRequest,
 ) -> Result<ProvisionedTenant, ProvisioningError> {
     let tenant_id = Uuid::new_v4();
-    let credentials = TenantCredentials::generate(&registration.database_url, secret_box)?;
-    let request = registration.request;
-    let stored_tenant = StoredTenant {
+    let credentials = TenantCredentials::generate(tenant_id, secret_box)?;
+    let new_tenant = NewTenant {
         tenant_id,
-        request: &request,
-        credentials: &credentials,
+        slug: &request.slug,
+        name: &request.name,
+        site_url: &request.site_url,
+        require_email_verification: request.require_email_verification,
     };
-    store_tenant(control_plane_pool, stored_tenant).await?;
+    insert_tenant(transaction, new_tenant).await?;
+    insert_active_signing_key(transaction, tenant_id, &credentials.sealed_signing_key).await?;
+    store_api_keys(transaction, tenant_id, &credentials).await?;
 
     Ok(ProvisionedTenant {
         tenant_id,
@@ -69,22 +62,11 @@ pub async fn register_tenant(
     })
 }
 
-/// The tenant row, its signing key and both API keys are written atomically.
-async fn store_tenant(
-    control_plane_pool: &PgPool,
-    tenant: StoredTenant<'_>,
+async fn store_api_keys(
+    transaction: &mut PgConnection,
+    tenant_id: Uuid,
+    credentials: &TenantCredentials,
 ) -> Result<(), sqlx::Error> {
-    let tenant_id = tenant.tenant_id;
-    let request = tenant.request;
-    let credentials = tenant.credentials;
-    let new_tenant = NewTenant {
-        tenant_id,
-        slug: &request.slug,
-        name: &request.name,
-        site_url: &request.site_url,
-        require_email_verification: request.require_email_verification,
-        database_url_ciphertext: &credentials.database_url_ciphertext,
-    };
     let publishable_owner = ApiKeyOwner {
         tenant_id,
         kind: ApiKeyKind::Publishable,
@@ -93,17 +75,12 @@ async fn store_tenant(
         tenant_id,
         kind: ApiKeyKind::Secret,
     };
-
-    let mut transaction = control_plane_pool.begin().await?;
-    insert_tenant(&mut transaction, new_tenant).await?;
-    insert_active_signing_key(&mut transaction, tenant_id, &credentials.sealed_signing_key).await?;
     insert_api_key(
-        &mut transaction,
+        transaction,
         publishable_owner,
         &credentials.publishable_key.hash,
     )
     .await?;
-    insert_api_key(&mut transaction, secret_owner, &credentials.secret_key.hash).await?;
 
-    transaction.commit().await
+    insert_api_key(transaction, secret_owner, &credentials.secret_key.hash).await
 }
