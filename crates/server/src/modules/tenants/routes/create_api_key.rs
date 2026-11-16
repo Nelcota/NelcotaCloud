@@ -6,7 +6,9 @@ use utoipa::ToSchema;
 
 use crate::app_state::AppState;
 use crate::modules::tenants::access::tenant_admin::TenantAdmin;
-use crate::modules::tenants::api_keys::api_key_issuance::{IssuedApiKey, issue_api_key};
+use crate::modules::tenants::api_keys::api_key_issuance::{
+    ApiKeyRequest, IssuedApiKey, MAX_KEY_NAME_LENGTH, issue_api_key,
+};
 use crate::modules::tenants::api_keys::api_key_kind::ApiKeyKind;
 use crate::modules::tenants::api_keys::api_key_repository::ApiKeyOwner;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
@@ -15,6 +17,10 @@ use crate::shared::http::validated_json::ValidatedJson;
 #[derive(Deserialize, ToSchema, validator::Validate)]
 pub struct CreateApiKeyBody {
     pub kind: ApiKeyKind,
+    /// A label to tell the key apart ("App iOS"); optional, up to 64 characters.
+    #[validate(length(max = MAX_KEY_NAME_LENGTH))]
+    #[serde(default)]
+    pub name: String,
 }
 
 /// `POST /admin/api-keys`: a new key next to the existing ones, so apps can switch to it
@@ -44,7 +50,11 @@ pub async fn create_api_key(
         .acquire()
         .await
         .map_err(ApiError::internal)?;
-    let issued = issue_api_key(&mut connection, owner)
+    let request = ApiKeyRequest {
+        owner,
+        name: &body.name,
+    };
+    let issued = issue_api_key(&mut connection, request)
         .await
         .map_err(ApiError::internal)?;
 

@@ -163,3 +163,41 @@ async fn tokens_of_a_rotated_signing_key_keep_verifying() -> TestResult {
 
     server.drop_tenant(&tenant).await
 }
+
+#[tokio::test]
+async fn keys_carry_the_name_given_at_creation() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    let path = "/auth/v1/admin/api-keys";
+
+    let named = server
+        .post_auth(
+            path,
+            &tenant.secret_key,
+            json!({ "kind": "publishable", "name": "  App iOS " }),
+        )
+        .await?;
+    assert_eq!(named.status(), StatusCode::CREATED);
+    let created: Value = named.json().await?;
+    assert_eq!(field(&created, "/name"), "App iOS");
+    let keys: Vec<Value> = admin_get(&server, &tenant, path).await?.json().await?;
+    let listed = keys
+        .iter()
+        .find(|key| field(key, "/id") == field(&created, "/id"));
+    assert_eq!(
+        listed.map(|key| field(key, "/name").clone()),
+        Some(json!("App iOS"))
+    );
+    let unnamed = keys.iter().filter(|key| field(key, "/name") == "").count();
+    assert_eq!(unnamed, 2);
+
+    let too_long = server
+        .post_auth(
+            path,
+            &tenant.secret_key,
+            json!({ "kind": "secret", "name": "x".repeat(65) }),
+        )
+        .await?;
+    assert_eq!(too_long.status(), StatusCode::BAD_REQUEST);
+    server.drop_tenant(&tenant).await
+}

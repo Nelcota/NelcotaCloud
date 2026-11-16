@@ -21,6 +21,7 @@ pub mod request_magic_link;
 pub mod resend_verification;
 pub mod reset_password;
 pub mod reset_user_mfa;
+pub mod send_smtp_test;
 pub mod sign_up;
 pub mod unban_user;
 pub mod verify_email;

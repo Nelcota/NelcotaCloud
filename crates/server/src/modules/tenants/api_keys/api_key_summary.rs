@@ -9,6 +9,8 @@ pub struct ApiKeySummary {
     pub id: Uuid,
     /// `publishable` or `secret`.
     pub kind: String,
+    /// The owner's label for the key; empty for keys created without one.
+    pub name: String,
     /// Last characters of the key; empty for keys created before hints existed.
     pub hint: String,
     #[serde(with = "time::serde::rfc3339")]

@@ -52,6 +52,24 @@ pub async fn insert_membership(
     Ok(())
 }
 
+/// Records the account's current email on its memberships, so team lists can show it; a
+/// no-op when nothing changed.
+pub async fn refresh_member_email(
+    pool: &PgPool,
+    account_id: Uuid,
+    email: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "UPDATE tenant_members SET account_email = $2 WHERE account_id = $1 AND account_email <> $2",
+    )
+    .bind(account_id)
+    .bind(email)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
 /// The account's role in the project, or `None` when it is not a member.
 pub async fn find_project_role(
     pool: &PgPool,

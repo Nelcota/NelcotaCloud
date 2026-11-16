@@ -75,6 +75,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/v1/admin/oauth": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /admin/oauth`: the providers the tenant has its own OAuth app for, without secrets. */
+        get: operations["list_oauth_providers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/v1/admin/oauth/{provider}": {
         parameters: {
             query?: never;
@@ -86,7 +103,8 @@ export interface paths {
         /** `PUT /admin/oauth/{provider}`: the tenant registers its own OAuth app (secret key only). */
         put: operations["configure_oauth_provider"];
         post?: never;
-        delete?: never;
+        /** `DELETE /admin/oauth/{provider}`: the tenant stops offering login with this provider. */
+        delete: operations["remove_oauth_provider"];
         options?: never;
         head?: never;
         patch?: never;
@@ -148,6 +166,27 @@ export interface paths {
         post?: never;
         /** `DELETE /admin/smtp`: auth emails go through the platform's SMTP server again. */
         delete: operations["reset_smtp"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/smtp/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `POST /admin/smtp/test`: sends a test email through the tenant's own SMTP server.
+         * @description Waits for the server to accept the message, so the owner sees a delivery problem right
+         *     away. Only for a configured server: the platform's server is not offered as a free relay.
+         */
+        post: operations["send_smtp_test"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -667,6 +706,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/platform/v1/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /platform/v1/invitations`: invitations sent to the console account's email. */
+        get: operations["list_my_invitations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/v1/invitations/{invitation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * `DELETE /platform/v1/invitations/{invitation_id}`: declines an invitation sent to the
+         *     account's email.
+         */
+        delete: operations["decline_invitation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/v1/invitations/{invitation_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `POST /platform/v1/invitations/{invitation_id}/accept`: joins the project. The invitation
+         *     must have been sent to the email of the account's verified token.
+         */
+        post: operations["accept_invitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/platform/v1/projects": {
         parameters: {
             query?: never;
@@ -708,10 +804,94 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/platform/v1/projects/{project_id}/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `POST /platform/v1/projects/{project_id}/invitations`: invites someone to manage the
+         *     project as a member, and emails them. Owners only.
+         */
+        post: operations["invite_member"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/v1/projects/{project_id}/invitations/{invitation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * `DELETE /platform/v1/projects/{project_id}/invitations/{invitation_id}`: withdraws a
+         *     pending invitation. Owners only.
+         */
+        delete: operations["cancel_invitation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/v1/projects/{project_id}/members/{account_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * `DELETE /platform/v1/projects/{project_id}/members/{account_id}`: takes a member's access
+         *     away. Owners only; owners themselves cannot be removed.
+         */
+        delete: operations["remove_member"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/v1/projects/{project_id}/team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /platform/v1/projects/{project_id}/team`: who manages the project, and who is invited. */
+        get: operations["read_team"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AcceptedInvitation: {
+            /**
+             * Format: uuid
+             * @description The project the account now belongs to.
+             */
+            project_id: string;
+        };
         /**
          * @description Publishable keys ship inside client apps; secret keys stay on the tenant's own servers.
          * @enum {string}
@@ -727,11 +907,26 @@ export interface components {
             id: string;
             /** @description `publishable` or `secret`. */
             kind: string;
+            /** @description The owner's label for the key; empty for keys created without one. */
+            name: string;
             /** Format: date-time */
             revoked_at?: string | null;
         };
+        /** @description What an owner sees about a configured provider: its public client ID, never the secret. */
+        ConfiguredProvider: {
+            client_id: string;
+            /** @description `google` or `github`. */
+            provider: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        ConfiguredProviders: {
+            providers: components["schemas"]["ConfiguredProvider"][];
+        };
         CreateApiKeyBody: {
             kind: components["schemas"]["ApiKeyKind"];
+            /** @description A label to tell the key apart ("App iOS"); optional, up to 64 characters. */
+            name?: string;
         };
         CreateTenantBody: {
             name: string;
@@ -755,6 +950,9 @@ export interface components {
             error: string;
             message: string;
         };
+        InvitationBody: {
+            email: string;
+        };
         /** @description A new key. Its plaintext is shown only here; afterwards only its hash exists. */
         IssuedApiKey: {
             hint: string;
@@ -763,6 +961,7 @@ export interface components {
             key: string;
             /** @description `publishable` or `secret`. */
             kind: string;
+            name: string;
         };
         LogInBody: {
             email: string;
@@ -798,6 +997,14 @@ export interface components {
         OneTimeTokenBody: {
             token: string;
         };
+        /** @description A pending invitation as the project's team sees it. */
+        PendingInvitation: {
+            /** Format: date-time */
+            created_at: string;
+            email: string;
+            /** Format: uuid */
+            id: string;
+        };
         /**
          * @description What a platform account may do in a project: owners can also delete it.
          * @enum {string}
@@ -817,6 +1024,16 @@ export interface components {
         ProviderCredentialsBody: {
             client_id: string;
             client_secret: string;
+        };
+        /** @description An invitation as the invited console account sees it. */
+        ReceivedInvitation: {
+            /** Format: date-time */
+            created_at: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            project_id: string;
+            project_name: string;
         };
         RefreshTokenBody: {
             refresh_token: string;
@@ -876,6 +1093,26 @@ export interface components {
             smtp_host?: string | null;
             /** Format: int32 */
             smtp_port?: number | null;
+        };
+        SmtpTestBody: {
+            /** @description Where the test email goes. */
+            to: string;
+        };
+        /** @description A console account with access to the project. */
+        TeamMember: {
+            /** Format: uuid */
+            account_id: string;
+            /** @description As of the member's last console visit; empty until then. */
+            email: string;
+            /** Format: date-time */
+            joined_at: string;
+            role: components["schemas"]["ProjectRole"];
+        };
+        TeamView: {
+            /** @description Whether the caller may invite and remove people (owners only). */
+            can_manage: boolean;
+            invitations: components["schemas"]["PendingInvitation"][];
+            members: components["schemas"]["TeamMember"][];
         };
         /** @description Settings a tenant manages itself with its secret key. */
         TenantSettings: {
@@ -1128,6 +1365,35 @@ export interface operations {
             };
         };
     };
+    list_oauth_providers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Configured providers */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfiguredProviders"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     configure_oauth_provider: {
         parameters: {
             query?: never;
@@ -1145,6 +1411,45 @@ export interface operations {
         };
         responses: {
             /** @description Provider configured with the tenant's own OAuth app */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unknown provider */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    remove_oauth_provider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description `google` or `github` */
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Provider removed (or was not configured) */
             204: {
                 headers: {
                     [name: string]: unknown;
@@ -1360,6 +1665,73 @@ export interface operations {
             };
             /** @description Requires the secret API key, or membership in the project */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    send_smtp_test: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SmtpTestBody"];
+            };
+        };
+        responses: {
+            /** @description The SMTP server accepted the test email */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid recipient */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The project uses the platform's SMTP server */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many test emails */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The SMTP server refused or could not be reached */
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2560,6 +2932,97 @@ export interface operations {
             };
         };
     };
+    list_my_invitations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pending invitations, newest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceivedInvitation"][];
+                };
+            };
+            /** @description Missing or invalid platform access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    decline_invitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the invitation */
+                invitation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Invitation declined */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No pending invitation for this account */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    accept_invitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the invitation */
+                invitation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Joined the project */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptedInvitation"];
+                };
+            };
+            /** @description No pending invitation for this account */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     list_projects: {
         parameters: {
             query?: never;
@@ -2687,6 +3150,192 @@ export interface operations {
                 };
             };
             /** @description Not an owner of this project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    invite_member: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the project */
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvitationBody"];
+            };
+        };
+        responses: {
+            /** @description Invitation created and emailed */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendingInvitation"];
+                };
+            };
+            /** @description Invalid email */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not an owner of this project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Already a member, or already invited */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many invitations */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    cancel_invitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the project */
+                project_id: string;
+                /** @description Id of the invitation */
+                invitation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Invitation withdrawn */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not an owner of this project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such pending invitation */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    remove_member: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the project */
+                project_id: string;
+                /** @description Console account of the member */
+                account_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Member removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not an owner of this project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such member (owners are never removed) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    read_team: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the project */
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Members and pending invitations */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamView"];
+                };
+            };
+            /** @description Missing or invalid platform access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not a member of this project */
             403: {
                 headers: {
                     [name: string]: unknown;

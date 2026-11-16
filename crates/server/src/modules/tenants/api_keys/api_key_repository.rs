@@ -25,6 +25,7 @@ pub struct StoredApiKey<'a> {
     pub owner: ApiKeyOwner,
     pub key_hash: &'a TokenHash,
     pub key_hint: &'a str,
+    pub name: &'a str,
 }
 
 pub async fn insert_api_key(
@@ -33,13 +34,14 @@ pub async fn insert_api_key(
 ) -> Result<(), sqlx::Error> {
     let owner = key.owner;
     sqlx::query(
-        "INSERT INTO tenant_api_keys (id, tenant_id, kind, key_hash, key_hint) VALUES ($1, $2, $3, $4, $5)",
+        "INSERT INTO tenant_api_keys (id, tenant_id, kind, key_hash, key_hint, name) VALUES ($1, $2, $3, $4, $5, $6)",
     )
     .bind(key.id)
     .bind(owner.tenant_id)
     .bind(owner.kind.as_str())
     .bind(key.key_hash)
     .bind(key.key_hint)
+    .bind(key.name)
     .execute(connection)
     .await?;
 
@@ -72,7 +74,7 @@ pub async fn list_api_keys(
     tenant_id: Uuid,
 ) -> Result<Vec<ApiKeySummary>, sqlx::Error> {
     sqlx::query_as(
-        "SELECT id, kind, COALESCE(key_hint, '') AS hint, created_at, revoked_at FROM tenant_api_keys WHERE tenant_id = $1 ORDER BY created_at DESC",
+        "SELECT id, kind, name, COALESCE(key_hint, '') AS hint, created_at, revoked_at FROM tenant_api_keys WHERE tenant_id = $1 ORDER BY created_at DESC",
     )
     .bind(tenant_id)
     .fetch_all(pool)

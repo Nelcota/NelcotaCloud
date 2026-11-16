@@ -1,7 +1,7 @@
 use sqlx::PgConnection;
 use uuid::Uuid;
 
-use crate::modules::tenants::api_keys::api_key_issuance::issue_api_key;
+use crate::modules::tenants::api_keys::api_key_issuance::{ApiKeyRequest, issue_api_key};
 use crate::modules::tenants::api_keys::api_key_kind::ApiKeyKind;
 use crate::modules::tenants::api_keys::api_key_repository::ApiKeyOwner;
 use crate::modules::tenants::platform::membership_repository::{
@@ -43,8 +43,8 @@ pub async fn register_tenant(
     add_owner(transaction, tenant_id, request.owner_account_id).await?;
     insert_active_signing_key(transaction, tenant_id, &sealed_signing_key).await?;
     let publishable_key =
-        issue_api_key(transaction, owner(tenant_id, ApiKeyKind::Publishable)).await?;
-    let secret_key = issue_api_key(transaction, owner(tenant_id, ApiKeyKind::Secret)).await?;
+        issue_api_key(transaction, initial_key(tenant_id, ApiKeyKind::Publishable)).await?;
+    let secret_key = issue_api_key(transaction, initial_key(tenant_id, ApiKeyKind::Secret)).await?;
 
     Ok(ProvisionedTenant {
         tenant_id,
@@ -54,8 +54,12 @@ pub async fn register_tenant(
     })
 }
 
-fn owner(tenant_id: Uuid, kind: ApiKeyKind) -> ApiKeyOwner {
-    ApiKeyOwner { tenant_id, kind }
+/// The keys every project starts with; they have no name until the owner gives one.
+fn initial_key(tenant_id: Uuid, kind: ApiKeyKind) -> ApiKeyRequest<'static> {
+    ApiKeyRequest {
+        owner: ApiKeyOwner { tenant_id, kind },
+        name: "",
+    }
 }
 
 async fn add_owner(

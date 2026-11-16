@@ -41,6 +41,7 @@ use crate::modules::auth::routes::request_magic_link;
 use crate::modules::auth::routes::resend_verification;
 use crate::modules::auth::routes::reset_password;
 use crate::modules::auth::routes::reset_user_mfa;
+use crate::modules::auth::routes::send_smtp_test;
 use crate::modules::auth::routes::sign_up;
 use crate::modules::auth::routes::unban_user;
 use crate::modules::auth::routes::verify_email;
@@ -49,7 +50,16 @@ use crate::modules::auth::routes::verify_totp_enrollment;
 use crate::modules::oauth::routes::authorize_oauth;
 use crate::modules::oauth::routes::configure_oauth_provider;
 use crate::modules::oauth::routes::exchange_oauth_code;
+use crate::modules::oauth::routes::list_oauth_providers;
 use crate::modules::oauth::routes::oauth_callback;
+use crate::modules::oauth::routes::remove_oauth_provider;
+use crate::modules::team::routes::accept_invitation;
+use crate::modules::team::routes::cancel_invitation;
+use crate::modules::team::routes::decline_invitation;
+use crate::modules::team::routes::invite_member;
+use crate::modules::team::routes::list_my_invitations;
+use crate::modules::team::routes::read_team;
+use crate::modules::team::routes::remove_member;
 use crate::modules::tenants::access::api_key_tenant::API_KEY_HEADER;
 use crate::modules::tenants::access::tenant_admin::PROJECT_HEADER;
 use crate::modules::tenants::routes::change_tenant_settings;
@@ -119,6 +129,13 @@ pub fn api_routes() -> OpenApiRouter<AppState> {
             create_project::create_project
         ))
         .routes(routes!(delete_project::delete_project))
+        .routes(routes!(read_team::read_team))
+        .routes(routes!(invite_member::invite_member))
+        .routes(routes!(cancel_invitation::cancel_invitation))
+        .routes(routes!(remove_member::remove_member))
+        .routes(routes!(list_my_invitations::list_my_invitations))
+        .routes(routes!(accept_invitation::accept_invitation))
+        .routes(routes!(decline_invitation::decline_invitation))
         .routes(routes!(sign_up::sign_up))
         .routes(routes!(log_in::log_in))
         .routes(routes!(refresh_session::refresh_session))
@@ -132,7 +149,11 @@ pub fn api_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(resend_verification::resend_verification))
         .routes(routes!(recover_password::recover_password))
         .routes(routes!(reset_password::reset_password))
-        .routes(routes!(configure_oauth_provider::configure_oauth_provider))
+        .routes(routes!(list_oauth_providers::list_oauth_providers))
+        .routes(routes!(
+            configure_oauth_provider::configure_oauth_provider,
+            remove_oauth_provider::remove_oauth_provider
+        ))
         .routes(routes!(
             read_tenant_settings::read_tenant_settings,
             change_tenant_settings::change_tenant_settings
@@ -148,6 +169,7 @@ pub fn api_routes() -> OpenApiRouter<AppState> {
             configure_smtp::configure_smtp,
             reset_smtp::reset_smtp
         ))
+        .routes(routes!(send_smtp_test::send_smtp_test))
         .routes(routes!(request_magic_link::request_magic_link))
         .routes(routes!(verify_magic_link::verify_magic_link))
         .routes(routes!(read_mfa_status::read_mfa_status))
