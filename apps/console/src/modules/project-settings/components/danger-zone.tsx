@@ -7,7 +7,6 @@ import {
   useDeleteProjectMutation,
 } from '@/modules/projects/queries/use-projects'
 import { ConfirmButton } from '@/shared/ui/confirm-button'
-import { ErrorAlert } from '@/shared/ui/error-alert'
 import { SettingsSection } from '@/shared/ui/settings-section'
 
 type DangerZoneProps = {
@@ -15,14 +14,21 @@ type DangerZoneProps = {
   projectName: string
 }
 
-export function DangerZone({ projectId, projectName }: DangerZoneProps): JSX.Element {
+export function DangerZone({ projectId, projectName }: DangerZoneProps): JSX.Element | null {
   const navigate = useNavigate()
   const deletion = useDeleteProjectMutation()
   // The slug is what the user types to confirm; the name is the fallback while it loads.
-  const confirmationText = useCurrentProject(projectId)?.slug ?? projectName
+  const project = useCurrentProject(projectId)
+  const confirmationText = project?.slug ?? projectName
 
-  function deleteProject(): void {
-    deletion.mutate(projectId, { onSuccess: () => navigate({ to: '/' }) })
+  async function deleteProject(): Promise<void> {
+    await deletion.mutateAsync(projectId)
+    await navigate({ to: '/' })
+  }
+
+  // Only owners can delete; members would find out only after confirming.
+  if (project?.role !== 'owner') {
+    return null
   }
 
   return (
@@ -31,7 +37,7 @@ export function DangerZone({ projectId, projectName }: DangerZoneProps): JSX.Ele
         <div>
           <p className="text-sm font-medium">Excluir este projeto</p>
           <p className="text-muted-foreground mt-1 text-sm text-pretty">
-            Apaga os usuários, as chaves e o banco de dados. Só donos podem fazer isso.
+            Apaga os usuários, as chaves e o banco de dados.
           </p>
         </div>
         <div className="shrink-0">
@@ -49,7 +55,6 @@ export function DangerZone({ projectId, projectName }: DangerZoneProps): JSX.Ele
           </ConfirmButton>
         </div>
       </div>
-      <ErrorAlert error={deletion.error} />
     </SettingsSection>
   )
 }

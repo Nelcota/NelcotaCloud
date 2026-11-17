@@ -1,8 +1,8 @@
 import type { JSX } from 'react'
 
-import { ConnectAppPanel } from '@/modules/api-keys/components/connect-app-panel'
 import { IsolationPanel } from '@/modules/overview/components/isolation-panel'
 import { KeysCard } from '@/modules/overview/components/keys-card'
+import { ProjectConnectPanel } from '@/modules/overview/components/project-connect-panel'
 import { OverviewHeader } from '@/modules/overview/components/overview-header'
 import { SmtpCard } from '@/modules/overview/components/smtp-card'
 import { UsersCard } from '@/modules/overview/components/users-card'
@@ -20,7 +20,7 @@ export function OverviewPage(): JSX.Element {
         <KeysCard projectId={projectId} />
         <SmtpCard projectId={projectId} />
       </div>
-      <ConnectAppPanel publishableKey={null} projectId={projectId} />
+      <ProjectConnectPanel projectId={projectId} />
       <IsolationPanel projectId={projectId} />
     </div>
   )

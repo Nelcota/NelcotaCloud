@@ -28,7 +28,7 @@ export function TotpDisableForm(): JSX.Element {
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-4 rounded-lg border border-destructive/40 p-4">
+    <form onSubmit={submit} className="grid gap-4 border-t pt-4">
       <p className="text-sm text-pretty">
         Sem MFA, quem descobrir sua senha entra no console e em todos os seus projetos.
       </p>

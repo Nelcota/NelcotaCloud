@@ -3,6 +3,7 @@ use sqlx::PgConnection;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+use crate::modules::tenants::api_keys::api_key_kind::ApiKeyKind;
 use crate::modules::tenants::api_keys::api_key_repository::{
     ApiKeyOwner, StoredApiKey, insert_api_key,
 };
@@ -11,7 +12,7 @@ use crate::shared::crypto::opaque_token::OpaqueToken;
 /// Characters of the key kept in clear, enough to tell keys apart in a list.
 const KEY_HINT_LENGTH: usize = 4;
 
-/// A new key. Its plaintext is shown only here; afterwards only its hash exists.
+/// A new key. A secret key's plaintext is shown only here; afterwards only its hash exists.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct IssuedApiKey {
     pub id: Uuid,
@@ -52,10 +53,19 @@ pub async fn issue_api_key(
         key_hash: &token.hash,
         key_hint: &issued.hint,
         name,
+        publishable_key: visible_key(kind, &issued.key),
     };
     insert_api_key(connection, stored).await?;
 
     Ok(issued)
+}
+
+/// Publishable keys are public, so they are kept to be shown again; secret keys never are.
+fn visible_key(kind: ApiKeyKind, plaintext: &str) -> Option<&str> {
+    match kind {
+        ApiKeyKind::Publishable => Some(plaintext),
+        ApiKeyKind::Secret => None,
+    }
 }
 
 fn key_hint(plaintext: &str) -> String {
@@ -72,6 +82,15 @@ mod tests {
     #[test]
     fn hint_is_the_last_characters() {
         assert_eq!(key_hint("nc_pk_0123abcd"), "abcd");
+    }
+
+    #[test]
+    fn only_publishable_keys_stay_visible() {
+        assert_eq!(
+            visible_key(ApiKeyKind::Publishable, "nc_pk_a"),
+            Some("nc_pk_a")
+        );
+        assert_eq!(visible_key(ApiKeyKind::Secret, "nc_sk_a"), None);
     }
 
     #[test]

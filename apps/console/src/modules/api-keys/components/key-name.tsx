@@ -16,7 +16,10 @@ export function KeyName({ apiKey }: { apiKey: ApiKeySummary }): JSX.Element {
       <KindIcon kind={apiKey.kind} />
       <div className="grid min-w-0">
         <NameText name={apiKey.name} />
-        <span className="text-muted-foreground text-xs">{apiKey.kind}</span>
+        <span className="text-muted-foreground text-xs">
+          {apiKey.kind}
+          <span className="font-mono sm:hidden"> · …{apiKey.hint}</span>
+        </span>
       </div>
     </div>
   )

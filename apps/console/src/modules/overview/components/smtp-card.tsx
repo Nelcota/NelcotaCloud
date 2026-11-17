@@ -2,7 +2,6 @@ import Mail from '~icons/solar/letter-linear'
 import type { JSX } from 'react'
 
 import { OverviewCard } from '@/modules/overview/components/overview-card'
-import { LOADING_DETAIL } from '@/modules/overview/components/overview-metrics'
 import { useSmtpQuery } from '@/modules/project-settings/queries/use-project-settings'
 import type { components } from '@/shared/api/api-schema'
 
@@ -37,9 +36,9 @@ function smtpServer(view: SmtpSettingsView | undefined): string | null {
   return view.smtp_host ?? null
 }
 
-function smtpDetail(view: SmtpSettingsView | undefined): string {
+function smtpDetail(view: SmtpSettingsView | undefined): string | null {
   if (view === undefined) {
-    return LOADING_DETAIL
+    return null
   }
 
   if (view.is_custom === false) {

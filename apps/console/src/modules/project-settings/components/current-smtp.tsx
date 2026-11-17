@@ -70,10 +70,8 @@ type ServerRowProps = {
 
 function ServerRow({ icon, title, detail, badge, action }: ServerRowProps): JSX.Element {
   return (
-    <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center">
-      <span className="bg-secondary flex size-11 shrink-0 items-center justify-center rounded-lg">
-        {icon}
-      </span>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <span className="text-muted-foreground flex shrink-0 items-center">{icon}</span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="truncate text-sm font-medium">{title}</span>

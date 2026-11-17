@@ -11,6 +11,7 @@ import {
 import { useProjectId } from '@/shared/routing/use-project-id'
 import { Button } from '@/shared/ui/button'
 import { ErrorAlert } from '@/shared/ui/error-alert'
+import { LoadError } from '@/shared/ui/load-error'
 import { FormField } from '@/shared/ui/form-field'
 import { PageHeader } from '@/shared/ui/page-header'
 import { SavedNote } from '@/shared/ui/saved-note'
@@ -35,7 +36,8 @@ export function EmailPage(): JSX.Element {
         title="Email"
         description="Confirmação de email, redefinição de senha e magic link saem por aqui."
       />
-      <ErrorAlert error={smtp.error ?? reset.error} />
+      <LoadError error={smtp.error} onRetry={() => smtp.refetch()} />
+      <ErrorAlert error={reset.error} />
       <SettingsSection title="Servidor atual">
         <CurrentSmtp
           view={smtp.data}
@@ -59,11 +61,11 @@ export function EmailPage(): JSX.Element {
         >
           <FormField
             label="SMTP URL"
-            type="password"
             autoComplete="off"
+            spellCheck={false}
             required
             placeholder="smtps://usuario:senha@smtp.exemplo.com:465"
-            hint="Use TLS: smtps:// na porta 465 ou smtp:// com ?tls=required. Host público; credenciais cifradas e exibidas só aqui."
+            hint="Use TLS: smtps:// na porta 465 ou smtp:// com ?tls=required. Host público; usuário e senha ficam cifrados e não aparecem de novo."
             value={smtpUrl}
             onChange={(event) => setSmtpUrl(event.target.value)}
           />

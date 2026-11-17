@@ -6,12 +6,12 @@ colors:
   signal-blue-light: "oklch(0.53 0.2 262)"
   signal-ink: "oklch(0.77 0.13 262)"
   focus-ring: "oklch(0.7 0.15 262)"
-  graphite-floor: "oklch(0.255 0.008 286)"
-  graphite-panel: "oklch(0.29 0.008 286)"
-  graphite-raised: "oklch(0.31 0.008 286)"
-  graphite-sidebar: "oklch(0.275 0.008 286)"
-  graphite-control: "oklch(0.325 0.009 286)"
-  graphite-hover: "oklch(0.34 0.009 286)"
+  graphite-floor: "oklch(0.21 0.007 286)"
+  graphite-panel: "oklch(0.24 0.007 286)"
+  graphite-raised: "oklch(0.26 0.007 286)"
+  graphite-sidebar: "oklch(0.225 0.007 286)"
+  graphite-control: "oklch(0.275 0.008 286)"
+  graphite-hover: "oklch(0.29 0.008 286)"
   instrument-white: "oklch(0.96 0.003 286)"
   gauge-gray: "oklch(0.76 0.012 286)"
   hairline: "oklch(1 0 0 / 10%)"
@@ -216,8 +216,8 @@ for things a developer copies: commands, code, keys, IDs.
 - **Title** (600, 1.125rem/1.75rem): settings section and card titles (`h2`); card titles may use 500.
 - **Body** (400, 1rem/1.5rem): almost all UI text; descriptions in Gauge Gray, capped at
   42rem (`max-w-2xl`) and `text-pretty`.
-- **Label** (500, 0.875rem, 0.025em, uppercase): small readout captions above metrics
-  ("USUÁRIOS", "ATIVAS"); sentence case for sidebar group labels.
+- **Label** (500, 0.875rem, 0.025em, uppercase): readout captions in the Readout Strip only.
+  Overview metric labels ("Contas", "Ativas") and sidebar group labels stay in sentence case.
 - **Code** (400, 0.875rem, mono): commands, snippets, keys.
 
 The scale lives in `global.css` as Tailwind's own `--text-*` tokens, larger than the defaults
@@ -234,9 +234,9 @@ buttons and navigation stay in sentence case.
 - **Shell:** inside a project, the whole window takes the sidebar color; the 288px sidebar sits
   on it, and the page is an inset panel (page background, 20px from the top, a 28px rounded
   top-left corner, a 10% foreground hairline on its top and left edges) that scrolls on its
-  own under a sticky 56px top bar (translucent, backdrop blur). Outside a project the page
-  fills the window with no panel. Below `md` the sidebar moves into a sheet opened
-  from the top bar, with identical content.
+  own. Outside a project the same frame holds a shorter sidebar (Projetos, Minha conta). Below
+  `md` the sidebar moves into a sheet opened from a sticky 56px top bar (translucent, backdrop
+  blur), with identical content; from `md` there is no top bar, since the page's `h1` names it.
 - **Page column:** centered, max 72rem (`max-w-6xl`); side padding 16px, 24px from `sm`, 40px from
   `lg`; 24–32px top, 64px bottom.
 - **Page rhythm:** `PageHeader` (title, optional description, actions right-aligned from `sm`,
@@ -265,7 +265,7 @@ the page and will go away" (menu, dialog, sheet), never "this is important".
 ## Shapes
 
 Gently rounded and consistent. Controls (buttons, inputs) use 8px (`rounded-lg`); cards, settings
-sections, empty states and icon tiles use about 11px (`rounded-xl`); nav items use about 6px;
+sections and empty states use about 11px (`rounded-xl`); nav items use about 6px;
 badges and the avatar are pills/circles. Empty states use a dashed hairline border; everything
 else is solid. The logo always sits on its own dark rounded tile.
 
@@ -313,8 +313,11 @@ Blue is never a pill color: it stays for actions.
 - **Internal Padding:** 16px (cards, 12px when `sm`), 20px (settings sections).
 - **Settings section:** title, Gauge Gray description, fields, then a footer bar (30% muted fill,
   top hairline) holding Save on the right. The `danger` tone tints the border red.
-- **Overview cards:** icon in a small blue-tinted tile, a readout label, a metric, a description,
-  then links at the bottom separated by a hairline.
+- **Overview cards:** a muted 20px icon beside the title (no tile), a sentence-case label, a
+  metric, a description, then links at the bottom separated by a hairline. While loading, the
+  metric is one placeholder and the description is hidden, never "Carregando…" next to it.
+- **No nested boxes:** a form or row inside a card or settings section is separated by a top
+  hairline (`border-t pt-4`), never wrapped in its own bordered box.
 
 ### Inputs / Fields
 
@@ -333,19 +336,17 @@ Blue is never a pill color: it stays for actions.
     up-down icon. The menu lists projects, "Todos os projetos" and "Novo projeto".
   - **Daily pages:** Visão geral, Chaves de API, Usuários, Login social, Email. 44px rows, 8px
     radius, 20px icons. Hover and current fill with Graphite Hover; the current item is
-    semibold with a Signal Ink icon. Usuários carries a live count pill (emerald tint,
-    tabular numbers, hidden at zero).
+    semibold with a Signal Ink icon in Solar's Bold variant. Usuários carries a live count
+    pill (neutral tint, tabular numbers, hidden at zero).
   - **Divider**, then "Todos os projetos".
   - **Foot:** the MFA reminder card while the console account has MFA off ("Recomendado"
     amber pill, a dismiss button remembered per browser, "Ativar MFA" outline button), then
     Configurações, a divider, and the account block: a 44px Signal Blue avatar with initials,
     the email's name in semibold over the full email, and an up-down icon. Its menu opens
     upward at the block's width: Minha conta, theme, Sair.
-- **Top bar:** inside a project, only the mobile menu and the current page's name (the
-  account lives in the sidebar). Outside a project, where there is no sidebar, its content
-  sits in the page's centered column: the logo and a trail ("NelcotaCloud / Projetos / Novo
-  projeto"; the name hides on phones), then the API status as an outlined pill, a hairline
-  divider and the compact account menu (36px avatar, email, chevron).
+- **Top bar (phones only):** the menu button and the current page's name.
+- **Tab title:** every page names the browser tab "Página · Projeto · NelcotaCloud", so tabs
+  tell apart and screen readers announce where a navigation landed.
 - **Mobile:** the menu button opens a sheet with the same sidebar content.
 
 ### Empty State
@@ -356,10 +357,12 @@ action that adds the first item.
 
 ### One-Time Secret
 
-A key the API returns once is a warning, not information: amber border and 10% amber tint, a
+Secret keys and webhook signing secrets are returned once; publishable keys are public, so the
+key list shows them in full with Copy and "Conectar seu app" fills them in. A secret the API
+returns once is a warning, not information: amber border and 10% amber tint, a
 triangle icon, a heading that says to copy it now, the value in a mono block with Copy focused,
 and an explicit "Já guardei a chave" dismissal. While it is on screen, `SecretLeaveGuard` asks
-before any navigation or tab close. The value itself is never inside a live region.
+before any navigation or tab close, naming what would be lost (`subject`). The value itself is never inside a live region.
 
 ### Dialogs
 
@@ -381,6 +384,10 @@ before any navigation or tab close. The value itself is never inside a live regi
   someone); it survives navigation, so "Você saiu de Acme Loja" shows on the projects list.
 - **Failure:** a confirmation whose action can fail returns a promise: the dialog stays open and
   busy until the API answers and shows the error inside itself, next to the decision.
+- **Errors read in Portuguese:** `ErrorAlert` passes every API and SDK error through
+  `describeError` (`shared/api`), which maps the API's stable codes (and its known messages for
+  generic codes) to a sentence that names the problem and the way out. A page whose data failed
+  to load shows `LoadError` with "Tentar de novo" and no skeleton; refusals (4xx) are not retried.
 - **Rules before errors:** an action a rule forbids (the sole owner leaving) is shown disabled,
   with the reason once below the items at full contrast (never inside the faded item), and the
   reason names a reachable next step.
@@ -399,8 +406,8 @@ claims.
 the small tokenizer in `shared/lib/highlight-code.ts` (TypeScript and shell only, enough for the
 console's own snippets) with the theme's code tokens, each at least 4.5:1 on the block in both
 themes: `--code-keyword` violet, `--code-string` green, `--code-function` blue,
-`--code-property` amber, `--code-muted` gray for punctuation and comments. Secrets shown once
-use `SecretReveal` (plain mono) with a "copy now" warning.
+`--code-property` amber, `--code-muted` gray for punctuation and comments. Values to copy
+as they are (keys, callback URLs) use `CopyableValue` (plain mono, wraps, Copy on the right).
 
 ### Icons
 
@@ -408,7 +415,8 @@ Solar, Linear style only (`@iconify-json/solar`), imported per icon as React com
 `import Key from '~icons/solar/key-linear'` (compiled at build time by `unplugin-icons` with the
 console's own `icon-compiler.ts`). Icons inherit `currentColor`, are sized with `size-*` classes
 (20px default, 16px in readout labels and small buttons), and are `aria-hidden` unless given an `aria-label`.
-Never mix in another icon set or another Solar style.
+Never mix in another icon set or another Solar style; the one exception is the current
+navigation item, which swaps to the same icon's Bold variant.
 
 ## Do's and Don'ts
 

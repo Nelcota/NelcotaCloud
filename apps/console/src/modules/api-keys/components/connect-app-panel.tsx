@@ -9,7 +9,7 @@ import { CopyButton } from '@/shared/ui/copy-button'
 const KEY_PLACEHOLDER = 'SUA_PUBLISHABLE_KEY'
 
 type ConnectAppPanelProps = {
-  /** The full key when it is known (right after creation); otherwise a placeholder is shown. */
+  /** The full publishable key when one can be shown; otherwise a placeholder. */
   publishableKey: string | null
   projectId: string
 }
@@ -42,16 +42,15 @@ function KeyHint({ publishableKey, projectId }: ConnectAppPanelProps): JSX.Eleme
 
   return (
     <p className="text-muted-foreground border-t px-5 py-3 text-sm text-pretty">
-      Troque <code className="font-mono text-xs">{KEY_PLACEHOLDER}</code> pela publishable key que
-      você guardou ao criá-la. Perdeu?{' '}
+      Este projeto não tem publishable key que o console possa mostrar.{' '}
       <Link
         to="/projects/$projectId/keys"
         params={{ projectId }}
         className="text-primary-ink underline-offset-4 hover:underline"
       >
-        Crie uma nova em Chaves de API
-      </Link>
-      .
+        Crie uma em Chaves de API
+      </Link>{' '}
+      e ela entra no código acima.
     </p>
   )
 }

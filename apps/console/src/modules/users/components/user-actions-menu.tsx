@@ -27,7 +27,7 @@ type User = components['schemas']['User']
 type UserActionsMenuProps = {
   user: User
   isPending: boolean
-  onAction: (action: UserAction) => void
+  onAction: (action: UserAction) => Promise<void>
 }
 
 /** Every admin action on a user behind one button, so rows stay one line high on any screen. */
@@ -48,10 +48,10 @@ export function UserActionsMenu({ user, isPending, onAction }: UserActionsMenuPr
         <DropdownMenuContent align="end" className="w-52">
           <BanItem
             isBanned={user.banned_at !== null && user.banned_at !== undefined}
-            onUnban={() => onAction('unban')}
+            onUnban={() => void onAction('unban').catch(ignoreShownError)}
             onBan={() => setConfirming('ban')}
           />
-          <DropdownMenuItem onClick={() => onAction('end-sessions')}>
+          <DropdownMenuItem onClick={() => setConfirming('end-sessions')}>
             <LogOut />
             Encerrar sessões
           </DropdownMenuItem>
@@ -116,7 +116,7 @@ type ActionConfirmationProps = {
   action: ConfirmedAction | null
   email: string
   onClose: () => void
-  onConfirm: (action: UserAction) => void
+  onConfirm: (action: UserAction) => Promise<void>
 }
 
 function ActionConfirmation({
@@ -143,4 +143,9 @@ function ActionConfirmation({
       onConfirm={() => onConfirm(action)}
     />
   )
+}
+
+/** Unblocking needs no dialog; its failure is shown above the list, where the page reads it. */
+function ignoreShownError(): void {
+  return undefined
 }

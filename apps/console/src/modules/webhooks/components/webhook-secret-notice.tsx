@@ -3,7 +3,7 @@ import type { JSX } from 'react'
 import { useId } from 'react'
 
 import { SecretLeaveGuard } from '@/modules/api-keys/components/secret-leave-guard'
-import { SecretReveal } from '@/modules/api-keys/components/secret-reveal'
+import { CopyableValue } from '@/shared/ui/copyable-value'
 import { Button } from '@/shared/ui/button'
 
 type WebhookSecretNoticeProps = {
@@ -43,13 +43,13 @@ export function WebhookSecretNotice({
           </p>
         </div>
       </div>
-      <SecretReveal label="Segredo" value={revealed.secret} autoFocusCopy />
+      <CopyableValue label="Segredo" value={revealed.secret} autoFocusCopy />
       <div className="flex justify-end">
         <Button variant="outline" size="sm" onClick={onDismiss}>
           Já guardei o segredo
         </Button>
       </div>
-      <SecretLeaveGuard isActive />
+      <SecretLeaveGuard isActive subject="Segredo do webhook" />
     </section>
   )
 }

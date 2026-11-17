@@ -1,10 +1,10 @@
 import type { JSX } from 'react'
 import { useDeferredValue, useState } from 'react'
 
-import { UserActionResult } from '@/modules/users/components/user-action-result'
 import { UserCount } from '@/modules/users/components/user-count'
 import { UsersPagination } from '@/modules/users/components/users-pagination'
 import { UsersTable } from '@/modules/users/components/users-table'
+import { DONE_MESSAGES } from '@/modules/users/components/user-done-messages'
 import {
   USERS_PAGE_SIZE,
   type UserAction,
@@ -12,7 +12,9 @@ import {
   useUsersQuery,
 } from '@/modules/users/queries/use-users'
 import type { components } from '@/shared/api/api-schema'
+import { showFlash } from '@/shared/lib/flash-notice'
 import { ErrorAlert } from '@/shared/ui/error-alert'
+import { LoadError } from '@/shared/ui/load-error'
 import { SearchInput } from '@/shared/ui/search-input'
 
 type User = components['schemas']['User']
@@ -34,8 +36,9 @@ export function UsersBrowser({ projectId }: { projectId: string }): JSX.Element 
     setOffset(0)
   }
 
-  function runAction(user: User, kind: UserAction): void {
-    action.mutate({ action: kind, userId: user.id, email: user.email })
+  async function runAction(user: User, kind: UserAction): Promise<void> {
+    await action.mutateAsync({ action: kind, userId: user.id, email: user.email })
+    showFlash(`${DONE_MESSAGES[kind]}: ${user.email}`)
   }
 
   return (
@@ -44,8 +47,8 @@ export function UsersBrowser({ projectId }: { projectId: string }): JSX.Element 
         <SearchInput label="Buscar por email" value={search} onChange={changeSearch} />
         <UserCount total={users.data?.total} />
       </div>
-      <ErrorAlert error={users.error ?? action.error} />
-      <UserActionResult done={doneAction(action.isSuccess, action.variables)} />
+      <LoadError error={users.error} onRetry={() => users.refetch()} />
+      <ErrorAlert error={unblockError(action.error, action.variables)} />
       <UsersTable
         users={users.data?.users}
         search={deferredSearch}
@@ -65,15 +68,13 @@ export function UsersBrowser({ projectId }: { projectId: string }): JSX.Element 
 
 type ActionVariables = { action: UserAction; userId: string; email: string } | undefined
 
-function doneAction(
-  isSuccess: boolean,
-  variables: ActionVariables,
-): { action: UserAction; email: string } | null {
-  if (isSuccess === false || variables === undefined) {
+/** Confirmed actions show their failure inside the dialog; only unblocking has none. */
+function unblockError(error: Error | null, variables: ActionVariables): Error | null {
+  if (variables?.action !== 'unban') {
     return null
   }
 
-  return variables
+  return error
 }
 
 function pendingUserId(isPending: boolean, variables: ActionVariables): string | null {

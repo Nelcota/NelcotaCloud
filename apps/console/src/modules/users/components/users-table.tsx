@@ -1,3 +1,6 @@
+import Calendar from '~icons/solar/calendar-linear'
+import Letter from '~icons/solar/letter-linear'
+import ShieldCheck from '~icons/solar/shield-check-linear'
 import SearchX from '~icons/solar/magnifier-close-linear'
 import Users from '~icons/solar/users-group-rounded-linear'
 import type { JSX } from 'react'
@@ -9,6 +12,7 @@ import type { components } from '@/shared/api/api-schema'
 import { formatDate } from '@/shared/lib/format-date'
 import { EmptyState } from '@/shared/ui/empty-state'
 import { Skeleton } from '@/shared/ui/skeleton'
+import { ColumnLabel } from '@/shared/ui/column-label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/ui/table'
 
 type User = components['schemas']['User']
@@ -22,7 +26,7 @@ type UsersTableProps = {
   hasFailed: boolean
   /** The user whose action is running; only that row's menu waits. */
   pendingUserId: string | null
-  onAction: (user: User, action: UserAction) => void
+  onAction: (user: User, action: UserAction) => Promise<void>
 }
 
 /** The users list, with its loading and empty states (no users yet, or none for a search). */
@@ -46,9 +50,15 @@ export function UsersTable(props: UsersTableProps): JSX.Element | null {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="px-4">Email</TableHead>
-            <TableHead className="hidden sm:table-cell">Situação</TableHead>
-            <TableHead className="hidden sm:table-cell">Criado em</TableHead>
+            <TableHead className="px-4">
+              <ColumnLabel icon={Letter}>Email</ColumnLabel>
+            </TableHead>
+            <TableHead className="hidden sm:table-cell">
+              <ColumnLabel icon={ShieldCheck}>Situação</ColumnLabel>
+            </TableHead>
+            <TableHead className="hidden sm:table-cell">
+              <ColumnLabel icon={Calendar}>Criado em</ColumnLabel>
+            </TableHead>
             <TableHead className="w-12 px-4">
               <span className="sr-only">Ações</span>
             </TableHead>
@@ -57,9 +67,9 @@ export function UsersTable(props: UsersTableProps): JSX.Element | null {
         <TableBody>
           {users.map((user) => (
             <TableRow key={user.id}>
-              {/* `w-full max-w-0` lets the email take the free width and truncate inside it. */}
-              <TableCell className="w-full max-w-0 px-4">
-                <p className="truncate font-medium">{user.email}</p>
+              {/* `w-full max-w-0` gives the email the free width; it wraps, never truncates. */}
+              <TableCell className="w-full max-w-0 px-4 whitespace-normal">
+                <p className="font-medium break-all">{user.email}</p>
                 <div className="mt-1.5 sm:hidden">
                   <UserStatusBadges user={user} />
                 </div>

@@ -25,7 +25,7 @@ export function StatusScreen(props: StatusScreenProps): JSX.Element {
       </header>
       <main className="mx-auto grid w-full max-w-5xl flex-1 content-center gap-12 px-4 py-12 sm:px-6 lg:grid-cols-[1fr_1.1fr] lg:items-center lg:gap-16">
         <section className={ENTER}>
-          <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-[2.75rem] sm:leading-[1.1]">
+          <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-5xl sm:leading-tight">
             {props.title}
           </h1>
           <p className="text-muted-foreground mt-4 max-w-md text-sm text-pretty">

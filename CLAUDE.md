@@ -9,7 +9,8 @@
 
 NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multitenant Auth.
 
-- Control plane database: tenants, API key hashes (with a hint of their last characters), JWT
+- Control plane database: tenants, API key hashes (with a hint of their last characters;
+  publishable keys, which are public, are also kept in full so the console shows them again), JWT
   signing keys, OAuth configs, pending OAuth authorizations, tenant SMTP settings, and
   `tenant_members` (which console accounts manage which tenant, as owner or member).
 - One Postgres database per tenant (`tenant_<slug>`): users, identities, refresh and one-time tokens,

@@ -2,7 +2,7 @@ import type { JSX } from 'react'
 
 import { CopyButton } from '@/shared/ui/copy-button'
 
-type SecretRevealProps = {
+type CopyableValueProps = {
   label: string
   value: string
   /** Puts focus on Copy, the one thing to do with a key shown once. */
@@ -10,7 +10,7 @@ type SecretRevealProps = {
 }
 
 /** A value to copy as is (a key shown once, a callback URL), never cut off: it wraps instead. */
-export function SecretReveal({ label, value, autoFocusCopy }: SecretRevealProps): JSX.Element {
+export function CopyableValue({ label, value, autoFocusCopy }: CopyableValueProps): JSX.Element {
   return (
     <div className="grid gap-1.5">
       <span className="text-sm font-medium">{label}</span>

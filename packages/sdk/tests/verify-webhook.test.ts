@@ -115,14 +115,15 @@ describe('verifyWebhook', () => {
       secret: SPEC_SECRET,
       now: SPEC_NOW,
     })
+    expect(await codeOf(notJson)).toBe('invalid_payload')
+
+    // Created only now, so its rejection is awaited as soon as it exists.
     const emptySecret = verifyWebhook({
       payload: EVENT,
       headers: headers(signature),
       secret: 'whsec_',
       now: SPEC_NOW,
     })
-
-    expect(await codeOf(notJson)).toBe('invalid_payload')
     expect(await codeOf(emptySecret)).toBe('invalid_secret')
   })
 
