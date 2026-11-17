@@ -298,6 +298,119 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/v1/admin/webhooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /admin/webhooks`: the project's webhook endpoints, oldest first. */
+        get: operations["list_webhook_endpoints"];
+        put?: never;
+        /** `POST /admin/webhooks`: a new endpoint and its signing secret, shown only in this answer. */
+        post: operations["create_webhook_endpoint"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/webhooks/{endpoint_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** `DELETE /admin/webhooks/{endpoint_id}`: no more events; pending deliveries are given up. */
+        delete: operations["delete_webhook_endpoint"];
+        options?: never;
+        head?: never;
+        /** `PATCH /admin/webhooks/{endpoint_id}`: changes the URL, the events or whether it is enabled. */
+        patch: operations["change_webhook_endpoint"];
+        trace?: never;
+    };
+    "/auth/v1/admin/webhooks/{endpoint_id}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /admin/webhooks/{endpoint_id}/deliveries`: the endpoint's 50 newest deliveries. */
+        get: operations["list_webhook_deliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/webhooks/{endpoint_id}/deliveries/{delivery_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `POST /admin/webhooks/{endpoint_id}/deliveries/{delivery_id}/retry`: sends the delivery
+         *     again right away, whatever its state.
+         */
+        post: operations["retry_webhook_delivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/webhooks/{endpoint_id}/secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `POST /admin/webhooks/{endpoint_id}/secret`: a new signing secret, shown only here. For a
+         *     day requests carry signatures with both secrets, so receivers can switch without gaps.
+         */
+        post: operations["rotate_webhook_secret"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/webhooks/{endpoint_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `POST /admin/webhooks/{endpoint_id}/test`: sends a signed `webhook.test` event now and
+         *     answers with what the endpoint replied.
+         */
+        post: operations["send_test_webhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/v1/jwks": {
         parameters: {
             query?: never;
@@ -1024,6 +1137,34 @@ export interface components {
             /** Format: uuid */
             tenant_id: string;
         };
+        /**
+         * @description One delivery as the delivery log shows it. The payload is not included: it has personal
+         *     data and is already in the receiver's hands.
+         */
+        DeliveryLogEntry: {
+            /** Format: int32 */
+            attempts: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: uuid */
+            event_id: string;
+            event_type: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            last_attempt_at?: string | null;
+            last_error?: string | null;
+            /** Format: int32 */
+            last_response_status?: number | null;
+            /**
+             * Format: date-time
+             * @description When the next retry happens; `null` unless pending.
+             */
+            next_attempt_at?: string | null;
+            status: components["schemas"]["DeliveryStatus"];
+        };
+        /** @enum {string} */
+        DeliveryStatus: "pending" | "delivered" | "failed";
         /** @description Body of the endpoints that email a link to an address. */
         EmailBody: {
             email: string;
@@ -1223,6 +1364,16 @@ export interface components {
             require_email_verification?: boolean | null;
             site_url?: string | null;
         };
+        /** @description What the receiver answered to the test event. */
+        TestDeliveryResult: {
+            delivered: boolean;
+            error?: string | null;
+            /**
+             * Format: int32
+             * @description HTTP status the endpoint answered; `null` when it could not be reached.
+             */
+            response_status?: number | null;
+        };
         /** @description The authenticator to add to an app; it becomes active after its first code is verified. */
         TotpEnrollmentResponse: {
             /** Format: uuid */
@@ -1260,6 +1411,41 @@ export interface components {
             total: number;
             users: components["schemas"]["User"][];
         };
+        WebhookEndpointBody: {
+            /** @description The events this endpoint receives. */
+            event_types: components["schemas"]["WebhookEventType"][];
+            /** @description `https://…` on a public host; it receives signed `POST` requests. */
+            url: string;
+        };
+        /** @description Only the fields sent are changed. */
+        WebhookEndpointChangesBody: {
+            event_types?: components["schemas"]["WebhookEventType"][] | null;
+            /** @description Disabled endpoints receive no new events. */
+            is_enabled?: boolean | null;
+            url?: string | null;
+        };
+        /** @description An endpoint as its owner sees it; the secret is never shown again after creation. */
+        WebhookEndpointView: {
+            /** Format: date-time */
+            created_at: string;
+            event_types: components["schemas"]["WebhookEventType"][];
+            /** Format: uuid */
+            id: string;
+            /** @description Disabled endpoints receive no new events. */
+            is_enabled: boolean;
+            url: string;
+        };
+        /** @description Answer of creating an endpoint or rotating its secret: the only time the secret is shown. */
+        WebhookEndpointWithSecret: {
+            endpoint: components["schemas"]["WebhookEndpointView"];
+            /** @description `whsec_…`: verify the `webhook-signature` header with it (Standard Webhooks). */
+            secret: string;
+        };
+        /**
+         * @description What happened, as receivers see it in `type`. Renaming one is a breaking change.
+         * @enum {string}
+         */
+        WebhookEventType: "user.created" | "user.updated" | "user.deleted" | "user.banned" | "user.unbanned" | "session.revoked";
     };
     responses: never;
     parameters: never;
@@ -2118,6 +2304,343 @@ export interface operations {
                 };
             };
             /** @description No such user */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_webhook_endpoints: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The endpoints */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookEndpointView"][];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_webhook_endpoint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookEndpointBody"];
+            };
+        };
+        responses: {
+            /** @description Endpoint created; store its secret now */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookEndpointWithSecret"];
+                };
+            };
+            /** @description Invalid or private URL, or no event types */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The project already has 5 endpoints */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_webhook_endpoint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the endpoint */
+                endpoint_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Endpoint deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such endpoint in this project */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    change_webhook_endpoint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the endpoint */
+                endpoint_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookEndpointChangesBody"];
+            };
+        };
+        responses: {
+            /** @description Endpoint saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookEndpointView"];
+                };
+            };
+            /** @description Invalid or private URL, or no event types */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such endpoint in this project */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_webhook_deliveries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the endpoint */
+                endpoint_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Newest deliveries first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryLogEntry"][];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such endpoint in this project */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    retry_webhook_delivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the endpoint */
+                endpoint_id: string;
+                /** @description Id of the delivery */
+                delivery_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Queued; it is sent within seconds */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such endpoint or delivery in this project */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    rotate_webhook_secret: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the endpoint */
+                endpoint_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description New secret; store it now */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookEndpointWithSecret"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such endpoint in this project */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    send_test_webhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the endpoint */
+                endpoint_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The endpoint's answer (also when it failed) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TestDeliveryResult"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such endpoint in this project */
             404: {
                 headers: {
                     [name: string]: unknown;
