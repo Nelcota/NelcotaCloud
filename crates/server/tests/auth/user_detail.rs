@@ -65,3 +65,30 @@ async fn shows_a_users_sessions_and_last_login() -> TestResult {
     assert_eq!(not_found.status(), StatusCode::NOT_FOUND);
     server.drop_tenant(&tenant).await
 }
+
+#[tokio::test]
+async fn lists_a_users_linked_identities() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    let session = server.sign_up(&tenant, &unique_email("identities")).await?;
+    let mut database = server.tenant_database(&tenant).await?;
+    sqlx::query(
+        "INSERT INTO identities (id, user_id, provider, provider_user_id) VALUES ($1, $2, 'github', '42')",
+    )
+    .bind(Uuid::new_v4())
+    .bind(session.user.id)
+    .execute(&mut database)
+    .await?;
+    let path = format!("/auth/v1/admin/users/{}/identities", session.user.id);
+
+    let identities: Value = admin_get(&server, &tenant, &path).await?.json().await?;
+
+    assert_eq!(field(&identities, "/identities/0/provider"), "github");
+    assert!(field(&identities, "/identities/0/linked_at").is_string());
+    assert!(field(&identities, "/identities/0/provider_user_id").is_null());
+
+    let missing = format!("/auth/v1/admin/users/{}/identities", Uuid::new_v4());
+    let not_found = admin_get(&server, &tenant, &missing).await?;
+    assert_eq!(not_found.status(), StatusCode::NOT_FOUND);
+    server.drop_tenant(&tenant).await
+}

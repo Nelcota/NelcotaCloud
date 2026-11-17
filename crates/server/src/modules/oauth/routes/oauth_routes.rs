@@ -6,6 +6,7 @@ use crate::modules::oauth::routes::authorize_oauth;
 use crate::modules::oauth::routes::configure_oauth_provider;
 use crate::modules::oauth::routes::exchange_oauth_code;
 use crate::modules::oauth::routes::list_oauth_providers;
+use crate::modules::oauth::routes::list_user_identities;
 use crate::modules::oauth::routes::oauth_callback;
 use crate::modules::oauth::routes::remove_oauth_provider;
 
@@ -20,4 +21,5 @@ pub fn oauth_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(authorize_oauth::authorize_oauth))
         .routes(routes!(oauth_callback::oauth_callback))
         .routes(routes!(exchange_oauth_code::exchange_oauth_code))
+        .routes(routes!(list_user_identities::list_user_identities))
 }
