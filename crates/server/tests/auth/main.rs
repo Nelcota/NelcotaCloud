@@ -1,4 +1,5 @@
 mod account_takeover;
+mod admin_verification_resend;
 mod auth_edges;
 mod avatars;
 mod concurrency;

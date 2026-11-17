@@ -25,6 +25,7 @@ pub mod refresh_session;
 pub mod refresh_token_body;
 pub mod remove_avatar;
 pub mod request_magic_link;
+pub mod resend_user_verification;
 pub mod resend_verification;
 pub mod reset_password;
 pub mod reset_user_mfa;

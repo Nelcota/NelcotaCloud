@@ -15,6 +15,8 @@ pub enum AuthRejection {
     InvalidToken,
     #[error("the authentication code is invalid")]
     InvalidMfaCode,
+    #[error("the email is already verified")]
+    EmailAlreadyVerified,
 }
 
 impl AuthRejection {
@@ -25,6 +27,7 @@ impl AuthRejection {
             Self::EmailTaken => (StatusCode::CONFLICT, "email_taken"),
             Self::InvalidToken => (StatusCode::BAD_REQUEST, "invalid_token"),
             Self::InvalidMfaCode => (StatusCode::UNAUTHORIZED, "invalid_mfa_code"),
+            Self::EmailAlreadyVerified => (StatusCode::CONFLICT, "email_already_verified"),
         }
     }
 }
@@ -75,6 +78,11 @@ mod tests {
                 AuthRejection::InvalidMfaCode,
                 StatusCode::UNAUTHORIZED,
                 "invalid_mfa_code",
+            ),
+            (
+                AuthRejection::EmailAlreadyVerified,
+                StatusCode::CONFLICT,
+                "email_already_verified",
             ),
         ];
         let mut seen_codes = HashSet::new();

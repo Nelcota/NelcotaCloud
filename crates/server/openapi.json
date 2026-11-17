@@ -1355,6 +1355,81 @@
         ]
       }
     },
+    "/auth/v1/admin/users/{user_id}/verification-email": {
+      "post": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`POST /admin/users/{user_id}/verification-email`: emails a new verification link to an\nunverified user, under the same per-address limit as the public resend.",
+        "operationId": "resend_user_verification",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "Id of the user",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "A new verification link is being sent"
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project; or the user is banned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The email is already verified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many emails requested",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
     "/auth/v1/admin/webhooks": {
       "get": {
         "tags": [
