@@ -6,7 +6,7 @@ import { useState } from 'react'
 
 import { ConnectAppPanel } from '@/modules/api-keys/components/connect-app-panel'
 import { SecretLeaveGuard } from '@/modules/api-keys/components/secret-leave-guard'
-import { SecretReveal } from '@/modules/api-keys/components/secret-reveal'
+import { CopyableValue } from '@/shared/ui/copyable-value'
 import { NewProjectForm } from '@/modules/projects/components/new-project-form'
 import type { components } from '@/shared/api/api-schema'
 import { buttonVariants } from '@/shared/ui/button-variants'
@@ -56,10 +56,10 @@ function NewProjectContent({ created, onCreated }: NewProjectContentProps): JSX.
         <CircleCheck className="mt-1 size-6 shrink-0 text-emerald-500" />
         <PageHeader
           title="Projeto criado"
-          description="Guarde as chaves agora: elas não aparecem de novo. A publishable vai no app; a secret fica só no seu servidor."
+          description="Guarde a secret key agora: ela não aparece de novo. A publishable vai no app e continua visível em Chaves de API; a secret fica só no seu servidor."
         />
       </div>
-      <SecretLeaveGuard isActive />
+      <SecretLeaveGuard isActive subject="Secret key nova" />
       <SettingsSection
         title="Chaves de API"
         footer={
@@ -69,12 +69,12 @@ function NewProjectContent({ created, onCreated }: NewProjectContentProps): JSX.
             ignoreBlocker
             className={buttonVariants()}
           >
-            Já guardei as chaves, abrir o projeto
+            Já guardei a secret key, abrir o projeto
           </Link>
         }
       >
-        <SecretReveal label="Publishable key" value={created.publishable_key} autoFocusCopy />
-        <SecretReveal label="Secret key" value={created.secret_key} />
+        <CopyableValue label="Publishable key" value={created.publishable_key} autoFocusCopy />
+        <CopyableValue label="Secret key" value={created.secret_key} />
       </SettingsSection>
       <ConnectAppPanel publishableKey={created.publishable_key} projectId={created.tenant_id} />
     </>

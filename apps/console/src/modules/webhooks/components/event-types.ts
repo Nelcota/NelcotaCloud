@@ -7,8 +7,8 @@ export const EVENT_TYPE_LABELS: Record<WebhookEventType, string> = {
   'user.created': 'Usuário criado',
   'user.updated': 'Usuário alterado',
   'user.deleted': 'Usuário excluído',
-  'user.banned': 'Usuário banido',
-  'user.unbanned': 'Banimento removido',
+  'user.banned': 'Usuário bloqueado',
+  'user.unbanned': 'Usuário desbloqueado',
   'session.revoked': 'Sessões encerradas',
 }
 

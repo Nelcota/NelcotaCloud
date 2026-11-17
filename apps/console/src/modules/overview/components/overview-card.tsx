@@ -20,7 +20,8 @@ type OverviewCardProps = {
   /** A failed load replaces the placeholder, so the card never waits forever. */
   error: Error | null
   onRetry: () => void
-  detail: string
+  /** `null` while loading; a placeholder line stands in for it. */
+  detail: string | null
   links: OverviewLink[]
 }
 
@@ -31,17 +32,13 @@ export function OverviewCard(props: OverviewCardProps): JSX.Element {
   return (
     <section className="bg-card flex flex-col rounded-xl border">
       <header className="flex items-center gap-2.5 px-5 pt-5 text-sm font-medium">
-        <span className="bg-secondary flex size-9 items-center justify-center rounded-md">
-          <Icon className="text-muted-foreground size-5" />
-        </span>
+        <Icon aria-hidden="true" className="text-muted-foreground size-5" />
         <h2>{props.title}</h2>
       </header>
       <div className="flex-1 px-5 pt-4 pb-5">
-        <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-          {props.metricLabel}
-        </p>
+        <p className="text-muted-foreground text-sm">{props.metricLabel}</p>
         <MetricValue value={props.value} error={props.error} onRetry={props.onRetry} />
-        <p className="text-muted-foreground mt-1 text-xs text-pretty">{props.detail}</p>
+        <Detail detail={props.detail} isLoading={props.value === null && props.error === null} />
       </div>
       <footer className="flex flex-wrap gap-x-5 gap-y-1 border-t px-5 py-3 text-sm">
         {props.links.map((link) => (
@@ -57,6 +54,24 @@ export function OverviewCard(props: OverviewCardProps): JSX.Element {
       </footer>
     </section>
   )
+}
+
+function Detail({
+  detail,
+  isLoading,
+}: {
+  detail: string | null
+  isLoading: boolean
+}): JSX.Element | null {
+  if (detail === null && isLoading) {
+    return null
+  }
+
+  if (detail === null) {
+    return <Skeleton className="mt-2 h-3 w-40" />
+  }
+
+  return <p className="text-muted-foreground mt-1 text-xs text-pretty">{detail}</p>
 }
 
 type MetricValueProps = {

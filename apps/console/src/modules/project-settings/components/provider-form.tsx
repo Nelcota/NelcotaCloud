@@ -25,7 +25,7 @@ export function ProviderForm({ projectId, provider, onDone }: ProviderFormProps)
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-4 rounded-lg border p-4">
+    <form onSubmit={submit} className="grid gap-4 border-t pt-4">
       <FormField
         label="Client ID"
         required

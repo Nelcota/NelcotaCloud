@@ -23,7 +23,9 @@ export function RevokeKeyAction(props: RevokeKeyActionProps): JSX.Element | null
   const { apiKey, activeOfKind } = props
 
   if (apiKey.kind === 'secret' && activeOfKind <= 1) {
-    return <span className="text-muted-foreground text-sm">Única secret ativa</span>
+    return (
+      <span className="text-muted-foreground text-sm whitespace-normal">Única secret ativa</span>
+    )
   }
 
   return (
@@ -34,10 +36,11 @@ export function RevokeKeyAction(props: RevokeKeyActionProps): JSX.Element | null
       change={{ subject: keyLabel(apiKey), icon: Key, from: 'Ativa', to: 'Revogada' }}
       isDestructive
       isPending={props.isPending}
+      triggerLabel={`Revogar ${keyLabel(apiKey)}`}
       onConfirm={props.onRevoke}
     >
       <TrashBin aria-hidden="true" className="size-4" />
-      Revogar
+      <span className="hidden sm:inline">Revogar</span>
     </ConfirmButton>
   )
 }

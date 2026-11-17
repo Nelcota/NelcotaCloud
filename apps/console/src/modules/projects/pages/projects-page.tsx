@@ -7,7 +7,7 @@ import { useProjectsQuery } from '@/modules/projects/queries/use-projects'
 import { ReceivedInvitations } from '@/modules/projects/components/received-invitations'
 import type { components } from '@/shared/api/api-schema'
 import { buttonVariants } from '@/shared/ui/button-variants'
-import { ErrorAlert } from '@/shared/ui/error-alert'
+import { LoadError } from '@/shared/ui/load-error'
 import { PageHeader } from '@/shared/ui/page-header'
 import { Skeleton } from '@/shared/ui/skeleton'
 
@@ -30,7 +30,7 @@ export function ProjectsPage(): JSX.Element {
           </Link>
         }
       />
-      <ErrorAlert error={projects.error} />
+      <LoadError error={projects.error} onRetry={() => projects.refetch()} />
       <ReceivedInvitations />
       <ProjectsContent isPending={projects.isPending} projects={projects.data} />
     </div>

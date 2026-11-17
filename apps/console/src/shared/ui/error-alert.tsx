@@ -1,10 +1,9 @@
 import type { JSX } from 'react'
 
+import { describeError } from '@/shared/api/describe-error'
 import { Alert, AlertDescription } from '@/shared/ui/alert'
 
-const FALLBACK_MESSAGE = 'Algo deu errado. Tente de novo.'
-
-/** Shows an API or SDK error message; nothing when there is no error. */
+/** Shows an API or SDK error in Portuguese; nothing when there is no error. */
 export function ErrorAlert({ error }: { error: unknown }): JSX.Element | null {
   if (error === null || error === undefined) {
     return null
@@ -12,15 +11,7 @@ export function ErrorAlert({ error }: { error: unknown }): JSX.Element | null {
 
   return (
     <Alert variant="destructive" role="alert">
-      <AlertDescription>{messageOf(error)}</AlertDescription>
+      <AlertDescription>{describeError(error)}</AlertDescription>
     </Alert>
   )
-}
-
-function messageOf(error: unknown): string {
-  if (error instanceof Error && error.message.trim() !== '') {
-    return error.message
-  }
-
-  return FALLBACK_MESSAGE
 }

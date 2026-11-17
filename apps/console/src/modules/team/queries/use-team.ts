@@ -13,7 +13,6 @@ import { leaveProject } from '@/modules/team/api/leave-project'
 import { readTeam } from '@/modules/team/api/read-team'
 import { transferOwnership } from '@/modules/team/api/transfer-ownership'
 import { removeMember } from '@/modules/team/api/remove-member'
-import { explainTeamError } from '@/modules/team/queries/team-error'
 import { PROJECTS_QUERY_KEY } from '@/modules/projects/queries/use-projects'
 import type { components } from '@/shared/api/api-schema'
 
@@ -26,7 +25,7 @@ function teamKey(projectId: string): readonly string[] {
 export function useTeamQuery(projectId: string): UseQueryResult<Schemas['TeamView']> {
   return useQuery({
     queryKey: teamKey(projectId),
-    queryFn: () => readTeam(projectId).catch(explainTeamError),
+    queryFn: () => readTeam(projectId),
   })
 }
 
@@ -46,23 +45,19 @@ function useTeamMutation<TVariables, TResult>(
 export function useInviteMemberMutation(
   projectId: string,
 ): UseMutationResult<Schemas['PendingInvitation'], Error, string> {
-  return useTeamMutation(projectId, (email: string) =>
-    inviteMember(projectId, email).catch(explainTeamError),
-  )
+  return useTeamMutation(projectId, (email: string) => inviteMember(projectId, email))
 }
 
 export function useCancelInvitationMutation(
   projectId: string,
 ): UseMutationResult<void, Error, string> {
   return useTeamMutation(projectId, (invitationId: string) =>
-    cancelInvitation(projectId, invitationId).catch(explainTeamError),
+    cancelInvitation(projectId, invitationId),
   )
 }
 
 export function useRemoveMemberMutation(projectId: string): UseMutationResult<void, Error, string> {
-  return useTeamMutation(projectId, (accountId: string) =>
-    removeMember(projectId, accountId).catch(explainTeamError),
-  )
+  return useTeamMutation(projectId, (accountId: string) => removeMember(projectId, accountId))
 }
 
 export type RoleChange = { accountId: string; role: Schemas['ProjectRole'] }
@@ -87,13 +82,13 @@ export function useChangeRoleMutation(
   projectId: string,
 ): UseMutationResult<void, Error, RoleChange> {
   return useMembershipMutation(projectId, (change: RoleChange) =>
-    changeMemberRole(projectId, change.accountId, change.role).catch(explainTeamError),
+    changeMemberRole(projectId, change.accountId, change.role),
   )
 }
 
 /** After leaving, the project is gone from the list; the caller moves away from its pages. */
 export function useLeaveProjectMutation(projectId: string): UseMutationResult<void, Error, void> {
-  return useMembershipMutation(projectId, () => leaveProject(projectId).catch(explainTeamError))
+  return useMembershipMutation(projectId, () => leaveProject(projectId))
 }
 
 /** The caller becomes a member, so the roles in the projects list change too. */
@@ -101,6 +96,6 @@ export function useTransferOwnershipMutation(
   projectId: string,
 ): UseMutationResult<void, Error, string> {
   return useMembershipMutation(projectId, (accountId: string) =>
-    transferOwnership(projectId, accountId).catch(explainTeamError),
+    transferOwnership(projectId, accountId),
   )
 }

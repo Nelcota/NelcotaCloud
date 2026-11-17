@@ -12,6 +12,7 @@ import { useRevokeApiKeyMutation } from '@/modules/api-keys/queries/use-api-keys
 import type { components } from '@/shared/api/api-schema'
 import { cn } from '@/shared/lib/class-names'
 import { ColumnLabel } from '@/shared/ui/column-label'
+import { CopyButton } from '@/shared/ui/copy-button'
 import { formatDateTime } from '@/shared/lib/format-date'
 import { EmptyState } from '@/shared/ui/empty-state'
 import { ErrorAlert } from '@/shared/ui/error-alert'
@@ -30,10 +31,19 @@ type ApiKeysTableProps = {
   projectId: string
   /** `undefined` while loading. */
   keys: ApiKeySummary[] | undefined
+  hasFailed: boolean
 }
 
-export function ApiKeysTable({ projectId, keys }: ApiKeysTableProps): JSX.Element {
+export function ApiKeysTable({
+  projectId,
+  keys,
+  hasFailed,
+}: ApiKeysTableProps): JSX.Element | null {
   const revocation = useRevokeApiKeyMutation(projectId)
+
+  if (keys === undefined && hasFailed) {
+    return null
+  }
 
   if (keys === undefined) {
     return <KeysSkeleton />
@@ -59,13 +69,13 @@ export function ApiKeysTable({ projectId, keys }: ApiKeysTableProps): JSX.Elemen
               <TableHead className={cn(HEAD, EDGE)}>
                 <ColumnLabel icon={KeyRound}>Chave</ColumnLabel>
               </TableHead>
-              <TableHead className={HEAD}>
+              <TableHead className={cn(HEAD, 'hidden sm:table-cell')}>
                 <ColumnLabel icon={Hashtag}>Final</ColumnLabel>
               </TableHead>
               <TableHead className={cn(HEAD, 'hidden sm:table-cell')}>
                 <ColumnLabel icon={Calendar}>Criada em</ColumnLabel>
               </TableHead>
-              <TableHead className={HEAD}>
+              <TableHead className={cn(HEAD, 'hidden sm:table-cell')}>
                 <ColumnLabel icon={ShieldCheck}>Situação</ColumnLabel>
               </TableHead>
               <TableHead className={cn(HEAD, EDGE)}>
@@ -76,25 +86,33 @@ export function ApiKeysTable({ projectId, keys }: ApiKeysTableProps): JSX.Elemen
           <TableBody>
             {keys.map((key) => (
               <TableRow key={key.id} className={cn(isRevokedKey(key) && 'text-muted-foreground')}>
-                <TableCell className={cn(CELL, EDGE)}>
+                <TableCell className={cn(CELL, EDGE, 'whitespace-normal')}>
                   <KeyName apiKey={key} />
+                  <div className="mt-1.5 sm:hidden">
+                    <KeyStatusBadge isRevoked={isRevokedKey(key)} />
+                  </div>
                 </TableCell>
-                <TableCell className={cn(CELL, 'text-muted-foreground font-mono')}>
+                <TableCell
+                  className={cn(CELL, 'text-muted-foreground hidden font-mono sm:table-cell')}
+                >
                   …{key.hint}
                 </TableCell>
                 <TableCell className={cn(CELL, 'text-muted-foreground hidden sm:table-cell')}>
                   {formatDateTime(key.created_at)}
                 </TableCell>
-                <TableCell className={CELL}>
+                <TableCell className={cn(CELL, 'hidden sm:table-cell')}>
                   <KeyStatusBadge isRevoked={isRevokedKey(key)} />
                 </TableCell>
                 <TableCell className={cn(CELL, EDGE, 'text-right')}>
-                  <RowAction
-                    apiKey={key}
-                    activeOfKind={countActive(keys, key.kind)}
-                    isPending={revocation.isPending && revocation.variables === key.id}
-                    onRevoke={() => revocation.mutate(key.id)}
-                  />
+                  <div className="flex items-center justify-end gap-2">
+                    <KeyCopy apiKey={key} />
+                    <RowAction
+                      apiKey={key}
+                      activeOfKind={countActive(keys, key.kind)}
+                      isPending={revocation.isPending && revocation.variables === key.id}
+                      onRevoke={() => revocation.mutate(key.id)}
+                    />
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -118,6 +136,17 @@ function RowAction(props: RowActionProps): JSX.Element | null {
   }
 
   return <RevokeKeyAction {...props} />
+}
+
+/** Publishable keys are public, so active ones can be copied again; secret keys never can. */
+function KeyCopy({ apiKey }: { apiKey: ApiKeySummary }): JSX.Element | null {
+  const key = apiKey.key
+
+  if (key === null || key === undefined || isRevokedKey(apiKey)) {
+    return null
+  }
+
+  return <CopyButton value={key} description={`a publishable key …${apiKey.hint}`} />
 }
 
 function KeysSkeleton(): JSX.Element {

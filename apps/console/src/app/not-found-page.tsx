@@ -35,7 +35,7 @@ function StatusCode(): JSX.Element {
   return (
     <p
       aria-hidden="true"
-      className="text-muted-foreground/20 hidden text-right text-[13rem] leading-none font-semibold tracking-[-0.06em] tabular-nums select-none lg:block"
+      className="text-muted-foreground/20 hidden text-right text-9xl leading-none font-semibold tracking-tight tabular-nums select-none lg:block"
     >
       404
     </p>

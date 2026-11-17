@@ -27,7 +27,11 @@ function toApiError(result: ApiCallResult<unknown>): ApiError {
     return new ApiError({ status, code: body.error, message: body.message })
   }
 
-  return new ApiError({ status, code: 'unknown_error', message: `A API respondeu ${status}` })
+  return new ApiError({
+    status,
+    code: 'unknown_error',
+    message: `A API não respondeu como esperado (erro ${status}). Tente de novo.`,
+  })
 }
 
 function isErrorBody(body: unknown): body is { error: string; message: string } {

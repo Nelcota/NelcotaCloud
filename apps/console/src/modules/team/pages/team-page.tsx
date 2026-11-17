@@ -2,11 +2,11 @@ import type { JSX } from 'react'
 
 import { InviteDialog } from '@/modules/team/components/invite-dialog'
 import { TeamBrowser } from '@/modules/team/components/team-browser'
-import { TeamLoadError } from '@/modules/team/components/team-load-error'
 import { useTeamQuery } from '@/modules/team/queries/use-team'
 import type { components } from '@/shared/api/api-schema'
 import { showFlash } from '@/shared/lib/flash-notice'
 import { useProjectId } from '@/shared/routing/use-project-id'
+import { LoadError } from '@/shared/ui/load-error'
 import { PageHeader } from '@/shared/ui/page-header'
 import { Skeleton } from '@/shared/ui/skeleton'
 
@@ -25,7 +25,7 @@ export function TeamPage(): JSX.Element {
         description="As pessoas que gerenciam este projeto no console."
         actions={<InviteAction team={team.data} projectId={projectId} />}
       />
-      <TeamLoadError error={team.error} onRetry={() => team.refetch()} />
+      <LoadError error={team.error} onRetry={() => team.refetch()} />
       <TeamContent projectId={projectId} team={team.data} hasFailed={team.isError} />
     </div>
   )

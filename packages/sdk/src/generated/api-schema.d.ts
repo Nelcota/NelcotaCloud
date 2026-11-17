@@ -1092,7 +1092,7 @@ export interface components {
          * @enum {string}
          */
         ApiKeyKind: "publishable" | "secret";
-        /** @description What an owner sees about a key: never the key itself, only its last characters. */
+        /** @description What an owner sees about a key: its last characters, and the key itself only when publishable. */
         ApiKeySummary: {
             /** Format: date-time */
             created_at: string;
@@ -1100,6 +1100,8 @@ export interface components {
             hint: string;
             /** Format: uuid */
             id: string;
+            /** @description The whole key, for publishable keys created since keys are kept; never for secret keys. */
+            key?: string | null;
             /** @description `publishable` or `secret`. */
             kind: string;
             /** @description The owner's label for the key; empty for keys created without one. */
@@ -1182,7 +1184,7 @@ export interface components {
         InvitationBody: {
             email: string;
         };
-        /** @description A new key. Its plaintext is shown only here; afterwards only its hash exists. */
+        /** @description A new key. A secret key's plaintext is shown only here; afterwards only its hash exists. */
         IssuedApiKey: {
             hint: string;
             /** Format: uuid */

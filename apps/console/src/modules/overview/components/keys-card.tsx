@@ -4,7 +4,7 @@ import type { JSX } from 'react'
 import { activeKeys } from '@/modules/api-keys/components/key-activity'
 import { useApiKeysQuery } from '@/modules/api-keys/queries/use-api-keys'
 import { OverviewCard } from '@/modules/overview/components/overview-card'
-import { LOADING_DETAIL, countOrNull } from '@/modules/overview/components/overview-metrics'
+import { countOrNull } from '@/modules/overview/components/overview-metrics'
 import type { components } from '@/shared/api/api-schema'
 
 type ApiKeySummary = components['schemas']['ApiKeySummary']
@@ -36,9 +36,9 @@ function activeOf(keys: ApiKeySummary[] | undefined): ApiKeySummary[] | undefine
   return activeKeys(keys)
 }
 
-function keysDetail(active: ApiKeySummary[] | undefined): string {
+function keysDetail(active: ApiKeySummary[] | undefined): string | null {
   if (active === undefined) {
-    return LOADING_DETAIL
+    return null
   }
 
   const publishable = active.filter((key) => key.kind === 'publishable').length

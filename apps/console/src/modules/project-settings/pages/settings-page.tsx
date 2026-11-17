@@ -5,7 +5,7 @@ import { GeneralSettingsForm } from '@/modules/project-settings/components/gener
 import { useSettingsQuery } from '@/modules/project-settings/queries/use-project-settings'
 import type { components } from '@/shared/api/api-schema'
 import { useProjectId } from '@/shared/routing/use-project-id'
-import { ErrorAlert } from '@/shared/ui/error-alert'
+import { LoadError } from '@/shared/ui/load-error'
 import { PageHeader } from '@/shared/ui/page-header'
 import { Skeleton } from '@/shared/ui/skeleton'
 
@@ -16,8 +16,12 @@ export function SettingsPage(): JSX.Element {
   return (
     <div className="grid max-w-3xl gap-6">
       <PageHeader title="Configurações" description="Nome, endereço do app e regras de login." />
-      <ErrorAlert error={settings.error} />
-      <SettingsContent projectId={projectId} settings={settings.data} />
+      <LoadError error={settings.error} onRetry={() => settings.refetch()} />
+      <SettingsContent
+        projectId={projectId}
+        settings={settings.data}
+        hasFailed={settings.isError}
+      />
     </div>
   )
 }
@@ -25,9 +29,18 @@ export function SettingsPage(): JSX.Element {
 type SettingsContentProps = {
   projectId: string
   settings: components['schemas']['TenantSettings'] | undefined
+  hasFailed: boolean
 }
 
-function SettingsContent({ projectId, settings }: SettingsContentProps): JSX.Element {
+function SettingsContent({
+  projectId,
+  settings,
+  hasFailed,
+}: SettingsContentProps): JSX.Element | null {
+  if (settings === undefined && hasFailed) {
+    return null
+  }
+
   if (settings === undefined) {
     return <Skeleton className="h-80 rounded-xl" />
   }

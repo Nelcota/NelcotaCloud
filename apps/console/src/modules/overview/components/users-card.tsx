@@ -2,7 +2,7 @@ import Users from '~icons/solar/users-group-rounded-linear'
 import type { JSX } from 'react'
 
 import { OverviewCard } from '@/modules/overview/components/overview-card'
-import { LOADING_DETAIL, countOrNull } from '@/modules/overview/components/overview-metrics'
+import { countOrNull } from '@/modules/overview/components/overview-metrics'
 import { useSettingsQuery } from '@/modules/project-settings/queries/use-project-settings'
 import { useUsersQuery } from '@/modules/users/queries/use-users'
 
@@ -23,17 +23,14 @@ export function UsersCard({ projectId }: { projectId: string }): JSX.Element {
       error={users.error}
       onRetry={() => users.refetch()}
       detail={verificationDetail(settings.data?.require_email_verification)}
-      links={[
-        { label: 'Usuários', to: `${base}/users` },
-        { label: 'Login social', to: `${base}/providers` },
-      ]}
+      links={[{ label: 'Usuários', to: `${base}/users` }]}
     />
   )
 }
 
-function verificationDetail(requiresVerification: boolean | undefined): string {
+function verificationDetail(requiresVerification: boolean | undefined): string | null {
   if (requiresVerification === undefined) {
-    return LOADING_DETAIL
+    return null
   }
 
   if (requiresVerification === false) {

@@ -17,7 +17,7 @@ type EndpointCardProps = {
   projectId: string
   endpoint: WebhookEndpointView
   isRotating: boolean
-  onRotate: () => void
+  onRotate: () => Promise<void>
 }
 
 /** One endpoint: where it points, what it receives, whether it is on, and its deliveries. */

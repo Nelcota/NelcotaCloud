@@ -4,7 +4,7 @@ import type { UserAction } from '@/modules/users/queries/use-users'
 import type { ConfirmChange } from '@/shared/ui/confirm-change'
 
 /** Actions that need a confirmation before they run. */
-export type ConfirmedAction = Extract<UserAction, 'ban' | 'reset-mfa' | 'delete'>
+export type ConfirmedAction = Extract<UserAction, 'ban' | 'end-sessions' | 'reset-mfa' | 'delete'>
 
 type Confirmation = {
   title: (email: string) => string
@@ -21,6 +21,14 @@ export const CONFIRMATIONS: Record<ConfirmedAction, Confirmation> = {
     confirmLabel: 'Bloquear',
     isDestructive: true,
     change: (email) => ({ subject: email, icon: User, from: 'Ativo', to: 'Bloqueado' }),
+  },
+  'end-sessions': {
+    title: (email) => `Encerrar as sessões de ${email}?`,
+    description:
+      'O usuário sai de todos os dispositivos e precisa entrar de novo. A conta continua ativa.',
+    confirmLabel: 'Encerrar sessões',
+    isDestructive: false,
+    change: (email) => ({ subject: email, icon: User, from: 'Conectado', to: 'Desconectado' }),
   },
   'reset-mfa': {
     title: () => 'Remover o autenticador?',

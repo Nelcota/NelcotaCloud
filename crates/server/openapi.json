@@ -3913,7 +3913,7 @@
       },
       "ApiKeySummary": {
         "type": "object",
-        "description": "What an owner sees about a key: never the key itself, only its last characters.",
+        "description": "What an owner sees about a key: its last characters, and the key itself only when publishable.",
         "required": [
           "id",
           "kind",
@@ -3933,6 +3933,13 @@
           "id": {
             "type": "string",
             "format": "uuid"
+          },
+          "key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The whole key, for publishable keys created since keys are kept; never for secret keys."
           },
           "kind": {
             "type": "string",
@@ -4169,7 +4176,7 @@
       },
       "IssuedApiKey": {
         "type": "object",
-        "description": "A new key. Its plaintext is shown only here; afterwards only its hash exists.",
+        "description": "A new key. A secret key's plaintext is shown only here; afterwards only its hash exists.",
         "required": [
           "id",
           "kind",

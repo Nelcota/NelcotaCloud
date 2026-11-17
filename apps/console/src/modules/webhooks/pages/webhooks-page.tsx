@@ -13,7 +13,7 @@ import {
 import type { components } from '@/shared/api/api-schema'
 import { useProjectId } from '@/shared/routing/use-project-id'
 import { EmptyState } from '@/shared/ui/empty-state'
-import { ErrorAlert } from '@/shared/ui/error-alert'
+import { LoadError } from '@/shared/ui/load-error'
 import { PageHeader } from '@/shared/ui/page-header'
 import { Skeleton } from '@/shared/ui/skeleton'
 
@@ -50,10 +50,10 @@ export function WebhooksPage(): JSX.Element {
     <div className="grid max-w-3xl gap-6">
       <PageHeader
         title="Webhooks"
-        description="Seu servidor recebe um POST assinado quando um usuário é criado, alterado, banido ou excluído. Falhas são reenviadas por até um dia e meio."
+        description="Seu servidor recebe um POST assinado quando um usuário é criado, alterado, bloqueado ou excluído. Falhas são reenviadas por até um dia e meio."
         actions={createButton}
       />
-      <ErrorAlert error={endpoints.error ?? rotation.error} />
+      <LoadError error={endpoints.error} onRetry={() => endpoints.refetch()} />
       <WebhookSecretNotice
         revealed={revealedSecret(creation.data ?? rotation.data)}
         onDismiss={() => {
@@ -64,8 +64,11 @@ export function WebhooksPage(): JSX.Element {
       <EndpointList
         projectId={projectId}
         endpoints={endpoints.data}
+        hasFailed={endpoints.isError}
         isRotating={rotation.isPending}
-        onRotate={(endpointId) => rotation.mutate(endpointId)}
+        onRotate={async (endpointId) => {
+          await rotation.mutateAsync(endpointId)
+        }}
         emptyAction={createButton}
       />
     </div>
@@ -85,12 +88,17 @@ function revealedSecret(
 type EndpointListProps = {
   projectId: string
   endpoints: WebhookEndpointView[] | undefined
+  hasFailed: boolean
   isRotating: boolean
-  onRotate: (endpointId: string) => void
+  onRotate: (endpointId: string) => Promise<void>
   emptyAction: JSX.Element
 }
 
-function EndpointList(props: EndpointListProps): JSX.Element {
+function EndpointList(props: EndpointListProps): JSX.Element | null {
+  if (props.endpoints === undefined && props.hasFailed) {
+    return null
+  }
+
   if (props.endpoints === undefined) {
     return <Skeleton className="h-40 rounded-xl" />
   }

@@ -3,8 +3,11 @@ import type { JSX } from 'react'
 import { useId } from 'react'
 
 import { SecretLeaveGuard } from '@/modules/api-keys/components/secret-leave-guard'
-import { SecretReveal } from '@/modules/api-keys/components/secret-reveal'
+import { CopyableValue } from '@/shared/ui/copyable-value'
 import { Button } from '@/shared/ui/button'
+
+/** Publishable keys stay listed in full; only a secret key is shown this once. */
+const SECRET_KIND = 'secret'
 
 type NewKeyNoticeProps = {
   apiKey: { kind: string; name: string; key: string } | undefined
@@ -19,7 +22,7 @@ type NewKeyNoticeProps = {
 export function NewKeyNotice({ apiKey, onDismiss }: NewKeyNoticeProps): JSX.Element | null {
   const headingId = useId()
 
-  if (apiKey === undefined) {
+  if (apiKey === undefined || apiKey.kind !== SECRET_KIND) {
     return null
   }
 
@@ -32,20 +35,20 @@ export function NewKeyNotice({ apiKey, onDismiss }: NewKeyNoticeProps): JSX.Elem
         <TriangleAlert className="mt-0.5 size-5 shrink-0 text-amber-700 dark:text-amber-400" />
         <div role="alert">
           <h2 id={headingId} className="text-sm">
-            Copie a nova {apiKey.kind} key{keyNameSuffix(apiKey.name)} agora
+            Copie a nova secret key{keyNameSuffix(apiKey.name)} agora
           </h2>
           <p className="text-muted-foreground text-sm">
             Ela não aparece de novo. Guarde-a antes de sair desta página.
           </p>
         </div>
       </div>
-      <SecretReveal label={`${apiKey.kind} key`} value={apiKey.key} autoFocusCopy />
+      <CopyableValue label="Secret key" value={apiKey.key} autoFocusCopy />
       <div className="flex justify-end">
         <Button variant="outline" size="sm" onClick={onDismiss}>
           Já guardei a chave
         </Button>
       </div>
-      <SecretLeaveGuard isActive />
+      <SecretLeaveGuard isActive subject="Secret key nova" />
     </section>
   )
 }

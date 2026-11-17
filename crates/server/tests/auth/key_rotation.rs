@@ -201,3 +201,33 @@ async fn keys_carry_the_name_given_at_creation() -> TestResult {
     assert_eq!(too_long.status(), StatusCode::BAD_REQUEST);
     server.drop_tenant(&tenant).await
 }
+
+#[tokio::test]
+async fn only_publishable_keys_are_listed_in_full() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    let publishable = create_key(&server, &tenant.secret_key, "publishable").await?;
+    let secret = create_key(&server, &tenant.secret_key, "secret").await?;
+
+    let keys: Vec<Value> = admin_get(&server, &tenant, "/auth/v1/admin/api-keys")
+        .await?
+        .json()
+        .await?;
+    let listed = |created: &Value| {
+        keys.iter()
+            .find(|key| field(key, "/id") == field(created, "/id"))
+            .map(|key| field(key, "/key").clone())
+    };
+
+    assert_eq!(
+        listed(&publishable),
+        Some(field(&publishable, "/key").clone())
+    );
+    assert_eq!(listed(&secret), Some(Value::Null));
+    let full_secrets = keys
+        .iter()
+        .filter(|key| field(key, "/kind") == "secret" && field(key, "/key").is_null() == false)
+        .count();
+    assert_eq!(full_secrets, 0);
+    server.drop_tenant(&tenant).await
+}

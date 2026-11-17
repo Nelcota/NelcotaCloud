@@ -8,10 +8,10 @@ import { ErrorAlert } from '@/shared/ui/error-alert'
 
 const ACCESS_LOST = 'project_access_denied'
 
-type TeamLoadErrorProps = { error: Error | null; onRetry: () => void }
+type LoadErrorProps = { error: Error | null; onRetry: () => void }
 
 /** A failed load says why and offers the way out: try again, or leave a project you lost. */
-export function TeamLoadError({ error, onRetry }: TeamLoadErrorProps): JSX.Element | null {
+export function LoadError({ error, onRetry }: LoadErrorProps): JSX.Element | null {
   if (error === null) {
     return null
   }
