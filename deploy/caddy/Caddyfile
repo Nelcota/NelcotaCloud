@@ -6,6 +6,12 @@
 # X-Forwarded-For, which the API reads as CLIENT_IP_HEADER for rate limits.
 {$API_DOMAIN} {
 	encode zstd gzip
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
 	reverse_proxy api:8080
 }
 
@@ -17,7 +23,8 @@
 	header {
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
-		Referrer-Policy strict-origin-when-cross-origin
+		Referrer-Policy no-referrer
+		Strict-Transport-Security "max-age=31536000"
 		-Server
 	}
 	# Vite fingerprints asset names, so they never change under the same URL.
