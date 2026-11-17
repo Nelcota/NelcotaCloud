@@ -83,10 +83,13 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
   commit wakes the worker. The worker reads only `webhook_schedule` in the control plane and
   opens a tenant database when it has deliveries due; it claims them with
   `FOR UPDATE SKIP LOCKED` in a transaction held while sending (a dead worker releases them),
-  one request at a time per endpoint, and retries with jitter for about a day and a half. A
-  sweep every 5 minutes recovers lost wake-ups. Receivers must be https on public addresses,
-  checked at save and again by the client's DNS resolver on every request (no redirects);
-  `WEBHOOK_ALLOW_PRIVATE_HOSTS=true` lifts it for local development only.
+  at most 2 per endpoint per batch, one request at a time per endpoint, and retries with
+  jitter for about a day and a half. A hint always sets the schedule to `now()`. Deleting or
+  disabling an endpoint gives up its pending deliveries on the next run; the schedule also
+  wakes for retention (7 days). A sweep every 5 minutes recovers lost wake-ups. Test events
+  and resends are rate limited per project. Receivers must be https on public addresses,
+  checked at save and again by the client's DNS resolver on every request (no redirects, no
+  proxy); `WEBHOOK_ALLOW_PRIVATE_HOSTS=true` lifts it for local development only.
 - Rate limits (`governor`, in memory, single instance) on signup, login, MFA codes, auth emails and
   OAuth start,
   per tenant + email and per tenant + client IP (IPv6 per /64). Behind Cloudflare set
