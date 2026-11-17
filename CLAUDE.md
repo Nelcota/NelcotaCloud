@@ -64,6 +64,11 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
   (`POST .../ownership-transfer`); all lock the project's memberships so it always keeps an owner
   (`last_owner`), and promotion respects the 10-owned-projects limit (`owned_project_limit`).
   Ownership is never handed out by invitation: invite as member, then promote.
+- User administration: the list filters by `status` (`unverified`, `banned`); a user's detail
+  reads their active sessions with the last login (newest refresh token family) and their linked
+  identities (provider and date only); `POST .../users/{id}/verification-email` resends the
+  verification link to an unverified, unbanned user under the public per-address email limit.
+  The console shows them at `/projects/$projectId/users/$userId`.
 - Profile photos (`auth/avatar`): `PUT/DELETE /auth/v1/user/avatar` take the raw image (PNG,
   JPEG, WebP, up to 1 MiB); the server decodes it with `image` (size limits against decompression
   bombs), crops it to a 256px square and re-encodes it as JPEG (no EXIF), stored in the tenant's
