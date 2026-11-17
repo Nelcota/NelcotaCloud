@@ -37,7 +37,7 @@ export class HttpClient {
   private readonly fetchFunction: typeof fetch
 
   constructor(options: HttpClientOptions) {
-    this.baseUrl = options.url.replace(/\/+$/, '')
+    this.baseUrl = withoutTrailingSlashes(options.url)
     this.publishableKey = options.publishableKey
     this.fetchFunction = options.fetch
   }
@@ -89,6 +89,20 @@ export class HttpClient {
 
     return headers
   }
+}
+
+/**
+ * `https://api.test///` becomes `https://api.test`. A loop instead of `/\/+$/`, whose
+ * backtracking grows with the number of slashes in a URL the app passes in.
+ */
+function withoutTrailingSlashes(url: string): string {
+  let end = url.length
+
+  while (end > 0 && url.charAt(end - 1) === '/') {
+    end -= 1
+  }
+
+  return url.slice(0, end)
 }
 
 function bodyOf(request: HttpRequest): Blob | string | undefined {

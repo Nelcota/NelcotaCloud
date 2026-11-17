@@ -127,3 +127,20 @@ describe('database queries', () => {
     expect((failure as NelcotaError).code).toBe('permission_denied')
   })
 })
+
+describe('client url', () => {
+  it('drops every trailing slash of the API address', async () => {
+    const api = new FakeApi()
+    const client = createClient({
+      url: 'https://api.test///',
+      publishableKey: 'nc_pk_test',
+      storage: memoryStorage(),
+      fetch: api.fetch,
+    })
+    api.reply('POST /rest/v1/rpc/ping', { status: 200, body: 1 })
+
+    await client.rpc('ping')
+
+    expect(api.callsTo('POST /rest/v1/rpc/ping')).toHaveLength(1)
+  })
+})
