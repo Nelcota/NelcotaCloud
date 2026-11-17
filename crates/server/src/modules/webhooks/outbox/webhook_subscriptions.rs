@@ -56,16 +56,16 @@ impl WebhookSubscriptions {
         &self,
         tenant_id: Uuid,
     ) -> Result<Arc<Vec<SubscribedEndpoint>>, Arc<SubscriptionsError>> {
-        let cache_key = (tenant_id, self.generation.current());
+        let cache_key = (tenant_id, self.generation.of(tenant_id));
 
         self.cache
             .try_get_with(cache_key, self.load(tenant_id))
             .await
     }
 
-    /// Forgets the cached subscriptions after an endpoint change committed.
-    pub fn forget_all(&self) {
-        self.generation.advance();
+    /// Forgets the tenant's cached subscriptions after an endpoint change committed.
+    pub fn forget(&self, tenant_id: Uuid) {
+        self.generation.advance(tenant_id);
     }
 
     async fn load(

@@ -48,26 +48,11 @@ async fn rotates_refresh_tokens_and_revokes_family_on_reuse() -> TestResult {
     let rotated: Session = rotated_response.json().await?;
     assert_ne!(rotated.refresh_token, first.refresh_token);
 
-    // Moments after the rotation, a second use is refused but taken for a racing tab or retry:
-    // the session the user holds keeps working.
-    let racing = server.refresh(&tenant, &first.refresh_token).await?;
-    assert_eq!(racing.status(), StatusCode::UNAUTHORIZED);
-    let still_valid = server.refresh(&tenant, &rotated.refresh_token).await?;
-    assert_eq!(still_valid.status(), StatusCode::OK);
-    let current: Session = still_valid.json().await?;
-
-    // Past the grace window, reuse means a stolen copy: the whole family is revoked, including
-    // the token issued by the legitimate rotation.
-    let mut database = server.tenant_database(&tenant).await?;
-    sqlx::query(
-        "UPDATE refresh_tokens SET revoked_at = now() - interval '1 minute'          WHERE revoked_at IS NOT NULL",
-    )
-    .execute(&mut database)
-    .await?;
     let reused = server.refresh(&tenant, &first.refresh_token).await?;
     assert_eq!(reused.status(), StatusCode::UNAUTHORIZED);
 
-    let after_reuse = server.refresh(&tenant, &current.refresh_token).await?;
+    // Reuse revoked the whole family, including the token issued by the legitimate rotation.
+    let after_reuse = server.refresh(&tenant, &rotated.refresh_token).await?;
     assert_eq!(after_reuse.status(), StatusCode::UNAUTHORIZED);
     assert_eq!(error_code(after_reuse).await?, "invalid_refresh_token");
 

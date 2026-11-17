@@ -79,11 +79,13 @@ pub const OAUTH_START_PER_CLIENT_IP: QuotaSpec = QuotaSpec {
     burst: 20,
     replenish_every: Duration::from_secs(6),
 };
-/// Redeeming a token or code (refresh, email links, OAuth codes, logout): each one opens the
-/// project's database, so a client gets 30, then one every 2 seconds.
+/// Redeeming a token or code (refresh, email links, OAuth codes, logout).
+///
+/// Each one opens the project's database. 300, then 20 per second: enough for thousands of users renewing their
+/// sessions behind one NAT, or an app's server renewing them for its users.
 pub const TOKEN_REDEMPTION_PER_CLIENT_IP: QuotaSpec = QuotaSpec {
-    burst: 30,
-    replenish_every: Duration::from_secs(2),
+    burst: 300,
+    replenish_every: Duration::from_millis(50),
 };
 /// Profile changes: each one sends a `user.updated` webhook.
 pub const PROFILE_UPDATE_PER_ACCOUNT: QuotaSpec = QuotaSpec {
@@ -106,8 +108,12 @@ pub const DATA_API_PER_PROJECT: QuotaSpec = QuotaSpec {
     burst: 500,
     replenish_every: Duration::from_millis(10),
 };
-/// Every request of one client, whatever the route or project: 600, then 100 per second.
+/// Every request of one client, whatever the route or project: 2000, then 500 per second.
+///
+/// Above
+/// the per-project Data API limit, so a server calling several projects from one address (or
+/// many users behind one NAT) is held by the per-route limits, not by this floor.
 pub const REQUESTS_PER_CLIENT_IP: QuotaSpec = QuotaSpec {
-    burst: 600,
-    replenish_every: Duration::from_millis(10),
+    burst: 2_000,
+    replenish_every: Duration::from_millis(2),
 };

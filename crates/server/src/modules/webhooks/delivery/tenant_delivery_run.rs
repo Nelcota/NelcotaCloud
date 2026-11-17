@@ -81,7 +81,8 @@ async fn deliver_batch(
     targets: &DeliveryTargets,
 ) -> Result<usize, DeliveryRunError> {
     let mut transaction = pool.begin().await?;
-    let claimed = claim_due_deliveries(&mut transaction, BATCH_SIZE).await?;
+    let endpoint_ids: Vec<Uuid> = targets.keys().copied().collect();
+    let claimed = claim_due_deliveries(&mut transaction, &endpoint_ids, BATCH_SIZE).await?;
     let claimed_count = claimed.len();
 
     if claimed.is_empty() {

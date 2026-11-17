@@ -5,10 +5,6 @@ use uuid::Uuid;
 use crate::modules::auth::session::session_family::SessionFamily;
 use crate::modules::auth::user::user_record::{User, user_columns};
 
-/// A rotated token presented again within this many seconds is refused but not treated as
-/// stolen (a racing tab or retry); later, it ends the whole session.
-const REUSE_GRACE_SECONDS: f64 = 10.0;
-
 pub struct NewRefreshToken<'a> {
     pub user_id: Uuid,
     pub family: SessionFamily,
@@ -101,22 +97,17 @@ async fn find_reused_family(
     pool: &PgPool,
     token_hash: &[u8],
 ) -> Result<RefreshTokenStatus, sqlx::Error> {
-    // A token rotated moments ago is most likely a second tab or a retried request racing the
-    // rotation, not a thief: it is refused without ending the session the user still holds.
-    let revoked_family: Option<(Uuid, bool)> = sqlx::query_as(
-        "SELECT family_id, revoked_at > now() - make_interval(secs => $2)          FROM refresh_tokens WHERE token_hash = $1 AND revoked_at IS NOT NULL",
+    // Any reuse of a rotated token may be a stolen copy: the caller revokes the whole family.
+    // Tabs of the SDK renew one at a time (tab lock) and adopt the stored successor.
+    let family_id: Option<Uuid> = sqlx::query_scalar(
+        "SELECT family_id FROM refresh_tokens WHERE token_hash = $1 AND revoked_at IS NOT NULL",
     )
     .bind(token_hash)
-    .bind(REUSE_GRACE_SECONDS)
     .fetch_optional(pool)
     .await?;
-    let Some((family_id, is_within_grace)) = revoked_family else {
+    let Some(family_id) = family_id else {
         return Ok(RefreshTokenStatus::Invalid);
     };
-
-    if is_within_grace {
-        return Ok(RefreshTokenStatus::Invalid);
-    }
 
     Ok(RefreshTokenStatus::Reused { family_id })
 }

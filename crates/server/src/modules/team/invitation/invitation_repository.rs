@@ -43,7 +43,9 @@ pub async fn insert_invitation(
 ) -> Result<PendingInvitation, InvitationError> {
     let inserted = sqlx::query_as(
         "INSERT INTO tenant_invitations (id, tenant_id, email, role, invited_by) \
-         VALUES ($1, $2, $3, 'member', $4) RETURNING id, email, created_at",
+         SELECT $1, $2, $3, 'member', $4 FROM tenant_members \
+         WHERE tenant_id = $2 AND account_id = $4 AND role = 'owner' FOR SHARE \
+         RETURNING id, email, created_at",
     )
     .bind(Uuid::new_v4())
     .bind(invitation.tenant_id)

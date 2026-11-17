@@ -46,11 +46,16 @@ export async function countRows(projectId: string, query: CountQuery): Promise<n
 }
 
 function countPreference(estimatedRows: number | null): string {
-  if (estimatedRows !== null && estimatedRows > EXACT_COUNT_LIMIT) {
+  if (isCountEstimated(estimatedRows)) {
     return 'count=planned'
   }
 
   return 'count=exact'
+}
+
+/** Large tables get the planner's estimate, which may be below the rows that really exist. */
+export function isCountEstimated(estimatedRows: number | null): boolean {
+  return estimatedRows !== null && estimatedRows > EXACT_COUNT_LIMIT
 }
 
 function orderQuery(orderColumn: string | null): { order?: string } {

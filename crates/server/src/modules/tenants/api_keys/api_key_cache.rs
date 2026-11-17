@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use moka::future::Cache;
 use sqlx::PgPool;
+use uuid::Uuid;
 
 use crate::modules::tenants::api_keys::api_key_repository::{
     ApiKeyLookupError, ApiKeyOwner, find_active_api_key_owner,
@@ -20,7 +21,8 @@ const MAX_CACHED_KEYS: u64 = 20_000;
 /// Only keys that exist are kept: random keys sent by a client never fill the cache.
 pub struct ApiKeyCache {
     control_plane_pool: PgPool,
-    owners: Cache<(TokenHash, u64), ApiKeyOwner>,
+    /// Each owner with the generation snapshot taken before it was loaded.
+    owners: Cache<TokenHash, (ApiKeyOwner, u64)>,
     generation: CacheGeneration,
 }
 
@@ -42,24 +44,25 @@ impl ApiKeyCache {
         &self,
         key_hash: TokenHash,
     ) -> Result<Option<ApiKeyOwner>, ApiKeyLookupError> {
-        let cache_key = (key_hash, self.generation.current());
-
-        if let Some(owner) = self.owners.get(&cache_key).await {
+        if let Some((owner, snapshot)) = self.owners.get(&key_hash).await
+            && self.generation.is_current(owner.tenant_id, snapshot)
+        {
             return Ok(Some(owner));
         }
 
-        let owner = find_active_api_key_owner(&self.control_plane_pool, &cache_key.0).await?;
+        let snapshot = self.generation.snapshot();
+        let owner = find_active_api_key_owner(&self.control_plane_pool, &key_hash).await?;
 
         if let Some(owner) = &owner {
-            self.owners.insert(cache_key, *owner).await;
+            self.owners.insert(key_hash, (*owner, snapshot)).await;
         }
 
         Ok(owner)
     }
 
-    /// Forgets the cached keys after a revocation or a tenant's removal committed, including a
-    /// lookup still in flight. Every tenant's keys are looked up again: revocations are rare.
-    pub fn forget_all(&self) {
-        self.generation.advance();
+    /// Forgets the tenant's cached keys after a revocation or its removal committed, including
+    /// a lookup still in flight: entries loaded before are no longer current.
+    pub fn forget_tenant(&self, tenant_id: Uuid) {
+        self.generation.advance(tenant_id);
     }
 }

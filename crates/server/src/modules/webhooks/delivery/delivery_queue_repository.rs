@@ -26,9 +26,12 @@ pub struct ClaimedDelivery {
 /// transaction stays open while sending, so one slow receiver must not hold it for long.
 ///
 /// The due conditions are checked again on the locked row: a row another worker delivered or
-/// rescheduled while this statement waited is re-read, then skipped, never sent again.
+/// rescheduled while this statement waited is re-read, then skipped, never sent again. Only
+/// deliveries of `endpoint_ids` (the run's targets) are claimed: those of an endpoint created
+/// after the targets were read wait for the next run instead of filling every batch.
 pub async fn claim_due_deliveries(
     connection: &mut PgConnection,
+    endpoint_ids: &[Uuid],
     limit: i64,
 ) -> Result<Vec<ClaimedDelivery>, sqlx::Error> {
     sqlx::query_as(
@@ -36,7 +39,8 @@ pub async fn claim_due_deliveries(
          FROM webhook_deliveries delivery JOIN webhook_events event ON event.id = delivery.event_id \
          WHERE delivery.id IN (SELECT ranked.id FROM (SELECT id, next_attempt_at, row_number() OVER \
          (PARTITION BY endpoint_id ORDER BY next_attempt_at) AS position FROM webhook_deliveries \
-         WHERE delivered_at IS NULL AND failed_at IS NULL AND next_attempt_at <= now()) ranked \
+         WHERE delivered_at IS NULL AND failed_at IS NULL AND next_attempt_at <= now() \
+         AND endpoint_id = ANY($3::uuid[])) ranked \
          WHERE ranked.position <= $2 ORDER BY ranked.next_attempt_at LIMIT $1) \
          AND delivery.delivered_at IS NULL AND delivery.failed_at IS NULL \
          AND delivery.next_attempt_at <= now() \
@@ -44,6 +48,7 @@ pub async fn claim_due_deliveries(
     )
     .bind(limit)
     .bind(PER_ENDPOINT_IN_BATCH)
+    .bind(endpoint_ids)
     .fetch_all(connection)
     .await
 }

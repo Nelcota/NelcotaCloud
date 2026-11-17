@@ -11,6 +11,8 @@ type RowsPaginationProps = {
   shown: number
   /** `null` when the API did not count them. */
   total: number | null
+  /** An estimate only rules nothing out: a full page may still have more after it. */
+  isTotalEstimated: boolean
   onOffsetChange: (offset: number) => void
 }
 
@@ -60,13 +62,13 @@ function TotalLabel({ total }: { total: number | null }): JSX.Element | null {
   return <> de {total.toLocaleString('pt-BR')}</>
 }
 
-/** Only a full page may have more after it; a count (maybe an estimate) can only rule it out. */
+/** Only a full page may have more after it; an exact count can rule it out. */
 function hasMore(lastShown: number, props: RowsPaginationProps): boolean {
   if (props.shown < props.pageSize) {
     return false
   }
 
-  if (props.total === null) {
+  if (props.total === null || props.isTotalEstimated) {
     return true
   }
 

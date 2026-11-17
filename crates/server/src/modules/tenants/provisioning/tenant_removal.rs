@@ -87,7 +87,7 @@ impl TenantRemoval<'_> {
     /// leave its pool or keys cached.
     async fn forget_cached(&self, tenant_id: Uuid) {
         self.tenant_pools.forget(tenant_id).await;
-        self.signing_keys.forget_all();
-        self.api_keys.forget_all();
+        self.signing_keys.forget(tenant_id);
+        self.api_keys.forget_tenant(tenant_id);
     }
 }

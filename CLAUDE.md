@@ -157,8 +157,9 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
 - Signing keys (5 minutes), API key owners (`ApiKeyCache`, 60 s, only keys that exist), SMTP
   senders and webhook subscriptions are cached with `moka`, tenant pools while in use
   (`TenantPoolRegistry`): concurrent misses share one load. Caches whose entries a change must
-  drop key them by a `CacheGeneration` advanced after the change commits, so a load in flight
-  never puts a stale value back.
+  drop use a per-tenant `CacheGeneration` advanced after the change commits (entries keyed by
+  it, or checked against a snapshot taken before loading), so a load in flight never puts a
+  stale value back and one tenant's change never empties the others' entries.
 - Team changes (role, removal, invitation, cancellation) check that the actor is still an owner
   inside the statement or transaction that locks the project's memberships (in account order,
   as project deletion does); OAuth linking and magic links read the user `FOR UPDATE` before

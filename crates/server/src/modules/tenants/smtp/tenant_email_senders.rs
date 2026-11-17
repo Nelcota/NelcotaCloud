@@ -81,7 +81,7 @@ impl TenantEmailSenders {
         &self,
         tenant_id: Uuid,
     ) -> Result<Arc<EmailSender>, Arc<TenantSmtpError>> {
-        let cache_key = (tenant_id, self.generation.current());
+        let cache_key = (tenant_id, self.generation.of(tenant_id));
 
         self.senders
             .try_get_with(cache_key, self.load_sender(tenant_id))
@@ -96,9 +96,9 @@ impl TenantEmailSenders {
         resolve_smtp_endpoint(endpoint, self.allow_any_host == false).await
     }
 
-    /// Forgets the cached senders after a tenant's settings change committed.
-    pub fn forget_all(&self) {
-        self.generation.advance();
+    /// Forgets the tenant's cached sender after a tenant's settings change committed.
+    pub fn forget(&self, tenant_id: Uuid) {
+        self.generation.advance(tenant_id);
     }
 
     fn open_smtp_url(&self, tenant_id: Uuid, ciphertext: &[u8]) -> Result<String, TenantSmtpError> {

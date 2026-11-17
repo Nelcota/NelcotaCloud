@@ -55,15 +55,15 @@ impl SigningKeyCache {
             Ok(Arc::new(keys))
         };
 
-        let cache_key = (tenant_id, self.generation.current());
+        let cache_key = (tenant_id, self.generation.of(tenant_id));
 
         self.entries.try_get_with(cache_key, load).await
     }
 
-    /// Forgets the cached keys after a rotation or removal committed, so this instance uses a
-    /// rotated key right away. Other instances pick it up within the cache lifetime; tokens of
+    /// Forgets the tenant's cached keys after a rotation or removal committed, so this instance
+    /// uses a rotated key right away. Other instances pick it up within the cache lifetime; tokens of
     /// the old key keep verifying meanwhile.
-    pub fn forget_all(&self) {
-        self.generation.advance();
+    pub fn forget(&self, tenant_id: Uuid) {
+        self.generation.advance(tenant_id);
     }
 }
