@@ -74,6 +74,19 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
   and signup answers the same for new and existing emails).
 - Routes that only touch tenant configuration use `ApiKeyTenant` or `TenantAdmin` (no tenant
   database needed); routes on tenant data use `TenantContext` or `TenantAdminContext`.
+- Webhooks (`webhooks`, Standard Webhooks format): up to 5 endpoints per tenant in the control
+  plane (`webhook_endpoints`, secret encrypted, previous secret signing for a day after a
+  rotation). Events (`user.created/updated/deleted/banned/unbanned`, `session.revoked`) are
+  written by `WebhookRecorder` to the tenant's outbox (`webhook_events`, `webhook_deliveries`)
+  inside the same transaction as the change; build the recorder before the transaction
+  (`state.webhooks.recorder(tenant_id)`) and record with `user_events`. Dropping it after the
+  commit wakes the worker. The worker reads only `webhook_schedule` in the control plane and
+  opens a tenant database when it has deliveries due; it claims them with
+  `FOR UPDATE SKIP LOCKED` in a transaction held while sending (a dead worker releases them),
+  one request at a time per endpoint, and retries with jitter for about a day and a half. A
+  sweep every 5 minutes recovers lost wake-ups. Receivers must be https on public addresses,
+  checked at save and again by the client's DNS resolver on every request (no redirects);
+  `WEBHOOK_ALLOW_PRIVATE_HOSTS=true` lifts it for local development only.
 - Rate limits (`governor`, in memory, single instance) on signup, login, MFA codes, auth emails and
   OAuth start,
   per tenant + email and per tenant + client IP (IPv6 per /64). Behind Cloudflare set
@@ -88,8 +101,8 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
   serves it at `/openapi.json`; `crates/server/openapi.json` is the committed copy the console
   and the SDK generate their types from (a test fails when it is stale).
 - Stack: Rust, tokio, axum, sqlx (PostgreSQL 17 in Docker), validator, argon2, jsonwebtoken, oauth2,
-  reqwest, lettre, askama, totp-rs, image, thiserror, tracing, tower-http, moka, utoipa; tests use
-  wiremock for OAuth providers.
+  reqwest, lettre, askama, totp-rs, image, hmac, base64, thiserror, tracing, tower-http, moka,
+  utoipa; tests use wiremock for OAuth providers and webhook receivers.
 - SDK (`packages/sdk`, `@nelcota/sdk`): TypeScript client for tenant apps, no runtime
   dependencies. It keeps the session, renews it before expiry (one refresh in flight), handles
   OAuth with PKCE, magic links, MFA and sessions. Types are generated from `openapi.json`. Uses
@@ -165,16 +178,20 @@ Modular monolith in `crates/server/src/`: one folder per business context under 
     (identities, account linking).
   - `team/`: `member` (team members, owner checks), `invitation` (invitations, their email,
     answers by the invited account).
+  - `webhooks/`: `event` (event types and payloads), `endpoint` (URL policy, storage, use
+    cases), `signing` (secrets, signatures), `outbox` (subscriptions cache, recorder, wake-up
+    hints), `delivery` (transport and DNS guard, queue, schedule, retries, worker, delivery log,
+    test send), `runtime` (what `AppState` holds).
 - `shared/`: infrastructure with no business rules (`crypto`, `http` (generic `ApiError`, client
   IP, bearer token), JSON validation, request id and span, `database` migrators, `email` SMTP
-  sender). `shared` never imports from `modules`.
+  sender, `net` public host checks). `shared` never imports from `modules`.
 - A new file goes into the sub-package of its subject; create a sub-package when a module has
   several files about one subject. Never leave loose files at a module root; `mod.rs` files only
   declare modules.
 - Split a file when it has more than one reason to change: a type and its storage, two providers,
   two endpoints, a rule and its HTTP mapping.
-- Dependencies point one way: `tenants → shared`, `auth → tenants`, `oauth → auth, tenants`,
-  `team → auth, tenants`.
+- Dependencies point one way: `tenants → shared`, `webhooks → tenants`,
+  `auth → webhooks, tenants`, `oauth → auth, webhooks, tenants`, `team → auth, tenants`.
   Never create a cycle; if two modules need each other, the shared piece belongs in the lower one.
 - A new product of the BaaS (storage, database, functions) starts as a new module; split modules
   into workspace crates only when the compiler-enforced boundary is worth the extra setup.
@@ -194,7 +211,7 @@ dependencies. In `apps/console/src/`:
   (theme tokens: graphite neutrals, one blue accent; dark by default, light via the account menu;
   font Manrope).
 - `modules/<module>/`: everything one context owns (`account`, `projects`, `overview`, `api-keys`,
-  `users`, `project-settings`, `system-status`, `team`):
+  `users`, `project-settings`, `system-status`, `team`, `webhooks`):
   - `pages/`: one file per route; composes components, no fetching or business logic.
   - `components/`: UI of the module, one component per file.
   - `queries/`: TanStack Query hooks (`use-*-query.ts`, `use-*-mutation.ts`); the only place that
