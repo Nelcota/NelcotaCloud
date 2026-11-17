@@ -1,4 +1,4 @@
-import type { FormEvent, JSX } from 'react'
+import type { FormEvent, JSX, MouseEvent } from 'react'
 import { useState } from 'react'
 
 import type { LoginHandler } from '../lib/login-handler'
@@ -22,7 +22,14 @@ export function PasswordForm({ onLogin }: PasswordFormProps): JSX.Element {
     })
   }
 
-  function signUp(): void {
+  /** Outside the form's submit, so the browser's `required` and email checks run here. */
+  function signUp(event: MouseEvent<HTMLButtonElement>): void {
+    const form = event.currentTarget.form
+
+    if (form === null || form.reportValidity() === false) {
+      return
+    }
+
     setNotice(null)
     void run(async () => {
       const result = await nelcota.auth.signUp({ email, password })
