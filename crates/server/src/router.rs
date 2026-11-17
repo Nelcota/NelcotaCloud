@@ -2,7 +2,7 @@ use std::future::ready;
 use std::sync::Arc;
 use std::time::Duration;
 
-use axum::http::header::{AUTHORIZATION, CACHE_CONTROL, CONTENT_TYPE};
+use axum::http::header::{ACCEPT, AUTHORIZATION, CACHE_CONTROL, CONTENT_RANGE, CONTENT_TYPE};
 use axum::http::{HeaderName, HeaderValue, Method};
 use axum::routing::get;
 use axum::{Json, Router};
@@ -19,6 +19,8 @@ use crate::api_doc::ApiDoc;
 use crate::app_state::AppState;
 use crate::health;
 use crate::modules::auth::routes::auth_routes::auth_routes;
+use crate::modules::database::query::preferences::PREFER_HEADER;
+use crate::modules::database::routes::database_routes::database_routes;
 use crate::modules::oauth::routes::oauth_routes::oauth_routes;
 use crate::modules::team::routes::team_routes::team_routes;
 use crate::modules::tenants::access::api_key_tenant::API_KEY_HEADER;
@@ -81,6 +83,7 @@ pub fn api_routes() -> OpenApiRouter<AppState> {
         .merge(auth_routes())
         .merge(webhooks_routes())
         .merge(oauth_routes())
+        .merge(database_routes())
 }
 
 /// Browser apps of any origin call the API with the publishable key; no cookies are used,
@@ -100,7 +103,9 @@ fn cors_layer() -> CorsLayer {
             AUTHORIZATION,
             HeaderName::from_static(API_KEY_HEADER),
             HeaderName::from_static(PROJECT_HEADER),
+            HeaderName::from_static(PREFER_HEADER),
+            ACCEPT,
         ])
-        .expose_headers([REQUEST_ID_HEADER])
+        .expose_headers([REQUEST_ID_HEADER, CONTENT_RANGE])
         .max_age(CORS_PREFLIGHT_MAX_AGE)
 }

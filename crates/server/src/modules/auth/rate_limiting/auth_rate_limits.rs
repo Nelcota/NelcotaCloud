@@ -52,7 +52,15 @@ const OAUTH_START_PER_CLIENT_IP: QuotaSpec = QuotaSpec {
     replenish_every: Duration::from_secs(6),
 };
 
-/// The limits of every Auth action. In memory: enough for a single instance; they reset when
+/// Data API requests of apps (publishable key): a burst of 300, then 20 per second, per client.
+/// Bounds what one client can make a project's database do; servers with the secret key and the
+/// console are not limited here.
+const DATA_API_PER_CLIENT_IP: QuotaSpec = QuotaSpec {
+    burst: 300,
+    replenish_every: Duration::from_millis(50),
+};
+
+/// The limits of every rate-limited action. In memory: enough for a single instance; they reset when
 /// the server restarts.
 pub struct RateLimits {
     pub login: AttemptLimiter,
@@ -64,6 +72,8 @@ pub struct RateLimits {
     pub oauth_authorization: ClientIpLimiter,
     /// Project creation from the console, per client IP across accounts.
     pub project_creation: ClientIpLimiter,
+    /// Data API requests with the publishable key, per project and client IP.
+    pub data_api: ClientIpLimiter,
 }
 
 impl RateLimits {
@@ -75,6 +85,7 @@ impl RateLimits {
             mfa: AttemptLimiter::new(&MFA_PER_ACCOUNT, &MFA_PER_CLIENT_IP)?,
             oauth_authorization: ClientIpLimiter::new(&OAUTH_START_PER_CLIENT_IP)?,
             project_creation: ClientIpLimiter::new(&PROJECT_CREATION_PER_CLIENT_IP)?,
+            data_api: ClientIpLimiter::new(&DATA_API_PER_CLIENT_IP)?,
         })
     }
 
@@ -85,5 +96,6 @@ impl RateLimits {
         self.mfa.forget_idle_keys();
         self.oauth_authorization.forget_idle_keys();
         self.project_creation.forget_idle_keys();
+        self.data_api.forget_idle_keys();
     }
 }

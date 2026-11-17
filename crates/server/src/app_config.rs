@@ -180,6 +180,8 @@ mod tests {
             "postgres://localhost:5434?sslmode=require",
             "mysql://localhost:3306",
             "postgres://localhost:5434#fragment",
+            "postgres://user:pass@localhost:5434/control",
+            "postgres://user@localhost:5434",
         ] {
             let config = AppConfig {
                 tenant_database_base_url: raw_url.to_owned(),

@@ -3688,6 +3688,540 @@
         ]
       }
     },
+    "/database/v1/schema": {
+      "get": {
+        "tags": [
+          "database-admin"
+        ],
+        "summary": "`GET /database/v1/schema`: tables (columns, keys, row level security, policies) and\nfunctions of the project's `public` schema.",
+        "operationId": "read_schema",
+        "responses": {
+          "200": {
+            "description": "The schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemaOverview"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/database/v1/sql": {
+      "post": {
+        "tags": [
+          "database-admin"
+        ],
+        "summary": "`POST /database/v1/sql`: runs SQL on the project's database as its developer role.",
+        "description": "The developer role owns `public` and is never a superuser; scripts get 15 seconds. Answers the last result set, up to\n1000 rows, with values as Postgres prints them.",
+        "operationId": "run_sql",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunSqlRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SqlResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Refused by Postgres (its message)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Took longer than 15 seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/database/v1/tables": {
+      "post": {
+        "tags": [
+          "database-admin"
+        ],
+        "summary": "`POST /database/v1/tables`: creates a table in the project's `public` schema, with row\nlevel security on.",
+        "operationId": "create_table",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTableRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Table created"
+          },
+          "400": {
+            "description": "Invalid request, or refused by Postgres (its message)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/database/v1/tables/{table}": {
+      "delete": {
+        "tags": [
+          "database-admin"
+        ],
+        "summary": "`DELETE /database/v1/tables/{table}`: drops a table and its rows (refused while other\ntables reference it).",
+        "operationId": "drop_table",
+        "parameters": [
+          {
+            "name": "table",
+            "in": "path",
+            "description": "Table of the public schema",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Table dropped"
+          },
+          "400": {
+            "description": "Invalid request, or refused by Postgres (its message)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "database-admin"
+        ],
+        "summary": "`PATCH /database/v1/tables/{table}`: turns row level security on or off. Off, every\nrequest role reaches every row its privileges allow.",
+        "operationId": "change_table",
+        "parameters": [
+          {
+            "name": "table",
+            "in": "path",
+            "description": "Table of the public schema",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeTableRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Table changed"
+          },
+          "400": {
+            "description": "Invalid request, or refused by Postgres (its message)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/database/v1/tables/{table}/columns": {
+      "post": {
+        "tags": [
+          "database-admin"
+        ],
+        "summary": "`POST /database/v1/tables/{table}/columns`: adds a column.",
+        "operationId": "add_column",
+        "parameters": [
+          {
+            "name": "table",
+            "in": "path",
+            "description": "Table of the public schema",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ColumnDefinition"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Column added"
+          },
+          "400": {
+            "description": "Invalid request, or refused by Postgres (its message)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/database/v1/tables/{table}/columns/{column}": {
+      "delete": {
+        "tags": [
+          "database-admin"
+        ],
+        "summary": "`DELETE /database/v1/tables/{table}/columns/{column}`: drops a column and its values.",
+        "operationId": "drop_column",
+        "parameters": [
+          {
+            "name": "table",
+            "in": "path",
+            "description": "Table of the public schema",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "column",
+            "in": "path",
+            "description": "Column of the table",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Column dropped"
+          },
+          "400": {
+            "description": "Invalid request, or refused by Postgres (its message)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/database/v1/tables/{table}/policies": {
+      "post": {
+        "tags": [
+          "database-admin"
+        ],
+        "summary": "`POST /database/v1/tables/{table}/policies`: adds a row level security policy.",
+        "operationId": "create_policy",
+        "parameters": [
+          {
+            "name": "table",
+            "in": "path",
+            "description": "Table of the public schema",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Policy created"
+          },
+          "400": {
+            "description": "Invalid request, or refused by Postgres (its message)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/database/v1/tables/{table}/policies/{policy}": {
+      "delete": {
+        "tags": [
+          "database-admin"
+        ],
+        "summary": "`DELETE /database/v1/tables/{table}/policies/{policy}`: removes a policy.",
+        "operationId": "drop_policy",
+        "parameters": [
+          {
+            "name": "table",
+            "in": "path",
+            "description": "Table of the public schema",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "policy",
+            "in": "path",
+            "description": "Policy of the table",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Policy removed"
+          },
+          "400": {
+            "description": "Invalid request, or refused by Postgres (its message)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -4488,6 +5022,505 @@
           }
         ]
       }
+    },
+    "/rest/v1/rpc/{function}": {
+      "post": {
+        "tags": [
+          "database"
+        ],
+        "summary": "`POST /rest/v1/rpc/{function}`: calls a function of the project's `public` schema with\nthe body's keys as named arguments, as the caller's role.",
+        "operationId": "call_function",
+        "parameters": [
+          {
+            "name": "function",
+            "in": "path",
+            "description": "Function of the public schema",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The function's result",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid arguments, or the function raised an error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refused by privileges",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No function with that name takes these arguments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "api_key": [],
+            "bearer": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/rest/v1/{table}": {
+      "get": {
+        "tags": [
+          "database"
+        ],
+        "summary": "`GET /rest/v1/{table}`: rows of a table of the project's `public` schema.",
+        "description": "Query: `select=id,title,author(name)`, filters (`age=gte.18`, `or=(a.eq.1,b.eq.2)`),\n`order=created_at.desc`, `limit` (at most 1000) and `offset`; embeds take the same with\ntheir name as prefix (`comments.order=id.desc`). `Prefer: count=exact|planned` adds the\ntotal to `Content-Range`.",
+        "operationId": "read_rows",
+        "parameters": [
+          {
+            "name": "table",
+            "in": "path",
+            "description": "Table or view of the public schema",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "select",
+            "in": "query",
+            "description": "Columns and embeds to return",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "description": "column.asc|desc[.nullsfirst|nullslast],...",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Rows per page (at most 1000)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Rows to skip",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The rows",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {}
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refused by privileges or row level security",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such table",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "api_key": [],
+            "bearer": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "database"
+        ],
+        "summary": "`POST /rest/v1/{table}`: inserts one object or an array of up to 1000 objects.",
+        "description": "`Prefer: resolution=merge-duplicates` (or `ignore-duplicates`) makes it an upsert on the\nprimary key or the `on_conflict` columns.",
+        "operationId": "insert_rows",
+        "parameters": [
+          {
+            "name": "table",
+            "in": "path",
+            "description": "Table of the public schema",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "select",
+            "in": "query",
+            "description": "Shape of the returned rows (with Prefer: return=representation)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "on_conflict",
+            "in": "query",
+            "description": "Unique columns an upsert matches on",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Rows inserted (the rows with Prefer: return=representation)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {}
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid rows or a broken constraint",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refused by privileges or row level security",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such table",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate or missing referenced row",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "api_key": [],
+            "bearer": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "database"
+        ],
+        "summary": "`DELETE /rest/v1/{table}?<filters>`: deletes every matching row. At least one filter is\nrequired.",
+        "operationId": "delete_rows",
+        "parameters": [
+          {
+            "name": "table",
+            "in": "path",
+            "description": "Table of the public schema",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "select",
+            "in": "query",
+            "description": "Shape of the returned rows (with Prefer: return=representation)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The deleted rows (Prefer: return=representation)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {}
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "Rows deleted"
+          },
+          "400": {
+            "description": "No filter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refused by privileges or row level security",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such table",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rows still referenced by other rows",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "api_key": [],
+            "bearer": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "database"
+        ],
+        "summary": "`PATCH /rest/v1/{table}?<filters>`: sets the body's columns on every matching row. At\nleast one filter is required.",
+        "operationId": "update_rows",
+        "parameters": [
+          {
+            "name": "table",
+            "in": "path",
+            "description": "Table of the public schema",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "select",
+            "in": "query",
+            "description": "Shape of the returned rows (with Prefer: return=representation)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The updated rows (Prefer: return=representation)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {}
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "Rows updated"
+          },
+          "400": {
+            "description": "Invalid values, no filter, or a broken constraint",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refused by privileges or row level security",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such table",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "api_key": [],
+            "bearer": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -4680,6 +5713,127 @@
           "magic_link"
         ]
       },
+      "ChangeTableRequest": {
+        "type": "object",
+        "description": "What can change on an existing table from the console.",
+        "required": [
+          "rls_enabled"
+        ],
+        "properties": {
+          "rls_enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ColumnDefinition": {
+        "type": "object",
+        "description": "A column of a table created (or added) from the console.",
+        "required": [
+          "name",
+          "type"
+        ],
+        "properties": {
+          "default": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`now()`, `gen_random_uuid()`, `auth.uid()`, `current_date`, `current_timestamp`,\n`true`, `false`, or a literal value."
+          },
+          "identity": {
+            "type": "boolean",
+            "description": "Numbered automatically (integer types only)."
+          },
+          "name": {
+            "type": "string"
+          },
+          "nullable": {
+            "type": "boolean"
+          },
+          "primary_key": {
+            "type": "boolean"
+          },
+          "references": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ColumnReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "type": "string",
+            "description": "`text`, `varchar`, `smallint`, `integer`, `bigint`, `numeric`, `real`, `double`,\n`boolean`, `uuid`, `date`, `time`, `timestamp`, `timestamptz`, `json`, `jsonb`,\n`bytea`; append `[]` for an array."
+          },
+          "unique": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ColumnOverview": {
+        "type": "object",
+        "required": [
+          "name",
+          "type",
+          "nullable",
+          "is_identity",
+          "is_primary_key",
+          "is_unique"
+        ],
+        "properties": {
+          "default": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The default expression (`now()`), or `null`."
+          },
+          "is_identity": {
+            "type": "boolean"
+          },
+          "is_primary_key": {
+            "type": "boolean"
+          },
+          "is_unique": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nullable": {
+            "type": "boolean"
+          },
+          "type": {
+            "type": "string",
+            "description": "As Postgres writes it, with modifiers (`character varying(20)`, `integer[]`)."
+          }
+        }
+      },
+      "ColumnReference": {
+        "type": "object",
+        "description": "A foreign key to a column of another table of the project.",
+        "required": [
+          "table",
+          "column"
+        ],
+        "properties": {
+          "column": {
+            "type": "string"
+          },
+          "on_delete": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`cascade`, `set_null` or `restrict`; `no action` when absent."
+          },
+          "table": {
+            "type": "string"
+          }
+        }
+      },
       "ConfiguredProvider": {
         "type": "object",
         "description": "What an owner sees about a configured provider: its public client ID, never the secret.",
@@ -4728,6 +5882,64 @@
           "name": {
             "type": "string",
             "description": "A label to tell the key apart (\"App iOS\"); optional, up to 64 characters."
+          }
+        }
+      },
+      "CreatePolicyRequest": {
+        "type": "object",
+        "description": "A row level security policy: which requests (`roles`) may run `command` on which rows.",
+        "required": [
+          "name",
+          "command",
+          "roles"
+        ],
+        "properties": {
+          "command": {
+            "type": "string",
+            "description": "`all`, `select`, `insert`, `update` or `delete`."
+          },
+          "name": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "`anon` and/or `authenticated`."
+          },
+          "using": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "SQL condition on existing rows, such as `user_id = auth.uid()`."
+          },
+          "with_check": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "SQL condition on written rows."
+          }
+        }
+      },
+      "CreateTableRequest": {
+        "type": "object",
+        "description": "A table to create in the project's `public` schema. It starts with row level security on\n(the database does it for every new table): add policies to open it.",
+        "required": [
+          "name",
+          "columns"
+        ],
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ColumnDefinition"
+            }
+          },
+          "name": {
+            "type": "string"
           }
         }
       },
@@ -4934,6 +6146,56 @@
           },
           "message": {
             "type": "string"
+          }
+        }
+      },
+      "ForeignKeyOverview": {
+        "type": "object",
+        "required": [
+          "name",
+          "columns",
+          "foreign_table",
+          "foreign_columns"
+        ],
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "foreign_columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "foreign_table": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "FunctionOverview": {
+        "type": "object",
+        "required": [
+          "name",
+          "arguments",
+          "returns"
+        ],
+        "properties": {
+          "arguments": {
+            "type": "string",
+            "description": "`a integer, b integer DEFAULT 10`."
+          },
+          "name": {
+            "type": "string"
+          },
+          "returns": {
+            "type": "string",
+            "description": "`integer`, `SETOF posts`, `TABLE(n integer)`."
           }
         }
       },
@@ -5171,6 +6433,44 @@
           }
         }
       },
+      "PolicyOverview": {
+        "type": "object",
+        "required": [
+          "name",
+          "command",
+          "roles"
+        ],
+        "properties": {
+          "command": {
+            "type": "string",
+            "description": "`all`, `select`, `insert`, `update` or `delete`."
+          },
+          "name": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "`anon`, `authenticated`, or other role names; `public` is every role."
+          },
+          "using": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Rows the policy lets through (`USING`)."
+          },
+          "with_check": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Rows the policy lets be written (`WITH CHECK`)."
+          }
+        }
+      },
       "ProjectRole": {
         "type": "string",
         "description": "What a platform account may do in a project: owners can also delete it.",
@@ -5291,6 +6591,40 @@
             "type": "string",
             "format": "uuid",
             "description": "The `kid` of the key that now signs access tokens."
+          }
+        }
+      },
+      "RunSqlRequest": {
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "One or more statements, run in one transaction."
+          }
+        }
+      },
+      "SchemaOverview": {
+        "type": "object",
+        "description": "The project's `public` schema as the console shows it: tables with their columns, keys,\nrow level security and policies, plus callable functions.",
+        "required": [
+          "tables",
+          "functions"
+        ],
+        "properties": {
+          "functions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FunctionOverview"
+            }
+          },
+          "tables": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TableOverview"
+            }
           }
         }
       },
@@ -5448,6 +6782,100 @@
           "to": {
             "type": "string",
             "description": "Where the test email goes."
+          }
+        }
+      },
+      "SqlResult": {
+        "type": "object",
+        "description": "What the SQL editor shows: the last result set of the script (values as Postgres writes\nthem as text) and how many rows the statements changed.",
+        "required": [
+          "columns",
+          "rows",
+          "row_count",
+          "rows_affected",
+          "is_truncated"
+        ],
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "is_truncated": {
+            "type": "boolean"
+          },
+          "row_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Rows of the last result set, including those beyond the shown ones.",
+            "minimum": 0
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "rows_affected": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "TableOverview": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "rls_enabled",
+          "columns",
+          "foreign_keys",
+          "policies"
+        ],
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ColumnOverview"
+            }
+          },
+          "estimated_rows": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The planner's estimate; `null` before the table was ever analyzed."
+          },
+          "foreign_keys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ForeignKeyOverview"
+            }
+          },
+          "kind": {
+            "type": "string",
+            "description": "`table`, `view`, `materialized_view` or `foreign_table`."
+          },
+          "name": {
+            "type": "string"
+          },
+          "policies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PolicyOverview"
+            }
+          },
+          "rls_enabled": {
+            "type": "boolean"
           }
         }
       },
@@ -5930,6 +7358,14 @@
     {
       "name": "tenant-admin",
       "description": "A tenant's own configuration (secret API key)"
+    },
+    {
+      "name": "database",
+      "description": "Tables of the project's Postgres database as a REST API, under row level security"
+    },
+    {
+      "name": "database-admin",
+      "description": "Tables, policies and SQL of the project's database (console and secret key)"
     },
     {
       "name": "webhooks",

@@ -7,6 +7,8 @@ use sqlx::postgres::PgPoolOptions;
 use crate::app_config::AppConfig;
 use crate::app_state::AppState;
 use crate::modules::auth::rate_limiting::auth_rate_limits::RateLimits;
+use crate::modules::database::execution::session_slots::SessionSlots;
+use crate::modules::database::schema::schema_cache::SchemaCache;
 use crate::modules::oauth::login::oauth_state_repository::delete_expired_authorizations;
 use crate::modules::oauth::provider::provider_endpoints::OAuthEndpoints;
 use crate::modules::tenants::database::tenant_pool_registry::TenantPoolRegistry;
@@ -52,6 +54,11 @@ pub async fn build_app_state_with_endpoints(
     spawn_maintenance(control_plane_pool.clone(), Arc::clone(&rate_limits));
 
     let tenant_pools = Arc::new(tenant_pool_registry(config, &control_plane_pool));
+    let database_server = tenant_pools.database_server();
+    database_server
+        .ensure_roles()
+        .await
+        .map_err(StartupError::DatabaseRoles)?;
     let webhook_dependencies = WebhookDependencies {
         control_plane_pool: &control_plane_pool,
         tenant_pools: &tenant_pools,
@@ -61,6 +68,8 @@ pub async fn build_app_state_with_endpoints(
 
     Ok(AppState {
         tenant_pools,
+        schema_cache: Arc::new(SchemaCache::new()),
+        data_api_slots: Arc::new(SessionSlots::new()),
         signing_keys: Arc::new(signing_key_cache(&control_plane_pool, &secret_box)),
         platform_tenant: Arc::new(platform_tenant_directory(config, &control_plane_pool)?),
         rate_limits,

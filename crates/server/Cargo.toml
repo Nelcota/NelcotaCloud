@@ -17,6 +17,7 @@ base64 = "0.23.1"
 dotenvy = "0.15.7"
 ed25519-dalek = { version = "3.0.0", features = ["pkcs8", "alloc"] }
 envy = "0.4.2"
+futures-util = { version = "0.3.34", default-features = false, features = ["std"] }
 governor = "0.10.4"
 hmac = "0.13.0"
 image = { version = "0.25.10", default-features = false, features = ["jpeg", "png", "webp"] }

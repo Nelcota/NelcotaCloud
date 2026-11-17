@@ -2,6 +2,8 @@
 export type RecordedCall = {
   method: string
   path: string
+  /** Decoded query parameters, in order. */
+  query: [string, string][]
   headers: Record<string, string>
   body: unknown
 }
@@ -32,7 +34,9 @@ export class FakeApi {
       Object.entries((init?.headers ?? {}) as Record<string, string>),
     )
     const rawBody = init?.body
-    this.calls.push({ method, path: url.pathname, headers, body: parseBody(rawBody) })
+    const query: [string, string][] = []
+    url.searchParams.forEach((value, key) => query.push([key, value]))
+    this.calls.push({ method, path: url.pathname, query, headers, body: parseBody(rawBody) })
     const reply = this.replies.get(`${method} ${url.pathname}`)?.shift()
 
     if (reply === undefined) {

@@ -108,6 +108,21 @@ const webhooksRoute = createRoute({ getParentRoute: () => projectRoute, path: '/
   () => import('@/app/lazy-routes/webhooks').then((module) => module.webhooksLazyRoute),
 )
 
+const databaseRoute = createRoute({ getParentRoute: () => projectRoute, path: '/database' }).lazy(
+  () => import('@/app/lazy-routes/database').then((module) => module.databaseLazyRoute),
+)
+
+const databaseTableRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: '/database/$table',
+}).lazy(() =>
+  import('@/app/lazy-routes/database-table').then((module) => module.databaseTableLazyRoute),
+)
+
+const sqlEditorRoute = createRoute({ getParentRoute: () => projectRoute, path: '/sql' }).lazy(() =>
+  import('@/app/lazy-routes/sql-editor').then((module) => module.sqlEditorLazyRoute),
+)
+
 const activityRoute = createRoute({ getParentRoute: () => projectRoute, path: '/activity' }).lazy(
   () => import('@/app/lazy-routes/activity').then((module) => module.activityLazyRoute),
 )
@@ -134,6 +149,9 @@ const routeTree = rootRoute.addChildren([
       providersRoute,
       emailRoute,
       webhooksRoute,
+      databaseRoute,
+      databaseTableRoute,
+      sqlEditorRoute,
       activityRoute,
       teamRoute,
       settingsRoute,

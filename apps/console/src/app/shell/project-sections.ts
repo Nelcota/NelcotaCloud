@@ -1,3 +1,7 @@
+import CodeBold from '~icons/solar/code-square-bold'
+import Code from '~icons/solar/code-square-linear'
+import DatabaseBold from '~icons/solar/database-bold'
+import Database from '~icons/solar/database-linear'
 import HistoryBold from '~icons/solar/history-bold'
 import History from '~icons/solar/history-linear'
 import KeyRoundBold from '~icons/solar/key-bold'
@@ -55,6 +59,14 @@ export const PROJECT_SECTIONS: readonly ProjectSection[] = [
   },
   { segment: 'email', label: 'Email', icon: Mail, currentIcon: MailBold, group: 'main' },
   { segment: 'webhooks', label: 'Webhooks', icon: Plug, currentIcon: PlugBold, group: 'main' },
+  {
+    segment: 'database',
+    label: 'Banco de dados',
+    icon: Database,
+    currentIcon: DatabaseBold,
+    group: 'main',
+  },
+  { segment: 'sql', label: 'SQL', icon: Code, currentIcon: CodeBold, group: 'main' },
   {
     segment: 'activity',
     label: 'Atividade',

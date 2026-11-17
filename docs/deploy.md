@@ -69,6 +69,12 @@ docker compose -f docker-compose.prod.yml --env-file .env.production run --rm --
 docker compose -f docker-compose.prod.yml --env-file .env.production start api
 ```
 
+`restore.sh` restores each database with its owners (a project's tables must stay owned by
+`nelcota_developer`), so the server-wide `nelcota_*` roles must exist: the API creates them when
+it starts, so on a new server start it once before restoring. Each project's own login role and
+connect privilege are recreated by the API the first time the project is used. Restore with the
+same `POSTGRES_USER` the dumps were taken with.
+
 Rehearse a restore on staging every few months; an untested backup is not a backup.
 
 ## 6. Staging

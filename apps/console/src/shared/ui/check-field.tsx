@@ -21,6 +21,7 @@ export function CheckField({ label, isChecked, onChange }: CheckFieldProps): JSX
       <input
         type="checkbox"
         className="sr-only"
+        aria-label={label}
         checked={isChecked}
         onChange={(event) => onChange(event.target.checked)}
       />

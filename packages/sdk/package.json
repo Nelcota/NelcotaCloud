@@ -2,7 +2,7 @@
   "name": "@nelcota/sdk",
   "version": "0.1.0",
   "private": true,
-  "description": "TypeScript client for NelcotaCloud Auth: sessions, OAuth with PKCE, magic links and MFA.",
+  "description": "TypeScript client for NelcotaCloud Auth (sessions, OAuth with PKCE, magic links, MFA) and Database.",
   "license": "UNLICENSED",
   "files": [
     "dist"

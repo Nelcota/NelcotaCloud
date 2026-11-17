@@ -1,5 +1,6 @@
 import {
   FALLBACK_BY_CODE,
+  LEAD_BY_CODE,
   MESSAGES_BY_CODE,
   MESSAGES_BY_TEXT,
 } from '@/shared/api/api-error-messages'
@@ -53,6 +54,12 @@ function describeCoded(error: CodedError): string {
 
   if (error.message.startsWith(SMTP_PORT_PREFIX)) {
     return SMTP_PORT_MESSAGE
+  }
+
+  const lead = LEAD_BY_CODE[error.code]
+
+  if (lead !== undefined) {
+    return `${lead}: ${error.message}`
   }
 
   return FALLBACK_BY_CODE[error.code] ?? FALLBACK_MESSAGE

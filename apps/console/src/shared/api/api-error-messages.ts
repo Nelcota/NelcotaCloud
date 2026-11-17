@@ -30,6 +30,9 @@ export const MESSAGES_BY_CODE: Record<string, string> = {
   payload_too_large: 'O arquivo é grande demais.',
   platform_not_configured: 'O console ainda não foi configurado neste servidor.',
   internal_error: 'Erro no servidor. Tente de novo em instantes.',
+  query_timeout: 'A consulta passou de 15 segundos e foi cancelada.',
+  table_not_found: 'Essa tabela não existe mais. Recarregue a página.',
+  permission_denied: 'Os privilégios ou as políticas da tabela recusaram o acesso.',
 }
 
 /** Generic codes carry the detail in their English message; the known ones read like this. */
@@ -84,4 +87,13 @@ export const FALLBACK_BY_CODE: Record<string, string> = {
   invalid_request: 'Algum dado não foi aceito. Revise os campos e tente de novo.',
   not_found: 'Isso não existe mais. Recarregue a página.',
   conflict: 'Isso mudou enquanto você olhava. Recarregue a página e tente de novo.',
+}
+
+/**
+ * Refusals whose English text is the detail itself (Postgres's own message): shown after this
+ * lead, since no translation could say which column or statement failed.
+ */
+export const LEAD_BY_CODE: Record<string, string> = {
+  sql_error: 'O Postgres recusou',
+  invalid_query: 'Pedido recusado',
 }
