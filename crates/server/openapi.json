@@ -1059,6 +1059,68 @@
         ]
       }
     },
+    "/auth/v1/admin/users/{user_id}/identities": {
+      "get": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`GET /admin/users/{user_id}/identities`: the social logins linked to the user.",
+        "operationId": "list_user_identities",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "Id of the user",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Linked identities, oldest first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserIdentities"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
     "/auth/v1/admin/users/{user_id}/logout": {
       "post": {
         "tags": [
@@ -4280,6 +4342,24 @@
           }
         }
       },
+      "LinkedIdentity": {
+        "type": "object",
+        "description": "An external account linked to a user, without the provider's user id.",
+        "required": [
+          "provider",
+          "linked_at"
+        ],
+        "properties": {
+          "linked_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "provider": {
+            "type": "string",
+            "description": "`google` or `github`."
+          }
+        }
+      },
       "LogInBody": {
         "type": "object",
         "required": [
@@ -4912,6 +4992,20 @@
           "mfa_enabled": {
             "type": "boolean",
             "description": "A verified TOTP authenticator is required at login."
+          }
+        }
+      },
+      "UserIdentities": {
+        "type": "object",
+        "required": [
+          "identities"
+        ],
+        "properties": {
+          "identities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LinkedIdentity"
+            }
           }
         }
       },

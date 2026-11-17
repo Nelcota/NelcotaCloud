@@ -247,6 +247,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/v1/admin/users/{user_id}/identities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /admin/users/{user_id}/identities`: the social logins linked to the user. */
+        get: operations["list_user_identities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/v1/admin/users/{user_id}/logout": {
         parameters: {
             query?: never;
@@ -1214,6 +1231,13 @@ export interface components {
             kind: string;
             name: string;
         };
+        /** @description An external account linked to a user, without the provider's user id. */
+        LinkedIdentity: {
+            /** Format: date-time */
+            linked_at: string;
+            /** @description `google` or `github`. */
+            provider: string;
+        };
         LogInBody: {
             email: string;
             password: string;
@@ -1426,6 +1450,9 @@ export interface components {
             id: string;
             /** @description A verified TOTP authenticator is required at login. */
             mfa_enabled: boolean;
+        };
+        UserIdentities: {
+            identities: components["schemas"]["LinkedIdentity"][];
         };
         /** @description One page of users, newest first, and how many match in total. */
         UserPage: {
@@ -2208,6 +2235,47 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["User"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such user */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_user_identities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the user */
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Linked identities, oldest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserIdentities"];
                 };
             };
             /** @description Requires the secret API key, or membership in the project */
