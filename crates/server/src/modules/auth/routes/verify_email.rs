@@ -12,6 +12,7 @@ use crate::modules::auth::user::user_record::User;
 use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
+use crate::shared::http::client_ip::ClientIp;
 use crate::shared::http::validated_json::ValidatedJson;
 
 /// `POST /verify-email`: consuming the link and marking the email verified are one transaction.
@@ -29,8 +30,13 @@ use crate::shared::http::validated_json::ValidatedJson;
 pub async fn verify_email(
     State(state): State<AppState>,
     tenant: TenantContext,
+    ClientIp(client_ip): ClientIp,
     ValidatedJson(body): ValidatedJson<OneTimeTokenBody>,
 ) -> Result<Json<User>, ApiError> {
+    state
+        .rate_limits
+        .token_redemption
+        .check(tenant.tenant_id, client_ip)?;
     let webhooks = state.webhooks.recorder(tenant.tenant_id).await?;
     let mut transaction = tenant.pool.begin().await?;
     let purpose = OneTimeTokenPurpose::EmailVerification;

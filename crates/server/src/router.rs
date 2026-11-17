@@ -2,13 +2,16 @@ use std::future::ready;
 use std::sync::Arc;
 use std::time::Duration;
 
+use axum::http::StatusCode;
 use axum::http::header::{ACCEPT, AUTHORIZATION, CACHE_CONTROL, CONTENT_RANGE, CONTENT_TYPE};
 use axum::http::{HeaderName, HeaderValue, Method};
+use axum::middleware;
 use axum::routing::get;
 use axum::{Json, Router};
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::request_id::PropagateRequestIdLayer;
 use tower_http::set_header::{SetRequestHeaderLayer, SetResponseHeaderLayer};
+use tower_http::timeout::{RequestBodyTimeoutLayer, TimeoutLayer};
 use tower_http::trace::{DefaultOnResponse, TraceLayer};
 use tracing::Level;
 use utoipa::OpenApi;
@@ -18,6 +21,7 @@ use utoipa_axum::routes;
 use crate::api_doc::ApiDoc;
 use crate::app_state::AppState;
 use crate::health;
+use crate::modules::auth::rate_limiting::request_limit::limit_client_requests;
 use crate::modules::auth::routes::auth_routes::auth_routes;
 use crate::modules::database::query::preferences::PREFER_HEADER;
 use crate::modules::database::routes::database_routes::database_routes;
@@ -34,6 +38,9 @@ use crate::shared::http::request_span::request_span;
 /// calls with the `apikey` header skip the extra OPTIONS round trip.
 const CORS_PREFLIGHT_MAX_AGE: Duration = Duration::from_secs(2 * 60 * 60);
 
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
+const REQUEST_BODY_TIMEOUT: Duration = Duration::from_secs(30);
+
 /// Public: SDK generators and the console read the API description here.
 const OPENAPI_PATH: &str = "/openapi.json";
 
@@ -47,12 +54,21 @@ pub fn build_router(state: AppState) -> Router {
         get(move || ready(Json(Arc::clone(&document)))),
     );
 
-    with_http_layers(router).with_state(state)
+    with_http_layers(router, state.clone()).with_state(state)
 }
 
-/// Caching, access log, request ids and CORS, around every route.
-fn with_http_layers(router: Router<AppState>) -> Router<AppState> {
+/// Limits, timeouts, caching, access log, request ids and CORS, around every route. The limit
+/// and timeouts are innermost, so their refusals still carry the request id and CORS headers.
+fn with_http_layers(router: Router<AppState>, state: AppState) -> Router<AppState> {
     router
+        .layer(middleware::from_fn_with_state(state, limit_client_requests))
+        // A slow client cannot hold a request open: the body must arrive in time, and no
+        // request outlives the longest legitimate work (a 30 s service query, plus margin).
+        .layer(RequestBodyTimeoutLayer::new(REQUEST_BODY_TIMEOUT))
+        .layer(TimeoutLayer::with_status_code(
+            StatusCode::GATEWAY_TIMEOUT,
+            REQUEST_TIMEOUT,
+        ))
         // Responses carry tokens and personal data: no browser, proxy or CDN may keep a copy
         // (RFC 6749, section 5.1). A route that sets its own Cache-Control keeps it.
         .layer(SetResponseHeaderLayer::if_not_present(

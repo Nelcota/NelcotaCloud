@@ -60,10 +60,14 @@ function TotalLabel({ total }: { total: number | null }): JSX.Element | null {
   return <> de {total.toLocaleString('pt-BR')}</>
 }
 
-/** Without a count, a full page means there may be more. */
+/** Only a full page may have more after it; a count (maybe an estimate) can only rule it out. */
 function hasMore(lastShown: number, props: RowsPaginationProps): boolean {
+  if (props.shown < props.pageSize) {
+    return false
+  }
+
   if (props.total === null) {
-    return props.shown === props.pageSize
+    return true
   }
 
   return lastShown < props.total

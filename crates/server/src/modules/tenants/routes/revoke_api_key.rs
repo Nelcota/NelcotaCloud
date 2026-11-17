@@ -29,6 +29,8 @@ pub async fn revoke_api_key(
     Path(key_id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
     let revocation = revoke(&state.control_plane_pool, admin.tenant_id, key_id).await;
+    // Forgotten whatever the outcome: a stale entry must never outlive a revocation.
+    state.api_keys.forget_all();
 
     match revocation {
         Ok(()) => Ok(StatusCode::NO_CONTENT),

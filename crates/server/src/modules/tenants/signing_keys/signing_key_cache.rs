@@ -9,6 +9,7 @@ use crate::modules::tenants::signing_keys::signing_key_repository::{
     SigningKeyStoreError, load_signing_keys,
 };
 use crate::modules::tenants::signing_keys::tenant_signing_keys::TenantSigningKeys;
+use crate::shared::cache::cache_generation::CacheGeneration;
 use crate::shared::crypto::secret_box::SecretBox;
 
 /// Keys are reloaded after this long, so a future key rotation reaches every instance soon.
@@ -23,7 +24,8 @@ const MAX_CACHED_TENANTS: u64 = 10_000;
 pub struct SigningKeyCache {
     control_plane_pool: PgPool,
     secret_box: Arc<SecretBox>,
-    entries: Cache<Uuid, Arc<TenantSigningKeys>>,
+    entries: Cache<(Uuid, u64), Arc<TenantSigningKeys>>,
+    generation: CacheGeneration,
 }
 
 impl SigningKeyCache {
@@ -37,6 +39,7 @@ impl SigningKeyCache {
             control_plane_pool,
             secret_box,
             entries,
+            generation: CacheGeneration::new(),
         }
     }
 
@@ -52,12 +55,15 @@ impl SigningKeyCache {
             Ok(Arc::new(keys))
         };
 
-        self.entries.try_get_with(tenant_id, load).await
+        let cache_key = (tenant_id, self.generation.current());
+
+        self.entries.try_get_with(cache_key, load).await
     }
 
-    /// Drops the cached keys, so this instance uses a rotated key right away. Other instances
-    /// pick it up within the cache lifetime; tokens of the old key keep verifying meanwhile.
-    pub async fn forget(&self, tenant_id: Uuid) {
-        self.entries.invalidate(&tenant_id).await;
+    /// Forgets the cached keys after a rotation or removal committed, so this instance uses a
+    /// rotated key right away. Other instances pick it up within the cache lifetime; tokens of
+    /// the old key keep verifying meanwhile.
+    pub fn forget_all(&self) {
+        self.generation.advance();
     }
 }

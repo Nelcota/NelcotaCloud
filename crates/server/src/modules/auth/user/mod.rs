@@ -6,6 +6,7 @@ pub mod user_account_updates;
 pub mod user_administration;
 pub mod user_events;
 pub mod user_listing;
+pub mod user_locks;
 pub mod user_lookup;
 pub mod user_metadata;
 pub mod user_metadata_update;

@@ -1,6 +1,7 @@
 use oauth2::url::form_urlencoded;
 
 use crate::modules::database::query::condition::{Condition, GroupKind};
+use crate::modules::database::query::embed_paths::ensure_known_paths;
 use crate::modules::database::query::filter_parser::parse_filter;
 use crate::modules::database::query::logic_tree_parser::parse_logic_tree;
 use crate::modules::database::query::order_parser::parse_order;
@@ -13,12 +14,16 @@ const ON_CONFLICT_PARAMETER: &str = "on_conflict";
 /// Bounds the work one URL can ask for.
 const MAX_PARAMETERS: usize = 100;
 const MAX_PATH_DEPTH: usize = 3;
+/// `not.or=(...)`: the negated logic groups.
+const NEGATION_SEGMENT: &str = "not";
 
 /// Parses the query string of a Data API request into a `ReadQuery`.
 pub fn parse_query_string(query_string: &str) -> Result<ReadQuery, DatabaseRejection> {
     let mut query = ReadQuery::default();
+    // One more than allowed is enough to refuse: a huge query string is never collected.
     let parameters: Vec<(String, String)> = form_urlencoded::parse(query_string.as_bytes())
-        .into_owned()
+        .take(MAX_PARAMETERS + 1)
+        .map(|(key, value)| (key.into_owned(), value.into_owned()))
         .collect();
 
     if parameters.len() > MAX_PARAMETERS {
@@ -30,6 +35,8 @@ pub fn parse_query_string(query_string: &str) -> Result<ReadQuery, DatabaseRejec
     for (key, value) in &parameters {
         apply_parameter(&mut query, key, value)?;
     }
+
+    ensure_known_paths(&query)?;
 
     Ok(query)
 }
@@ -60,7 +67,26 @@ fn apply_parameter(query: &mut ReadQuery, key: &str, value: &str) -> Result<(), 
         ));
     }
 
+    if let ("or" | "and", Some(NEGATION_SEGMENT)) =
+        (last.as_str(), segments.last().map(String::as_str))
+    {
+        segments.pop();
+        let group = parse_logic_tree(group_kind(&last), true, value)?;
+        query
+            .node_mut(segments)
+            .conditions
+            .push(Condition::Group(group));
+        return Ok(());
+    }
+
     apply_to_node(query, segments, &last, value)
+}
+
+fn group_kind(name: &str) -> GroupKind {
+    match name {
+        "or" => GroupKind::Or,
+        _ => GroupKind::And,
+    }
 }
 
 fn apply_to_node(
@@ -130,6 +156,19 @@ mod tests {
         let query = parse_query_string("title=eq.hello%20world&on_conflict=id")?;
 
         assert!(query.has_root_conditions());
+        Ok(())
+    }
+
+    #[test]
+    fn negates_logic_groups() -> Result<(), DatabaseRejection> {
+        let query = parse_query_string("not.or=(a.eq.1,b.eq.2)")?;
+        let root = query.root().ok_or(DatabaseRejection::FilterRequired)?;
+        let Some(Condition::Group(group)) = root.conditions.first() else {
+            return Err(DatabaseRejection::FilterRequired);
+        };
+
+        assert!(group.is_negated);
+        assert_eq!(group.kind, GroupKind::Or);
         Ok(())
     }
 

@@ -15,13 +15,13 @@ const WRITTEN_ROWS: &str = "_m";
 pub fn write_statements(
     table: &TableModel,
     query: &ReadQuery,
-    change: &WriteChange,
+    change: WriteChange,
 ) -> Result<Vec<QueryBuilder<Postgres>>, DatabaseRejection> {
     let target = WriteTarget::new(table);
 
     match change {
         WriteChange::Insert(batches) => Ok(batches
-            .iter()
+            .into_iter()
             .map(|batch| {
                 let mut sql = QueryBuilder::new("");
                 target.push_insert(&mut sql, batch);
@@ -49,7 +49,7 @@ pub fn write_returning_statements(
     schema: &SchemaModel,
     table: &TableModel,
     query: &ReadQuery,
-    change: &WriteChange,
+    change: WriteChange,
 ) -> Result<Vec<QueryBuilder<Postgres>>, DatabaseRejection> {
     let target = WriteTarget::new(table);
     let start = || QueryBuilder::new(format!("WITH {WRITTEN_ROWS} AS ("));

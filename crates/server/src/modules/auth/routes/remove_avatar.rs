@@ -24,6 +24,10 @@ pub async fn remove_avatar(
     authenticated: AuthenticatedUser,
 ) -> Result<StatusCode, ApiError> {
     let tenant = &authenticated.tenant;
+    state
+        .rate_limits
+        .avatar_change
+        .check(tenant.tenant_id, authenticated.claims.sub)?;
     let user_id = authenticated.claims.sub;
     let webhooks = state.webhooks.recorder(tenant.tenant_id).await?;
     let mut transaction = tenant.pool.begin().await?;

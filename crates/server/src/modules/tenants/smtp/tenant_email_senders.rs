@@ -14,6 +14,7 @@ use crate::modules::tenants::smtp::smtp_host_policy::{SmtpHostPolicyError, resol
 use crate::modules::tenants::smtp::smtp_settings_repository::{
     find_smtp_settings, smtp_url_context,
 };
+use crate::shared::cache::cache_generation::CacheGeneration;
 use crate::shared::crypto::secret_box::{SecretBox, SecretBoxError};
 use crate::shared::email::email_sender::{EmailError, EmailSender};
 
@@ -48,7 +49,8 @@ pub struct TenantEmailSenders {
     platform_sender: Arc<EmailSender>,
     /// Development only: lets tenants use SMTP servers on local or private hosts.
     allow_any_host: bool,
-    senders: Cache<Uuid, Arc<EmailSender>>,
+    senders: Cache<(Uuid, u64), Arc<EmailSender>>,
+    generation: CacheGeneration,
 }
 
 pub struct TenantEmailSendersConfig {
@@ -71,6 +73,7 @@ impl TenantEmailSenders {
             platform_sender: config.platform_sender,
             allow_any_host: config.allow_any_host,
             senders,
+            generation: CacheGeneration::new(),
         }
     }
 
@@ -78,8 +81,10 @@ impl TenantEmailSenders {
         &self,
         tenant_id: Uuid,
     ) -> Result<Arc<EmailSender>, Arc<TenantSmtpError>> {
+        let cache_key = (tenant_id, self.generation.current());
+
         self.senders
-            .try_get_with(tenant_id, self.load_sender(tenant_id))
+            .try_get_with(cache_key, self.load_sender(tenant_id))
             .await
     }
 
@@ -91,9 +96,9 @@ impl TenantEmailSenders {
         resolve_smtp_endpoint(endpoint, self.allow_any_host == false).await
     }
 
-    /// Drops the cached sender after the tenant changed its settings.
-    pub async fn forget(&self, tenant_id: Uuid) {
-        self.senders.invalidate(&tenant_id).await;
+    /// Forgets the cached senders after a tenant's settings change committed.
+    pub fn forget_all(&self) {
+        self.generation.advance();
     }
 
     fn open_smtp_url(&self, tenant_id: Uuid, ciphertext: &[u8]) -> Result<String, TenantSmtpError> {

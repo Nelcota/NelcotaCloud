@@ -48,7 +48,7 @@ pub fn request_email_link(
         client_ip: request.client_ip,
     };
     // Applies to unknown emails too, so the limit itself reveals nothing about accounts.
-    state.rate_limits.email_delivery.check(&attempt)?;
+    state.rate_limits.check_email(&attempt)?;
     let job = EmailLinkJob {
         mailer: state.auth_mailer(),
         webhooks: Arc::clone(&state.webhooks),

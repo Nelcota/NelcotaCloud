@@ -28,9 +28,16 @@ pub struct BackendIdentity {
     pub started_at: OffsetDateTime,
 }
 
-/// Selects the backend's own id and start time, for `BackendIdentity`.
-pub const BACKEND_IDENTITY_COLUMNS: &str =
-    "pg_backend_pid(), (SELECT backend_start FROM pg_stat_activity WHERE pid = pg_backend_pid())";
+/// Selects the backend's own id and start time, for `BackendIdentity`. A macro so statements
+/// can `concat!` it into a constant. `pg_stat_get_activity(pid)` builds only this backend's row,
+/// where the `pg_stat_activity` view would list every backend of the server.
+macro_rules! backend_identity_columns {
+    () => {
+        "pg_backend_pid(), (SELECT backend_start FROM pg_stat_get_activity(pg_backend_pid()))"
+    };
+}
+
+pub(crate) use backend_identity_columns;
 
 impl QueryGuard {
     /// Runs a Data API query: Postgres errors become the refusals clients act on.

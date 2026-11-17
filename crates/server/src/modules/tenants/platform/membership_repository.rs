@@ -62,20 +62,26 @@ pub async fn find_project_role(
     parse_role(raw_role)
 }
 
-/// Like `find_project_role`, holding the membership until the caller's transaction ends, so
-/// role changes and ownership transfers (which lock every membership) wait for it.
+/// Like `find_project_role`, after locking every membership of the project.
+///
+/// Locked `FOR UPDATE` in account order, the way role changes and ownership transfers do: they
+/// wait for each other, and deleting the project (which deletes its memberships) cannot
+/// deadlock with them.
 pub async fn lock_project_role(
     connection: &mut PgConnection,
     tenant_id: Uuid,
     account_id: Uuid,
 ) -> Result<Option<ProjectRole>, MembershipError> {
-    let raw_role: Option<String> = sqlx::query_scalar(
-        "SELECT role FROM tenant_members WHERE tenant_id = $1 AND account_id = $2 FOR SHARE",
+    let memberships: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT account_id, role FROM tenant_members WHERE tenant_id = $1 ORDER BY account_id FOR UPDATE",
     )
     .bind(tenant_id)
-    .bind(account_id)
-    .fetch_optional(connection)
+    .fetch_all(connection)
     .await?;
+    let raw_role = memberships
+        .into_iter()
+        .find(|(member_id, _)| *member_id == account_id)
+        .map(|(_, role)| role);
 
     parse_role(raw_role)
 }

@@ -34,6 +34,10 @@ pub async fn verify_magic_link(
     ClientIp(client_ip): ClientIp,
     ValidatedJson(body): ValidatedJson<OneTimeTokenBody>,
 ) -> Result<Json<LoginResponse>, ApiError> {
+    state
+        .rate_limits
+        .token_redemption
+        .check(tenant.tenant_id, client_ip)?;
     let response = redeem_magic_link(&state, &tenant, &body.token).await?;
     let login = (LoginMethod::MagicLink, client_ip);
     record_login(&tenant.pool, &response, login).await;

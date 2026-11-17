@@ -97,7 +97,7 @@ impl WebhookEndpointStore<'_> {
             return Err(WebhookEndpointError::NotFound);
         }
 
-        self.subscriptions.forget(tenant_id).await;
+        self.subscriptions.forget_all();
 
         if update.is_enabled == Some(false) {
             mark_due_now(self.control_plane_pool, &[tenant_id]).await?;
@@ -115,7 +115,7 @@ impl WebhookEndpointStore<'_> {
             return Err(WebhookEndpointError::NotFound);
         }
 
-        self.subscriptions.forget(tenant_id).await;
+        self.subscriptions.forget_all();
         // The worker gives up the endpoint's pending deliveries on its next look.
         mark_due_now(self.control_plane_pool, &[tenant_id]).await?;
 
@@ -159,7 +159,7 @@ impl WebhookEndpointStore<'_> {
         endpoint_id: Uuid,
         secret: &WebhookSecret,
     ) -> Result<WebhookEndpointWithSecret, WebhookEndpointError> {
-        self.subscriptions.forget(tenant_id).await;
+        self.subscriptions.forget_all();
         let endpoint = self.view(tenant_id, endpoint_id).await?;
 
         Ok(WebhookEndpointWithSecret {

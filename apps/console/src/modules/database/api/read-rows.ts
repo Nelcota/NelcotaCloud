@@ -12,24 +12,37 @@ export type RowsPageQuery = {
   limit: number
   /** Sorted by this column so pages stay stable; `null` reads them unsorted. */
   orderColumn: string | null
+}
+
+export type CountQuery = {
+  table: string
   /** The planner's estimate of the table's rows; `null` before it was ever analyzed. */
   estimatedRows: number | null
 }
 
-/** Past this many rows a full `count(*)` per page costs too much; the estimate is shown. */
+/** Past this many rows a full `count(*)` costs too much; the planner's estimate is shown. */
 const EXACT_COUNT_LIMIT = 100_000
 
-export type RowsPage = { rows: TableRow[]; total: number | null }
+export type RowsPage = { rows: TableRow[] }
 
-/** One page of a table's rows, counted (estimated for large tables). The console reads them past row level security. */
+/** One page of a table's rows. The console reads them past row level security. */
 export async function readRows(projectId: string, query: RowsPageQuery): Promise<RowsPage> {
-  const headers = { ...projectHeaders(projectId), Prefer: countPreference(query.estimatedRows) }
+  const headers = projectHeaders(projectId)
   const page = { limit: query.limit, offset: query.offset, ...orderQuery(query.orderColumn) }
   const params = { path: { table: query.table }, query: page }
-  const result = await apiClient.GET('/rest/v1/{table}', { headers, params })
-  const rows = dataOf(result)
+  const rows = dataOf(await apiClient.GET('/rest/v1/{table}', { headers, params }))
 
-  return { rows: rows.filter(isRow), total: totalOf(result.response.headers.get('Content-Range')) }
+  return { rows: rows.filter(isRow) }
+}
+
+/** How many rows the table has: no rows are read (`limit=0`), only counted, once per table. */
+export async function countRows(projectId: string, query: CountQuery): Promise<number | null> {
+  const headers = { ...projectHeaders(projectId), Prefer: countPreference(query.estimatedRows) }
+  const params = { path: { table: query.table }, query: { limit: 0 } }
+  const result = await apiClient.GET('/rest/v1/{table}', { headers, params })
+  dataOf(result)
+
+  return totalOf(result.response.headers.get('Content-Range'))
 }
 
 function countPreference(estimatedRows: number | null): string {

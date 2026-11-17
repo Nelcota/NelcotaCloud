@@ -11,6 +11,7 @@ use crate::modules::database::execution::session_slots::SessionSlots;
 use crate::modules::database::schema::schema_cache::SchemaCache;
 use crate::modules::oauth::login::oauth_state_repository::delete_expired_authorizations;
 use crate::modules::oauth::provider::provider_endpoints::OAuthEndpoints;
+use crate::modules::tenants::api_keys::api_key_cache::ApiKeyCache;
 use crate::modules::tenants::database::tenant_pool_registry::TenantPoolRegistry;
 use crate::modules::tenants::platform::platform_tenant::PlatformTenantDirectory;
 use crate::modules::tenants::provisioning::tenant_slug::TenantSlug;
@@ -71,6 +72,7 @@ pub async fn build_app_state_with_endpoints(
         schema_cache: Arc::new(SchemaCache::new()),
         data_api_slots: Arc::new(SessionSlots::new()),
         signing_keys: Arc::new(signing_key_cache(&control_plane_pool, &secret_box)),
+        api_keys: Arc::new(ApiKeyCache::new(control_plane_pool.clone())),
         platform_tenant: Arc::new(platform_tenant_directory(config, &control_plane_pool)?),
         rate_limits,
         email_senders: Arc::new(email_senders),

@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 use crate::modules::webhooks::endpoint::webhook_endpoint_repository::list_endpoints;
 use crate::modules::webhooks::event::webhook_event_type::{UnknownEventType, WebhookEventType};
+use crate::shared::cache::cache_generation::CacheGeneration;
 
 /// Changes made through this instance invalidate at once; the time bound only matters when
 /// another instance changed them.
@@ -32,7 +33,8 @@ pub struct SubscribedEndpoint {
 /// read the control plane: most tenants have no endpoint, and then nothing is recorded.
 pub struct WebhookSubscriptions {
     control_plane_pool: PgPool,
-    cache: Cache<Uuid, Arc<Vec<SubscribedEndpoint>>>,
+    cache: Cache<(Uuid, u64), Arc<Vec<SubscribedEndpoint>>>,
+    generation: CacheGeneration,
 }
 
 impl WebhookSubscriptions {
@@ -45,6 +47,7 @@ impl WebhookSubscriptions {
         Self {
             control_plane_pool,
             cache,
+            generation: CacheGeneration::new(),
         }
     }
 
@@ -53,13 +56,16 @@ impl WebhookSubscriptions {
         &self,
         tenant_id: Uuid,
     ) -> Result<Arc<Vec<SubscribedEndpoint>>, Arc<SubscriptionsError>> {
+        let cache_key = (tenant_id, self.generation.current());
+
         self.cache
-            .try_get_with(tenant_id, self.load(tenant_id))
+            .try_get_with(cache_key, self.load(tenant_id))
             .await
     }
 
-    pub async fn forget(&self, tenant_id: Uuid) {
-        self.cache.invalidate(&tenant_id).await;
+    /// Forgets the cached subscriptions after an endpoint change committed.
+    pub fn forget_all(&self) {
+        self.generation.advance();
     }
 
     async fn load(

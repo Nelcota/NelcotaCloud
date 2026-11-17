@@ -7,6 +7,8 @@ use crate::shared::database::sql_identifier::quote_identifier;
 
 const VOID_TYPE: &str = "void";
 const ARRAY_SUFFIX: &str = "[]";
+/// Arguments that take any JSON value as JSON text.
+const JSON_TYPES: [&str; 2] = ["json", "jsonb"];
 
 /// `SELECT <json>::text FROM public."fn"("a" := CAST($1 AS integer), ...) _r`: named arguments
 /// from the JSON body, each cast to the argument's type by Postgres.
@@ -41,7 +43,8 @@ pub fn function_call_statement(
 }
 
 /// JSON arrays become Postgres arrays element by element; every other value is cast from its
-/// text (strings) or JSON text (numbers, booleans, objects).
+/// text (strings) or JSON text (numbers, booleans, objects, and anything for a `json` or
+/// `jsonb` argument, so a string stays a JSON string).
 fn push_argument(sql: &mut QueryBuilder<Postgres>, argument: &ArgumentModel, value: &Value) {
     let type_name = &argument.type_name;
     sql.push(format!("{} := ", quote_identifier(&argument.name)));
@@ -53,14 +56,33 @@ fn push_argument(sql: &mut QueryBuilder<Postgres>, argument: &ArgumentModel, val
         return;
     }
 
-    sql.push("CAST(").push_bind(argument_text(value));
+    sql.push("CAST(").push_bind(argument_text(value, type_name));
     sql.push(format!(" AS {type_name})"));
 }
 
-fn argument_text(value: &Value) -> Option<String> {
-    match value {
-        Value::Null => None,
-        Value::String(text) => Some(text.clone()),
-        other => Some(other.to_string()),
+fn argument_text(value: &Value, type_name: &str) -> Option<String> {
+    match (value, type_name) {
+        (Value::Null, _) => None,
+        (Value::String(text), type_name) if JSON_TYPES.contains(&type_name) == false => {
+            Some(text.clone())
+        }
+        (other, _) => Some(other.to_string()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn json_arguments_keep_strings_as_json() {
+        let text = json!("hello");
+
+        assert_eq!(argument_text(&text, "jsonb").as_deref(), Some("\"hello\""));
+        assert_eq!(argument_text(&text, "text").as_deref(), Some("hello"));
+        assert_eq!(argument_text(&json!(null), "jsonb"), None);
+        assert_eq!(argument_text(&json!(2), "integer").as_deref(), Some("2"));
     }
 }

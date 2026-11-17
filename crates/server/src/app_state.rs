@@ -11,6 +11,7 @@ use crate::modules::database::execution::session_slots::SessionSlots;
 use crate::modules::database::schema::schema_cache::SchemaCache;
 use crate::modules::oauth::login::oauth_login_context::OAuthLoginContext;
 use crate::modules::oauth::provider::provider_endpoints::OAuthEndpoints;
+use crate::modules::tenants::api_keys::api_key_cache::ApiKeyCache;
 use crate::modules::tenants::database::tenant_pool_registry::TenantPoolRegistry;
 use crate::modules::tenants::platform::platform_tenant::PlatformTenantDirectory;
 use crate::modules::tenants::provisioning::tenant_provisioner::TenantProvisioner;
@@ -34,6 +35,8 @@ pub struct AppState {
     pub data_api_slots: Arc<SessionSlots>,
     pub secret_box: Arc<SecretBox>,
     pub signing_keys: Arc<SigningKeyCache>,
+    /// Owners of active API keys, so app requests skip the control plane.
+    pub api_keys: Arc<ApiKeyCache>,
     pub platform_tenant: Arc<PlatformTenantDirectory>,
     pub rate_limits: Arc<RateLimits>,
     /// Each tenant's SMTP sender: its own server, or the platform's.
@@ -57,6 +60,7 @@ impl AppState {
             control_plane_pool: &self.control_plane_pool,
             tenant_pools: &self.tenant_pools,
             signing_keys: &self.signing_keys,
+            api_keys: &self.api_keys,
         }
     }
 

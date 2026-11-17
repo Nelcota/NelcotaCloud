@@ -25,11 +25,9 @@ impl AccountLimiter {
     pub fn check(&self, tenant_id: Uuid, user_id: Uuid) -> Result<(), AttemptRejected> {
         let key = AccountKey { tenant_id, user_id };
 
-        if self.limiter.check_key(&key).is_err() {
-            return Err(AttemptRejected);
-        }
-
-        Ok(())
+        self.limiter
+            .check_key(&key)
+            .map_err(|not_until| AttemptRejected::waiting(&not_until))
     }
 
     /// Drops keys whose limit has fully replenished.

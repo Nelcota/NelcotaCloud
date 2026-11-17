@@ -4,6 +4,9 @@ import type { JSX } from 'react'
 
 import { Button } from '@/shared/ui/button'
 
+/** The API's largest `offset`: pages past it cannot be read. */
+const MAX_OFFSET = 100_000
+
 type UsersPaginationProps = {
   offset: number
   pageSize: number
@@ -16,17 +19,23 @@ type UsersPaginationProps = {
 export function UsersPagination(props: UsersPaginationProps): JSX.Element | null {
   const { offset, pageSize, total } = props
 
-  if (total === undefined || total <= pageSize) {
+  if (total === undefined) {
+    return null
+  }
+
+  // Past the first page it stays, even when deletions shrank the total, so the way back remains.
+  if (offset === 0 && total <= pageSize) {
     return null
   }
 
   const lastShown = Math.min(offset + pageSize, total)
+  const nextOffset = offset + pageSize
 
   return (
     <nav aria-label="Páginas de usuários" className="flex items-center justify-end gap-3">
       <p className="text-muted-foreground text-sm">
-        {(offset + 1).toLocaleString('pt-BR')}–{lastShown.toLocaleString('pt-BR')} de{' '}
-        {total.toLocaleString('pt-BR')}
+        {Math.min(offset + 1, lastShown).toLocaleString('pt-BR')}–
+        {lastShown.toLocaleString('pt-BR')} de {total.toLocaleString('pt-BR')}
       </p>
       <Button
         variant="outline"
@@ -40,8 +49,8 @@ export function UsersPagination(props: UsersPaginationProps): JSX.Element | null
       <Button
         variant="outline"
         size="sm"
-        disabled={lastShown >= total}
-        onClick={() => props.onOffsetChange(offset + pageSize)}
+        disabled={lastShown >= total || nextOffset > MAX_OFFSET}
+        onClick={() => props.onOffsetChange(nextOffset)}
       >
         Mais antigos
         <ChevronRight />

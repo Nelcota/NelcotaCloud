@@ -20,6 +20,13 @@ export function isUser(value: unknown): value is User {
     typeof value.created_at === 'string' &&
     typeof value.mfa_enabled === 'boolean' &&
     isNullableString(value.email_verified_at) &&
-    isNullableString(value.banned_at)
+    isNullableString(value.banned_at) &&
+    isOptionalRecord(value.user_metadata) &&
+    isOptionalRecord(value.app_metadata)
   )
+}
+
+/** Sessions stored before metadata existed have none. */
+function isOptionalRecord(value: unknown): boolean {
+  return value === undefined || isRecord(value)
 }

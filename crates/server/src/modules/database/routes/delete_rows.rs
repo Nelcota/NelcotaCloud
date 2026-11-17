@@ -36,7 +36,7 @@ pub async fn delete_rows(
     RawQuery(query_string): RawQuery,
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
-    let request = write_request(query_string.as_deref(), &headers, &[])?;
+    let mut request = write_request(query_string.as_deref(), &headers, &[])?;
     let status = request.success_status();
     let result = write_rows(&state, &caller, request.write(WriteKind::Delete, &table)).await?;
 

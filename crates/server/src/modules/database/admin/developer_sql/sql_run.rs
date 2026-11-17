@@ -94,14 +94,22 @@ impl SqlResult {
 
         self.row_count = self.row_count.saturating_add(1);
 
-        if self.rows.len() >= MAX_RESULT_ROWS || self.kept_bytes >= MAX_RESULT_BYTES {
+        if self.rows.len() >= MAX_RESULT_ROWS || self.is_truncated {
             self.is_truncated = true;
             return;
         }
 
         let values = row_values(row);
         let row_bytes: usize = values.iter().flatten().map(String::len).sum();
-        self.kept_bytes = self.kept_bytes.saturating_add(row_bytes);
+        let kept_bytes = self.kept_bytes.saturating_add(row_bytes);
+
+        // Checked before keeping the row, so one wide row cannot overshoot the budget.
+        if kept_bytes > MAX_RESULT_BYTES {
+            self.is_truncated = true;
+            return;
+        }
+
+        self.kept_bytes = kept_bytes;
         self.rows.push(values);
     }
 }

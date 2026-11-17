@@ -14,7 +14,14 @@ function shouldRetry(failureCount: number, error: Error): boolean {
   return failureCount < MAX_RETRIES
 }
 
+/**
+ * Data stays fresh this long: opening a page again or focusing the window within it reuses
+ * the cache instead of asking the API (each console request also checks the membership).
+ * Changes made here invalidate their queries right away.
+ */
+const FRESH_FOR_MILLISECONDS = 30_000
+
 /** One cache for the whole console. */
 export const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: shouldRetry } },
+  defaultOptions: { queries: { retry: shouldRetry, staleTime: FRESH_FOR_MILLISECONDS } },
 })

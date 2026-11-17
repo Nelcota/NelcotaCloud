@@ -17,6 +17,7 @@ use crate::modules::team::member::team_member_repository::is_member_email;
 use crate::modules::team::rejection::team_rejection::TeamRejection;
 use crate::modules::tenants::platform::platform_account::PlatformAccount;
 use crate::modules::tenants::platform::project_access::require_owner;
+use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::client_ip::ClientIp;
 use crate::shared::http::validated_json::ValidatedJson;
@@ -60,7 +61,11 @@ pub async fn invite_member(
         email: email.as_str(),
         client_ip,
     };
-    state.rate_limits.email_delivery.check(&attempt)?;
+    state.rate_limits.check_email(&attempt)?;
+    state
+        .rate_limits
+        .invitations
+        .check(Uuid::nil(), account.account_id)?;
     let invitation = store_invitation(&state, &account, project_id, &email).await?;
     let notice = InvitationNotice {
         project_id,
@@ -95,6 +100,7 @@ async fn store_invitation(
         .await
         .map_err(|error| match error {
             InvitationError::AlreadyInvited => ApiError::from(TeamRejection::AlreadyInvited),
+            InvitationError::NotOwner => ApiError::from(TenantsRejection::ProjectAccessDenied),
             InvitationError::Database(_) => ApiError::internal(error),
         })
 }

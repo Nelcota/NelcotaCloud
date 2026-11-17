@@ -8,7 +8,7 @@ use crate::modules::auth::one_time_token::one_time_token_repository::consume_one
 use crate::modules::auth::rejection::auth_rejection::AuthRejection;
 use crate::modules::auth::session::session_family::SessionFamily;
 use crate::modules::auth::session::session_grant::{SessionGrant, SessionRequest};
-use crate::modules::auth::user::user_lookup::find_user_by_id;
+use crate::modules::auth::user::user_locks::lock_user_by_id;
 use crate::modules::auth::user::user_record::User;
 use crate::modules::auth::user::verified_inbox_claim::claim_verified_inbox;
 use crate::modules::tenants::access::tenant_context::TenantContext;
@@ -62,7 +62,7 @@ async fn verify_inbox_owner(
     user_id: Uuid,
     webhooks: &WebhookRecorder,
 ) -> Result<User, ApiError> {
-    let user = find_user_by_id(&mut *transaction, user_id).await?;
+    let user = lock_user_by_id(&mut *transaction, user_id).await?;
     let Some(user) = user else {
         return Err(ApiError::from(AuthRejection::InvalidToken));
     };

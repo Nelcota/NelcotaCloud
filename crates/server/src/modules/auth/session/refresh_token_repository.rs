@@ -3,6 +3,11 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::modules::auth::session::session_family::SessionFamily;
+use crate::modules::auth::user::user_record::{User, user_columns};
+
+/// A rotated token presented again within this many seconds is refused but not treated as
+/// stolen (a racing tab or retry); later, it ends the whole session.
+const REUSE_GRACE_SECONDS: f64 = 10.0;
 
 pub struct NewRefreshToken<'a> {
     pub user_id: Uuid,
@@ -12,13 +17,11 @@ pub struct NewRefreshToken<'a> {
     pub lifetime_seconds: i64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug)]
 pub enum RefreshTokenStatus {
-    /// The token was valid and is now revoked; the caller issues its successor.
-    Consumed {
-        user_id: Uuid,
-        family: SessionFamily,
-    },
+    /// The token was valid and is now revoked; the caller issues its successor. The user is
+    /// read in the same statement, so a refresh costs no second lookup.
+    Consumed { user: User, family: SessionFamily },
     /// The token was already used: someone may hold a stolen copy.
     Reused { family_id: Uuid },
     /// Unknown, expired, or its session was ended.
@@ -46,12 +49,25 @@ pub async fn insert_refresh_token(
     Ok(())
 }
 
-const CONSUME_REFRESH_TOKEN: &str = "UPDATE refresh_tokens AS token SET revoked_at = now() FROM users \
+const CONSUME_REFRESH_TOKEN: &str = concat!(
+    "WITH consumed AS (UPDATE refresh_tokens AS token SET revoked_at = now() FROM users \
      WHERE token.token_hash = $1 AND token.revoked_at IS NULL AND token.expires_at > now() \
      AND users.id = token.user_id AND users.banned_at IS NULL \
      AND (users.sessions_invalidated_at IS NULL OR token.family_started_at > users.sessions_invalidated_at) \
      AND NOT EXISTS (SELECT 1 FROM revoked_token_families revoked WHERE revoked.family_id = token.family_id) \
-     RETURNING token.user_id, token.family_id, token.family_started_at";
+     RETURNING token.user_id, token.family_id, token.family_started_at)      SELECT ",
+    user_columns!(),
+    ", consumed.family_id AS consumed_family_id,      consumed.family_started_at AS consumed_family_started_at      FROM users JOIN consumed ON users.id = consumed.user_id"
+);
+
+/// A consumed token's user and session family.
+#[derive(sqlx::FromRow)]
+struct ConsumedToken {
+    #[sqlx(flatten)]
+    user: User,
+    consumed_family_id: Uuid,
+    consumed_family_started_at: OffsetDateTime,
+}
 
 /// Consumes a refresh token, or reports it as reused or invalid.
 ///
@@ -62,35 +78,45 @@ pub async fn consume_refresh_token(
     pool: &PgPool,
     token_hash: &[u8],
 ) -> Result<RefreshTokenStatus, sqlx::Error> {
-    let consumed: Option<(Uuid, Uuid, OffsetDateTime)> = sqlx::query_as(CONSUME_REFRESH_TOKEN)
+    let consumed: Option<ConsumedToken> = sqlx::query_as(CONSUME_REFRESH_TOKEN)
         .bind(token_hash)
         .fetch_optional(pool)
         .await?;
 
-    let Some((user_id, family_id, started_at)) = consumed else {
+    let Some(consumed) = consumed else {
         return find_reused_family(pool, token_hash).await;
     };
     let family = SessionFamily {
-        id: family_id,
-        started_at: Some(started_at),
+        id: consumed.consumed_family_id,
+        started_at: Some(consumed.consumed_family_started_at),
     };
 
-    Ok(RefreshTokenStatus::Consumed { user_id, family })
+    Ok(RefreshTokenStatus::Consumed {
+        user: consumed.user,
+        family,
+    })
 }
 
 async fn find_reused_family(
     pool: &PgPool,
     token_hash: &[u8],
 ) -> Result<RefreshTokenStatus, sqlx::Error> {
-    let revoked_family: Option<Uuid> = sqlx::query_scalar(
-        "SELECT family_id FROM refresh_tokens WHERE token_hash = $1 AND revoked_at IS NOT NULL",
+    // A token rotated moments ago is most likely a second tab or a retried request racing the
+    // rotation, not a thief: it is refused without ending the session the user still holds.
+    let revoked_family: Option<(Uuid, bool)> = sqlx::query_as(
+        "SELECT family_id, revoked_at > now() - make_interval(secs => $2)          FROM refresh_tokens WHERE token_hash = $1 AND revoked_at IS NOT NULL",
     )
     .bind(token_hash)
+    .bind(REUSE_GRACE_SECONDS)
     .fetch_optional(pool)
     .await?;
-    let Some(family_id) = revoked_family else {
+    let Some((family_id, is_within_grace)) = revoked_family else {
         return Ok(RefreshTokenStatus::Invalid);
     };
+
+    if is_within_grace {
+        return Ok(RefreshTokenStatus::Invalid);
+    }
 
     Ok(RefreshTokenStatus::Reused { family_id })
 }
@@ -151,8 +177,13 @@ pub async fn end_all_user_sessions(
         "UPDATE refresh_tokens SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL",
     )
     .bind(user_id)
-    .execute(connection)
+    .execute(&mut *connection)
     .await?;
+    // A pending MFA step was opened with the old credentials: it must not start a session.
+    sqlx::query("DELETE FROM mfa_challenges WHERE user_id = $1")
+        .bind(user_id)
+        .execute(connection)
+        .await?;
 
     Ok(())
 }

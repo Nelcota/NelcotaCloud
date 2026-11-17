@@ -11,6 +11,8 @@ const UNIQUE_VIOLATION: &str = "23505";
 pub enum InvitationError {
     #[error("this email already has a pending invitation")]
     AlreadyInvited,
+    #[error("only an owner can invite")]
+    NotOwner,
     #[error("database error while storing an invitation: {0}")]
     Database(#[from] sqlx::Error),
 }
@@ -32,6 +34,9 @@ pub struct NewInvitation<'a> {
 }
 
 /// Invited people join as members; ownership is not handed out by invitation.
+///
+/// Stored only while the inviter is still an owner (their membership locked `FOR SHARE`), so an
+/// owner demoted or removed meanwhile cannot invite.
 pub async fn insert_invitation(
     pool: &PgPool,
     invitation: NewInvitation<'_>,
@@ -44,15 +49,23 @@ pub async fn insert_invitation(
     .bind(invitation.tenant_id)
     .bind(invitation.email)
     .bind(invitation.invited_by)
-    .fetch_one(pool)
+    .fetch_optional(pool)
     .await;
 
-    inserted.map_err(|error| match error.as_database_error() {
+    match inserted {
+        Ok(Some(invitation)) => Ok(invitation),
+        Ok(None) => Err(InvitationError::NotOwner),
+        Err(error) => Err(refusal_of(error)),
+    }
+}
+
+fn refusal_of(error: sqlx::Error) -> InvitationError {
+    match error.as_database_error() {
         Some(database_error) if database_error.code().as_deref() == Some(UNIQUE_VIOLATION) => {
             InvitationError::AlreadyInvited
         }
         _ => InvitationError::Database(error),
-    })
+    }
 }
 
 pub async fn list_project_invitations(
@@ -67,17 +80,27 @@ pub async fn list_project_invitations(
     .await
 }
 
-/// Cancels one of the project's invitations; `false` when it does not exist (anymore).
+/// An owner cancelling one of the project's invitations.
+pub struct InvitationCancellation {
+    pub tenant_id: Uuid,
+    pub invitation_id: Uuid,
+    pub owner_account_id: Uuid,
+}
+
+/// Cancels one of the project's invitations while the account is still an owner (its
+/// membership locked `FOR SHARE`); `false` when there is nothing it may cancel.
 pub async fn delete_project_invitation(
     pool: &PgPool,
-    tenant_id: Uuid,
-    invitation_id: Uuid,
+    cancellation: InvitationCancellation,
 ) -> Result<bool, sqlx::Error> {
-    let result = sqlx::query("DELETE FROM tenant_invitations WHERE tenant_id = $1 AND id = $2")
-        .bind(tenant_id)
-        .bind(invitation_id)
-        .execute(pool)
-        .await?;
+    let result = sqlx::query(
+        "DELETE FROM tenant_invitations WHERE tenant_id = $1 AND id = $2 AND EXISTS          (SELECT 1 FROM tenant_members WHERE tenant_id = $1 AND account_id = $3          AND role = 'owner' FOR SHARE)",
+    )
+    .bind(cancellation.tenant_id)
+    .bind(cancellation.invitation_id)
+    .bind(cancellation.owner_account_id)
+    .execute(pool)
+    .await?;
 
     Ok(result.rows_affected() > 0)
 }

@@ -35,7 +35,7 @@ pub async fn rotate_signing_key(
     let key_id = rotate(&state.control_plane_pool, tenant_id, &state.secret_box)
         .await
         .map_err(ApiError::internal)?;
-    state.signing_keys.forget(tenant_id).await;
+    state.signing_keys.forget_all();
 
     Ok(Json(RotatedSigningKey { key_id }))
 }

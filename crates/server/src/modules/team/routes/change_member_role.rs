@@ -6,7 +6,8 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::app_state::AppState;
-use crate::modules::team::member::ownership_changes::{MembershipTarget, change_member_role};
+use crate::modules::team::member::owner_actions::{OwnerAction, change_member_role};
+use crate::modules::team::member::ownership_changes::MembershipTarget;
 use crate::modules::tenants::platform::platform_account::PlatformAccount;
 use crate::modules::tenants::platform::project_access::require_owner;
 use crate::modules::tenants::platform::project_role::ProjectRole;
@@ -48,7 +49,11 @@ pub async fn change_role(
         tenant_id: project_id,
         account_id: member_id,
     };
-    change_member_role(&state.control_plane_pool, target, body.role).await?;
+    let action = OwnerAction {
+        actor_account_id: account.account_id,
+        target,
+    };
+    change_member_role(&state.control_plane_pool, action, body.role).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

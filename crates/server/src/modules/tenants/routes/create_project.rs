@@ -39,6 +39,10 @@ pub async fn create_project(
         .rate_limits
         .project_creation
         .check(Uuid::nil(), client_ip)?;
+    state
+        .rate_limits
+        .project_creation_per_account
+        .check(Uuid::nil(), account.account_id)?;
     let request = body.into_request(Some(account.account_id))?;
     let created = provision_tenant(&state, request).await?;
 

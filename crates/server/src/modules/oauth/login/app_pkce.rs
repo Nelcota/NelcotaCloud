@@ -1,11 +1,15 @@
 use oauth2::{PkceCodeChallenge, PkceCodeVerifier};
 
-/// RFC 7636 bounds for verifiers; an S256 challenge is 43 characters.
+/// RFC 7636 bounds for verifiers.
 const MIN_PKCE_LENGTH: usize = 43;
 const MAX_PKCE_LENGTH: usize = 128;
+/// An S256 challenge: a SHA-256 digest in unpadded base64url. Any other value never matches.
+const S256_CHALLENGE_LENGTH: usize = 43;
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
-#[error("code_challenge and code_verifier must be 43-128 characters of [A-Za-z0-9-._~]")]
+#[error(
+    "code_challenge must be an S256 challenge (43 characters of [A-Za-z0-9-_]), code_verifier 43-128 characters of [A-Za-z0-9-._~]"
+)]
 pub struct InvalidPkceValue;
 
 /// Validates the app's PKCE challenge.
@@ -15,7 +19,14 @@ pub struct InvalidPkceValue;
 /// stolen or injected code is useless to anyone but the app that started the flow.
 pub fn parse_code_challenge(raw: &str) -> Result<String, InvalidPkceValue> {
     let challenge = raw.trim();
-    check_pkce_value(challenge)?;
+
+    if challenge.len() != S256_CHALLENGE_LENGTH {
+        return Err(InvalidPkceValue);
+    }
+
+    if challenge.chars().all(is_base64url_character) == false {
+        return Err(InvalidPkceValue);
+    }
 
     Ok(challenge.to_owned())
 }
@@ -42,6 +53,10 @@ fn check_pkce_value(value: &str) -> Result<(), InvalidPkceValue> {
     }
 
     Ok(())
+}
+
+fn is_base64url_character(character: char) -> bool {
+    character.is_ascii_alphanumeric() || matches!(character, '-' | '_')
 }
 
 fn is_unreserved_character(character: char) -> bool {
@@ -71,6 +86,7 @@ mod tests {
             "",
             "short",
             "has spaces in the middle of a long enough value here....",
+            "a.long.enough.value.with.dots.is.no.challeng",
             too_long.as_str(),
         ] {
             assert_eq!(parse_code_challenge(raw), Err(InvalidPkceValue));

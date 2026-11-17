@@ -28,13 +28,16 @@ pub fn write_request(
 }
 
 impl WriteRequest {
-    pub fn write<'a>(&'a self, kind: WriteKind, table_name: &'a str) -> RowWrite<'a> {
+    /// Hands the body over (moved, never copied: it may be megabytes of rows).
+    pub fn write<'a>(&'a mut self, kind: WriteKind, table_name: &'a str) -> RowWrite<'a> {
+        let body = std::mem::take(&mut self.body);
+
         RowWrite {
             kind,
             table_name,
             query: &self.query,
             preferences: &self.preferences,
-            body: self.body.clone(),
+            body,
         }
     }
 

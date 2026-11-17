@@ -41,6 +41,10 @@ pub async fn exchange_oauth_code(
     ClientIp(client_ip): ClientIp,
     ValidatedJson(body): ValidatedJson<OAuthCodeBody>,
 ) -> Result<Json<LoginResponse>, ApiError> {
+    state
+        .rate_limits
+        .token_redemption
+        .check(tenant.tenant_id, client_ip)?;
     let exchange = LoginCodeExchange {
         code: &body.code,
         code_verifier: &body.code_verifier,

@@ -43,6 +43,10 @@ pub async fn upload_avatar(
     upload: Result<Bytes, BytesRejection>,
 ) -> Result<Json<User>, ApiError> {
     let tenant = &authenticated.tenant;
+    state
+        .rate_limits
+        .avatar_change
+        .check(tenant.tenant_id, authenticated.claims.sub)?;
     let user_id = authenticated.claims.sub;
     let user = find_user_by_id(&tenant.pool, user_id).await?;
     let Some(mut user) = user else {

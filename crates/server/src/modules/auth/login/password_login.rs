@@ -10,9 +10,10 @@ use crate::modules::auth::session::session_family::SessionFamily;
 use crate::modules::auth::session::session_grant::{SessionGrant, SessionRequest};
 use crate::modules::auth::user::email_address::EmailAddress;
 use crate::modules::auth::user::user_lookup::{
-    find_credentials_by_email, lock_if_password_unchanged,
+    PasswordLock, find_credentials_by_email, lock_if_password_unchanged,
 };
 use crate::modules::tenants::access::tenant_context::TenantContext;
+use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::modules::tenants::settings::email_verification_policy::ensure_email_verified;
 use crate::shared::http::api_error::ApiError;
 
@@ -88,9 +89,9 @@ async fn lock_verified_password(
     let user_id = verified.user.id;
     let password_hash = &verified.password_hash;
 
-    if lock_if_password_unchanged(transaction, user_id, password_hash).await? == false {
-        return Err(ApiError::from(AuthRejection::InvalidCredentials));
+    match lock_if_password_unchanged(transaction, user_id, password_hash).await? {
+        PasswordLock::Locked => Ok(()),
+        PasswordLock::Changed => Err(ApiError::from(AuthRejection::InvalidCredentials)),
+        PasswordLock::Banned => Err(ApiError::from(TenantsRejection::UserBanned)),
     }
-
-    Ok(())
 }

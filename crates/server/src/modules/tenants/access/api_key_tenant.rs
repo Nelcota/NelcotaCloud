@@ -4,7 +4,6 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::modules::tenants::api_keys::api_key_kind::ApiKeyKind;
-use crate::modules::tenants::api_keys::api_key_repository::find_active_api_key_owner;
 use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::shared::crypto::opaque_token::hash_opaque_token;
 use crate::shared::http::api_error::ApiError;
@@ -39,7 +38,9 @@ impl ApiKeyTenant {
     /// Also used directly by routes reached through browser redirects, which cannot send headers.
     pub async fn resolve(state: &AppState, api_key: &str) -> Result<Self, ApiError> {
         let key_hash = hash_opaque_token(api_key.trim());
-        let owner = find_active_api_key_owner(&state.control_plane_pool, &key_hash)
+        let owner = state
+            .api_keys
+            .owner_of(key_hash)
             .await
             .map_err(ApiError::internal)?;
         let Some(owner) = owner else {
