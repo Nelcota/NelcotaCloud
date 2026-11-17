@@ -47,7 +47,7 @@ async fn records_logins_and_failed_attempts() -> TestResult {
         StatusCode::UNAUTHORIZED
     );
     assert_eq!(
-        log_in(&server, &tenant, TEST_PASSWORD).await?,
+        log_in(&server, &tenant, TEST_PASSWORD.as_str()).await?,
         StatusCode::OK
     );
 

@@ -16,7 +16,7 @@ async fn concurrent_first_requests_of_a_new_tenant_all_succeed() -> TestResult {
     let tenant = server.create_tenant().await?;
     let api_key = &tenant.publishable_key;
     let sign_up = |prefix: &'static str| {
-        let body = json!({ "email": unique_email(prefix), "password": TEST_PASSWORD });
+        let body = json!({ "email": unique_email(prefix), "password": TEST_PASSWORD.as_str() });
         server.post_auth("/auth/v1/signup", api_key, body)
     };
 
@@ -40,7 +40,7 @@ async fn concurrent_signups_for_one_email_create_one_account() -> TestResult {
     let server = TestServer::start().await?;
     let tenant = server.create_tenant().await?;
     let api_key = &tenant.publishable_key;
-    let body = json!({ "email": unique_email("race"), "password": TEST_PASSWORD });
+    let body = json!({ "email": unique_email("race"), "password": TEST_PASSWORD.as_str() });
 
     let (first, second) = tokio::join!(
         server.post_auth("/auth/v1/signup", api_key, body.clone()),

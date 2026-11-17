@@ -90,7 +90,7 @@ async fn a_magic_link_takes_over_an_unverified_account() -> TestResult {
         .post_auth(
             "/auth/v1/login",
             &tenant.publishable_key,
-            json!({ "email": email, "password": TEST_PASSWORD }),
+            json!({ "email": email, "password": TEST_PASSWORD.as_str() }),
         )
         .await?;
     assert_eq!(password_login.status(), StatusCode::UNAUTHORIZED);

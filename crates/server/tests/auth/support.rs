@@ -2,6 +2,7 @@ use std::error::Error;
 use std::future::IntoFuture;
 use std::net::SocketAddr;
 use std::str::FromStr;
+use std::sync::LazyLock;
 use std::time::Duration;
 
 use reqwest::{Client, Response};
@@ -27,7 +28,10 @@ const SLUG_SUFFIX_BYTES: usize = 6;
 const EMAIL_SUFFIX_BYTES: usize = 6;
 const MAIL_POLL_ATTEMPTS: u32 = 50;
 const MAIL_POLL_INTERVAL: Duration = Duration::from_millis(100);
-pub const TEST_PASSWORD: &str = "correct horse battery";
+/// Random per test run: a fixed string in code reads as a hard-coded credential.
+pub static TEST_PASSWORD: LazyLock<String> =
+    LazyLock::new(|| encode_hex(&random_bytes::<TEST_PASSWORD_BYTES>()));
+const TEST_PASSWORD_BYTES: usize = 16;
 pub const TEST_SITE_URL: &str = "http://app.test";
 
 #[derive(Debug, Deserialize)]
@@ -207,7 +211,7 @@ impl TestServer {
         self.post_auth("/auth/v1/verify-email", api_key, json!({ "token": token }))
             .await?
             .error_for_status()?;
-        let credentials = json!({ "email": email, "password": TEST_PASSWORD });
+        let credentials = json!({ "email": email, "password": TEST_PASSWORD.as_str() });
         let login = self
             .post_auth("/auth/v1/login", api_key, credentials)
             .await?;
@@ -282,7 +286,7 @@ impl TestServer {
     }
 
     pub async fn sign_up(&self, tenant: &CreatedTenant, email: &str) -> TestResult<Session> {
-        let body = json!({ "email": email, "password": TEST_PASSWORD });
+        let body = json!({ "email": email, "password": TEST_PASSWORD.as_str() });
         let response = self
             .post_auth("/auth/v1/signup", &tenant.publishable_key, body)
             .await?;

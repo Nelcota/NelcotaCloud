@@ -146,7 +146,7 @@ async fn verified_provider_email_takes_over_an_unverified_password_account() -> 
     let session = full_login(&server, &tenant, &account).await?;
     assert_eq!(session.user.id, squatter.user.id);
 
-    let login = json!({ "email": email, "password": TEST_PASSWORD });
+    let login = json!({ "email": email, "password": TEST_PASSWORD.as_str() });
     let squatter_login = server
         .post_auth("/auth/v1/login", &tenant.publishable_key, login)
         .await?;
