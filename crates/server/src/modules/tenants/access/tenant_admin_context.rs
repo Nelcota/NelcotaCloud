@@ -4,12 +4,14 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
+use crate::modules::tenants::access::admin_actor::AdminActor;
 use crate::modules::tenants::access::tenant_admin::TenantAdmin;
 use crate::shared::http::api_error::ApiError;
 
 /// A tenant admin plus a pool on the tenant's database, for admin routes on its users.
 pub struct TenantAdminContext {
     pub tenant_id: Uuid,
+    pub actor: AdminActor,
     pub pool: PgPool,
 }
 
@@ -25,6 +27,10 @@ impl FromRequestParts<AppState> for TenantAdminContext {
             .await
             .map_err(ApiError::internal)?;
 
-        Ok(Self { tenant_id, pool })
+        Ok(Self {
+            tenant_id,
+            actor: admin.actor,
+            pool,
+        })
     }
 }

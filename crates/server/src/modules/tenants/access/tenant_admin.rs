@@ -3,6 +3,7 @@ use axum::http::request::Parts;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
+use crate::modules::tenants::access::admin_actor::AdminActor;
 use crate::modules::tenants::access::api_key_tenant::{API_KEY_HEADER, ApiKeyTenant};
 use crate::modules::tenants::platform::platform_account::verify_platform_token;
 use crate::modules::tenants::platform::project_access::role_in_project;
@@ -20,6 +21,7 @@ pub const PROJECT_HEADER: &str = "x-nelcota-project";
 /// The project id comes from the client, so membership is checked on every request.
 pub struct TenantAdmin {
     pub tenant_id: Uuid,
+    pub actor: AdminActor,
 }
 
 impl FromRequestParts<AppState> for TenantAdmin {
@@ -40,6 +42,7 @@ impl FromRequestParts<AppState> for TenantAdmin {
 
         Ok(Self {
             tenant_id: project_id,
+            actor: AdminActor::ConsoleAccount(account.account_id),
         })
     }
 }
@@ -50,6 +53,7 @@ async fn from_secret_key(parts: &mut Parts, state: &AppState) -> Result<TenantAd
 
     Ok(TenantAdmin {
         tenant_id: tenant.tenant_id,
+        actor: AdminActor::SecretKey,
     })
 }
 

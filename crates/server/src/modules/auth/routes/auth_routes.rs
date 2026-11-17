@@ -14,6 +14,7 @@ use crate::modules::auth::routes::end_user_sessions;
 use crate::modules::auth::routes::enroll_totp;
 use crate::modules::auth::routes::get_user;
 use crate::modules::auth::routes::jwks;
+use crate::modules::auth::routes::list_audit_events;
 use crate::modules::auth::routes::list_sessions;
 use crate::modules::auth::routes::list_user_sessions;
 use crate::modules::auth::routes::list_users;
@@ -111,4 +112,5 @@ fn user_admin_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(end_user_sessions::end_user_sessions))
         .routes(routes!(list_user_sessions::list_user_sessions))
         .routes(routes!(resend_user_verification::resend_user_verification))
+        .routes(routes!(list_audit_events::list_audit_events))
 }

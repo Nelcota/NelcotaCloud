@@ -75,6 +75,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/v1/admin/audit-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /admin/audit-events`: the project's activity log, newest first, kept for 90 days. */
+        get: operations["list_audit_events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/v1/admin/oauth": {
         parameters: {
             query?: never;
@@ -1171,6 +1188,48 @@ export interface components {
             /** Format: date-time */
             revoked_at?: string | null;
         };
+        /**
+         * @description What an audit event records. Stored as text; renaming one is a breaking change.
+         * @enum {string}
+         */
+        AuditAction: "logged_in" | "login_failed" | "password_reset" | "user_updated" | "user_banned" | "user_unbanned" | "user_deleted" | "sessions_revoked" | "mfa_reset";
+        /**
+         * @description Who did what an audit event records.
+         * @enum {string}
+         */
+        AuditActorKind: "user" | "secret_key" | "console_account";
+        /** @description A recorded event, as the activity log shows it. */
+        AuditEvent: {
+            action: components["schemas"]["AuditAction"];
+            actor: components["schemas"]["AuditActorKind"];
+            /** Format: uuid */
+            actor_account_id?: string | null;
+            /**
+             * @description The user's current email; on a failed login, the address that was typed. `null` once
+             *     the user is deleted.
+             */
+            email?: string | null;
+            /**
+             * Format: int64
+             * @description Increases with every event; pass the last one as `before` for the next page.
+             */
+            id: number;
+            ip_address?: string | null;
+            login_method?: components["schemas"]["LoginMethod"] | null;
+            /** Format: date-time */
+            occurred_at: string;
+            /** Format: uuid */
+            user_id?: string | null;
+        };
+        /** @description One page of events, newest first. */
+        AuditPage: {
+            events: components["schemas"]["AuditEvent"][];
+            /**
+             * Format: int64
+             * @description Pass as `before` to read older events; `null` on the last page.
+             */
+            next_before?: number | null;
+        };
         /** @description What an owner sees about a configured provider: its public client ID, never the secret. */
         ConfiguredProvider: {
             client_id: string;
@@ -1267,6 +1326,11 @@ export interface components {
             email: string;
             password: string;
         };
+        /**
+         * @description How a login proved who the user is. `totp` is the code step that ends a login with MFA on.
+         * @enum {string}
+         */
+        LoginMethod: "password" | "magic_link" | "oauth" | "totp";
         /** @description A session, or the MFA step that must come first. */
         LoginResponse: components["schemas"]["SessionTokens"] | components["schemas"]["MfaRequired"];
         MemberRoleBody: {
@@ -1761,6 +1825,50 @@ export interface operations {
             };
             /** @description It is the last active secret key */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_audit_events: {
+        parameters: {
+            query?: {
+                /** @description Only events about this user. */
+                user_id?: string;
+                /** @description Only events older than this id (the previous page's `next_before`). */
+                before?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditPage"];
+                };
+            };
+            /** @description Invalid user, cursor or limit */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

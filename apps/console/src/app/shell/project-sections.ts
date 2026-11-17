@@ -1,3 +1,5 @@
+import HistoryBold from '~icons/solar/history-bold'
+import History from '~icons/solar/history-linear'
 import KeyRoundBold from '~icons/solar/key-bold'
 import KeyRound from '~icons/solar/key-linear'
 import LayoutGridBold from '~icons/solar/widget-2-bold'
@@ -53,6 +55,13 @@ export const PROJECT_SECTIONS: readonly ProjectSection[] = [
   },
   { segment: 'email', label: 'Email', icon: Mail, currentIcon: MailBold, group: 'main' },
   { segment: 'webhooks', label: 'Webhooks', icon: Plug, currentIcon: PlugBold, group: 'main' },
+  {
+    segment: 'activity',
+    label: 'Atividade',
+    icon: History,
+    currentIcon: HistoryBold,
+    group: 'main',
+  },
   { segment: 'team', label: 'Equipe', icon: Team, currentIcon: TeamBold, group: 'footer' },
   {
     segment: 'settings',

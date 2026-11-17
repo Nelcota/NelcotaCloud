@@ -3,6 +3,9 @@ use axum::http::StatusCode;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
+use crate::modules::auth::audit::audit_action::AuditAction;
+use crate::modules::auth::audit::audit_event::NewAuditEvent;
+use crate::modules::auth::audit::audit_recorder::record_audit_event;
 use crate::modules::auth::mfa::mfa_factor_repository::delete_mfa_factor;
 use crate::modules::auth::user::user_events::{UserChange, record_user_change};
 use crate::modules::tenants::access::tenant_admin_context::TenantAdminContext;
@@ -42,6 +45,9 @@ pub async fn reset_user_mfa(
     };
     record_user_change(&mut transaction, &webhooks, change).await?;
     transaction.commit().await?;
+
+    let event = NewAuditEvent::by_admin(AuditAction::MfaReset, user_id, admin.actor);
+    record_audit_event(&admin.pool, event).await;
 
     Ok(StatusCode::NO_CONTENT)
 }

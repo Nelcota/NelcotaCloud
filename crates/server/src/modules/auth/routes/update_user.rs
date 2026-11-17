@@ -6,6 +6,9 @@ use uuid::Uuid;
 use validator::{Validate, ValidationError};
 
 use crate::app_state::AppState;
+use crate::modules::auth::audit::audit_action::AuditAction;
+use crate::modules::auth::audit::audit_event::NewAuditEvent;
+use crate::modules::auth::audit::audit_recorder::record_audit_event;
 use crate::modules::auth::user::user_metadata::{
     MetadataObject, check_app_metadata_size, check_user_metadata_size,
 };
@@ -70,6 +73,9 @@ pub async fn update_user(
     let Some(user) = user else {
         return Err(ApiError::NotFound("user"));
     };
+
+    let event = NewAuditEvent::by_admin(AuditAction::UserUpdated, user_id, admin.actor);
+    record_audit_event(&admin.pool, event).await;
 
     Ok(Json(user))
 }

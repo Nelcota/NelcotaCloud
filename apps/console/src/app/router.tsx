@@ -108,6 +108,10 @@ const webhooksRoute = createRoute({ getParentRoute: () => projectRoute, path: '/
   () => import('@/app/lazy-routes/webhooks').then((module) => module.webhooksLazyRoute),
 )
 
+const activityRoute = createRoute({ getParentRoute: () => projectRoute, path: '/activity' }).lazy(
+  () => import('@/app/lazy-routes/activity').then((module) => module.activityLazyRoute),
+)
+
 const teamRoute = createRoute({ getParentRoute: () => projectRoute, path: '/team' }).lazy(() =>
   import('@/app/lazy-routes/team').then((module) => module.teamLazyRoute),
 )
@@ -130,6 +134,7 @@ const routeTree = rootRoute.addChildren([
       providersRoute,
       emailRoute,
       webhooksRoute,
+      activityRoute,
       teamRoute,
       settingsRoute,
     ]),

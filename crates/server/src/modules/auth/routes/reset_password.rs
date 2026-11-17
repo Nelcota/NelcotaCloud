@@ -5,6 +5,9 @@ use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::app_state::AppState;
+use crate::modules::auth::audit::audit_action::AuditAction;
+use crate::modules::auth::audit::audit_event::NewAuditEvent;
+use crate::modules::auth::audit::audit_recorder::record_audit_event;
 use crate::modules::auth::one_time_token::one_time_token_purpose::OneTimeTokenPurpose;
 use crate::modules::auth::one_time_token::one_time_token_repository::consume_one_time_token;
 use crate::modules::auth::password::password_hashing::hash_password;
@@ -16,6 +19,7 @@ use crate::modules::auth::user::user_events::{UserChange, record_user_change};
 use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
+use crate::shared::http::client_ip::ClientIp;
 use crate::shared::http::validated_json::ValidatedJson;
 
 #[derive(Deserialize, Validate, ToSchema)]
@@ -42,6 +46,7 @@ pub struct ResetPasswordBody {
 pub async fn reset_password(
     State(state): State<AppState>,
     tenant: TenantContext,
+    ClientIp(client_ip): ClientIp,
     ValidatedJson(body): ValidatedJson<ResetPasswordBody>,
 ) -> Result<StatusCode, ApiError> {
     check_new_password(&body.password).map_err(ApiError::invalid_request)?;
@@ -65,6 +70,8 @@ pub async fn reset_password(
     };
     record_user_change(&mut transaction, &webhooks, change).await?;
     transaction.commit().await?;
+    let event = NewAuditEvent::by_user(AuditAction::PasswordReset, user_id, client_ip);
+    record_audit_event(&tenant.pool, event).await;
 
     Ok(StatusCode::NO_CONTENT)
 }

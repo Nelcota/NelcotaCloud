@@ -281,6 +281,87 @@
         ]
       }
     },
+    "/auth/v1/admin/audit-events": {
+      "get": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`GET /admin/audit-events`: the project's activity log, newest first, kept for 90 days.",
+        "operationId": "list_audit_events",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "description": "Only events about this user.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "description": "Only events older than this id (the previous page's `next_before`).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid user, cursor or limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
     "/auth/v1/admin/oauth": {
       "get": {
         "tags": [
@@ -4316,6 +4397,117 @@
           }
         }
       },
+      "AuditAction": {
+        "type": "string",
+        "description": "What an audit event records. Stored as text; renaming one is a breaking change.",
+        "enum": [
+          "logged_in",
+          "login_failed",
+          "password_reset",
+          "user_updated",
+          "user_banned",
+          "user_unbanned",
+          "user_deleted",
+          "sessions_revoked",
+          "mfa_reset"
+        ]
+      },
+      "AuditActorKind": {
+        "type": "string",
+        "description": "Who did what an audit event records.",
+        "enum": [
+          "user",
+          "secret_key",
+          "console_account"
+        ]
+      },
+      "AuditEvent": {
+        "type": "object",
+        "description": "A recorded event, as the activity log shows it.",
+        "required": [
+          "id",
+          "action",
+          "actor",
+          "occurred_at"
+        ],
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/AuditAction"
+          },
+          "actor": {
+            "$ref": "#/components/schemas/AuditActorKind"
+          },
+          "actor_account_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The user's current email; on a failed login, the address that was typed. `null` once\nthe user is deleted."
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Increases with every event; pass the last one as `before` for the next page."
+          },
+          "ip_address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "login_method": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/LoginMethod"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "user_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "AuditPage": {
+        "type": "object",
+        "description": "One page of events, newest first.",
+        "required": [
+          "events"
+        ],
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEvent"
+            }
+          },
+          "next_before": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Pass as `before` to read older events; `null` on the last page."
+          }
+        }
+      },
       "ConfiguredProvider": {
         "type": "object",
         "description": "What an owner sees about a configured provider: its public client ID, never the secret.",
@@ -4594,6 +4786,16 @@
             "type": "string"
           }
         }
+      },
+      "LoginMethod": {
+        "type": "string",
+        "description": "How a login proved who the user is. `totp` is the code step that ends a login with MFA on.",
+        "enum": [
+          "password",
+          "magic_link",
+          "oauth",
+          "totp"
+        ]
       },
       "LoginResponse": {
         "oneOf": [

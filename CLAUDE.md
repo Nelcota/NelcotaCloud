@@ -74,6 +74,12 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
   or an admin; `app_metadata` (up to 4 KiB) only by admins (`PATCH /auth/v1/admin/users/{id}`)
   and is copied into access tokens as the `app_metadata` claim, so it reaches apps on the next
   login or refresh. Both changes report `user.updated`. The console edits them on the user page.
+- Activity log (`auth/audit`): the tenant's `audit_events` (90 days, pruned when read) records
+  logins (with method and client IP), wrong-password attempts (with the typed email), password
+  resets and admin actions on users with who did them (`AdminActor`: secret key or console
+  account). Recorded after the action; a failed insert is logged, never failing the request.
+  `GET /auth/v1/admin/audit-events` pages by `before` (event id); the console shows it at
+  `/projects/$projectId/activity` and on each user's page.
 - Profile photos (`auth/avatar`): `PUT/DELETE /auth/v1/user/avatar` take the raw image (PNG,
   JPEG, WebP, up to 1 MiB); the server decodes it with `image` (size limits against decompression
   bombs), crops it to a 256px square and re-encodes it as JPEG (no EXIF), stored in the tenant's
@@ -183,7 +189,7 @@ Modular monolith in `crates/server/src/`: one folder per business context under 
     settings), `smtp` (tenant SMTP settings, host policy, senders), `platform` (console accounts,
     memberships, roles).
   - `auth/`: `user` (record, lookup, registration, account updates, listing, administration,
-    metadata),
+    metadata), `audit` (activity log events, recording, listing),
     `password`, `avatar` (profile photo processing and storage), `session` (refresh tokens,
     issuing, session listing), `login` (completion with the
     MFA step), `mfa` (TOTP codes, factors, challenges), `one_time_token`, `email` (auth emails and
@@ -226,7 +232,7 @@ dependencies. In `apps/console/src/`:
   (theme tokens: graphite neutrals, one blue accent; dark by default, light via the account menu;
   font Manrope).
 - `modules/<module>/`: everything one context owns (`account`, `projects`, `overview`, `api-keys`,
-  `users`, `project-settings`, `system-status`, `team`, `webhooks`):
+  `users`, `project-settings`, `system-status`, `team`, `webhooks`, `activity`):
   - `pages/`: one file per route; composes components, no fetching or business logic.
   - `components/`: UI of the module, one component per file.
   - `queries/`: TanStack Query hooks (`use-*-query.ts`, `use-*-mutation.ts`); the only place that

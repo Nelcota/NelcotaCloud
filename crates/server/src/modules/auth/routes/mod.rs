@@ -11,6 +11,7 @@ pub mod end_user_sessions;
 pub mod enroll_totp;
 pub mod get_user;
 pub mod jwks;
+pub mod list_audit_events;
 pub mod list_sessions;
 pub mod list_user_sessions;
 pub mod list_users;

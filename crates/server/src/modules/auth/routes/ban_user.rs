@@ -3,6 +3,9 @@ use axum::extract::{Path, State};
 use uuid::Uuid;
 
 use crate::app_state::AppState;
+use crate::modules::auth::audit::audit_action::AuditAction;
+use crate::modules::auth::audit::audit_event::NewAuditEvent;
+use crate::modules::auth::audit::audit_recorder::record_audit_event;
 use crate::modules::auth::user::user_administration::ban_user as ban;
 use crate::modules::auth::user::user_record::User;
 use crate::modules::tenants::access::tenant_admin_context::TenantAdminContext;
@@ -31,6 +34,9 @@ pub async fn ban_user(
     let Some(user) = user else {
         return Err(ApiError::NotFound("user"));
     };
+
+    let event = NewAuditEvent::by_admin(AuditAction::UserBanned, user_id, admin.actor);
+    record_audit_event(&admin.pool, event).await;
 
     Ok(Json(user))
 }

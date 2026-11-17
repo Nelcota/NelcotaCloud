@@ -5,6 +5,9 @@ use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::app_state::AppState;
+use crate::modules::auth::audit::audit_event::NewAuditEvent;
+use crate::modules::auth::audit::audit_recorder::record_audit_event;
+use crate::modules::auth::audit::login_method::LoginMethod;
 use crate::modules::auth::login::mfa_challenge_redemption::{
     ChallengeAnswer, redeem_mfa_challenge,
 };
@@ -50,5 +53,9 @@ pub async fn complete_mfa_challenge(
         client_ip,
     };
 
-    Ok(Json(redeem_mfa_challenge(&state, &tenant, answer).await?))
+    let tokens = redeem_mfa_challenge(&state, &tenant, answer).await?;
+    let event = NewAuditEvent::login(tokens.user.id, LoginMethod::Totp, client_ip);
+    record_audit_event(&tenant.pool, event).await;
+
+    Ok(Json(tokens))
 }

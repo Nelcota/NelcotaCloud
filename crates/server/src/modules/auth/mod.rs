@@ -1,3 +1,4 @@
+pub mod audit;
 pub mod avatar;
 pub mod email;
 pub mod login;
