@@ -1,6 +1,7 @@
 import Calendar from '~icons/solar/calendar-linear'
 import Letter from '~icons/solar/letter-linear'
 import ShieldCheck from '~icons/solar/shield-check-linear'
+import { Link } from '@tanstack/react-router'
 import type { JSX } from 'react'
 
 import { UserActionsMenu } from '@/modules/users/components/user-actions-menu'
@@ -19,6 +20,7 @@ const SKELETON_ROWS = ['a', 'b', 'c', 'd']
 
 type UsersTableProps = {
   users: User[] | undefined
+  projectId: string
   filter: UserListFilter
   /** A failed load shows its error above the table instead of an endless skeleton. */
   hasFailed: boolean
@@ -67,7 +69,13 @@ export function UsersTable(props: UsersTableProps): JSX.Element | null {
             <TableRow key={user.id}>
               {/* `w-full max-w-0` gives the email the free width; it wraps, never truncates. */}
               <TableCell className="w-full max-w-0 px-4 whitespace-normal">
-                <p className="font-medium break-all">{user.email}</p>
+                <Link
+                  to="/projects/$projectId/users/$userId"
+                  params={{ projectId: props.projectId, userId: user.id }}
+                  className="font-medium break-all underline-offset-4 hover:underline"
+                >
+                  {user.email}
+                </Link>
                 <div className="mt-1.5 sm:hidden">
                   <UserStatusBadges user={user} />
                 </div>
