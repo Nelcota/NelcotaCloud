@@ -69,6 +69,11 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
   identities (provider and date only); `POST .../users/{id}/verification-email` resends the
   verification link to an unverified, unbanned user under the public per-address email limit.
   The console shows them at `/projects/$projectId/users/$userId`.
+- User metadata (`auth/user/user_metadata*`): two JSON objects on `users`. `user_metadata`
+  (up to 16 KiB) is replaced by the user (`PATCH /auth/v1/user`, which refuses `app_metadata`)
+  or an admin; `app_metadata` (up to 4 KiB) only by admins (`PATCH /auth/v1/admin/users/{id}`)
+  and is copied into access tokens as the `app_metadata` claim, so it reaches apps on the next
+  login or refresh. Both changes report `user.updated`. The console edits them on the user page.
 - Profile photos (`auth/avatar`): `PUT/DELETE /auth/v1/user/avatar` take the raw image (PNG,
   JPEG, WebP, up to 1 MiB); the server decodes it with `image` (size limits against decompression
   bombs), crops it to a 256px square and re-encodes it as JPEG (no EXIF), stored in the tenant's
@@ -177,7 +182,8 @@ Modular monolith in `crates/server/src/`: one folder per business context under 
     pools, create/migrate/drop), `provisioning` (creation, deletion), `settings` (site URL, tenant
     settings), `smtp` (tenant SMTP settings, host policy, senders), `platform` (console accounts,
     memberships, roles).
-  - `auth/`: `user` (record, lookup, registration, account updates, listing, administration),
+  - `auth/`: `user` (record, lookup, registration, account updates, listing, administration,
+    metadata),
     `password`, `avatar` (profile photo processing and storage), `session` (refresh tokens,
     issuing, session listing), `login` (completion with the
     MFA step), `mfa` (TOTP codes, factors, challenges), `one_time_token`, `email` (auth emails and

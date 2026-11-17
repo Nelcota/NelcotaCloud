@@ -19,6 +19,7 @@ export type {
   SignUpResult,
   TotpEnrollment,
   User,
+  UserMetadata,
 } from './types'
 export { verifyWebhook } from './webhooks/verify-webhook'
 export type { VerifyWebhookOptions, WebhookEvent, WebhookHeaders } from './webhooks/verify-webhook'

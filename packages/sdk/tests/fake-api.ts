@@ -90,6 +90,8 @@ export function sessionTokens(
       created_at: '2026-11-16T12:00:00Z',
       mfa_enabled: false,
       avatar_updated_at: null,
+      user_metadata: {},
+      app_metadata: {},
     },
   }
 }

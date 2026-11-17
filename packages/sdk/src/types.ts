@@ -7,6 +7,9 @@ export type MfaStatus = Schemas['MfaStatus']
 export type TotpEnrollment = Schemas['TotpEnrollmentResponse']
 export type SessionSummary = Schemas['SessionSummary']
 
+/** A JSON object; `updateUser` replaces the user's whole `user_metadata` with it. */
+export type UserMetadata = User['user_metadata']
+
 /** What the SDK keeps for a logged-in user. */
 export type Session = {
   accessToken: string

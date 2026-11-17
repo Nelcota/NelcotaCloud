@@ -227,7 +227,8 @@ export interface paths {
         delete: operations["delete_user"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** `PATCH /admin/users/{user_id}`: an admin replaces a user's metadata. */
+        patch: operations["update_user"];
         trace?: never;
     };
     "/auth/v1/admin/users/{user_id}/ban": {
@@ -823,7 +824,11 @@ export interface paths {
         delete: operations["delete_own_account"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * `PATCH /user`: the logged-in user replaces their own `user_metadata`. `app_metadata` is
+         *     refused here (unknown field): only the project's admins write it.
+         */
+        patch: operations["update_current_user"];
         trace?: never;
     };
     "/auth/v1/user/avatar": {
@@ -1449,7 +1454,33 @@ export interface components {
             /** @description Base32 secret, for typing into an authenticator app by hand. */
             secret: string;
         };
+        UpdateCurrentUserBody: {
+            /** @description Replaces the whole document (up to 16 KiB as JSON). */
+            user_metadata: {
+                [key: string]: unknown;
+            };
+        };
+        UpdateUserBody: {
+            /**
+             * @description Replaces the admin-only data (up to 4 KiB as JSON), sent in access tokens from the next
+             *     login or refresh; left as it is when absent.
+             */
+            app_metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** @description Replaces the user's profile data (up to 16 KiB as JSON); left as it is when absent. */
+            user_metadata?: {
+                [key: string]: unknown;
+            } | null;
+        };
         User: {
+            /**
+             * @description Data only the project's admins write (roles, plans); also sent in access tokens as the
+             *     `app_metadata` claim.
+             */
+            app_metadata: {
+                [key: string]: unknown;
+            };
             /**
              * Format: date-time
              * @description When the profile photo last changed; `null` without one. Served at
@@ -1470,6 +1501,10 @@ export interface components {
             id: string;
             /** @description A verified TOTP authenticator is required at login. */
             mfa_enabled: boolean;
+            /** @description Profile data the user writes themself (`PATCH /auth/v1/user`). */
+            user_metadata: {
+                [key: string]: unknown;
+            };
         };
         UserIdentities: {
             identities: components["schemas"]["LinkedIdentity"][];
@@ -2215,6 +2250,60 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such user */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    update_user: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the user */
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUserBody"];
+            };
+        };
+        responses: {
+            /** @description The updated user */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            /** @description Nothing to update, not a JSON object, or too large */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
             };
             /** @description Requires the secret API key, or membership in the project */
             403: {
@@ -3714,6 +3803,57 @@ export interface operations {
             };
             /** @description Missing or invalid access token */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    update_current_user: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCurrentUserBody"];
+            };
+        };
+        responses: {
+            /** @description The updated user */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            /** @description Not a JSON object, or too large */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing or invalid access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The user is banned */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

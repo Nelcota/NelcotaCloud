@@ -25,6 +25,7 @@ mod team;
 mod tenant_smtp;
 mod user_admin;
 mod user_detail;
+mod user_metadata;
 mod user_status_filter;
 mod verification_required;
 mod webhook_delivery;

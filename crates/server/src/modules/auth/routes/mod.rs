@@ -32,6 +32,8 @@ pub mod reset_user_mfa;
 pub mod send_smtp_test;
 pub mod sign_up;
 pub mod unban_user;
+pub mod update_current_user;
+pub mod update_user;
 pub mod upload_avatar;
 pub mod verify_email;
 pub mod verify_magic_link;

@@ -32,6 +32,8 @@ use crate::modules::auth::routes::reset_user_mfa;
 use crate::modules::auth::routes::send_smtp_test;
 use crate::modules::auth::routes::sign_up;
 use crate::modules::auth::routes::unban_user;
+use crate::modules::auth::routes::update_current_user;
+use crate::modules::auth::routes::update_user;
 use crate::modules::auth::routes::upload_avatar;
 use crate::modules::auth::routes::verify_email;
 use crate::modules::auth::routes::verify_magic_link;
@@ -55,6 +57,7 @@ fn account_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(log_out::log_out))
         .routes(routes!(
             current_user::current_user,
+            update_current_user::update_current_user,
             delete_own_account::delete_own_account
         ))
         .routes(routes!(
@@ -98,7 +101,11 @@ fn user_admin_routes() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
         .routes(routes!(reset_user_mfa::reset_user_mfa))
         .routes(routes!(list_users::list_users))
-        .routes(routes!(get_user::get_user, delete_user::delete_user))
+        .routes(routes!(
+            get_user::get_user,
+            update_user::update_user,
+            delete_user::delete_user
+        ))
         .routes(routes!(ban_user::ban_user))
         .routes(routes!(unban_user::unban_user))
         .routes(routes!(end_user_sessions::end_user_sessions))

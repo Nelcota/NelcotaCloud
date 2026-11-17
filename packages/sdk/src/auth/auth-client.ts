@@ -1,6 +1,13 @@
 import type { components } from '../generated/api-schema'
 import type { HttpClient } from '../http/http-client'
-import type { AuthStateListener, Session, SignInResult, SignUpResult, User } from '../types'
+import type {
+  AuthStateListener,
+  Session,
+  SignInResult,
+  SignUpResult,
+  User,
+  UserMetadata,
+} from '../types'
 import { type AuthorizedContext, authorizedRequest } from './authorized-request'
 import { AvatarApi } from './avatar-api'
 import { toSession, toSignInResult, toSignUpResult } from './login-results'
@@ -113,6 +120,21 @@ export class AuthClient {
 
   async getUser(): Promise<User> {
     return authorizedRequest<User>(this.context, { method: 'GET', path: '/auth/v1/user' })
+  }
+
+  /**
+   * Replaces the user's own `user_metadata` (up to 16 KiB as JSON). `app_metadata` is written
+   * only by the project's admins and reaches the access token on the next refresh.
+   */
+  async updateUser(userMetadata: UserMetadata): Promise<User> {
+    const user = await authorizedRequest<User>(this.context, {
+      method: 'PATCH',
+      path: '/auth/v1/user',
+      body: { user_metadata: userMetadata },
+    })
+    this.manager.updateUser(user)
+
+    return user
   }
 
   /** Ends the session on the server and forgets it here, even when the server cannot be reached. */

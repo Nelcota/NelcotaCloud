@@ -1,5 +1,6 @@
 use jsonwebtoken::{Algorithm, Header, Validation, decode, decode_header, encode};
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 use uuid::Uuid;
 
 use crate::modules::tenants::signing_keys::prepared_signing_key::PreparedSigningKey;
@@ -31,6 +32,10 @@ pub struct AccessTokenClaims {
     pub email: String,
     /// The session (refresh token family) the token belongs to.
     pub sid: Uuid,
+    /// The user's admin-only metadata (roles, plans) when the token was issued, so apps can
+    /// authorize without calling the API. Defaults to empty for tokens issued before it existed.
+    #[serde(default)]
+    pub app_metadata: Map<String, Value>,
 }
 
 /// What a valid token must have been issued for.
@@ -106,6 +111,7 @@ mod tests {
                 .saturating_add(lifetime.whole_seconds()),
             email: "ana@example.com".to_owned(),
             sid: Uuid::new_v4(),
+            app_metadata: Map::from_iter([("role".to_owned(), Value::from("admin"))]),
         }
     }
 
@@ -123,6 +129,7 @@ mod tests {
         let verified = verify_access_token(&token, &signing_keys, &audience)?;
 
         assert_eq!(verified.sub, claims.sub);
+        assert_eq!(verified.app_metadata, claims.app_metadata);
         Ok(())
     }
 

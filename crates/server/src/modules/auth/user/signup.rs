@@ -30,7 +30,7 @@ pub struct NewSignup {
 
 pub enum SignupOutcome {
     /// The tenant lets unverified users in: the account is created and logged in.
-    Session(SessionTokens),
+    Session(Box<SessionTokens>),
     /// Only a note to check the inbox, the same for new and already registered emails.
     VerificationPending,
 }
@@ -47,7 +47,7 @@ pub async fn sign_up_user(
 
     let tokens = sign_up_with_session(state, tenant, signup).await?;
 
-    Ok(SignupOutcome::Session(tokens))
+    Ok(SignupOutcome::Session(Box::new(tokens)))
 }
 
 async fn sign_up_with_session(

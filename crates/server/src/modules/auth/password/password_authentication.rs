@@ -67,6 +67,8 @@ mod tests {
                 created_at: OffsetDateTime::now_utc(),
                 mfa_enabled: false,
                 avatar_updated_at: None,
+                user_metadata: sqlx::types::Json(serde_json::Map::new()),
+                app_metadata: sqlx::types::Json(serde_json::Map::new()),
             },
             password_hash,
         }

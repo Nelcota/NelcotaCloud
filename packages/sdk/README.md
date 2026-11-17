@@ -35,6 +35,11 @@ await nelcota.auth.avatar.upload(croppedBlob) // emits USER_UPDATED with the new
 const photoUrl = nelcota.auth.avatar.url(user) // public URL for <img src>, null without a photo
 await nelcota.auth.avatar.remove()
 
+// Metadata: the user replaces their own user_metadata (a JSON object, up to 16 KiB).
+// app_metadata (roles, plans) is set by the project's admins and arrives in the access token's
+// `app_metadata` claim from the next refresh.
+await nelcota.auth.updateUser({ name: 'Ana', theme: 'dark' }) // emits USER_UPDATED
+
 // Session
 nelcota.auth.onAuthStateChange((event, session) => {}) // also hears other tabs
 const token = await nelcota.auth.getAccessToken() // renewed before it expires

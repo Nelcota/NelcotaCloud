@@ -30,7 +30,7 @@ pub struct SignUpBody {
 #[derive(Serialize, ToSchema)]
 #[serde(untagged)]
 pub enum SignUpResponse {
-    Session(SessionTokens),
+    Session(Box<SessionTokens>),
     VerificationPending { verification_required: bool },
 }
 

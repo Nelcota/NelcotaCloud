@@ -58,6 +58,7 @@ impl SessionIssuer<'_> {
             exp: expiry_after(now, ACCESS_TOKEN_LIFETIME)?.unix_timestamp(),
             email: user.email.clone(),
             sid: family.id,
+            app_metadata: user.app_metadata.0.clone(),
         };
 
         Ok(sign_access_token(&claims, self.signing_key)?)

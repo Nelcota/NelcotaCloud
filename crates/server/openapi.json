@@ -995,6 +995,86 @@
             "project": []
           }
         ]
+      },
+      "patch": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`PATCH /admin/users/{user_id}`: an admin replaces a user's metadata.",
+        "operationId": "update_user",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "Id of the user",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The updated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Nothing to update, not a JSON object, or too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
       }
     },
     "/auth/v1/admin/users/{user_id}/ban": {
@@ -3025,6 +3105,71 @@
             "bearer": []
           }
         ]
+      },
+      "patch": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "`PATCH /user`: the logged-in user replaces their own `user_metadata`. `app_metadata` is\nrefused here (unknown field): only the project's admins write it.",
+        "operationId": "update_current_user",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCurrentUserBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The updated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not a JSON object, or too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The user is banned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": [],
+            "bearer": []
+          }
+        ]
       }
     },
     "/auth/v1/user/avatar": {
@@ -5021,15 +5166,70 @@
           }
         }
       },
+      "UpdateCurrentUserBody": {
+        "type": "object",
+        "required": [
+          "user_metadata"
+        ],
+        "properties": {
+          "user_metadata": {
+            "type": "object",
+            "description": "Replaces the whole document (up to 16 KiB as JSON).",
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateUserBody": {
+        "type": "object",
+        "properties": {
+          "app_metadata": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Replaces the admin-only data (up to 4 KiB as JSON), sent in access tokens from the next\nlogin or refresh; left as it is when absent.",
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "user_metadata": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Replaces the user's profile data (up to 16 KiB as JSON); left as it is when absent.",
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "User": {
         "type": "object",
         "required": [
           "id",
           "email",
           "created_at",
-          "mfa_enabled"
+          "mfa_enabled",
+          "user_metadata",
+          "app_metadata"
         ],
         "properties": {
+          "app_metadata": {
+            "type": "object",
+            "description": "Data only the project's admins write (roles, plans); also sent in access tokens as the\n`app_metadata` claim.",
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            }
+          },
           "avatar_updated_at": {
             "type": [
               "string",
@@ -5067,6 +5267,14 @@
           "mfa_enabled": {
             "type": "boolean",
             "description": "A verified TOTP authenticator is required at login."
+          },
+          "user_metadata": {
+            "type": "object",
+            "description": "Profile data the user writes themself (`PATCH /auth/v1/user`).",
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            }
           }
         }
       },

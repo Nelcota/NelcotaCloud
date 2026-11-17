@@ -7,6 +7,7 @@ import { UserAccountSection } from '@/modules/users/components/user-account-sect
 import { UserDangerZone } from '@/modules/users/components/user-danger-zone'
 import { DONE_MESSAGES } from '@/modules/users/components/user-done-messages'
 import { UserIdentitiesSection } from '@/modules/users/components/user-identities-section'
+import { UserMetadataSection } from '@/modules/users/components/user-metadata-section'
 import { UserSessionsSection } from '@/modules/users/components/user-sessions-section'
 import { useUserQuery } from '@/modules/users/queries/use-user-detail'
 import { type UserAction, useUserActionMutation } from '@/modules/users/queries/use-users'
@@ -64,6 +65,7 @@ function LoadedUser({ projectId, user }: { projectId: string; user: User }): JSX
       <UserAccountSection {...actionProps} />
       <UserSessionsSection projectId={projectId} {...actionProps} />
       <UserIdentitiesSection projectId={projectId} userId={user.id} />
+      <UserMetadataSection key={user.id} projectId={projectId} user={user} />
       <UserDangerZone {...actionProps} />
     </div>
   )
