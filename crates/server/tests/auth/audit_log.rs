@@ -1,6 +1,9 @@
 use reqwest::StatusCode;
 use serde_json::{Value, json};
 
+use server::shared::crypto::hex_encoding::encode_hex;
+use server::shared::crypto::random_bytes::random_bytes;
+
 use crate::support::{CreatedTenant, TEST_PASSWORD, TestResult, TestServer, field, unique_email};
 
 async fn audit_page(server: &TestServer, tenant: &CreatedTenant, query: &str) -> TestResult<Value> {
@@ -37,8 +40,10 @@ async fn records_logins_and_failed_attempts() -> TestResult {
     let tenant = server.create_tenant().await?;
     let session = server.sign_up(&tenant, &tenant_user_email(&tenant)).await?;
 
+    // Random, so no fixed string in the code is ever used as a password.
+    let wrong_password = encode_hex(&random_bytes::<12>());
     assert_eq!(
-        log_in(&server, &tenant, "wrong password").await?,
+        log_in(&server, &tenant, &wrong_password).await?,
         StatusCode::UNAUTHORIZED
     );
     assert_eq!(
@@ -181,7 +186,7 @@ async fn console_accounts_outside_the_project_see_no_activity_or_templates() -> 
         "/auth/v1/admin/audit-events",
         "/auth/v1/admin/email-templates",
     ] {
-        let as_account = |token: &str| {
+        let project_request = |token: &str| {
             server
                 .client
                 .get(server.url(path))
@@ -190,12 +195,12 @@ async fn console_accounts_outside_the_project_see_no_activity_or_templates() -> 
                 .send()
         };
         assert_eq!(
-            as_account(&owner.access_token).await?.status(),
+            project_request(&owner.access_token).await?.status(),
             StatusCode::OK,
             "{path}"
         );
         assert_eq!(
-            as_account(&stranger.access_token).await?.status(),
+            project_request(&stranger.access_token).await?.status(),
             StatusCode::FORBIDDEN,
             "{path}"
         );
