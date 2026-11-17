@@ -1,4 +1,5 @@
 use std::net::IpAddr;
+use std::sync::Arc;
 
 use axum::http::StatusCode;
 use serde::Deserialize;
@@ -17,6 +18,7 @@ use crate::modules::auth::user::passwordless_signup::find_or_create_passwordless
 use crate::modules::auth::user::user_lookup::find_user_by_email;
 use crate::modules::auth::user::user_record::User;
 use crate::modules::tenants::access::tenant_context::TenantContext;
+use crate::modules::webhooks::runtime::webhook_runtime::WebhookRuntime;
 use crate::shared::http::api_error::ApiError;
 
 /// Body of the endpoints that email a link to an address.
@@ -49,6 +51,7 @@ pub fn request_email_link(
     state.rate_limits.email_delivery.check(&attempt)?;
     let job = EmailLinkJob {
         mailer: state.auth_mailer(),
+        webhooks: Arc::clone(&state.webhooks),
         tenant,
         raw_email: request.raw_email.to_owned(),
         kind: request.kind,
@@ -61,6 +64,7 @@ pub fn request_email_link(
 
 struct EmailLinkJob {
     mailer: AuthMailer,
+    webhooks: Arc<WebhookRuntime>,
     tenant: TenantContext,
     raw_email: String,
     kind: AuthEmailKind,
@@ -90,14 +94,15 @@ impl EmailLinkJob {
     /// Magic links also sign people up: an unknown email gets a passwordless account.
     async fn recipient(&self, email: &EmailAddress) -> Result<Option<User>, ApiError> {
         let pool = &self.tenant.pool;
-        let found = match self.kind {
-            AuthEmailKind::MagicLink => find_or_create_passwordless_user(pool, email).await,
-            AuthEmailKind::Verification | AuthEmailKind::PasswordReset => {
-                find_user_by_email(pool, email).await
-            }
-        };
 
-        found.map_err(ApiError::internal)
+        if self.kind == AuthEmailKind::MagicLink {
+            let webhooks = self.webhooks.recorder(self.tenant.tenant_id).await?;
+            return find_or_create_passwordless_user(pool, email, &webhooks).await;
+        }
+
+        find_user_by_email(pool, email)
+            .await
+            .map_err(ApiError::internal)
     }
 }
 

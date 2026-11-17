@@ -113,6 +113,7 @@ impl TestServer {
             email_from: std::env::var("EMAIL_FROM")?,
             client_ip_header: None,
             tenant_smtp_allow_any_host: Some(true),
+            webhook_allow_private_hosts: Some(true),
             platform_tenant_slug: Some(platform_slug.clone()),
         };
         let fake_github = FakeGitHub::start().await;

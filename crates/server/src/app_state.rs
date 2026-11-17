@@ -16,6 +16,8 @@ use crate::modules::tenants::provisioning::tenant_removal::TenantRemoval;
 use crate::modules::tenants::signing_keys::signing_key_cache::SigningKeyCache;
 use crate::modules::tenants::smtp::smtp_settings_change::SmtpSettingsStore;
 use crate::modules::tenants::smtp::tenant_email_senders::TenantEmailSenders;
+use crate::modules::webhooks::endpoint::webhook_endpoint_store::WebhookEndpointStore;
+use crate::modules::webhooks::runtime::webhook_runtime::WebhookRuntime;
 use crate::shared::crypto::opaque_token::TokenHash;
 use crate::shared::crypto::secret_box::SecretBox;
 use crate::shared::http::client_ip::ClientIpSource;
@@ -32,6 +34,8 @@ pub struct AppState {
     pub email_senders: Arc<TenantEmailSenders>,
     /// Outbound calls to OAuth providers. Never follows redirects (OAuth security guidance).
     pub http_client: reqwest::Client,
+    /// Webhook subscriptions, wake-up hints for the delivery worker and its HTTP transport.
+    pub webhooks: Arc<WebhookRuntime>,
     pub settings: Arc<AppSettings>,
 }
 
@@ -77,6 +81,17 @@ impl AppState {
             control_plane_pool: &self.control_plane_pool,
             secret_box: &self.secret_box,
             email_senders: &self.email_senders,
+        }
+    }
+
+    pub fn webhook_endpoint_store(&self) -> WebhookEndpointStore<'_> {
+        let webhooks = &self.webhooks;
+
+        WebhookEndpointStore {
+            control_plane_pool: &self.control_plane_pool,
+            secret_box: &self.secret_box,
+            subscriptions: &webhooks.subscriptions,
+            policy: webhooks.transport.policy(),
         }
     }
 

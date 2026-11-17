@@ -1,7 +1,8 @@
-use axum::extract::Path;
+use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use uuid::Uuid;
 
+use crate::app_state::AppState;
 use crate::modules::auth::session::authenticated_user::AuthenticatedUser;
 use crate::modules::auth::session::session_listing::end_session_of_user;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
@@ -20,11 +21,14 @@ use crate::shared::http::api_error::{ApiError, ErrorBody};
     )
 )]
 pub async fn end_session(
+    State(state): State<AppState>,
     authenticated: AuthenticatedUser,
     Path(session_id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
     let tenant = &authenticated.tenant;
-    let ended = end_session_of_user(&tenant.pool, authenticated.claims.sub, session_id).await?;
+    let webhooks = state.webhooks.recorder(tenant.tenant_id).await?;
+    let session = (authenticated.claims.sub, session_id);
+    let ended = end_session_of_user(&tenant.pool, session, &webhooks).await?;
 
     if ended == false {
         return Err(ApiError::NotFound("session"));

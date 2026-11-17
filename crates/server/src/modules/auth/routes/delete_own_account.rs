@@ -1,5 +1,7 @@
+use axum::extract::State;
 use axum::http::StatusCode;
 
+use crate::app_state::AppState;
 use crate::modules::auth::session::authenticated_user::AuthenticatedUser;
 use crate::modules::auth::user::user_administration::delete_user;
 use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
@@ -17,9 +19,13 @@ use crate::shared::http::api_error::{ApiError, ErrorBody};
         (status = 401, description = "Missing or invalid access token", body = ErrorBody),
     )
 )]
-pub async fn delete_own_account(authenticated: AuthenticatedUser) -> Result<StatusCode, ApiError> {
+pub async fn delete_own_account(
+    State(state): State<AppState>,
+    authenticated: AuthenticatedUser,
+) -> Result<StatusCode, ApiError> {
     let tenant = &authenticated.tenant;
-    let deleted = delete_user(&tenant.pool, authenticated.claims.sub).await?;
+    let webhooks = state.webhooks.recorder(tenant.tenant_id).await?;
+    let deleted = delete_user(&tenant.pool, authenticated.claims.sub, &webhooks).await?;
 
     if deleted == false {
         return Err(ApiError::from(TenantsRejection::InvalidAccessToken));

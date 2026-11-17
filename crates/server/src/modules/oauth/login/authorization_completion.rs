@@ -11,12 +11,15 @@ use crate::modules::oauth::login::oauth_state_repository::{
 };
 use crate::modules::oauth::profile::provider_profile::{ProfileRequest, fetch_profile};
 use crate::modules::oauth::provider::oauth_provider_repository::ProviderKey;
+use crate::modules::webhooks::outbox::webhook_recorder::WebhookRecorder;
 
 /// The provider called us back for a pending authorization of `tenant_pool`'s tenant.
 pub struct ProviderCallback<'a> {
     pub pending: &'a PendingAuthorization,
     pub tenant_pool: &'a PgPool,
     pub code: Option<String>,
+    /// Records `user.created` / `user.updated` when the login creates or claims an account.
+    pub webhooks: &'a WebhookRecorder,
 }
 
 impl OAuthLoginContext<'_> {
@@ -35,7 +38,9 @@ impl OAuthLoginContext<'_> {
         };
         let profile = fetch_profile(provider, &profile_request).await?;
 
-        Ok(resolve_oauth_user(callback.tenant_pool, provider, &profile).await?)
+        let identity = (provider, &profile);
+
+        Ok(resolve_oauth_user(callback.tenant_pool, identity, callback.webhooks).await?)
     }
 
     /// Returns the provider's access token for the signed-in user.

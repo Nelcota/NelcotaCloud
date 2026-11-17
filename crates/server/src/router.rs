@@ -24,6 +24,7 @@ use crate::modules::team::routes::team_routes::team_routes;
 use crate::modules::tenants::access::api_key_tenant::API_KEY_HEADER;
 use crate::modules::tenants::access::tenant_admin::PROJECT_HEADER;
 use crate::modules::tenants::routes::tenants_routes::tenants_routes;
+use crate::modules::webhooks::routes::webhooks_routes::webhooks_routes;
 use crate::shared::http::request_id::{REQUEST_ID_HEADER, generate_request_id};
 use crate::shared::http::request_span::request_span;
 
@@ -78,6 +79,7 @@ pub fn api_routes() -> OpenApiRouter<AppState> {
         .merge(tenants_routes())
         .merge(team_routes())
         .merge(auth_routes())
+        .merge(webhooks_routes())
         .merge(oauth_routes())
 }
 

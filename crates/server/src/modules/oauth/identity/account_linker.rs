@@ -2,6 +2,7 @@ use sqlx::error::DatabaseError;
 use sqlx::{PgConnection, PgPool};
 
 use crate::modules::auth::user::email_address::{EmailAddress, InvalidEmailAddress};
+use crate::modules::auth::user::user_events::record_user_event;
 use crate::modules::auth::user::user_lookup::find_user_by_email;
 use crate::modules::auth::user::user_record::User;
 use crate::modules::auth::user::user_registration::{InsertUserError, insert_oauth_user};
@@ -11,6 +12,9 @@ use crate::modules::oauth::identity::identity_repository::{
 };
 use crate::modules::oauth::profile::provider_profile::ProviderProfile;
 use crate::modules::oauth::provider::oauth_provider::OAuthProvider;
+use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
+use crate::modules::webhooks::outbox::webhook_recorder::WebhookRecorder;
+use crate::shared::http::api_error::ApiError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum AccountLinkError {
@@ -24,28 +28,30 @@ pub enum AccountLinkError {
     InvalidEmail(#[from] InvalidEmailAddress),
     #[error("database error while linking OAuth identity: {0}")]
     Database(#[from] sqlx::Error),
+    #[error("failed to record the webhook event: {0}")]
+    Webhooks(ApiError),
 }
 
 /// Finds the user behind a provider identity, linking it to the account with the same
 /// verified email, or creating a new account when there is none.
 pub async fn resolve_oauth_user(
     pool: &PgPool,
-    provider: OAuthProvider,
-    profile: &ProviderProfile,
+    (provider, profile): (OAuthProvider, &ProviderProfile),
+    webhooks: &WebhookRecorder,
 ) -> Result<User, AccountLinkError> {
-    let first_attempt = link_identity(pool, provider, profile).await;
+    let first_attempt = link_identity(pool, (provider, profile), webhooks).await;
     let Err(AccountLinkError::Conflict) = first_attempt else {
         return first_attempt;
     };
 
     // The concurrent login committed the account or identity; this attempt now finds it.
-    link_identity(pool, provider, profile).await
+    link_identity(pool, (provider, profile), webhooks).await
 }
 
 async fn link_identity(
     pool: &PgPool,
-    provider: OAuthProvider,
-    profile: &ProviderProfile,
+    (provider, profile): (OAuthProvider, &ProviderProfile),
+    webhooks: &WebhookRecorder,
 ) -> Result<User, AccountLinkError> {
     let key = IdentityKey {
         provider: provider.as_str(),
@@ -58,7 +64,7 @@ async fn link_identity(
         return Ok(user);
     }
 
-    let user = account_for_email(&mut transaction, profile, &key).await?;
+    let user = account_for_email(&mut transaction, (profile, &key), webhooks).await?;
     insert_identity(&mut transaction, user.id, &key)
         .await
         .map_err(map_unique_violation)?;
@@ -71,20 +77,30 @@ async fn link_identity(
 /// Linking by email is only safe when the provider vouches for the address.
 async fn account_for_email(
     transaction: &mut PgConnection,
-    profile: &ProviderProfile,
-    key: &IdentityKey<'_>,
+    (profile, key): (&ProviderProfile, &IdentityKey<'_>),
+    webhooks: &WebhookRecorder,
 ) -> Result<User, AccountLinkError> {
     let Some(raw_email) = &profile.verified_email else {
         return Err(AccountLinkError::NoVerifiedEmail);
     };
     let email = EmailAddress::parse(raw_email)?;
 
-    match find_user_by_email(&mut *transaction, &email).await? {
-        Some(existing_user) => claim_existing_account(transaction, existing_user, key).await,
-        None => insert_oauth_user(transaction, &email)
-            .await
-            .map_err(map_insert_user_error),
+    if let Some(existing_user) = find_user_by_email(&mut *transaction, &email).await? {
+        return claim_existing_account(transaction, (existing_user, key), webhooks).await;
     }
+
+    let user = insert_oauth_user(transaction, &email)
+        .await
+        .map_err(map_insert_user_error)?;
+    record_user_event(
+        transaction,
+        webhooks,
+        (WebhookEventType::UserCreated, &user),
+    )
+    .await
+    .map_err(AccountLinkError::Webhooks)?;
+
+    Ok(user)
 }
 
 /// Links to an existing account with the same email. If that account never verified its
@@ -93,14 +109,16 @@ async fn account_for_email(
 /// so a recycled email address cannot take over the old account.
 async fn claim_existing_account(
     transaction: &mut PgConnection,
-    existing_user: User,
-    key: &IdentityKey<'_>,
+    (existing_user, key): (User, &IdentityKey<'_>),
+    webhooks: &WebhookRecorder,
 ) -> Result<User, AccountLinkError> {
     if has_provider_identity(transaction, existing_user.id, key.provider).await? {
         return Err(AccountLinkError::ProviderAccountMismatch);
     }
 
-    Ok(claim_verified_inbox(transaction, existing_user).await?)
+    claim_verified_inbox(transaction, existing_user, webhooks)
+        .await
+        .map_err(AccountLinkError::Webhooks)
 }
 
 fn map_insert_user_error(error: InsertUserError) -> AccountLinkError {

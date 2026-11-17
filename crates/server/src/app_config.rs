@@ -19,6 +19,9 @@ pub struct AppConfig {
     /// Development only: lets tenants point their own SMTP settings at local or private hosts
     /// and any port. Never enable it in production (it would allow SSRF into the network).
     pub tenant_smtp_allow_any_host: Option<bool>,
+    /// Development only: lets webhook endpoints use plain http and local or private hosts.
+    /// Never enable it in production (it would allow SSRF into the network).
+    pub webhook_allow_private_hosts: Option<bool>,
     /// Slug of the tenant whose users are the platform accounts that log into the console.
     /// Unset, the platform API answers 503.
     pub platform_tenant_slug: Option<String>,
@@ -47,6 +50,7 @@ impl AppConfig {
             email_from: self.email_from.trim().to_owned(),
             client_ip_header: self.client_ip_header.map(|header| header.trim().to_owned()),
             tenant_smtp_allow_any_host: self.tenant_smtp_allow_any_host,
+            webhook_allow_private_hosts: self.webhook_allow_private_hosts,
             platform_tenant_slug: self
                 .platform_tenant_slug
                 .map(|slug| slug.trim().to_owned())
@@ -125,6 +129,7 @@ mod tests {
             email_from: "Auth <auth@example.com>".to_owned(),
             client_ip_header: None,
             tenant_smtp_allow_any_host: None,
+            webhook_allow_private_hosts: None,
             platform_tenant_slug: None,
         }
     }

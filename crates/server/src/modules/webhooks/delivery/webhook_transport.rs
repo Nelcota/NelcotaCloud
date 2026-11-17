@@ -1,0 +1,104 @@
+use std::time::Duration;
+
+use reqwest::header::CONTENT_TYPE;
+use time::OffsetDateTime;
+
+use crate::modules::webhooks::delivery::public_resolver::PublicResolver;
+use crate::modules::webhooks::delivery::webhook_request::{
+    DeliveryOutcome, DeliveryTarget, WebhookMessage, failed, outcome_of,
+};
+use crate::modules::webhooks::endpoint::webhook_url::{WebhookHostPolicy, WebhookUrl};
+use crate::modules::webhooks::signing::webhook_signature::{SignedContent, signature_header};
+
+/// A slow receiver holds one delivery slot at most this long; it should answer quickly and do
+/// its work afterwards.
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
+const USER_AGENT: &str = "NelcotaCloud-Webhooks/1.0";
+const ID_HEADER: &str = "webhook-id";
+const TIMESTAMP_HEADER: &str = "webhook-timestamp";
+const SIGNATURE_HEADER: &str = "webhook-signature";
+
+/// Sends signed webhook requests. One client for every delivery, so connections to the same
+/// receiver are reused. It never follows redirects: a 3xx could point at a private address.
+#[derive(Clone)]
+pub struct WebhookTransport {
+    client: reqwest::Client,
+    policy: WebhookHostPolicy,
+}
+
+impl WebhookTransport {
+    pub fn new(policy: WebhookHostPolicy) -> Result<Self, reqwest::Error> {
+        let client = reqwest::Client::builder()
+            .redirect(reqwest::redirect::Policy::none())
+            .timeout(REQUEST_TIMEOUT)
+            .connect_timeout(CONNECT_TIMEOUT)
+            .user_agent(USER_AGENT)
+            .dns_resolver(PublicResolver { policy })
+            .build()?;
+
+        Ok(Self { client, policy })
+    }
+
+    pub fn policy(&self) -> WebhookHostPolicy {
+        self.policy
+    }
+
+    /// Sends one signed request. Any 2xx answer counts as delivered.
+    pub async fn send(&self, target: &DeliveryTarget, message: &WebhookMessage) -> DeliveryOutcome {
+        // Checked again on every attempt: the policy may be stricter than when it was saved.
+        if let Err(error) = WebhookUrl::parse(&target.url, self.policy) {
+            return failed(None, &error);
+        }
+
+        let timestamp = OffsetDateTime::now_utc().unix_timestamp();
+        let content = SignedContent {
+            message_id: &message.id,
+            timestamp,
+            body: &message.body,
+        };
+        let signature = match signature_header(&target.secrets, &content) {
+            Ok(signature) => signature,
+            Err(error) => return failed(None, &error),
+        };
+        let request = self
+            .client
+            .post(&target.url)
+            .header(CONTENT_TYPE, "application/json")
+            .header(ID_HEADER, &message.id)
+            .header(TIMESTAMP_HEADER, timestamp.to_string())
+            .header(SIGNATURE_HEADER, signature)
+            .body(message.body.clone());
+
+        match request.send().await {
+            Ok(response) => outcome_of(response.status()),
+            Err(error) => failed(None, &error.without_url()),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::modules::webhooks::signing::webhook_secret::WebhookSecret;
+
+    #[tokio::test]
+    async fn refuses_private_targets_without_sending() -> Result<(), reqwest::Error> {
+        let transport = WebhookTransport::new(WebhookHostPolicy::PublicHttpsOnly)?;
+        let target = DeliveryTarget {
+            url: "https://10.0.0.1/hook".to_owned(),
+            secrets: vec![WebhookSecret::generate()],
+        };
+        let message = WebhookMessage {
+            id: "evt".to_owned(),
+            body: "{}".to_owned(),
+        };
+        let outcome = transport.send(&target, &message).await;
+
+        assert!(matches!(
+            outcome,
+            DeliveryOutcome::Failed { status: None, .. }
+        ));
+        Ok(())
+    }
+}

@@ -1,4 +1,4 @@
-use sqlx::PgPool;
+use sqlx::{PgExecutor, PgPool};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -9,8 +9,8 @@ pub struct StoredAvatar {
 }
 
 /// Replaces the user's avatar. `None` when the user does not exist (deleted meanwhile).
-pub async fn store_avatar(
-    pool: &PgPool,
+pub async fn store_avatar<'e>(
+    executor: impl PgExecutor<'e>,
     user_id: Uuid,
     image: &[u8],
 ) -> Result<Option<OffsetDateTime>, sqlx::Error> {
@@ -21,7 +21,7 @@ pub async fn store_avatar(
     )
     .bind(user_id)
     .bind(image)
-    .fetch_optional(pool)
+    .fetch_optional(executor)
     .await
 }
 
@@ -35,10 +35,13 @@ pub async fn find_avatar(
         .await
 }
 
-pub async fn delete_avatar(pool: &PgPool, user_id: Uuid) -> Result<(), sqlx::Error> {
+pub async fn delete_avatar<'e>(
+    executor: impl PgExecutor<'e>,
+    user_id: Uuid,
+) -> Result<(), sqlx::Error> {
     sqlx::query("DELETE FROM user_avatars WHERE user_id = $1")
         .bind(user_id)
-        .execute(pool)
+        .execute(executor)
         .await?;
 
     Ok(())

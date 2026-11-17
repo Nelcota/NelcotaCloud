@@ -1,8 +1,10 @@
+use axum::extract::State;
 use axum::http::StatusCode;
 use serde::Deserialize;
 use utoipa::ToSchema;
 use validator::Validate;
 
+use crate::app_state::AppState;
 use crate::modules::auth::one_time_token::one_time_token_purpose::OneTimeTokenPurpose;
 use crate::modules::auth::one_time_token::one_time_token_repository::consume_one_time_token;
 use crate::modules::auth::password::password_hashing::hash_password;
@@ -10,7 +12,9 @@ use crate::modules::auth::password::password_policy::check_new_password;
 use crate::modules::auth::rejection::auth_rejection::AuthRejection;
 use crate::modules::auth::session::refresh_token_repository::end_all_user_sessions;
 use crate::modules::auth::user::user_account_updates::set_password;
+use crate::modules::auth::user::user_events::{UserChange, record_user_change};
 use crate::modules::tenants::access::tenant_context::TenantContext;
+use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::validated_json::ValidatedJson;
 
@@ -36,10 +40,12 @@ pub struct ResetPasswordBody {
     )
 )]
 pub async fn reset_password(
+    State(state): State<AppState>,
     tenant: TenantContext,
     ValidatedJson(body): ValidatedJson<ResetPasswordBody>,
 ) -> Result<StatusCode, ApiError> {
     check_new_password(&body.password).map_err(ApiError::invalid_request)?;
+    let webhooks = state.webhooks.recorder(tenant.tenant_id).await?;
     let mut transaction = tenant.pool.begin().await?;
     let purpose = OneTimeTokenPurpose::PasswordReset;
     let consumed = consume_one_time_token(&mut transaction, purpose, &body.token).await?;
@@ -52,6 +58,12 @@ pub async fn reset_password(
         .map_err(ApiError::internal)?;
     set_password(&mut transaction, user_id, &password_hash).await?;
     end_all_user_sessions(&mut transaction, user_id).await?;
+    // The reset link also verifies the email, so the user may have changed for receivers.
+    let change = UserChange {
+        event_type: WebhookEventType::UserUpdated,
+        user_id,
+    };
+    record_user_change(&mut transaction, &webhooks, change).await?;
     transaction.commit().await?;
 
     Ok(StatusCode::NO_CONTENT)

@@ -1217,6 +1217,506 @@
         ]
       }
     },
+    "/auth/v1/admin/webhooks": {
+      "get": {
+        "tags": [
+          "webhooks"
+        ],
+        "summary": "`GET /admin/webhooks`: the project's webhook endpoints, oldest first.",
+        "operationId": "list_webhook_endpoints",
+        "responses": {
+          "200": {
+            "description": "The endpoints",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WebhookEndpointView"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "webhooks"
+        ],
+        "summary": "`POST /admin/webhooks`: a new endpoint and its signing secret, shown only in this answer.",
+        "operationId": "create_webhook_endpoint",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookEndpointBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Endpoint created; store its secret now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookEndpointWithSecret"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or private URL, or no event types",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The project already has 5 endpoints",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/webhooks/{endpoint_id}": {
+      "delete": {
+        "tags": [
+          "webhooks"
+        ],
+        "summary": "`DELETE /admin/webhooks/{endpoint_id}`: no more events; pending deliveries are given up.",
+        "operationId": "delete_webhook_endpoint",
+        "parameters": [
+          {
+            "name": "endpoint_id",
+            "in": "path",
+            "description": "Id of the endpoint",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Endpoint deleted"
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such endpoint in this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "webhooks"
+        ],
+        "summary": "`PATCH /admin/webhooks/{endpoint_id}`: changes the URL, the events or whether it is enabled.",
+        "operationId": "change_webhook_endpoint",
+        "parameters": [
+          {
+            "name": "endpoint_id",
+            "in": "path",
+            "description": "Id of the endpoint",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookEndpointChangesBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Endpoint saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookEndpointView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or private URL, or no event types",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such endpoint in this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/webhooks/{endpoint_id}/deliveries": {
+      "get": {
+        "tags": [
+          "webhooks"
+        ],
+        "summary": "`GET /admin/webhooks/{endpoint_id}/deliveries`: the endpoint's 50 newest deliveries.",
+        "operationId": "list_webhook_deliveries",
+        "parameters": [
+          {
+            "name": "endpoint_id",
+            "in": "path",
+            "description": "Id of the endpoint",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Newest deliveries first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeliveryLogEntry"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such endpoint in this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/webhooks/{endpoint_id}/deliveries/{delivery_id}/retry": {
+      "post": {
+        "tags": [
+          "webhooks"
+        ],
+        "summary": "`POST /admin/webhooks/{endpoint_id}/deliveries/{delivery_id}/retry`: sends the delivery\nagain right away, whatever its state.",
+        "operationId": "retry_webhook_delivery",
+        "parameters": [
+          {
+            "name": "endpoint_id",
+            "in": "path",
+            "description": "Id of the endpoint",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "delivery_id",
+            "in": "path",
+            "description": "Id of the delivery",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Queued; it is sent within seconds"
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such endpoint or delivery in this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/webhooks/{endpoint_id}/secret": {
+      "post": {
+        "tags": [
+          "webhooks"
+        ],
+        "summary": "`POST /admin/webhooks/{endpoint_id}/secret`: a new signing secret, shown only here. For a\nday requests carry signatures with both secrets, so receivers can switch without gaps.",
+        "operationId": "rotate_webhook_secret",
+        "parameters": [
+          {
+            "name": "endpoint_id",
+            "in": "path",
+            "description": "Id of the endpoint",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "New secret; store it now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookEndpointWithSecret"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such endpoint in this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/webhooks/{endpoint_id}/test": {
+      "post": {
+        "tags": [
+          "webhooks"
+        ],
+        "summary": "`POST /admin/webhooks/{endpoint_id}/test`: sends a signed `webhook.test` event now and\nanswers with what the endpoint replied.",
+        "operationId": "send_test_webhook",
+        "parameters": [
+          {
+            "name": "endpoint_id",
+            "in": "path",
+            "description": "Id of the endpoint",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The endpoint's answer (also when it failed)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestDeliveryResult"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such endpoint in this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
     "/auth/v1/jwks": {
       "get": {
         "tags": [
@@ -3522,6 +4022,78 @@
           }
         }
       },
+      "DeliveryLogEntry": {
+        "type": "object",
+        "description": "One delivery as the delivery log shows it. The payload is not included: it has personal\ndata and is already in the receiver's hands.",
+        "required": [
+          "id",
+          "event_id",
+          "event_type",
+          "status",
+          "attempts",
+          "created_at"
+        ],
+        "properties": {
+          "attempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "event_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "last_attempt_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "last_error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_response_status": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "next_attempt_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When the next retry happens; `null` unless pending."
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeliveryStatus"
+          }
+        }
+      },
+      "DeliveryStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "delivered",
+          "failed"
+        ]
+      },
       "EmailBody": {
         "type": "object",
         "description": "Body of the endpoints that email a link to an address.",
@@ -4131,6 +4703,33 @@
           }
         }
       },
+      "TestDeliveryResult": {
+        "type": "object",
+        "description": "What the receiver answered to the test event.",
+        "required": [
+          "delivered"
+        ],
+        "properties": {
+          "delivered": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "response_status": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "HTTP status the endpoint answered; `null` when it could not be reached.",
+            "minimum": 0
+          }
+        }
+      },
       "TotpEnrollmentResponse": {
         "type": "object",
         "description": "The authenticator to add to an app; it becomes active after its first code is verified.",
@@ -4222,6 +4821,117 @@
             }
           }
         }
+      },
+      "WebhookEndpointBody": {
+        "type": "object",
+        "required": [
+          "url",
+          "event_types"
+        ],
+        "properties": {
+          "event_types": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WebhookEventType"
+            },
+            "description": "The events this endpoint receives."
+          },
+          "url": {
+            "type": "string",
+            "description": "`https://…` on a public host; it receives signed `POST` requests."
+          }
+        }
+      },
+      "WebhookEndpointChangesBody": {
+        "type": "object",
+        "description": "Only the fields sent are changed.",
+        "properties": {
+          "event_types": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/WebhookEventType"
+            }
+          },
+          "is_enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Disabled endpoints receive no new events."
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "WebhookEndpointView": {
+        "type": "object",
+        "description": "An endpoint as its owner sees it; the secret is never shown again after creation.",
+        "required": [
+          "id",
+          "url",
+          "event_types",
+          "is_enabled",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "event_types": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WebhookEventType"
+            }
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "is_enabled": {
+            "type": "boolean",
+            "description": "Disabled endpoints receive no new events."
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "WebhookEndpointWithSecret": {
+        "type": "object",
+        "description": "Answer of creating an endpoint or rotating its secret: the only time the secret is shown.",
+        "required": [
+          "endpoint",
+          "secret"
+        ],
+        "properties": {
+          "endpoint": {
+            "$ref": "#/components/schemas/WebhookEndpointView"
+          },
+          "secret": {
+            "type": "string",
+            "description": "`whsec_…`: verify the `webhook-signature` header with it (Standard Webhooks)."
+          }
+        }
+      },
+      "WebhookEventType": {
+        "type": "string",
+        "description": "What happened, as receivers see it in `type`. Renaming one is a breaking change.",
+        "enum": [
+          "user.created",
+          "user.updated",
+          "user.deleted",
+          "user.banned",
+          "user.unbanned",
+          "session.revoked"
+        ]
       }
     },
     "securitySchemes": {
@@ -4275,6 +4985,10 @@
     {
       "name": "tenant-admin",
       "description": "A tenant's own configuration (secret API key)"
+    },
+    {
+      "name": "webhooks",
+      "description": "Signed HTTP calls to the tenant's servers when its users change (Standard Webhooks)"
     },
     {
       "name": "platform",

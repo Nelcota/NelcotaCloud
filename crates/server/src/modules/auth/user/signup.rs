@@ -13,10 +13,13 @@ use crate::modules::auth::session::session_grant::{
 use crate::modules::auth::session::session_issuer::SessionTokens;
 use crate::modules::auth::user::email_address::EmailAddress;
 use crate::modules::auth::user::unverified_account_takeover::take_over_unverified_account;
+use crate::modules::auth::user::user_events::{UserChange, record_user_change, record_user_event};
 use crate::modules::auth::user::user_record::User;
 use crate::modules::auth::user::user_registration::insert_user;
 use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::modules::tenants::settings::email_verification_policy::requires_email_verification;
+use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
+use crate::modules::webhooks::outbox::webhook_recorder::WebhookRecorder;
 use crate::shared::http::api_error::ApiError;
 
 /// A validated signup with its password already hashed.
@@ -52,11 +55,20 @@ async fn sign_up_with_session(
     tenant: &TenantContext,
     signup: &NewSignup,
 ) -> Result<SessionTokens, ApiError> {
-    let mut connection = tenant.pool.acquire().await?;
-    let user = insert_user(&mut connection, &signup.email, &signup.password_hash).await?;
+    let webhooks = state.webhooks.recorder(tenant.tenant_id).await?;
+    let mut transaction = tenant.pool.begin().await?;
+    let user = insert_user(&mut transaction, &signup.email, &signup.password_hash).await?;
     let Some(user) = user else {
         return Err(ApiError::from(AuthRejection::EmailTaken));
     };
+    record_user_event(
+        &mut transaction,
+        &webhooks,
+        (WebhookEventType::UserCreated, &user),
+    )
+    .await?;
+    transaction.commit().await?;
+    let mut connection = tenant.pool.acquire().await?;
     let verification = AuthEmailRequest {
         user: &user,
         kind: AuthEmailKind::Verification,
@@ -84,8 +96,9 @@ async fn sign_up_pending_verification(
     tenant: &TenantContext,
     signup: &NewSignup,
 ) -> Result<(), ApiError> {
+    let webhooks = state.webhooks.recorder(tenant.tenant_id).await?;
     let mut transaction = tenant.pool.begin().await?;
-    let user = register_or_take_over(&mut transaction, signup).await?;
+    let user = register_or_take_over(&mut transaction, signup, &webhooks).await?;
     let Some(user) = user else {
         return Ok(());
     };
@@ -105,13 +118,31 @@ async fn sign_up_pending_verification(
 async fn register_or_take_over(
     transaction: &mut PgConnection,
     signup: &NewSignup,
-) -> Result<Option<User>, sqlx::Error> {
+    webhooks: &WebhookRecorder,
+) -> Result<Option<User>, ApiError> {
     let email = &signup.email;
     let password_hash = &signup.password_hash;
 
     if let Some(user) = insert_user(transaction, email, password_hash).await? {
+        record_user_event(
+            transaction,
+            webhooks,
+            (WebhookEventType::UserCreated, &user),
+        )
+        .await?;
         return Ok(Some(user));
     }
 
-    take_over_unverified_account(transaction, email, password_hash).await
+    let taken_over = take_over_unverified_account(transaction, email, password_hash).await?;
+    let Some(user) = taken_over else {
+        return Ok(None);
+    };
+    // The new signup replaced the password and dropped any authenticator: read it again.
+    let change = UserChange {
+        event_type: WebhookEventType::UserUpdated,
+        user_id: user.id,
+    };
+    record_user_change(transaction, webhooks, change).await?;
+
+    Ok(Some(user))
 }

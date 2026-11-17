@@ -1,12 +1,16 @@
 use axum::Json;
+use axum::extract::State;
 
+use crate::app_state::AppState;
 use crate::modules::auth::one_time_token::one_time_token_purpose::OneTimeTokenPurpose;
 use crate::modules::auth::one_time_token::one_time_token_repository::consume_one_time_token;
 use crate::modules::auth::rejection::auth_rejection::AuthRejection;
 use crate::modules::auth::routes::one_time_token_body::OneTimeTokenBody;
 use crate::modules::auth::user::user_account_updates::mark_email_verified;
+use crate::modules::auth::user::user_events::record_user_event;
 use crate::modules::auth::user::user_record::User;
 use crate::modules::tenants::access::tenant_context::TenantContext;
+use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::validated_json::ValidatedJson;
 
@@ -23,9 +27,11 @@ use crate::shared::http::validated_json::ValidatedJson;
     )
 )]
 pub async fn verify_email(
+    State(state): State<AppState>,
     tenant: TenantContext,
     ValidatedJson(body): ValidatedJson<OneTimeTokenBody>,
 ) -> Result<Json<User>, ApiError> {
+    let webhooks = state.webhooks.recorder(tenant.tenant_id).await?;
     let mut transaction = tenant.pool.begin().await?;
     let purpose = OneTimeTokenPurpose::EmailVerification;
     let consumed = consume_one_time_token(&mut transaction, purpose, &body.token).await?;
@@ -36,6 +42,8 @@ pub async fn verify_email(
     let Some(user) = user else {
         return Err(ApiError::from(AuthRejection::InvalidToken));
     };
+    let event = (WebhookEventType::UserUpdated, &user);
+    record_user_event(&mut transaction, &webhooks, event).await?;
     transaction.commit().await?;
 
     Ok(Json(user))
