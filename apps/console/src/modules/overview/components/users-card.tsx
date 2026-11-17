@@ -7,7 +7,7 @@ import { useSettingsQuery } from '@/modules/project-settings/queries/use-project
 import { useUsersQuery } from '@/modules/users/queries/use-users'
 
 /** One user is enough to read the total; the list itself stays on the users page. */
-const TOTAL_ONLY = { email: '', offset: 0, limit: 1 }
+const TOTAL_ONLY = { email: '', status: 'all', offset: 0, limit: 1 } as const
 
 export function UsersCard({ projectId }: { projectId: string }): JSX.Element {
   const settings = useSettingsQuery(projectId)
