@@ -3,6 +3,14 @@ use sqlx::PgPool;
 use utoipa::ToSchema;
 
 use crate::modules::auth::user::user_record::{User, user_columns};
+use crate::modules::auth::user::user_status_filter::UserStatusFilter;
+
+/// Search and status filter shared by the page and its count; `$2` is the status or `NULL`.
+macro_rules! user_filter {
+    () => {
+        r" WHERE email LIKE $1 ESCAPE '\' AND ($2::text IS NULL OR ($2 = 'unverified' AND email_verified_at IS NULL) OR ($2 = 'banned' AND banned_at IS NOT NULL))"
+    };
+}
 
 /// One page of users, newest first, and how many match in total.
 #[derive(Debug, Serialize, ToSchema)]
@@ -14,27 +22,33 @@ pub struct UserPage {
 pub struct UserQuery<'a> {
     /// Part of the email to search for; `None` lists everyone.
     pub email_contains: Option<&'a str>,
+    /// `None` lists every status.
+    pub status: Option<UserStatusFilter>,
     pub limit: i64,
     pub offset: i64,
 }
 
 pub async fn list_users(pool: &PgPool, query: &UserQuery<'_>) -> Result<UserPage, sqlx::Error> {
     let pattern = like_pattern(query.email_contains);
+    let status = query.status.map(UserStatusFilter::as_str);
     let users: Vec<User> = sqlx::query_as(concat!(
         "SELECT ",
         user_columns!(),
-        r" FROM users WHERE email LIKE $1 ESCAPE '\' ORDER BY created_at DESC, id DESC LIMIT $2 OFFSET $3"
+        " FROM users",
+        user_filter!(),
+        " ORDER BY created_at DESC, id DESC LIMIT $3 OFFSET $4"
     ))
     .bind(&pattern)
+    .bind(status)
     .bind(query.limit)
     .bind(query.offset)
     .fetch_all(pool)
     .await?;
-    let total: i64 =
-        sqlx::query_scalar(r"SELECT count(*) FROM users WHERE email LIKE $1 ESCAPE '\'")
-            .bind(&pattern)
-            .fetch_one(pool)
-            .await?;
+    let total: i64 = sqlx::query_scalar(concat!("SELECT count(*) FROM users", user_filter!()))
+        .bind(&pattern)
+        .bind(status)
+        .fetch_one(pool)
+        .await?;
 
     Ok(UserPage { users, total })
 }

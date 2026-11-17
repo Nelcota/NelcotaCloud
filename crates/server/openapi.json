@@ -794,7 +794,7 @@
         "tags": [
           "tenant-admin"
         ],
-        "summary": "`GET /admin/users`: the tenant's users, newest first, optionally searched by email.",
+        "summary": "`GET /admin/users`: the tenant's users, newest first, optionally searched by email\nand narrowed to one status.",
         "operationId": "list_users",
         "parameters": [
           {
@@ -804,6 +804,20 @@
             "required": false,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Only users in this state; every user without it.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Narrows the user list to the accounts that need an admin's attention.",
+              "enum": [
+                "unverified",
+                "banned"
+              ]
             }
           },
           {
@@ -837,7 +851,7 @@
             }
           },
           "400": {
-            "description": "Invalid search, limit or offset",
+            "description": "Invalid search, status, limit or offset",
             "content": {
               "application/json": {
                 "schema": {

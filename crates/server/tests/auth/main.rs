@@ -23,6 +23,7 @@ mod support;
 mod team;
 mod tenant_smtp;
 mod user_admin;
+mod user_status_filter;
 mod verification_required;
 mod webhook_delivery;
 mod webhook_receiver;
