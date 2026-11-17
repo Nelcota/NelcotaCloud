@@ -5,3 +5,4 @@ pub mod session_grant;
 pub mod session_issuer;
 pub mod session_listing;
 pub mod session_renewal;
+pub mod user_sessions;
