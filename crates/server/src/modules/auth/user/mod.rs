@@ -4,6 +4,7 @@ pub mod signup;
 pub mod unverified_account_takeover;
 pub mod user_account_updates;
 pub mod user_administration;
+pub mod user_events;
 pub mod user_listing;
 pub mod user_lookup;
 pub mod user_record;

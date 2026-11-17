@@ -13,10 +13,12 @@ aes-gcm = "0.11.1"
 argon2 = "0.6.0"
 askama = "0.16.1"
 axum = "0.8.9"
+base64 = "0.23.1"
 dotenvy = "0.15.7"
 ed25519-dalek = { version = "3.0.0", features = ["pkcs8", "alloc"] }
 envy = "0.4.2"
 governor = "0.10.4"
+hmac = "0.13.0"
 image = { version = "0.25.10", default-features = false, features = ["jpeg", "png", "webp"] }
 jsonwebtoken = { version = "12.0.0", default-features = false, features = ["rust_crypto"] }
 lettre = { version = "0.11.23", default-features = false, features = ["builder", "smtp-transport", "tokio1", "tokio1-rustls", "ring", "webpki-roots"] }

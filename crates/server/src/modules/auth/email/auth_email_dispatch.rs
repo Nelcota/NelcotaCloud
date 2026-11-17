@@ -17,7 +17,7 @@ use crate::modules::tenants::settings::loaded_tenant_settings::load_tenant_setti
 use crate::modules::tenants::smtp::tenant_email_delivery::send_tenant_email_in_background;
 use crate::shared::http::api_error::ApiError;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AuthEmailKind {
     Verification,
     PasswordReset,

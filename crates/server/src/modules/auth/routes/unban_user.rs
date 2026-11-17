@@ -1,7 +1,8 @@
 use axum::Json;
-use axum::extract::Path;
+use axum::extract::{Path, State};
 use uuid::Uuid;
 
+use crate::app_state::AppState;
 use crate::modules::auth::user::user_administration::unban_user as unban;
 use crate::modules::auth::user::user_record::User;
 use crate::modules::tenants::access::tenant_admin_context::TenantAdminContext;
@@ -21,10 +22,12 @@ use crate::shared::http::api_error::{ApiError, ErrorBody};
     )
 )]
 pub async fn unban_user(
+    State(state): State<AppState>,
     admin: TenantAdminContext,
     Path(user_id): Path<Uuid>,
 ) -> Result<Json<User>, ApiError> {
-    let user = unban(&admin.pool, user_id).await?;
+    let webhooks = state.webhooks.recorder(admin.tenant_id).await?;
+    let user = unban(&admin.pool, user_id, &webhooks).await?;
     let Some(user) = user else {
         return Err(ApiError::NotFound("user"));
     };

@@ -16,6 +16,13 @@ use crate::modules::tenants::signing_keys::signing_key_cache::SigningKeyCache;
 use crate::modules::tenants::smtp::tenant_email_senders::{
     TenantEmailSenders, TenantEmailSendersConfig,
 };
+use crate::modules::webhooks::delivery::tenant_delivery_run::DeliveryContext;
+use crate::modules::webhooks::delivery::webhook_transport::WebhookTransport;
+use crate::modules::webhooks::delivery::webhook_worker::WebhookWorker;
+use crate::modules::webhooks::endpoint::webhook_url::WebhookHostPolicy;
+use crate::modules::webhooks::outbox::webhook_hints::WebhookHints;
+use crate::modules::webhooks::outbox::webhook_subscriptions::WebhookSubscriptions;
+use crate::modules::webhooks::runtime::webhook_runtime::WebhookRuntime;
 use crate::shared::crypto::hex_encoding::decode_hex;
 use crate::shared::crypto::secret_box::SecretBox;
 use crate::shared::database::migrators::CONTROL_PLANE_MIGRATOR;
@@ -43,15 +50,22 @@ pub async fn build_app_state_with_endpoints(
     let email_senders = email_senders(config, &control_plane_pool, &secret_box)?;
     spawn_maintenance(control_plane_pool.clone(), Arc::clone(&rate_limits));
 
-    let tenant_pools = tenant_pool_registry(config, &control_plane_pool);
+    let tenant_pools = Arc::new(tenant_pool_registry(config, &control_plane_pool));
+    let webhook_dependencies = WebhookDependencies {
+        control_plane_pool: &control_plane_pool,
+        tenant_pools: &tenant_pools,
+        secret_box: &secret_box,
+    };
+    let webhooks = start_webhooks(config, &webhook_dependencies)?;
 
     Ok(AppState {
-        tenant_pools: Arc::new(tenant_pools),
+        tenant_pools,
         signing_keys: Arc::new(signing_key_cache(&control_plane_pool, &secret_box)),
         platform_tenant: Arc::new(platform_tenant_directory(config, &control_plane_pool)?),
         rate_limits,
         email_senders: Arc::new(email_senders),
         http_client: build_http_client()?,
+        webhooks: Arc::new(webhooks),
         settings: Arc::new(settings),
         control_plane_pool,
         secret_box,
@@ -83,6 +97,44 @@ fn email_senders(
         platform_sender: Arc::new(platform_sender),
         allow_any_host: config.tenant_smtp_allow_any_host.unwrap_or(false),
     }))
+}
+
+struct WebhookDependencies<'a> {
+    control_plane_pool: &'a PgPool,
+    tenant_pools: &'a Arc<TenantPoolRegistry>,
+    secret_box: &'a Arc<SecretBox>,
+}
+
+/// Builds the webhook services and spawns the delivery worker they wake.
+fn start_webhooks(
+    config: &AppConfig,
+    dependencies: &WebhookDependencies,
+) -> Result<WebhookRuntime, StartupError> {
+    let control_plane_pool = dependencies.control_plane_pool;
+    let policy = webhook_host_policy(config);
+    let transport = WebhookTransport::new(policy)?;
+    let (hints, hint_receiver) = WebhookHints::channel();
+    let context = DeliveryContext {
+        control_plane_pool: control_plane_pool.clone(),
+        tenant_pools: Arc::clone(dependencies.tenant_pools),
+        secret_box: Arc::clone(dependencies.secret_box),
+        transport: transport.clone(),
+    };
+    WebhookWorker::new(context, hint_receiver).spawn();
+
+    Ok(WebhookRuntime {
+        subscriptions: WebhookSubscriptions::new(control_plane_pool.clone()),
+        hints,
+        transport,
+    })
+}
+
+fn webhook_host_policy(config: &AppConfig) -> WebhookHostPolicy {
+    if config.webhook_allow_private_hosts == Some(true) {
+        return WebhookHostPolicy::AllowPrivate;
+    }
+
+    WebhookHostPolicy::PublicHttpsOnly
 }
 
 fn platform_tenant_directory(

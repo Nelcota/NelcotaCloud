@@ -51,10 +51,16 @@ pub async fn issue_login_code(
     let tenant_pool = state.tenant_pools.pool_for(pending.tenant_id).await?;
     // A blank code is no code: treat it as the user denying access, not as a server error.
     let code = code.filter(|code| code.trim().is_empty() == false);
+    let webhooks = state
+        .webhooks
+        .recorder(pending.tenant_id)
+        .await
+        .map_err(OAuthLoginError::Webhooks)?;
     let callback = ProviderCallback {
         pending,
         tenant_pool: &tenant_pool,
         code,
+        webhooks: &webhooks,
     };
     let user = state.oauth_login_context().finish(callback).await?;
     let request = OneTimeTokenRequest {

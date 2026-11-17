@@ -97,17 +97,27 @@ async fn find_reused_family(
 
 /// The marker keeps the family revoked even for tokens inserted after this call.
 pub async fn revoke_token_family(pool: &PgPool, family_id: Uuid) -> Result<(), sqlx::Error> {
+    let mut connection = pool.acquire().await?;
+
+    revoke_token_family_with(&mut connection, family_id).await
+}
+
+/// Same as [`revoke_token_family`], inside the caller's transaction.
+pub async fn revoke_token_family_with(
+    connection: &mut PgConnection,
+    family_id: Uuid,
+) -> Result<(), sqlx::Error> {
     sqlx::query(
         "INSERT INTO revoked_token_families (family_id) VALUES ($1) ON CONFLICT (family_id) DO NOTHING",
     )
     .bind(family_id)
-    .execute(pool)
+    .execute(&mut *connection)
     .await?;
     sqlx::query(
         "UPDATE refresh_tokens SET revoked_at = now() WHERE family_id = $1 AND revoked_at IS NULL",
     )
     .bind(family_id)
-    .execute(pool)
+    .execute(connection)
     .await?;
 
     Ok(())

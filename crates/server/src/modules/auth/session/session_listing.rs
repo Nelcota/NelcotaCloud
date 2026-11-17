@@ -4,7 +4,11 @@ use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::modules::auth::session::refresh_token_repository::revoke_token_family;
+use crate::modules::auth::session::refresh_token_repository::revoke_token_family_with;
+use crate::modules::auth::user::user_events::record_sessions_revoked;
+use crate::modules::webhooks::event::webhook_event::RevokedSessions;
+use crate::modules::webhooks::outbox::webhook_recorder::WebhookRecorder;
+use crate::shared::http::api_error::ApiError;
 
 /// One logged-in device or browser: a refresh token family that can still be used.
 #[derive(Debug, Serialize, ToSchema, sqlx::FromRow)]
@@ -40,25 +44,29 @@ pub async fn list_active_sessions(
     .await
 }
 
-/// Ends one session of the user. `false` if the session is not theirs.
+/// Ends one session of the user; `false` when it is not theirs.
 pub async fn end_session_of_user(
     pool: &PgPool,
-    user_id: Uuid,
-    session_id: Uuid,
-) -> Result<bool, sqlx::Error> {
+    (user_id, session_id): (Uuid, Uuid),
+    webhooks: &WebhookRecorder,
+) -> Result<bool, ApiError> {
+    let mut transaction = pool.begin().await?;
     let owns_session: bool = sqlx::query_scalar(
         "SELECT EXISTS (SELECT 1 FROM refresh_tokens WHERE family_id = $1 AND user_id = $2)",
     )
     .bind(session_id)
     .bind(user_id)
-    .fetch_one(pool)
+    .fetch_one(&mut *transaction)
     .await?;
 
     if owns_session == false {
         return Ok(false);
     }
 
-    revoke_token_family(pool, session_id).await?;
+    revoke_token_family_with(&mut transaction, session_id).await?;
+    let revoked = (user_id, RevokedSessions::One, Some(session_id));
+    record_sessions_revoked(&mut transaction, webhooks, revoked).await?;
+    transaction.commit().await?;
 
     Ok(true)
 }
@@ -67,14 +75,12 @@ pub async fn end_session_of_user(
 /// keep those families revoked even for successors a concurrent refresh is inserting.
 pub async fn end_other_sessions(
     pool: &PgPool,
-    user_id: Uuid,
-    kept_session_id: Uuid,
-) -> Result<(), sqlx::Error> {
+    (user_id, kept_session_id): (Uuid, Uuid),
+    webhooks: &WebhookRecorder,
+) -> Result<(), ApiError> {
     let mut transaction = pool.begin().await?;
     sqlx::query(
-        "INSERT INTO revoked_token_families (family_id) \
-         SELECT DISTINCT family_id FROM refresh_tokens WHERE user_id = $1 AND family_id <> $2 \
-         ON CONFLICT (family_id) DO NOTHING",
+        "INSERT INTO revoked_token_families (family_id)          SELECT DISTINCT family_id FROM refresh_tokens WHERE user_id = $1 AND family_id <> $2          ON CONFLICT (family_id) DO NOTHING",
     )
     .bind(user_id)
     .bind(kept_session_id)
@@ -87,6 +93,8 @@ pub async fn end_other_sessions(
     .bind(kept_session_id)
     .execute(&mut *transaction)
     .await?;
+    let revoked = (user_id, RevokedSessions::Others, None);
+    record_sessions_revoked(&mut transaction, webhooks, revoked).await?;
     transaction.commit().await?;
 
     Ok(())

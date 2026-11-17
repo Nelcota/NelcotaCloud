@@ -1,16 +1,20 @@
 use axum::Json;
 use axum::body::Bytes;
+use axum::extract::State;
 use axum::extract::rejection::BytesRejection;
 use axum::http::StatusCode;
 
+use crate::app_state::AppState;
 use crate::modules::auth::avatar::avatar_image::AvatarImageError;
 use crate::modules::auth::avatar::avatar_processing::{AvatarProcessingError, process_avatar};
 use crate::modules::auth::avatar::avatar_repository::store_avatar;
 use crate::modules::auth::avatar::image_file::ImageFile;
 use crate::modules::auth::session::authenticated_user::AuthenticatedUser;
+use crate::modules::auth::user::user_events::{UserChange, record_user_change};
 use crate::modules::auth::user::user_lookup::find_user_by_id;
 use crate::modules::auth::user::user_record::User;
 use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
+use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
 /// `PUT /user/avatar`: the body is the image itself (PNG, JPEG or WebP, up to 1 MiB). The
@@ -34,6 +38,7 @@ use crate::shared::http::api_error::{ApiError, ErrorBody};
     )
 )]
 pub async fn upload_avatar(
+    State(state): State<AppState>,
     authenticated: AuthenticatedUser,
     upload: Result<Bytes, BytesRejection>,
 ) -> Result<Json<User>, ApiError> {
@@ -50,10 +55,18 @@ pub async fn upload_avatar(
 
     let upload = upload.map_err(|rejection| map_body_rejection(&rejection))?;
     let avatar = process_avatar(upload).await.map_err(map_processing_error)?;
-    let updated_at = store_avatar(&tenant.pool, user_id, &avatar).await?;
+    let webhooks = state.webhooks.recorder(tenant.tenant_id).await?;
+    let mut transaction = tenant.pool.begin().await?;
+    let updated_at = store_avatar(&mut *transaction, user_id, &avatar).await?;
     let Some(updated_at) = updated_at else {
         return Err(ApiError::from(TenantsRejection::InvalidAccessToken));
     };
+    let change = UserChange {
+        event_type: WebhookEventType::UserUpdated,
+        user_id,
+    };
+    record_user_change(&mut transaction, &webhooks, change).await?;
+    transaction.commit().await?;
     user.avatar_updated_at = Some(updated_at);
 
     Ok(Json(user))

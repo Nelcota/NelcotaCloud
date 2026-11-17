@@ -10,6 +10,8 @@ use crate::modules::auth::mfa::mfa_factor_repository::delete_mfa_factor;
 use crate::modules::auth::rate_limiting::attempt_limiter::Attempt;
 use crate::modules::auth::rejection::auth_rejection::AuthRejection;
 use crate::modules::auth::session::authenticated_user::AuthenticatedUser;
+use crate::modules::auth::user::user_events::{UserChange, record_user_change};
+use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
 use crate::shared::http::api_error::ApiError;
 
 /// A signed-in user typing a code from their authenticator app.
@@ -25,9 +27,14 @@ pub async fn activate_factor(
     request: &FactorCodeRequest<'_>,
 ) -> Result<(), ApiError> {
     let tenant = &request.authenticated.tenant;
-    let mut connection = tenant.pool.acquire().await?;
+    let webhooks = state.webhooks.recorder(tenant.tenant_id).await?;
+    let mut transaction = tenant.pool.begin().await?;
+    require_code(state, &mut transaction, (request, FactorState::Pending)).await?;
+    let change = mfa_change(request);
+    record_user_change(&mut transaction, &webhooks, change).await?;
+    transaction.commit().await?;
 
-    require_code(state, &mut connection, (request, FactorState::Pending)).await
+    Ok(())
 }
 
 /// A current code is required, so a stolen access token alone cannot remove the second factor.
@@ -36,12 +43,23 @@ pub async fn disable_factor(
     request: &FactorCodeRequest<'_>,
 ) -> Result<(), ApiError> {
     let authenticated = request.authenticated;
-    let mut transaction = authenticated.tenant.pool.begin().await?;
+    let tenant = &authenticated.tenant;
+    let webhooks = state.webhooks.recorder(tenant.tenant_id).await?;
+    let mut transaction = tenant.pool.begin().await?;
     require_code(state, &mut transaction, (request, FactorState::Verified)).await?;
     delete_mfa_factor(&mut *transaction, authenticated.claims.sub).await?;
+    record_user_change(&mut transaction, &webhooks, mfa_change(request)).await?;
     transaction.commit().await?;
 
     Ok(())
+}
+
+/// `mfa_enabled` changed: receivers get the user as it is now.
+fn mfa_change(request: &FactorCodeRequest<'_>) -> UserChange {
+    UserChange {
+        event_type: WebhookEventType::UserUpdated,
+        user_id: request.authenticated.claims.sub,
+    }
 }
 
 /// Rate limited per user and client, then checked against the authenticator in `expected` state.
