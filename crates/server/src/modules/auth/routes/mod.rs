@@ -12,6 +12,7 @@ pub mod enroll_totp;
 pub mod get_user;
 pub mod jwks;
 pub mod list_sessions;
+pub mod list_user_sessions;
 pub mod list_users;
 pub mod log_in;
 pub mod log_out;

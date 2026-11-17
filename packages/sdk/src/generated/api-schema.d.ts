@@ -284,6 +284,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/v1/admin/users/{user_id}/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /admin/users/{user_id}/sessions`: the user's active sessions and last login. */
+        get: operations["list_user_sessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/v1/admin/users/{user_id}/unban": {
         parameters: {
             query?: never;
@@ -1416,6 +1433,17 @@ export interface components {
             total: number;
             users: components["schemas"]["User"][];
         };
+        /** @description What an admin sees of a user's sessions. */
+        UserSessions: {
+            /**
+             * Format: date-time
+             * @description When the user last logged in (by any method), even if that session has ended; `null`
+             *     if they never did.
+             */
+            last_sign_in_at?: string | null;
+            /** @description Sessions whose refresh token still works, most recently used first. */
+            sessions: components["schemas"]["SessionSummary"][];
+        };
         WebhookEndpointBody: {
             /** @description The events this endpoint receives. */
             event_types: components["schemas"]["WebhookEventType"][];
@@ -2270,6 +2298,47 @@ export interface operations {
                 };
             };
             /** @description The user has no authenticator */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_user_sessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the user */
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The user's sessions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserSessions"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such user */
             404: {
                 headers: {
                     [name: string]: unknown;
