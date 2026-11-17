@@ -17,6 +17,10 @@ export class AuthListeners {
       callIsolated(listener, event, session)
     }
   }
+
+  clear(): void {
+    this.listeners.clear()
+  }
 }
 
 function callIsolated(

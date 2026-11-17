@@ -10,5 +10,9 @@ export function sessionChangeEvent(previous: Session | null, next: Session | nul
     return 'SIGNED_IN'
   }
 
+  if (previous.refreshToken === next.refreshToken) {
+    return 'USER_UPDATED'
+  }
+
   return 'TOKEN_REFRESHED'
 }

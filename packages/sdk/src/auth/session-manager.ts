@@ -1,14 +1,12 @@
-import type { components } from '../generated/api-schema'
 import type { HttpClient } from '../http/http-client'
 import { NelcotaError } from '../http/nelcota-error'
-import type { AuthEvent, AuthStateListener, Session } from '../types'
+import type { AuthEvent, AuthStateListener, Session, User } from '../types'
 import { AuthListeners } from './auth-listeners'
-import { toSession } from './login-results'
+import { notAuthenticated } from './not-authenticated'
+import { renewSession } from './renew-session'
 import { sessionChangeEvent } from './session-change'
 import type { SessionStore } from './session-store'
 import { withTabLock } from './tab-lock'
-
-type SessionTokens = components['schemas']['SessionTokens']
 
 /** Access tokens are renewed this long before they expire, so requests never carry a dead one. */
 const REFRESH_MARGIN_MS = 60_000
@@ -19,15 +17,19 @@ const FORBIDDEN = 403
 export class SessionManager {
   private readonly http: HttpClient
   private readonly store: SessionStore
+  private readonly now: () => number
   private readonly listeners = new AuthListeners()
+  private readonly stopWatchingOtherTabs: (() => void) | null
   private session: Session | null
+  private sessionGeneration = 0
   private refreshing: Promise<Session | null> | null = null
 
-  constructor(http: HttpClient, store: SessionStore) {
+  constructor(http: HttpClient, store: SessionStore, now: () => number = Date.now) {
     this.http = http
     this.store = store
+    this.now = now
     this.session = store.load()
-    store.watchOtherTabs((stored) => this.followOtherTab(stored))
+    this.stopWatchingOtherTabs = store.watchOtherTabs((stored) => this.followOtherTab(stored))
   }
 
   current(): Session | null {
@@ -35,15 +37,43 @@ export class SessionManager {
   }
 
   start(session: Session, event: AuthEvent): void {
+    if (event === 'SIGNED_IN') {
+      this.bumpGeneration()
+    }
+
     this.session = session
     this.store.save(session)
     this.listeners.notify(event, session)
   }
 
+  /** Keeps the stored user current after a change to the profile (e.g. a new photo). */
+  updateUser(user: User): void {
+    if (this.session?.user.id !== user.id) {
+      return
+    }
+
+    this.start({ ...this.session, user }, 'USER_UPDATED')
+  }
+
   end(): void {
+    this.bumpGeneration()
     this.session = null
     this.store.clear()
     this.listeners.notify('SIGNED_OUT', null)
+  }
+
+  generation(): number {
+    return this.sessionGeneration
+  }
+
+  endIfGenerationMatches(generation: number): boolean {
+    if (this.sessionGeneration !== generation) {
+      return false
+    }
+
+    this.end()
+
+    return true
   }
 
   /** A valid access token, renewed first when it is about to expire. */
@@ -54,7 +84,7 @@ export class SessionManager {
       throw notAuthenticated()
     }
 
-    if (session.expiresAt - REFRESH_MARGIN_MS > Date.now()) {
+    if (session.expiresAt - REFRESH_MARGIN_MS > this.now()) {
       return session.accessToken
     }
 
@@ -82,6 +112,11 @@ export class SessionManager {
 
   subscribe(listener: AuthStateListener): () => void {
     return this.listeners.add(listener)
+  }
+
+  dispose(): void {
+    this.stopWatchingOtherTabs?.()
+    this.listeners.clear()
   }
 
   /**
@@ -112,13 +147,9 @@ export class SessionManager {
     }
 
     try {
-      const tokens = await this.http.request<SessionTokens>({
-        method: 'POST',
-        path: '/auth/v1/refresh',
-        body: { refresh_token: session.refreshToken },
-      })
+      const renewed = await renewSession(this.http, session.refreshToken)
 
-      return this.adoptRenewal(session, toSession(tokens))
+      return this.adoptRenewal(session, renewed)
     } catch (error) {
       return this.endIfRejected(session, error)
     }
@@ -157,16 +188,18 @@ export class SessionManager {
       return
     }
 
-    this.session = stored
-    this.listeners.notify(sessionChangeEvent(previous, stored), stored)
-  }
-}
+    const event = sessionChangeEvent(previous, stored)
 
-function notAuthenticated(): NelcotaError {
-  return new NelcotaError({
-    status: UNAUTHORIZED,
-    code: 'not_authenticated',
-    message: 'No active session; sign in first',
-    requestId: null,
-  })
+    if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+      this.bumpGeneration()
+    }
+
+    this.session = stored
+    this.listeners.notify(event, stored)
+  }
+
+  /** A new or ended session: work started for the previous one must not touch this one. */
+  private bumpGeneration(): void {
+    this.sessionGeneration += 1
+  }
 }

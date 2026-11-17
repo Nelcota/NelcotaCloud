@@ -384,7 +384,7 @@ export interface paths {
         /**
          * `POST /magic-link/verify`: trades the token from the emailed link for a session.
          * @description Opening the link proves control of the inbox. On an account nobody verified, whoever set
-         *     its password may not own the email, so the password is dropped and its sessions end.
+         *     its password may not own the email, so its password, sessions and authenticator go.
          */
         post: operations["verify_magic_link"];
         delete?: never;
@@ -656,6 +656,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/v1/user/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * `PUT /user/avatar`: the body is the image itself (PNG, JPEG or WebP, up to 1 MiB). The
+         *     server crops it to a centered square, resizes it and stores it as JPEG.
+         */
+        put: operations["upload_avatar"];
+        post?: never;
+        /** `DELETE /user/avatar`: removes the profile photo; succeeds when there was none. */
+        delete: operations["remove_avatar"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/users/{user_id}/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /users/{user_id}/avatar`: a user's profile photo, public so apps can show it to others. */
+        get: operations["read_avatar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/v1/verify-email": {
         parameters: {
             query?: never;
@@ -861,6 +899,50 @@ export interface paths {
         delete: operations["remove_member"];
         options?: never;
         head?: never;
+        /**
+         * `PATCH /platform/v1/projects/{project_id}/members/{account_id}`: makes a member an owner,
+         *     or an owner a member. Owners only; the project always keeps at least one owner.
+         */
+        patch: operations["change_role"];
+        trace?: never;
+    };
+    "/platform/v1/projects/{project_id}/membership": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * `DELETE /platform/v1/projects/{project_id}/membership`: the signed-in account leaves the
+         *     project. Owners leave only while another owner stays.
+         */
+        delete: operations["leave"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/v1/projects/{project_id}/ownership-transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `POST /platform/v1/projects/{project_id}/ownership-transfer`: hands the project to another
+         *     member in one step. Owners only.
+         */
+        post: operations["transfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -950,6 +1032,12 @@ export interface components {
             error: string;
             message: string;
         };
+        /**
+         * Format: binary
+         * @description Raw image bytes in a request or response body, described as a binary file so generated
+         *     clients send and receive a file instead of a list of numbers.
+         */
+        ImageFile: string;
         InvitationBody: {
             email: string;
         };
@@ -969,6 +1057,9 @@ export interface components {
         };
         /** @description A session, or the MFA step that must come first. */
         LoginResponse: components["schemas"]["SessionTokens"] | components["schemas"]["MfaRequired"];
+        MemberRoleBody: {
+            role: components["schemas"]["ProjectRole"];
+        };
         MfaChallengeBody: {
             code: string;
             /** @description The `mfa_token` returned by the login. */
@@ -996,6 +1087,13 @@ export interface components {
         };
         OneTimeTokenBody: {
             token: string;
+        };
+        OwnershipTransferBody: {
+            /**
+             * Format: uuid
+             * @description The member who becomes an owner; the caller becomes a member.
+             */
+            account_id: string;
         };
         /** @description A pending invitation as the project's team sees it. */
         PendingInvitation: {
@@ -1082,7 +1180,7 @@ export interface components {
         SmtpSettingsBody: {
             /** @description The sender, e.g. `Acme <no-reply@acme.com>`. */
             email_from: string;
-            /** @description `smtps://user:password@host:465` (implicit TLS) or `smtp://user:password@host:587`. */
+            /** @description `smtps://user:password@host:465` or `smtp://user:password@host:587?tls=required`. */
             smtp_url: string;
         };
         /** @description What the owner sees: where emails go, never the credentials. */
@@ -1135,6 +1233,12 @@ export interface components {
             secret: string;
         };
         User: {
+            /**
+             * Format: date-time
+             * @description When the profile photo last changed; `null` without one. Served at
+             *     `/auth/v1/users/{id}/avatar`, with this value as `version` so caches fetch a new photo.
+             */
+            avatar_updated_at?: string | null;
             /**
              * Format: date-time
              * @description Set while the user is banned: no login, no refresh.
@@ -2848,6 +2952,149 @@ export interface operations {
             };
         };
     };
+    upload_avatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The image file: PNG, JPEG or WebP, up to 1 MiB */
+        requestBody: {
+            content: {
+                "application/octet-stream": components["schemas"]["ImageFile"];
+            };
+        };
+        responses: {
+            /** @description The user with the new photo */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            /** @description Empty, unreadable or unsupported image */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing or invalid access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The user is banned */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The image is larger than 1 MiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    remove_avatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Photo removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or invalid access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    read_avatar: {
+        parameters: {
+            query: {
+                /** @description The publishable key travels in the query: the URL goes in an `<img src>`. */
+                apikey: string;
+                /** @description The user's `avatar_updated_at`; any value works, it only changes the URL for caches. */
+                version?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Id of the user */
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The photo, a square JPEG */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": components["schemas"]["ImageFile"];
+                };
+            };
+            /** @description A secret key in the URL, or an invalid query */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The user has no photo */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     verify_email: {
         parameters: {
             query?: never;
@@ -3296,6 +3543,160 @@ export interface operations {
             };
             /** @description No such member (owners are never removed) */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    change_role: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the project */
+                project_id: string;
+                /** @description Console account of the member */
+                account_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberRoleBody"];
+            };
+        };
+        responses: {
+            /** @description Role changed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not an owner of this project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such member */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The last owner, or the account owns too many projects */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    leave: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the project */
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Left the project */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not a member of this project */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The last owner cannot leave */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    transfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the project */
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OwnershipTransferBody"];
+            };
+        };
+        responses: {
+            /** @description The member is an owner; you are a member */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Transferring to yourself */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not an owner of this project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such member */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The member owns too many projects */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

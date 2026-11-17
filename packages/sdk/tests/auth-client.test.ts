@@ -47,6 +47,37 @@ describe('signInWithPassword', () => {
     expect(client.auth.getSession()).toBeNull()
   })
 
+  it('rejects a response with null session fields without storing it', async () => {
+    const api = new FakeApi()
+    api.reply('POST /auth/v1/login', {
+      status: 200,
+      body: { access_token: 'access', refresh_token: 'refresh', expires_in: null, user: null },
+    })
+    const client = clientFor(api)
+
+    await expect(client.auth.signInWithPassword(CREDENTIALS)).rejects.toMatchObject({
+      code: 'invalid_response',
+    })
+    expect(client.auth.getSession()).toBeNull()
+  })
+
+  it.each([1.5, Number.MAX_VALUE])(
+    'rejects an unsafe expires_in value (%s) without storing a session',
+    async (expiresIn) => {
+      const api = new FakeApi()
+      api.reply('POST /auth/v1/login', {
+        status: 200,
+        body: { ...sessionTokens(), expires_in: expiresIn },
+      })
+      const client = clientFor(api)
+
+      await expect(client.auth.signInWithPassword(CREDENTIALS)).rejects.toMatchObject({
+        code: 'invalid_response',
+      })
+      expect(client.auth.getSession()).toBeNull()
+    },
+  )
+
   it('turns API errors into NelcotaError with the request id', async () => {
     const api = new FakeApi()
     const body = { error: 'invalid_credentials', message: 'invalid email or password' }

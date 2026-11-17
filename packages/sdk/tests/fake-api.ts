@@ -52,6 +52,10 @@ export class FakeApi {
 }
 
 function parseBody(rawBody: BodyInit | null | undefined): unknown {
+  if (rawBody instanceof Blob) {
+    return rawBody
+  }
+
   if (typeof rawBody !== 'string') {
     return undefined
   }
@@ -85,6 +89,7 @@ export function sessionTokens(
       banned_at: null,
       created_at: '2026-11-16T12:00:00Z',
       mfa_enabled: false,
+      avatar_updated_at: null,
     },
   }
 }

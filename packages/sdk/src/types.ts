@@ -26,6 +26,6 @@ export type SignUpResult = { kind: 'session'; session: Session } | { kind: 'veri
 
 export type OAuthProvider = 'google' | 'github'
 
-export type AuthEvent = 'SIGNED_IN' | 'SIGNED_OUT' | 'TOKEN_REFRESHED'
+export type AuthEvent = 'SIGNED_IN' | 'SIGNED_OUT' | 'TOKEN_REFRESHED' | 'USER_UPDATED'
 
 export type AuthStateListener = (event: AuthEvent, session: Session | null) => void

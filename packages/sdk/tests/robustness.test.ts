@@ -59,4 +59,15 @@ describe('stored session', () => {
 
     expect(clientWith(new FakeApi(), storage).auth.getSession()).toBeNull()
   })
+
+  it('ignores a session whose user is missing required fields', () => {
+    const storage = memoryStorage()
+    const user = { id: 'user-id', email: 'ana@example.com' }
+    storage.setItem(
+      'nelcota-session',
+      JSON.stringify({ accessToken: 'a', refreshToken: 'r', expiresAt: Date.now() + 60000, user }),
+    )
+
+    expect(clientWith(new FakeApi(), storage).auth.getSession()).toBeNull()
+  })
 })

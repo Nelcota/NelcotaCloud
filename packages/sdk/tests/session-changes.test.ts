@@ -122,4 +122,54 @@ describe('other tabs', () => {
     expect(client.auth.getSession()).toBeNull()
     expect(events).toEqual(['SIGNED_IN', 'SIGNED_OUT'])
   })
+
+  it('removes its storage listener and auth callbacks when disposed', async () => {
+    const listeners = new Set<(event: Partial<StorageEvent>) => void>()
+    vi.stubGlobal(
+      'addEventListener',
+      (_type: string, listener: (event: Partial<StorageEvent>) => void) => {
+        listeners.add(listener)
+      },
+    )
+    vi.stubGlobal(
+      'removeEventListener',
+      (_type: string, listener: (event: Partial<StorageEvent>) => void) => {
+        listeners.delete(listener)
+      },
+    )
+
+    const storage = memoryStorage()
+    const api = new FakeApi()
+    const client = clientWith(api, storage)
+    const events: AuthEvent[] = []
+    client.auth.onAuthStateChange((event) => events.push(event))
+
+    expect(listeners.size).toBe(1)
+
+    client.dispose()
+    client.dispose()
+
+    expect(listeners.size).toBe(0)
+    storage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        accessToken: 'a',
+        refreshToken: 'r',
+        expiresAt: Date.now() + 60000,
+        user: {
+          id: 'id',
+          email: 'ana@example.com',
+          created_at: '2026-11-16T12:00:00Z',
+          mfa_enabled: false,
+        },
+      }),
+    )
+
+    for (const listener of listeners) {
+      listener({ key: STORAGE_KEY, storageArea: storage as Storage })
+    }
+
+    expect(client.auth.getSession()).toBeNull()
+    expect(events).toEqual([])
+  })
 })

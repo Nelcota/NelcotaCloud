@@ -1,7 +1,8 @@
 import type { Session } from '../types'
 import type { SessionStorageAdapter } from './session-storage'
+import { isRecord, isUser } from './user-shape'
 
-const PKCE_SUFFIX = '-pkce-verifier'
+const PKCE_SUFFIX = '-pkce-verifier-'
 
 /** Reads and writes the session and the pending OAuth verifier in the chosen storage. */
 export class SessionStore {
@@ -37,12 +38,12 @@ export class SessionStore {
   }
 
   /** Calls `listener` when another tab of the origin changes the stored session (browsers only). */
-  watchOtherTabs(listener: (stored: Session | null) => void): void {
+  watchOtherTabs(listener: (stored: Session | null) => void): (() => void) | null {
     if (typeof globalThis.addEventListener !== 'function') {
-      return
+      return null
     }
 
-    globalThis.addEventListener('storage', (event) => {
+    const onStorage = (event: StorageEvent): void => {
       if (event.storageArea !== this.storage) {
         return
       }
@@ -53,19 +54,22 @@ export class SessionStore {
       }
 
       listener(this.load())
-    })
+    }
+    globalThis.addEventListener('storage', onStorage)
+
+    return () => globalThis.removeEventListener('storage', onStorage)
   }
 
-  takeVerifier(): string | null {
-    const verifierKey = `${this.key}${PKCE_SUFFIX}`
+  takeVerifier(state: string): string | null {
+    const verifierKey = `${this.key}${PKCE_SUFFIX}${state}`
     const verifier = this.storage.getItem(verifierKey)
     this.storage.removeItem(verifierKey)
 
     return verifier
   }
 
-  saveVerifier(verifier: string): void {
-    this.storage.setItem(`${this.key}${PKCE_SUFFIX}`, verifier)
+  saveVerifier(state: string, verifier: string): void {
+    this.storage.setItem(`${this.key}${PKCE_SUFFIX}${state}`, verifier)
   }
 }
 
@@ -85,21 +89,15 @@ export function parseStoredSession(raw: string): Session | null {
 }
 
 function isSession(value: unknown): value is Session {
-  if (typeof value !== 'object' || value === null) {
+  if (isRecord(value) === false) {
     return false
   }
 
-  const candidate = value as Record<string, unknown>
-  const user = candidate.user as Record<string, unknown> | null | undefined
-
   return (
-    typeof candidate.accessToken === 'string' &&
-    typeof candidate.refreshToken === 'string' &&
-    typeof candidate.expiresAt === 'number' &&
-    Number.isFinite(candidate.expiresAt) &&
-    typeof user === 'object' &&
-    user !== null &&
-    typeof user.id === 'string' &&
-    typeof user.email === 'string'
+    typeof value.accessToken === 'string' &&
+    typeof value.refreshToken === 'string' &&
+    typeof value.expiresAt === 'number' &&
+    Number.isFinite(value.expiresAt) &&
+    isUser(value.user)
   )
 }
