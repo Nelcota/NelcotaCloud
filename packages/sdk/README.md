@@ -49,6 +49,42 @@ In browsers, the default storage is `localStorage` so sessions survive reloads. 
 same origin can read these tokens; prevent XSS and use a server-managed `HttpOnly` cookie session
 when the application requires tokens to be inaccessible to browser scripts.
 
+## Webhooks (on your server)
+
+NelcotaCloud calls your endpoint with a signed `POST` when users change (`user.created`,
+`user.updated`, `user.deleted`, `user.banned`, `user.unbanned`, `session.revoked`). Create the
+endpoint in the console (Webhooks); its `whsec_…` secret is shown once.
+
+```ts
+import { WebhookVerificationError, verifyWebhook } from '@nelcota/sdk'
+
+// Express: the raw body is required, a re-serialized one no longer matches the signature.
+app.post('/webhooks/nelcota', express.text({ type: 'application/json' }), async (req, res) => {
+  try {
+    const event = await verifyWebhook({
+      payload: req.body,
+      headers: req.headers,
+      secret: process.env.NELCOTA_WEBHOOK_SECRET,
+    })
+    // Retries resend the same event: skip ids you already processed.
+    if (await alreadyProcessed(req.headers['webhook-id'])) return res.sendStatus(204)
+    if (event.type === 'user.created') await createProfile(event.data.user)
+    res.sendStatus(204)
+  } catch (error) {
+    if (error instanceof WebhookVerificationError) return res.sendStatus(400)
+    throw error
+  }
+})
+```
+
+- Answer 2xx within 10 seconds and do slow work afterwards; anything else is retried for about
+  a day and a half (5 s, 5 min, 30 min, 2 h, 5 h, 10 h, 10 h).
+- Delivery is at least once and not ordered: use `webhook-id` to drop duplicates and the event
+  `timestamp` to ignore stale updates.
+- The format is [Standard Webhooks](https://www.standardwebhooks.com/), so its libraries for
+  other languages verify these requests too.
+- After a secret rotation both secrets sign for 24 hours; switch your server within that day.
+
 ## Development
 
 - `npm run api:types` after the API changes (reads `crates/server/openapi.json`).
