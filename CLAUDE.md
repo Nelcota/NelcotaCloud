@@ -99,13 +99,17 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
   address is fixed at build time by `VITE_API_URL`. It logs in with the SDK (compiled from
   `packages/sdk/src` through a path alias) using the platform tenant's publishable key
   (`VITE_PLATFORM_PUBLISHABLE_KEY`). Never put a secret key or the admin token in the browser.
+- Example app (`examples/react-auth/`): React + Vite app that shows every Auth flow with the SDK
+  (same path alias as the console), plus the quickstart in its README. It follows the console's
+  TypeScript rules; keep it working when the SDK changes.
 - Deploy: one VPS with `docker-compose.prod.yml`. Caddy (`deploy/caddy/`) is the only public
   service: it serves the built console, proxies the API, and obtains TLS certificates. The API
   trusts the address Caddy appends to `X-Forwarded-For` (`CLIENT_IP_HEADER`). The `backup`
   service sends daily encrypted dumps of every database to Cloudflare R2 (`deploy/backup/`).
   Operations (first boot, platform tenant, backups, staging): `docs/deploy.md`.
 - CI (`.github/workflows/ci.yml`): API (fmt, clippy, tests with Postgres and Mailpit), console and
-  SDK (format, lint, generated types, tests, build), Docker images on pushes to `main`.
+  SDK (format, lint, generated types, tests, build), example app (format, lint, build), Docker
+  images on pushes to `main`.
 - Behind Cloudflare (proxied DNS records, recommended so console assets come from the edge):
   SSL/TLS mode "Full (strict)", `CLIENT_IP_HEADER=cf-connecting-ip`, and the VPS firewall allows
   ports 80/443 only from Cloudflare's IP ranges. Caching needs no rule: hashed assets are
@@ -123,6 +127,9 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
   `npm run lint`, `npm run format` / `npm run format:check` (oxfmt).
 - SDK, in `packages/sdk/`: `npm test`, `npm run typecheck`, `npm run lint`, `npm run format`,
   `npm run build`.
+- Example app, in `examples/react-auth/`: `npm install`, `npm run dev` (http://localhost:5174; a
+  project with that site URL and its publishable key in `.env.local`), `npm run build`,
+  `npm run lint`, `npm run format` / `npm run format:check`.
 - After changing an endpoint or its types: `cargo run -p server --bin export-openapi` (rewrites
   `crates/server/openapi.json`), then `npm run api:types` in `apps/console/` and `packages/sdk/`.
 - Local console login: create the platform tenant (slug `console`, `site_url`
