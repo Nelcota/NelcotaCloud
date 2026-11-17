@@ -199,7 +199,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** `GET /admin/users`: the tenant's users, newest first, optionally searched by email. */
+        /**
+         * `GET /admin/users`: the tenant's users, newest first, optionally searched by email
+         *     and narrowed to one status.
+         */
         get: operations["list_users"];
         put?: never;
         post?: never;
@@ -2038,6 +2041,8 @@ export interface operations {
             query?: {
                 /** @description Part of the email to search for. */
                 email?: string;
+                /** @description Only users in this state; every user without it. */
+                status?: "unverified" | "banned";
                 limit?: number;
                 offset?: number;
             };
@@ -2056,7 +2061,7 @@ export interface operations {
                     "application/json": components["schemas"]["UserPage"];
                 };
             };
-            /** @description Invalid search, limit or offset */
+            /** @description Invalid search, status, limit or offset */
             400: {
                 headers: {
                     [name: string]: unknown;

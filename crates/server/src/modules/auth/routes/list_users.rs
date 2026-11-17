@@ -5,6 +5,7 @@ use utoipa::IntoParams;
 use validator::Validate;
 
 use crate::modules::auth::user::user_listing::{UserPage, UserQuery, list_users as find_users};
+use crate::modules::auth::user::user_status_filter::UserStatusFilter;
 use crate::modules::tenants::access::tenant_admin_context::TenantAdminContext;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
@@ -16,13 +17,17 @@ pub struct UserListQuery {
     /// Part of the email to search for.
     #[validate(length(min = 1, max = 254))]
     pub email: Option<String>,
+    /// Only users in this state; every user without it.
+    #[param(inline)]
+    pub status: Option<UserStatusFilter>,
     #[validate(range(min = 1, max = 100))]
     pub limit: Option<i64>,
     #[validate(range(min = 0, max = 100_000))]
     pub offset: Option<i64>,
 }
 
-/// `GET /admin/users`: the tenant's users, newest first, optionally searched by email.
+/// `GET /admin/users`: the tenant's users, newest first, optionally searched by email
+/// and narrowed to one status.
 #[utoipa::path(
     get,
     path = "/auth/v1/admin/users",
@@ -31,7 +36,7 @@ pub struct UserListQuery {
     params(UserListQuery),
     responses(
         (status = 200, description = "One page of users", body = UserPage),
-        (status = 400, description = "Invalid search, limit or offset", body = ErrorBody),
+        (status = 400, description = "Invalid search, status, limit or offset", body = ErrorBody),
         (status = 403, description = "Requires the secret API key, or membership in the project", body = ErrorBody),
     )
 )]
@@ -42,6 +47,7 @@ pub async fn list_users(
     query.validate().map_err(ApiError::invalid_request)?;
     let user_query = UserQuery {
         email_contains: query.email.as_deref(),
+        status: query.status,
         limit: query.limit.unwrap_or(DEFAULT_PAGE_SIZE),
         offset: query.offset.unwrap_or_default(),
     };

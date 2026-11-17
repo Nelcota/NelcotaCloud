@@ -9,4 +9,5 @@ pub mod user_listing;
 pub mod user_lookup;
 pub mod user_record;
 pub mod user_registration;
+pub mod user_status_filter;
 pub mod verified_inbox_claim;
