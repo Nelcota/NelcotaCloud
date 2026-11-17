@@ -376,6 +376,58 @@ before any navigation or tab close, naming what would be lost (`subject`). The v
   a Revogada". An action that changes two people (handing a project over) shows both rows,
   yours included, and confirms with a neutral (secondary) button instead of the routine blue.
 
+### Guided Dialogs
+
+Every dialog that creates or configures something is a `StepDialog`: a wide dialog (up to
+76rem, fixed height, so moving between steps never resizes or moves it) with a header (title
+and "Passo X de N") and three columns from `lg`:
+
+- **Steps** (13–15rem): the steps as a vertical list; done ones checked and clickable to go
+  back, the current one on a 10% blue fill in Signal Ink with a filled number.
+- **Step** (the rest): the step's name (20px semibold), one sentence on what to do, then its
+  fields. It is a size container: choice cards and field rows go side by side only when the
+  column is wide enough, never by screen width. Only this column scrolls.
+- **Preview** (17–22rem, faint muted fill): a small "O que vai acontecer" label, the step's
+  illustration with its one-sentence caption (a step without one keeps the last), then what has
+  been filled in so far (`summary`), which grows as the steps are answered. Nothing is said twice.
+
+The forward button stays disabled while the step lacks something, and says why beside it
+(`missing`: "Escolha um provedor"); while the last step runs it reads its working label
+("Criando chave…"). An error scrolls into view and takes focus. A step that would only confirm
+prefilled values is left out (SMTP presets skip "Servidor"), and a task with one field is a
+one-step confirmation dialog, not a guided one (inviting someone).
+
+The footer holds Cancelar/Voltar on the left and the large primary button on the right, as wide
+as the preview column ("Continuar →", then the action: "Criar chave"). Below `lg` the dialog is a
+single column: a compact progress row, then the step; the illustration is left out so the choice
+stays above the fold. Continuar
+stays disabled until the step is filled; Enter continues; going back keeps what was typed. A
+last "Revisar" step (`ReviewList`) appears when there is more than one thing to check. Choices
+between a few options are `ChoiceCards`, multiple choices are check cards in the same style
+(`CheckField`); never native selects or checkboxes. A selected card is marked in the foreground
+colour with a filled check, never in blue (blue stays for the action). Confirmations stay one
+step; only those whose effect reaches others (revoking a key, deleting an endpoint or project,
+blocking a user, removing a provider or member) carry an illustration, and destructive ones are
+`alertdialog`s. Lighter ones (removing a photo, ending your own session, rotating a secret,
+changing a role) are title, sentence and change preview only.
+
+### Illustrations
+
+`Illustration` shows drawn art for its `name` once a file is mapped in `ILLUSTRATION_ART`
+(`public/illustrations/`), and until then the `FlowDiagram` it wraps: two to four parts drawn
+with the console's own Solar icons on hairline tiles (the part the dialog is about outlined
+in the foreground colour, a part that stops existing dashed and struck out) joined by labelled arrows. A flowing
+link plays a small blue dot along it twice, then stops (hidden with reduced motion); a cut link is a dashed red
+line with a close icon. Each illustration carries a one-sentence `description` for screen
+readers; the picture itself is hidden from them.
+
+### Forgiving Fields
+
+People never type what the console can write for them. Web addresses use `UrlField`, which
+shows `https://` in front and lets `withHttps` add it (an explicit `http://localhost` is kept).
+SMTP is asked as provider, server, port, security, login and sender, never as a URL. Slugs are
+generated from the name and only edited on request.
+
 ### Feedback
 
 - **Success:** `showFlash` puts one sentence in the green notice above the page (`FlashNotice`,

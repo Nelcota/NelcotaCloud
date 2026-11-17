@@ -35,7 +35,6 @@ export function WebhooksPage(): JSX.Element {
       submitLabel="Criar endpoint"
       initial={{ url: '', event_types: ['user.created'] }}
       onSubmit={(body) => creation.mutateAsync(body)}
-      isPending={creation.isPending}
       trigger={{
         label: 'Novo endpoint',
         icon: Plus,
@@ -50,7 +49,7 @@ export function WebhooksPage(): JSX.Element {
     <div className="grid max-w-3xl gap-6">
       <PageHeader
         title="Webhooks"
-        description="Seu servidor recebe um POST assinado quando um usuário é criado, alterado, bloqueado ou excluído. Falhas são reenviadas por até um dia e meio."
+        description="Seu servidor recebe um POST assinado quando um usuário é criado, alterado, bloqueado ou excluído. Falhas são reenviadas por até 36 horas."
         actions={createButton}
       />
       <LoadError error={endpoints.error} onRetry={() => endpoints.refetch()} />

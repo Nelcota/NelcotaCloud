@@ -17,6 +17,8 @@ type ConfirmButtonProps = {
   confirmationText?: string
   /** See `ConfirmDialog`: the change the action makes, played when the dialog opens. */
   change?: ConfirmChange
+  /** See `ConfirmDialog`: what will happen, as a picture. */
+  illustration?: ReactNode
   /** See `ConfirmDialog`; rename "Cancelar" when the action itself is a cancellation. */
   cancelLabel?: string
   /** The button's accessible name, when its visible text is shortened (an icon on phones). */
@@ -51,6 +53,7 @@ export function ConfirmButton(props: ConfirmButtonProps): JSX.Element {
         confirmationText={props.confirmationText}
         change={props.change}
         cancelLabel={props.cancelLabel}
+        illustration={props.illustration}
         onConfirm={props.onConfirm}
       />
     </>

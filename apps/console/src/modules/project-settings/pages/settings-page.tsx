@@ -15,7 +15,7 @@ export function SettingsPage(): JSX.Element {
 
   return (
     <div className="grid max-w-3xl gap-6">
-      <PageHeader title="Configurações" description="Nome, endereço do app e regras de login." />
+      <PageHeader title="Configurações" description="Nome, site do app e regras de login." />
       <LoadError error={settings.error} onRetry={() => settings.refetch()} />
       <SettingsContent
         projectId={projectId}

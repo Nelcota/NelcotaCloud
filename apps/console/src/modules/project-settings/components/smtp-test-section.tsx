@@ -12,22 +12,24 @@ import { SettingsSection } from '@/shared/ui/settings-section'
 /**
  * Proves the project's own SMTP server delivers, before users depend on it. Offered only
  * while a custom server is configured: the API refuses tests through the platform's server.
+ * It goes to the account's own inbox unless another address is typed: one click to test.
  */
 export function SmtpTestSection({ projectId }: { projectId: string }): JSX.Element {
   const session = useSession()
-  const [recipient, setRecipient] = useState(session?.user.email ?? '')
+  const [typedRecipient, setTypedRecipient] = useState<string | null>(null)
   const test = useSmtpTestMutation(projectId)
+  const recipient = typedRecipient ?? session?.user.email ?? ''
 
   function submit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault()
-    test.mutate(recipient)
+    test.mutate(recipient.trim())
   }
 
   return (
     <form onSubmit={submit}>
       <SettingsSection
         title="Testar o envio"
-        description="Envia um email pelo seu servidor e espera ele aceitar. Se algo estiver errado, o erro aparece aqui."
+        description="Envia um email pelo seu servidor e espera ele aceitar."
         footer={
           <>
             <SavedNote isSaved={test.isSuccess} message="Seu servidor aceitou o email" />
@@ -48,7 +50,7 @@ export function SmtpTestSection({ projectId }: { projectId: string }): JSX.Eleme
           required
           autoComplete="email"
           value={recipient}
-          onChange={(event) => setRecipient(event.target.value)}
+          onChange={(event) => setTypedRecipient(event.target.value)}
         />
         <ErrorAlert error={test.error} />
       </SettingsSection>

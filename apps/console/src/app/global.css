@@ -34,6 +34,38 @@
       transform: translateX(-0.5rem);
     }
   }
+
+  /*
+   * Flow illustrations: a dot travels each active link twice, so the diagram reads as "this is
+   * sent here", then stops (well under WCAG 2.2.2's five seconds). With reduced motion the dot is
+   * not drawn and the arrow alone carries the direction.
+   */
+  --animate-flow-dot: flow-dot 1.8s cubic-bezier(0.16, 1, 0.3, 1) 2 both;
+  --animate-step-in: step-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+
+  @keyframes flow-dot {
+    from {
+      left: 0;
+      opacity: 0;
+    }
+    15% {
+      opacity: 1;
+    }
+    85% {
+      opacity: 1;
+    }
+    to {
+      left: calc(100% - 0.5rem);
+      opacity: 0;
+    }
+  }
+
+  @keyframes step-in {
+    from {
+      opacity: 0;
+      transform: translateX(0.75rem);
+    }
+  }
 }
 
 @theme inline {
@@ -241,6 +273,22 @@
 
   [aria-busy='true'] {
     cursor: progress;
+  }
+
+  /* Scrolling panes inside the console use a thin scrollbar in the theme's hairline colour. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  /*
+   * A closing dialog waits for every animation inside it to finish before it unmounts; the
+   * endless flow dot would keep it on screen, so it stops the moment closing starts.
+   */
+  [data-closed] .animate-flow-dot,
+  [data-ending-style] .animate-flow-dot {
+    animation: none;
+    opacity: 0;
   }
 
   :focus-visible {

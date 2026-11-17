@@ -1,85 +1,87 @@
 import Letter from '~icons/solar/letter-linear'
-import Mail from '~icons/solar/letter-linear'
 import Server from '~icons/solar/server-linear'
 import type { JSX } from 'react'
 
+import { ResetSmtpButton } from '@/modules/project-settings/components/reset-smtp-button'
+import { SmtpServerRow } from '@/modules/project-settings/components/smtp-server-row'
+import { SmtpSetupDialog } from '@/modules/project-settings/components/smtp-setup-dialog'
 import type { components } from '@/shared/api/api-schema'
 import { Badge } from '@/shared/ui/badge'
-import { ConfirmButton } from '@/shared/ui/confirm-button'
 import { Skeleton } from '@/shared/ui/skeleton'
 
 type SmtpSettingsView = components['schemas']['SmtpSettingsView']
 
 type CurrentSmtpProps = {
+  projectId: string
+  /** `undefined` while loading. */
   view: SmtpSettingsView | undefined
-  isResetting: boolean
-  onReset: () => void
+  /** The load failed: the page shows the error and its retry, so this shows nothing. */
+  hasFailed: boolean
 }
 
-/** Which server sends the project's emails now, and the way back to the platform's. */
-export function CurrentSmtp({ view, isResetting, onReset }: CurrentSmtpProps): JSX.Element {
+/** Which server sends the project's emails now, and how to switch to the other kind. */
+export function CurrentSmtp({ projectId, view, hasFailed }: CurrentSmtpProps): JSX.Element | null {
+  if (view === undefined && hasFailed) {
+    return null
+  }
+
   if (view === undefined) {
     return <Skeleton className="h-[4.5rem] rounded-lg" />
   }
 
   if (view.is_custom === false) {
     return (
-      <ServerRow
-        icon={<Mail className="text-muted-foreground size-5" />}
+      <SmtpServerRow
+        icon={<Letter className="size-5" />}
         title="SMTP da NelcotaCloud"
-        detail="Funciona sem configurar nada. Para usar seu domínio no remetente, configure o seu servidor abaixo."
+        detail="Funciona sem configurar nada. Para enviar com o seu domínio, use o seu servidor."
         badge={<Badge>Padrão</Badge>}
+        actions={
+          // A fragment in both branches keeps the setup dialog mounted when saving switches them.
+          <>
+            <SmtpSetupDialog
+              projectId={projectId}
+              triggerLabel="Usar meu servidor SMTP"
+              triggerVariant="default"
+            />
+          </>
+        }
       />
     )
   }
 
+  const serverName = serverNameOf(view)
+
   return (
-    <ServerRow
-      icon={<Server className="text-muted-foreground size-5" />}
-      title={view.smtp_host ?? 'Servidor próprio'}
+    <SmtpServerRow
+      icon={<Server className="size-5" />}
+      title={serverName}
       detail={`Remetente: ${view.email_from ?? '—'}`}
       badge={<Badge>Seu servidor</Badge>}
-      action={
-        <ConfirmButton
-          title="Voltar ao SMTP da plataforma?"
-          description="Os emails passam a sair pela NelcotaCloud. As credenciais do seu servidor são apagadas."
-          confirmLabel="Voltar ao padrão"
-          change={{
-            subject: view.smtp_host ?? 'Servidor próprio',
-            icon: Letter,
-            from: 'Seu servidor',
-            to: 'SMTP da plataforma',
-          }}
-          isPending={isResetting}
-          onConfirm={onReset}
-        >
-          Voltar ao padrão
-        </ConfirmButton>
+      actions={
+        <>
+          <SmtpSetupDialog
+            projectId={projectId}
+            triggerLabel="Trocar servidor"
+            triggerVariant="outline"
+          />
+          <ResetSmtpButton projectId={projectId} serverName={serverName} />
+        </>
       }
     />
   )
 }
 
-type ServerRowProps = {
-  icon: JSX.Element
-  title: string
-  detail: string
-  badge: JSX.Element
-  action?: JSX.Element
-}
+function serverNameOf(view: SmtpSettingsView): string {
+  const host = view.smtp_host
 
-function ServerRow({ icon, title, detail, badge, action }: ServerRowProps): JSX.Element {
-  return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <span className="text-muted-foreground flex shrink-0 items-center">{icon}</span>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="truncate text-sm font-medium">{title}</span>
-          {badge}
-        </div>
-        <p className="text-muted-foreground mt-0.5 text-sm text-pretty break-words">{detail}</p>
-      </div>
-      {action}
-    </div>
-  )
+  if (host === null || host === undefined) {
+    return 'Servidor próprio'
+  }
+
+  if (view.smtp_port === null || view.smtp_port === undefined) {
+    return host
+  }
+
+  return `${host}:${view.smtp_port}`
 }

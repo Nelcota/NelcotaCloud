@@ -1,4 +1,3 @@
-import Gallery from '~icons/solar/gallery-linear'
 import type { Session } from '@nelcota/sdk'
 import type { JSX } from 'react'
 
@@ -6,7 +5,6 @@ import { AvatarUploadDialog } from '@/modules/account/components/avatar-upload-d
 import { useRemoveAvatarMutation } from '@/modules/account/queries/use-avatar'
 import { useCurrentAccount } from '@/shared/auth/use-current-account'
 import { ConfirmButton } from '@/shared/ui/confirm-button'
-import { ErrorAlert } from '@/shared/ui/error-alert'
 import { SettingsSection } from '@/shared/ui/settings-section'
 import { UserAvatar } from '@/shared/ui/user-avatar'
 
@@ -25,11 +23,10 @@ export function ProfilePhotoSection({ session }: { session: Session }): JSX.Elem
           <RemovePhotoButton
             hasPhoto={photoUrl !== null}
             isPending={removal.isPending}
-            onConfirm={() => removal.mutate()}
+            onConfirm={() => removal.mutateAsync()}
           />
         </div>
       </div>
-      <ErrorAlert error={removal.error} />
     </SettingsSection>
   )
 }
@@ -42,7 +39,11 @@ function uploadLabel(photoUrl: string | null): string {
   return 'Trocar foto'
 }
 
-type RemovePhotoButtonProps = { hasPhoto: boolean; isPending: boolean; onConfirm: () => void }
+type RemovePhotoButtonProps = {
+  hasPhoto: boolean
+  isPending: boolean
+  onConfirm: () => Promise<void>
+}
 
 function RemovePhotoButton(props: RemovePhotoButtonProps): JSX.Element | null {
   if (props.hasPhoto === false) {
@@ -54,7 +55,6 @@ function RemovePhotoButton(props: RemovePhotoButtonProps): JSX.Element | null {
       title="Remover foto de perfil?"
       description="Suas iniciais voltam a aparecer no lugar da foto."
       confirmLabel="Remover"
-      change={{ subject: 'Foto de perfil', icon: Gallery, from: 'Foto', to: 'Iniciais' }}
       isDestructive
       isPending={props.isPending}
       onConfirm={props.onConfirm}

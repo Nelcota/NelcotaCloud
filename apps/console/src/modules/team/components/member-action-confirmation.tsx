@@ -3,6 +3,7 @@ import type { JSX } from 'react'
 import { useState } from 'react'
 
 import { ACTION_COPY, titleFor } from '@/modules/team/components/team-action-copy'
+import { MemberActionIllustration } from '@/modules/team/components/team-illustrations'
 import type { MemberAction } from '@/modules/team/components/team-row-actions'
 import type { ActionTarget } from '@/modules/team/components/action-target'
 import type { ConfirmChange } from '@/shared/ui/confirm-change'
@@ -40,6 +41,7 @@ export function MemberActionConfirmation(props: MemberActionConfirmationProps): 
       isDestructive={copy.isDestructive}
       isWeighty={copy.isWeighty}
       change={changesFor(action, target)}
+      illustration={illustrationFor(action)}
       onConfirm={() => props.onConfirm(target, action)}
     >
       <StepDownChoice
@@ -103,4 +105,13 @@ function changesFor(action: MemberAction, target: ActionTarget): ConfirmChange[]
   }
 
   return [theirs, { subject: 'você', icon: User, from: 'Dono', to: 'Membro' }]
+}
+
+/** Role changes stay light; the picture is for what takes access away or hands the project over. */
+function illustrationFor(action: MemberAction): JSX.Element | undefined {
+  if (action === 'promote' || action === 'demote') {
+    return undefined
+  }
+
+  return <MemberActionIllustration action={action} />
 }

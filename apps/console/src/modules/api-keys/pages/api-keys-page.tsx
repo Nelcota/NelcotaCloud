@@ -8,7 +8,6 @@ import { useApiKeysQuery, useCreateApiKeyMutation } from '@/modules/api-keys/que
 import type { components } from '@/shared/api/api-schema'
 import { useProjectId } from '@/shared/routing/use-project-id'
 import { showFlash } from '@/shared/lib/flash-notice'
-import { ErrorAlert } from '@/shared/ui/error-alert'
 import { LoadError } from '@/shared/ui/load-error'
 import { PageHeader } from '@/shared/ui/page-header'
 
@@ -23,24 +22,15 @@ export function ApiKeysPage(): JSX.Element {
         title="Chaves de API"
         description="A publishable vai no app; a secret fica só no seu servidor. Para trocar uma chave sem parar o app, crie a nova, publique o app com ela e só então revogue a antiga."
         actions={
-          <>
-            <CreateKeyDialog
-              kind="secret"
-              isPrimary={false}
-              isPending={creation.isPending}
-              onCreate={(body) => creation.mutate(body, { onSuccess: announcePublishable })}
-            />
-            <CreateKeyDialog
-              kind="publishable"
-              isPrimary
-              isPending={creation.isPending}
-              onCreate={(body) => creation.mutate(body, { onSuccess: announcePublishable })}
-            />
-          </>
+          <CreateKeyDialog
+            isPending={creation.isPending}
+            onCreate={async (body) => {
+              announcePublishable(await creation.mutateAsync(body))
+            }}
+          />
         }
       />
       <LoadError error={keys.error} onRetry={() => keys.refetch()} />
-      <ErrorAlert error={creation.error} />
       <NewKeyNotice apiKey={creation.data} onDismiss={() => creation.reset()} />
       <ApiKeysTable projectId={projectId} keys={keys.data} hasFailed={keys.isError} />
       <SigningKeyCard projectId={projectId} />

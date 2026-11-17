@@ -11,6 +11,7 @@ import {
   CONFIRMATIONS,
   type ConfirmedAction,
 } from '@/modules/users/components/user-action-confirmations'
+import { UserActionIllustration } from '@/modules/users/components/user-action-illustration'
 import type { UserAction } from '@/modules/users/queries/use-users'
 import type { components } from '@/shared/api/api-schema'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
@@ -140,6 +141,7 @@ function ActionConfirmation({
       confirmLabel={confirmation.confirmLabel}
       isDestructive={confirmation.isDestructive}
       change={confirmation.change(email)}
+      illustration={<UserActionIllustration action={action} />}
       onConfirm={() => onConfirm(action)}
     />
   )
