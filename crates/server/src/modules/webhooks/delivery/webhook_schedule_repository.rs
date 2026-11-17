@@ -9,13 +9,14 @@ pub struct DueTenant {
     pub checked_at: OffsetDateTime,
 }
 
-/// Marks tenants as due now, keeping an earlier time if one is already set.
+/// Marks tenants as due now. Always `now()`, never an earlier time already set: a run that
+/// started before this hint must not delete the schedule (see `reschedule`).
 pub async fn mark_due_now(pool: &PgPool, tenant_ids: &[Uuid]) -> Result<(), sqlx::Error> {
     sqlx::query(
         "INSERT INTO webhook_schedule (tenant_id, next_due_at) \
          SELECT tenant_id, now() FROM UNNEST($1::uuid[]) AS tenant_id \
          WHERE EXISTS (SELECT 1 FROM tenants WHERE tenants.id = tenant_id) \
-         ON CONFLICT (tenant_id) DO UPDATE SET next_due_at = LEAST(webhook_schedule.next_due_at, EXCLUDED.next_due_at)",
+         ON CONFLICT (tenant_id) DO UPDATE SET next_due_at = EXCLUDED.next_due_at",
     )
     .bind(tenant_ids)
     .execute(pool)

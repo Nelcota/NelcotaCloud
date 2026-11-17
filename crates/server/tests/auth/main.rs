@@ -26,4 +26,5 @@ mod user_admin;
 mod verification_required;
 mod webhook_delivery;
 mod webhook_receiver;
+mod webhook_safeguards;
 mod webhooks;

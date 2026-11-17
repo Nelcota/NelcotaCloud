@@ -3,6 +3,7 @@ use axum::http::header::InvalidHeaderName;
 use crate::modules::auth::password::password_hashing::PasswordHashingError;
 use crate::modules::auth::rate_limiting::quota_spec::InvalidQuota;
 use crate::modules::tenants::provisioning::tenant_slug::InvalidTenantSlug;
+use crate::modules::webhooks::delivery::manual_send_limiter::InvalidSendQuota;
 use crate::shared::crypto::hex_encoding::HexDecodeError;
 use crate::shared::crypto::secret_box::SecretBoxError;
 use crate::shared::email::email_sender::EmailError;
@@ -30,6 +31,8 @@ pub enum StartupError {
     HttpClient(#[from] reqwest::Error),
     #[error(transparent)]
     RateLimits(#[from] InvalidQuota),
+    #[error(transparent)]
+    WebhookSendLimits(#[from] InvalidSendQuota),
     #[error("CLIENT_IP_HEADER is not a valid header name: {0}")]
     ClientIpHeader(#[from] InvalidHeaderName),
     #[error("PLATFORM_TENANT_SLUG is invalid: {0}")]

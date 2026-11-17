@@ -15,6 +15,7 @@ const RETRY_DELAYS: [Duration; 7] = [
 /// Spreads retries by up to ±20%, so receivers coming back from an outage are not hit by every
 /// queued event in the same second.
 const JITTER_PERCENT: u64 = 20;
+const PERCENT: u64 = 100;
 
 /// The wait before the next attempt, after `failed_attempts` failures (counting the one that
 /// just happened); `None` when the delivery should give up.
@@ -27,7 +28,7 @@ pub fn retry_delay(failed_attempts: u32) -> Option<Duration> {
 
 fn with_jitter(delay: Duration) -> Duration {
     let millis = u64::try_from(delay.as_millis()).unwrap_or(u64::MAX);
-    let spread = millis.saturating_mul(JITTER_PERCENT) / 100;
+    let spread = millis.saturating_mul(JITTER_PERCENT) / PERCENT;
     let lowest = millis.saturating_sub(spread);
     let highest = millis.saturating_add(spread);
 

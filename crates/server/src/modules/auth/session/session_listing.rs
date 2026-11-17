@@ -80,7 +80,9 @@ pub async fn end_other_sessions(
 ) -> Result<(), ApiError> {
     let mut transaction = pool.begin().await?;
     sqlx::query(
-        "INSERT INTO revoked_token_families (family_id)          SELECT DISTINCT family_id FROM refresh_tokens WHERE user_id = $1 AND family_id <> $2          ON CONFLICT (family_id) DO NOTHING",
+        "INSERT INTO revoked_token_families (family_id) \
+         SELECT DISTINCT family_id FROM refresh_tokens WHERE user_id = $1 AND family_id <> $2 \
+         ON CONFLICT (family_id) DO NOTHING",
     )
     .bind(user_id)
     .bind(kept_session_id)

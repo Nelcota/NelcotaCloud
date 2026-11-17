@@ -1580,6 +1580,26 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "The delivery is being sent right now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many test events and resends for this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1697,6 +1717,16 @@
           },
           "404": {
             "description": "No such endpoint in this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many test events and resends for this project",
             "content": {
               "application/json": {
                 "schema": {

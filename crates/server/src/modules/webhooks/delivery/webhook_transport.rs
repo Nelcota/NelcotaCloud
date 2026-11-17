@@ -34,6 +34,8 @@ impl WebhookTransport {
             .timeout(REQUEST_TIMEOUT)
             .connect_timeout(CONNECT_TIMEOUT)
             .user_agent(USER_AGENT)
+            // A proxy would resolve the target itself, out of reach of `PublicResolver`.
+            .no_proxy()
             .dns_resolver(PublicResolver { policy })
             .build()?;
 

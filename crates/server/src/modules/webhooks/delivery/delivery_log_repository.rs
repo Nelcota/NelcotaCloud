@@ -58,21 +58,49 @@ pub async fn list_deliveries(
     .await
 }
 
-/// Queues the delivery again right away, whatever its state (e.g. after fixing the receiver);
-/// `false` when the endpoint has no such delivery.
+/// What happened to a request to send a delivery again.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Requeue {
+    Queued,
+    /// The worker is sending it right now; asking again later is enough.
+    InProgress,
+    NotFound,
+}
+
+/// Queues the delivery again right away, whatever its state (e.g. after fixing the receiver).
+/// A delivery the worker is sending is locked: it is reported, never waited for.
 pub async fn requeue_delivery(
     pool: &PgPool,
     endpoint_id: Uuid,
     delivery_id: Uuid,
-) -> Result<bool, sqlx::Error> {
-    let updated = sqlx::query(
-        "UPDATE webhook_deliveries SET delivered_at = NULL, failed_at = NULL, next_attempt_at = now() \
-         WHERE id = $1 AND endpoint_id = $2",
+) -> Result<Requeue, sqlx::Error> {
+    let mut transaction = pool.begin().await?;
+    let exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM webhook_deliveries WHERE id = $1 AND endpoint_id = $2)",
     )
     .bind(delivery_id)
     .bind(endpoint_id)
-    .execute(pool)
+    .fetch_one(&mut *transaction)
     .await?;
 
-    Ok(updated.rows_affected() > 0)
+    if exists == false {
+        return Ok(Requeue::NotFound);
+    }
+
+    let updated = sqlx::query(
+        "UPDATE webhook_deliveries SET delivered_at = NULL, failed_at = NULL, next_attempt_at = now() \
+         WHERE id = (SELECT id FROM webhook_deliveries WHERE id = $1 AND endpoint_id = $2 \
+         FOR UPDATE SKIP LOCKED)",
+    )
+    .bind(delivery_id)
+    .bind(endpoint_id)
+    .execute(&mut *transaction)
+    .await?;
+    transaction.commit().await?;
+
+    if updated.rows_affected() == 0 {
+        return Ok(Requeue::InProgress);
+    }
+
+    Ok(Requeue::Queued)
 }

@@ -67,5 +67,5 @@ async fn verify_inbox_owner(
         return Err(ApiError::from(AuthRejection::InvalidToken));
     };
 
-    claim_verified_inbox(transaction, user, webhooks).await
+    Ok(claim_verified_inbox(transaction, user, webhooks).await?)
 }

@@ -7,8 +7,8 @@ use crate::modules::oauth::login::oauth_state_repository::OAuthStateError;
 use crate::modules::oauth::profile::provider_profile::ProfileError;
 use crate::modules::oauth::provider::oauth_provider_repository::ProviderCredentialsError;
 use crate::modules::tenants::database::tenant_pool_registry::TenantPoolError;
+use crate::modules::webhooks::runtime::webhook_runtime::RecorderUnavailable;
 use crate::shared::crypto::secret_box::SecretBoxError;
-use crate::shared::http::api_error::ApiError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum OAuthLoginError {
@@ -36,8 +36,8 @@ pub enum OAuthLoginError {
     TenantDatabase(#[from] Arc<TenantPoolError>),
     #[error(transparent)]
     State(#[from] OAuthStateError),
-    #[error("failed to load webhook subscriptions: {0}")]
-    Webhooks(ApiError),
+    #[error(transparent)]
+    Webhooks(#[from] RecorderUnavailable),
 }
 
 impl OAuthLoginError {
