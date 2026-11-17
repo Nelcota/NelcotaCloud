@@ -92,6 +92,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/v1/admin/email-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /admin/email-templates`: the wording of each auth email, the project's or the default. */
+        get: operations["list_email_templates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/email-templates/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * `PUT /admin/email-templates/{kind}`: the project's own wording for one email. Plain text;
+         *     `{app_name}` is replaced by the project's name.
+         */
+        put: operations["update_email_template"];
+        post?: never;
+        /** `DELETE /admin/email-templates/{kind}`: back to the platform's wording for one email. */
+        delete: operations["reset_email_template"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/v1/admin/oauth": {
         parameters: {
             query?: never;
@@ -1230,6 +1268,11 @@ export interface components {
              */
             next_before?: number | null;
         };
+        /**
+         * @description The emails that carry a one-time link; each has its own wording per project.
+         * @enum {string}
+         */
+        AuthEmailKind: "verification" | "password_reset" | "magic_link";
         /** @description What an owner sees about a configured provider: its public client ID, never the secret. */
         ConfiguredProvider: {
             client_id: string;
@@ -1291,6 +1334,28 @@ export interface components {
         /** @description Body of the endpoints that email a link to an address. */
         EmailBody: {
             email: string;
+        };
+        /**
+         * @description The words of one auth email, plain text only: the HTML layout escapes them, and the link,
+         *     its button and the address it goes to stay the platform's.
+         */
+        EmailTemplateText: {
+            action_label: string;
+            heading: string;
+            /** @description May span several lines. */
+            message: string;
+            /** @description Shown under the button, smaller; may span several lines or be empty. */
+            note: string;
+            subject: string;
+        };
+        /** @description What one email says now, and whether the project wrote it. */
+        EmailTemplateView: {
+            /** @description The platform's wording, to compare with or go back to. */
+            default_text: components["schemas"]["EmailTemplateText"];
+            /** @description `false` while the platform's default wording is used. */
+            is_customized: boolean;
+            kind: components["schemas"]["AuthEmailKind"];
+            text: components["schemas"]["EmailTemplateText"];
         };
         ErrorBody: {
             error: string;
@@ -1865,6 +1930,112 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_email_templates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every auth email */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplateView"][];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    update_email_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Which email */
+                kind: components["schemas"]["AuthEmailKind"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailTemplateText"];
+            };
+        };
+        responses: {
+            /** @description The saved wording */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplateView"];
+                };
+            };
+            /** @description Blank, too long, or a line break in a one-line field */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    reset_email_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Which email */
+                kind: components["schemas"]["AuthEmailKind"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The default wording, now in use */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplateView"];
                 };
             };
             /** @description Requires the secret API key, or membership in the project */

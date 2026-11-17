@@ -5,6 +5,7 @@ mod auth_edges;
 mod avatars;
 mod concurrency;
 mod email;
+mod email_templates;
 mod fake_github;
 mod flow;
 mod input_edges;

@@ -324,6 +324,19 @@ impl TestServer {
         Err(format!("no email arrived for {recipient}").into())
     }
 
+    /// Waits for the email sent to `recipient` and returns its plain-text body.
+    pub async fn wait_for_email_text(&self, recipient: &str) -> TestResult<String> {
+        for _ in 0..MAIL_POLL_ATTEMPTS {
+            if let Some(text) = self.latest_email_text(recipient).await? {
+                return Ok(text);
+            }
+
+            tokio::time::sleep(MAIL_POLL_INTERVAL).await;
+        }
+
+        Err(format!("no email arrived for {recipient}").into())
+    }
+
     async fn latest_email_text(&self, recipient: &str) -> TestResult<Option<String>> {
         let search_url = format!("{}/api/v1/search", self.mailpit_api_url);
         let query = format!("to:\"{recipient}\"");

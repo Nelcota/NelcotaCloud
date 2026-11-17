@@ -36,7 +36,10 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
   re-checked when a sender is built); the sender is pinned to the first checked address that
   accepts a connection, and is built inside the background task so requests never reveal
   whether an email was sent. `TENANT_SMTP_ALLOW_ANY_HOST=true` lifts the guard for local
-  development only.
+  development only. Each project may reword the three link emails (`tenant_email_templates`,
+  `/auth/v1/admin/email-templates/{kind}`): plain-text subject, heading, message, button and
+  note, `{app_name}` replaced by the project name; the layout and the link stay the platform's,
+  and one-line fields refuse control characters (header injection).
 - Every way to obtain tokens ends in `complete_login` (password, magic link, OAuth): users with a
   verified TOTP factor get `{mfa_required, mfa_token}` instead, redeemed at `/auth/v1/mfa/challenge`
   (5 wrong codes per challenge, each TOTP time step accepted once). `issue_session_with` refuses

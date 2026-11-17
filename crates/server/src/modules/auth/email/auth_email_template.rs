@@ -16,13 +16,12 @@ pub fn render_auth_email(
 ) -> Result<OutgoingEmail, askama::Error> {
     let html_body = AuthEmailHtml { content: &content }.render()?;
     let text_body = format!(
-        "{heading}\n\n{message}\n\n{action_label}: {link}\n\n{expiry_note}\n{ignore_note}\n",
+        "{heading}\n\n{message}\n\n{action_label}: {link}\n\n{note}\n",
         heading = content.heading,
         message = content.message,
         action_label = content.action_label,
         link = content.link,
-        expiry_note = content.expiry_note,
-        ignore_note = content.ignore_note,
+        note = content.note,
     );
 
     Ok(OutgoingEmail {
@@ -43,10 +42,9 @@ mod tests {
             subject: "Subject".to_owned(),
             heading: "Heading".to_owned(),
             message: "Message".to_owned(),
-            action_label: "Act",
+            action_label: "Act".to_owned(),
             link: "https://app.test/auth#token=abc".to_owned(),
-            expiry_note: "Expires",
-            ignore_note: "Ignore",
+            note: "Expires".to_owned(),
         }
     }
 

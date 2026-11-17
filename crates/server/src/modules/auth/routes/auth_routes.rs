@@ -15,6 +15,7 @@ use crate::modules::auth::routes::enroll_totp;
 use crate::modules::auth::routes::get_user;
 use crate::modules::auth::routes::jwks;
 use crate::modules::auth::routes::list_audit_events;
+use crate::modules::auth::routes::list_email_templates;
 use crate::modules::auth::routes::list_sessions;
 use crate::modules::auth::routes::list_user_sessions;
 use crate::modules::auth::routes::list_users;
@@ -28,12 +29,14 @@ use crate::modules::auth::routes::remove_avatar;
 use crate::modules::auth::routes::request_magic_link;
 use crate::modules::auth::routes::resend_user_verification;
 use crate::modules::auth::routes::resend_verification;
+use crate::modules::auth::routes::reset_email_template;
 use crate::modules::auth::routes::reset_password;
 use crate::modules::auth::routes::reset_user_mfa;
 use crate::modules::auth::routes::send_smtp_test;
 use crate::modules::auth::routes::sign_up;
 use crate::modules::auth::routes::unban_user;
 use crate::modules::auth::routes::update_current_user;
+use crate::modules::auth::routes::update_email_template;
 use crate::modules::auth::routes::update_user;
 use crate::modules::auth::routes::upload_avatar;
 use crate::modules::auth::routes::verify_email;
@@ -82,6 +85,11 @@ fn email_link_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(recover_password::recover_password))
         .routes(routes!(reset_password::reset_password))
         .routes(routes!(send_smtp_test::send_smtp_test))
+        .routes(routes!(list_email_templates::list_email_templates))
+        .routes(routes!(
+            update_email_template::update_email_template,
+            reset_email_template::reset_email_template
+        ))
         .routes(routes!(request_magic_link::request_magic_link))
         .routes(routes!(verify_magic_link::verify_magic_link))
 }

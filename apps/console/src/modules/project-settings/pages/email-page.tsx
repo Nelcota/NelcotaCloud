@@ -1,6 +1,7 @@
 import type { JSX } from 'react'
 
 import { CurrentSmtp } from '@/modules/project-settings/components/current-smtp'
+import { EmailTemplatesSection } from '@/modules/project-settings/components/email-templates-section'
 import { SmtpTestSection } from '@/modules/project-settings/components/smtp-test-section'
 import { useSmtpQuery } from '@/modules/project-settings/queries/use-project-settings'
 import { useProjectId } from '@/shared/routing/use-project-id'
@@ -23,6 +24,7 @@ export function EmailPage(): JSX.Element {
         <CurrentSmtp projectId={projectId} view={smtp.data} hasFailed={smtp.isError} />
       </SettingsSection>
       <SmtpTest projectId={projectId} isCustom={smtp.data?.is_custom === true} />
+      <EmailTemplatesSection projectId={projectId} />
     </div>
   )
 }

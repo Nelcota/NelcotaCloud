@@ -362,6 +362,169 @@
         ]
       }
     },
+    "/auth/v1/admin/email-templates": {
+      "get": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`GET /admin/email-templates`: the wording of each auth email, the project's or the default.",
+        "operationId": "list_email_templates",
+        "responses": {
+          "200": {
+            "description": "Every auth email",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EmailTemplateView"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/email-templates/{kind}": {
+      "put": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`PUT /admin/email-templates/{kind}`: the project's own wording for one email. Plain text;\n`{app_name}` is replaced by the project's name.",
+        "operationId": "update_email_template",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "description": "Which email",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/AuthEmailKind"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailTemplateText"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The saved wording",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailTemplateView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Blank, too long, or a line break in a one-line field",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`DELETE /admin/email-templates/{kind}`: back to the platform's wording for one email.",
+        "operationId": "reset_email_template",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "description": "Which email",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/AuthEmailKind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The default wording, now in use",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailTemplateView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
     "/auth/v1/admin/oauth": {
       "get": {
         "tags": [
@@ -4508,6 +4671,15 @@
           }
         }
       },
+      "AuthEmailKind": {
+        "type": "string",
+        "description": "The emails that carry a one-time link; each has its own wording per project.",
+        "enum": [
+          "verification",
+          "password_reset",
+          "magic_link"
+        ]
+      },
       "ConfiguredProvider": {
         "type": "object",
         "description": "What an owner sees about a configured provider: its public client ID, never the secret.",
@@ -4690,6 +4862,63 @@
         "properties": {
           "email": {
             "type": "string"
+          }
+        }
+      },
+      "EmailTemplateText": {
+        "type": "object",
+        "description": "The words of one auth email, plain text only: the HTML layout escapes them, and the link,\nits button and the address it goes to stay the platform's.",
+        "required": [
+          "subject",
+          "heading",
+          "message",
+          "action_label",
+          "note"
+        ],
+        "properties": {
+          "action_label": {
+            "type": "string"
+          },
+          "heading": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string",
+            "description": "May span several lines."
+          },
+          "note": {
+            "type": "string",
+            "description": "Shown under the button, smaller; may span several lines or be empty."
+          },
+          "subject": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EmailTemplateView": {
+        "type": "object",
+        "description": "What one email says now, and whether the project wrote it.",
+        "required": [
+          "kind",
+          "is_customized",
+          "text",
+          "default_text"
+        ],
+        "properties": {
+          "default_text": {
+            "$ref": "#/components/schemas/EmailTemplateText",
+            "description": "The platform's wording, to compare with or go back to."
+          },
+          "is_customized": {
+            "type": "boolean",
+            "description": "`false` while the platform's default wording is used."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AuthEmailKind"
+          },
+          "text": {
+            "$ref": "#/components/schemas/EmailTemplateText"
           }
         }
       },

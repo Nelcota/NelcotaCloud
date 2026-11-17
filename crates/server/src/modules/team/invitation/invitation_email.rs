@@ -56,10 +56,9 @@ fn invitation_content(words: InvitationWords) -> AuthEmailContent {
             "{inviter} invited you to manage the project {project_name}. Sign in to the console with this email address, or create an account with it, to accept.",
             inviter = words.inviter_email,
         ),
-        action_label: "Open the console",
+        action_label: "Open the console".to_owned(),
         link: words.console_url.to_owned(),
-        expiry_note: "The invitation stays open until you accept or decline it.",
-        ignore_note: "If you do not know this project, ignore this email.",
+        note: "The invitation stays open until you accept or decline it.\nIf you do not know this project, ignore this email.".to_owned(),
     }
 }
 
