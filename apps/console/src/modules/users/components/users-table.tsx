@@ -1,16 +1,14 @@
 import Calendar from '~icons/solar/calendar-linear'
 import Letter from '~icons/solar/letter-linear'
 import ShieldCheck from '~icons/solar/shield-check-linear'
-import SearchX from '~icons/solar/magnifier-close-linear'
-import Users from '~icons/solar/users-group-rounded-linear'
 import type { JSX } from 'react'
 
 import { UserActionsMenu } from '@/modules/users/components/user-actions-menu'
 import { UserStatusBadges } from '@/modules/users/components/user-status-badges'
+import { type UserListFilter, UsersEmptyState } from '@/modules/users/components/users-empty-state'
 import type { UserAction } from '@/modules/users/queries/use-users'
 import type { components } from '@/shared/api/api-schema'
 import { formatDate } from '@/shared/lib/format-date'
-import { EmptyState } from '@/shared/ui/empty-state'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { ColumnLabel } from '@/shared/ui/column-label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/ui/table'
@@ -21,7 +19,7 @@ const SKELETON_ROWS = ['a', 'b', 'c', 'd']
 
 type UsersTableProps = {
   users: User[] | undefined
-  search: string
+  filter: UserListFilter
   /** A failed load shows its error above the table instead of an endless skeleton. */
   hasFailed: boolean
   /** The user whose action is running; only that row's menu waits. */
@@ -29,7 +27,7 @@ type UsersTableProps = {
   onAction: (user: User, action: UserAction) => Promise<void>
 }
 
-/** The users list, with its loading and empty states (no users yet, or none for a search). */
+/** The users list, with its loading and empty states (no users yet, or none for a filter). */
 export function UsersTable(props: UsersTableProps): JSX.Element | null {
   const { users } = props
 
@@ -42,7 +40,7 @@ export function UsersTable(props: UsersTableProps): JSX.Element | null {
   }
 
   if (users.length === 0) {
-    return <NoUsers search={props.search} />
+    return <UsersEmptyState filter={props.filter} />
   }
 
   return (
@@ -110,25 +108,5 @@ function UsersSkeleton(): JSX.Element {
         </div>
       ))}
     </div>
-  )
-}
-
-function NoUsers({ search }: { search: string }): JSX.Element {
-  if (search.trim() !== '') {
-    return (
-      <EmptyState
-        icon={SearchX}
-        title="Nenhum usuário encontrado"
-        description={`Nenhum email contém “${search.trim()}”. Confira a grafia ou busque só uma parte.`}
-      />
-    )
-  }
-
-  return (
-    <EmptyState
-      icon={Users}
-      title="Nenhum usuário ainda"
-      description="Quando alguém criar uma conta no seu app, ela aparece aqui."
-    />
   )
 }

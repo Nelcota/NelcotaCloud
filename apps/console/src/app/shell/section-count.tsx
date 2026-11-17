@@ -20,7 +20,7 @@ export function SectionCount({ projectId, segment }: SectionCountProps): JSX.Ele
 
 /** The project's user total, from a one-row page so the sidebar stays cheap to load. */
 function UsersCount({ projectId }: { projectId: string }): JSX.Element | null {
-  const users = useUsersQuery(projectId, { email: '', offset: 0, limit: 1 })
+  const users = useUsersQuery(projectId, { email: '', status: 'all', offset: 0, limit: 1 })
   const total = users.data?.total
 
   if (total === undefined || total === 0) {

@@ -1,7 +1,9 @@
 import type { JSX } from 'react'
 import { useDeferredValue, useState } from 'react'
 
+import type { UserStatusFilter as Status } from '@/modules/users/api/list-users'
 import { UserCount } from '@/modules/users/components/user-count'
+import { UserStatusFilter } from '@/modules/users/components/user-status-filter'
 import { UsersPagination } from '@/modules/users/components/users-pagination'
 import { UsersTable } from '@/modules/users/components/users-table'
 import { DONE_MESSAGES } from '@/modules/users/components/user-done-messages'
@@ -19,13 +21,15 @@ import { SearchInput } from '@/shared/ui/search-input'
 
 type User = components['schemas']['User']
 
-/** The project's users, searched by email and paged, with an admin action on each one. */
+/** The project's users, searched by email, filtered by status and paged, with admin actions. */
 export function UsersBrowser({ projectId }: { projectId: string }): JSX.Element {
   const [search, setSearch] = useState('')
+  const [status, setStatus] = useState<Status>('all')
   const [offset, setOffset] = useState(0)
   const deferredSearch = useDeferredValue(search)
   const users = useUsersQuery(projectId, {
     email: deferredSearch,
+    status,
     offset,
     limit: USERS_PAGE_SIZE,
   })
@@ -36,6 +40,11 @@ export function UsersBrowser({ projectId }: { projectId: string }): JSX.Element 
     setOffset(0)
   }
 
+  function changeStatus(value: Status): void {
+    setStatus(value)
+    setOffset(0)
+  }
+
   async function runAction(user: User, kind: UserAction): Promise<void> {
     await action.mutateAsync({ action: kind, userId: user.id, email: user.email })
     showFlash(`${DONE_MESSAGES[kind]}: ${user.email}`)
@@ -43,15 +52,18 @@ export function UsersBrowser({ projectId }: { projectId: string }): JSX.Element 
 
   return (
     <>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <SearchInput label="Buscar por email" value={search} onChange={changeSearch} />
-        <UserCount total={users.data?.total} />
+        <UserStatusFilter value={status} onChange={changeStatus} />
+        <div className="sm:ml-auto">
+          <UserCount total={users.data?.total} />
+        </div>
       </div>
       <LoadError error={users.error} onRetry={() => users.refetch()} />
       <ErrorAlert error={unblockError(action.error, action.variables)} />
       <UsersTable
         users={users.data?.users}
-        search={deferredSearch}
+        filter={{ search: deferredSearch, status }}
         hasFailed={users.isError}
         pendingUserId={pendingUserId(action.isPending, action.variables)}
         onAction={runAction}
