@@ -2,6 +2,7 @@ pub mod delivery_log_repository;
 pub mod delivery_queue_repository;
 pub mod delivery_targets;
 pub mod endpoint_batch;
+pub mod manual_send_limiter;
 pub mod public_resolver;
 pub mod retry_schedule;
 pub mod tenant_delivery_run;

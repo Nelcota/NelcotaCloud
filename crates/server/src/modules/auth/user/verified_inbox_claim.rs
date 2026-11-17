@@ -3,11 +3,10 @@ use sqlx::PgConnection;
 use crate::modules::auth::mfa::mfa_factor_repository::delete_mfa_factor;
 use crate::modules::auth::session::refresh_token_repository::end_all_user_sessions;
 use crate::modules::auth::user::user_account_updates::claim_account_for_verified_email;
-use crate::modules::auth::user::user_events::{UserChange, record_user_change};
+use crate::modules::auth::user::user_events::{UserChange, UserEventError, record_user_change};
 use crate::modules::auth::user::user_record::User;
 use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
 use crate::modules::webhooks::outbox::webhook_recorder::WebhookRecorder;
-use crate::shared::http::api_error::ApiError;
 
 /// Hands an account to whoever just proved they own its inbox (magic link, OAuth provider).
 ///
@@ -18,7 +17,7 @@ pub async fn claim_verified_inbox(
     transaction: &mut PgConnection,
     user: User,
     webhooks: &WebhookRecorder,
-) -> Result<User, ApiError> {
+) -> Result<User, UserEventError> {
     if user.email_verified_at.is_some() {
         return Ok(user);
     }

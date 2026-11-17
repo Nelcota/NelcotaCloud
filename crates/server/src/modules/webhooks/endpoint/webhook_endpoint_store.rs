@@ -1,6 +1,7 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::modules::webhooks::delivery::webhook_schedule_repository::mark_due_now;
 use crate::modules::webhooks::endpoint::webhook_endpoint_error::WebhookEndpointError;
 use crate::modules::webhooks::endpoint::webhook_endpoint_repository::{
     NewWebhookEndpoint, WebhookEndpointChanges, delete_endpoint, find_endpoint, insert_endpoint,
@@ -98,6 +99,10 @@ impl WebhookEndpointStore<'_> {
 
         self.subscriptions.forget(tenant_id).await;
 
+        if update.is_enabled == Some(false) {
+            mark_due_now(self.control_plane_pool, &[tenant_id]).await?;
+        }
+
         self.view(tenant_id, endpoint_id).await
     }
 
@@ -111,6 +116,8 @@ impl WebhookEndpointStore<'_> {
         }
 
         self.subscriptions.forget(tenant_id).await;
+        // The worker gives up the endpoint's pending deliveries on its next look.
+        mark_due_now(self.control_plane_pool, &[tenant_id]).await?;
 
         Ok(())
     }

@@ -16,6 +16,7 @@ use crate::modules::tenants::signing_keys::signing_key_cache::SigningKeyCache;
 use crate::modules::tenants::smtp::tenant_email_senders::{
     TenantEmailSenders, TenantEmailSendersConfig,
 };
+use crate::modules::webhooks::delivery::manual_send_limiter::ManualSendLimiter;
 use crate::modules::webhooks::delivery::tenant_delivery_run::DeliveryContext;
 use crate::modules::webhooks::delivery::webhook_transport::WebhookTransport;
 use crate::modules::webhooks::delivery::webhook_worker::WebhookWorker;
@@ -126,6 +127,7 @@ fn start_webhooks(
         subscriptions: WebhookSubscriptions::new(control_plane_pool.clone()),
         hints,
         transport,
+        manual_sends: ManualSendLimiter::new()?,
     })
 }
 

@@ -3,10 +3,28 @@ use uuid::Uuid;
 
 use crate::modules::auth::user::user_lookup::find_user_by_id;
 use crate::modules::auth::user::user_record::User;
-use crate::modules::webhooks::event::webhook_event::{RevokedSessions, WebhookEvent};
+use crate::modules::webhooks::event::webhook_event::{
+    RevokedSessions, WebhookEvent, WebhookEventError,
+};
 use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
-use crate::modules::webhooks::outbox::webhook_recorder::WebhookRecorder;
+use crate::modules::webhooks::outbox::webhook_recorder::{RecordError, WebhookRecorder};
 use crate::shared::http::api_error::ApiError;
+
+#[derive(Debug, thiserror::Error)]
+pub enum UserEventError {
+    #[error("database error while reading the user for a webhook event: {0}")]
+    Database(#[from] sqlx::Error),
+    #[error(transparent)]
+    Event(#[from] WebhookEventError),
+    #[error(transparent)]
+    Record(#[from] RecordError),
+}
+
+impl From<UserEventError> for ApiError {
+    fn from(error: UserEventError) -> Self {
+        Self::internal(error)
+    }
+}
 
 /// Something that happened to a user, to be sent to the tenant's webhook endpoints.
 pub struct UserChange {
@@ -20,7 +38,7 @@ pub async fn record_user_change(
     connection: &mut PgConnection,
     webhooks: &WebhookRecorder,
     change: UserChange,
-) -> Result<(), ApiError> {
+) -> Result<(), UserEventError> {
     if webhooks.wants(change.event_type) == false {
         return Ok(());
     }
@@ -38,8 +56,8 @@ pub async fn record_user_event(
     connection: &mut PgConnection,
     webhooks: &WebhookRecorder,
     (event_type, user): (WebhookEventType, &User),
-) -> Result<(), ApiError> {
-    let event = WebhookEvent::about_user(event_type, user).map_err(ApiError::internal)?;
+) -> Result<(), UserEventError> {
+    let event = WebhookEvent::about_user(event_type, user)?;
 
     Ok(webhooks.record(connection, event).await?)
 }
@@ -49,7 +67,7 @@ pub async fn record_sessions_revoked(
     connection: &mut PgConnection,
     webhooks: &WebhookRecorder,
     (user_id, scope, session_id): (Uuid, RevokedSessions, Option<Uuid>),
-) -> Result<(), ApiError> {
+) -> Result<(), UserEventError> {
     let event = WebhookEvent::sessions_revoked(user_id, scope, session_id);
 
     Ok(webhooks.record(connection, event).await?)

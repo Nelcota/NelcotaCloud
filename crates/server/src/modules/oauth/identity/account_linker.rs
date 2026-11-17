@@ -2,7 +2,7 @@ use sqlx::error::DatabaseError;
 use sqlx::{PgConnection, PgPool};
 
 use crate::modules::auth::user::email_address::{EmailAddress, InvalidEmailAddress};
-use crate::modules::auth::user::user_events::record_user_event;
+use crate::modules::auth::user::user_events::{UserEventError, record_user_event};
 use crate::modules::auth::user::user_lookup::find_user_by_email;
 use crate::modules::auth::user::user_record::User;
 use crate::modules::auth::user::user_registration::{InsertUserError, insert_oauth_user};
@@ -14,7 +14,6 @@ use crate::modules::oauth::profile::provider_profile::ProviderProfile;
 use crate::modules::oauth::provider::oauth_provider::OAuthProvider;
 use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
 use crate::modules::webhooks::outbox::webhook_recorder::WebhookRecorder;
-use crate::shared::http::api_error::ApiError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum AccountLinkError {
@@ -28,8 +27,8 @@ pub enum AccountLinkError {
     InvalidEmail(#[from] InvalidEmailAddress),
     #[error("database error while linking OAuth identity: {0}")]
     Database(#[from] sqlx::Error),
-    #[error("failed to record the webhook event: {0}")]
-    Webhooks(ApiError),
+    #[error(transparent)]
+    Webhooks(#[from] UserEventError),
 }
 
 /// Finds the user behind a provider identity, linking it to the account with the same
@@ -97,8 +96,7 @@ async fn account_for_email(
         webhooks,
         (WebhookEventType::UserCreated, &user),
     )
-    .await
-    .map_err(AccountLinkError::Webhooks)?;
+    .await?;
 
     Ok(user)
 }
@@ -116,9 +114,7 @@ async fn claim_existing_account(
         return Err(AccountLinkError::ProviderAccountMismatch);
     }
 
-    claim_verified_inbox(transaction, existing_user, webhooks)
-        .await
-        .map_err(AccountLinkError::Webhooks)
+    Ok(claim_verified_inbox(transaction, existing_user, webhooks).await?)
 }
 
 fn map_insert_user_error(error: InsertUserError) -> AccountLinkError {

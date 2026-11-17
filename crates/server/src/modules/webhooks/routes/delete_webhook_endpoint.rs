@@ -30,6 +30,8 @@ pub async fn delete_webhook_endpoint(
         .delete(admin.tenant_id, endpoint_id)
         .await
         .map_err(endpoint_error_response)?;
+    // Its pending deliveries are given up on the worker's next look; wake it now.
+    state.webhooks.hint(admin.tenant_id);
 
     Ok(StatusCode::NO_CONTENT)
 }

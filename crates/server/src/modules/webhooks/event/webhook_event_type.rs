@@ -24,8 +24,11 @@ pub enum WebhookEventType {
 #[error("unknown webhook event type: {0}")]
 pub struct UnknownEventType(pub String);
 
+/// How many event types exist; request bodies accept at most this many.
+pub const EVENT_TYPE_COUNT: usize = 6;
+
 impl WebhookEventType {
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; EVENT_TYPE_COUNT] = [
         Self::UserCreated,
         Self::UserUpdated,
         Self::UserDeleted,
