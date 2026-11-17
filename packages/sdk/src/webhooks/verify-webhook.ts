@@ -56,7 +56,7 @@ export async function verifyWebhook(options: VerifyWebhookOptions): Promise<Webh
 }
 
 function header(headers: WebhookHeaders, name: string): string | null {
-  if (headers instanceof Headers) {
+  if (isHeaders(headers)) {
     return headers.get(name)
   }
 
@@ -83,13 +83,26 @@ function checkTimestamp(timestamp: string, options: VerifyWebhookOptions): void 
 }
 
 function parseEvent(payload: string): WebhookEvent {
-  const parsed: unknown = JSON.parse(payload)
+  const parsed = parseJson(payload)
 
   if (isWebhookEvent(parsed) === false) {
     throw new WebhookVerificationError('invalid_payload', 'The webhook body is not an event.')
   }
 
   return parsed
+}
+
+/** Older runtimes have no global `Headers`; plain records work everywhere. */
+function isHeaders(headers: WebhookHeaders): headers is Headers {
+  return typeof Headers !== 'undefined' && headers instanceof Headers
+}
+
+function parseJson(payload: string): unknown {
+  try {
+    return JSON.parse(payload)
+  } catch {
+    throw new WebhookVerificationError('invalid_payload', 'The webhook body is not JSON.')
+  }
 }
 
 function isWebhookEvent(value: unknown): value is WebhookEvent {

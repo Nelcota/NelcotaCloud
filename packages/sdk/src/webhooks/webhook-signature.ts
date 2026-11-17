@@ -5,8 +5,17 @@ const SIGNATURE_VERSION = 'v1,'
 
 /** The secret's key bytes (`whsec_<base64>`, as the console shows it). */
 export function secretKey(secret: string): Uint8Array<ArrayBuffer> {
-  const encoded = withoutPrefix(secret)
+  const key = decodeBase64(withoutPrefix(secret))
 
+  // An empty key would make WebCrypto throw its own DataError.
+  if (key.length === 0) {
+    throw new WebhookVerificationError('invalid_secret', 'The webhook secret is empty.')
+  }
+
+  return key
+}
+
+function decodeBase64(encoded: string): Uint8Array<ArrayBuffer> {
   try {
     return Uint8Array.from(atob(encoded), (character) => character.charCodeAt(0))
   } catch {

@@ -106,6 +106,26 @@ describe('verifyWebhook', () => {
     expect(await codeOf(verify)).toBe('timestamp_out_of_range')
   })
 
+  it('refuses a signed body that is not JSON and an empty secret with its own errors', async () => {
+    const body = 'not json'
+    const signature = await sign(body, SPEC_TIMESTAMP)
+    const notJson = verifyWebhook({
+      payload: body,
+      headers: headers(signature),
+      secret: SPEC_SECRET,
+      now: SPEC_NOW,
+    })
+    const emptySecret = verifyWebhook({
+      payload: EVENT,
+      headers: headers(signature),
+      secret: 'whsec_',
+      now: SPEC_NOW,
+    })
+
+    expect(await codeOf(notJson)).toBe('invalid_payload')
+    expect(await codeOf(emptySecret)).toBe('invalid_secret')
+  })
+
   it('refuses requests without the headers', async () => {
     const verify = verifyWebhook({
       payload: EVENT,
