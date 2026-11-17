@@ -3,12 +3,17 @@ import type { HttpClient } from '../http/http-client'
 import type { OAuthProvider, SignInResult } from '../types'
 import { toSignInResult } from './login-results'
 import { oauthCallbackError } from './oauth-callback-error'
-import { createPkcePair } from './pkce'
+import { createOAuthState, createPkcePair } from './pkce'
 import type { SessionManager } from './session-manager'
 import type { SessionStore } from './session-store'
 
 type LoginResponse = components['schemas']['LoginResponse']
-type OAuthContext = { http: HttpClient; manager: SessionManager; store: SessionStore }
+type OAuthContext = {
+  http: HttpClient
+  manager: SessionManager
+  store: SessionStore
+  now: () => number
+}
 
 /**
  * Login with Google or GitHub. The app keeps a PKCE verifier, so the one-time `code` the
@@ -18,20 +23,25 @@ export class OAuthApi {
   private readonly http: HttpClient
   private readonly manager: SessionManager
   private readonly store: SessionStore
+  private readonly now: () => number
 
   constructor(context: OAuthContext) {
     this.http = context.http
     this.manager = context.manager
     this.store = context.store
+    this.now = context.now
   }
 
   /** The URL to send the browser to. `redirectTo` must be under the tenant's site URL. */
   async getAuthorizeUrl(request: { provider: OAuthProvider; redirectTo: string }): Promise<string> {
     const pkce = await createPkcePair()
-    this.store.saveVerifier(pkce.verifier)
+    const state = createOAuthState()
+    this.store.saveVerifier(state, pkce.verifier)
+    const redirectTo = new URL(request.redirectTo)
+    redirectTo.searchParams.set('nelcota_state', state)
     const query = new URLSearchParams({
       apikey: this.http.publishableKey,
-      redirect_to: request.redirectTo,
+      redirect_to: redirectTo.toString(),
       code_challenge: pkce.challenge,
       code_challenge_method: 'S256',
     })
@@ -45,8 +55,9 @@ export class OAuthApi {
    */
   async exchangeCode(callbackUrl: string | URL): Promise<SignInResult> {
     const parameters = new URL(callbackUrl).searchParams
+    const state = parameters.get('nelcota_state')
     // Taken first so a failed or cancelled login never leaves the verifier behind.
-    const verifier = this.store.takeVerifier()
+    const verifier = state === null ? null : this.store.takeVerifier(state)
     const error = parameters.get('error')
 
     if (error !== null) {
@@ -68,7 +79,7 @@ export class OAuthApi {
       path: '/auth/v1/oauth/token',
       body: { code, code_verifier: verifier },
     })
-    const result = toSignInResult(response)
+    const result = toSignInResult(response, this.now)
 
     if (result.kind === 'session') {
       this.manager.start(result.session, 'SIGNED_IN')

@@ -18,10 +18,14 @@ export type ClientOptions = {
   storageKey?: string
   /** A custom `fetch` (tests, server runtimes). */
   fetch?: typeof fetch
+  /** A custom clock (tests, deterministic session expiry). */
+  now?: () => number
 }
 
 export type NelcotaClient = {
   auth: AuthClient
+  /** Releases browser event listeners and auth callbacks owned by this client. */
+  dispose(): void
 }
 
 export function createClient(options: ClientOptions): NelcotaClient {
@@ -40,7 +44,11 @@ export function createClient(options: ClientOptions): NelcotaClient {
     options.storage ?? defaultStorage(),
     options.storageKey ?? DEFAULT_STORAGE_KEY,
   )
-  const manager = new SessionManager(http, store)
+  const now = options.now ?? Date.now
+  const manager = new SessionManager(http, store, now)
 
-  return { auth: new AuthClient({ http, manager, store }) }
+  return {
+    auth: new AuthClient({ http, manager, store, now }),
+    dispose: () => manager.dispose(),
+  }
 }

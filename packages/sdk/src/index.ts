@@ -1,4 +1,5 @@
 export { AuthClient } from './auth/auth-client'
+export { AvatarApi } from './auth/avatar-api'
 export { MfaApi } from './auth/mfa-api'
 export { OAuthApi } from './auth/oauth-api'
 export { SessionsApi } from './auth/sessions-api'

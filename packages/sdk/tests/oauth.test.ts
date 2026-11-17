@@ -35,7 +35,10 @@ describe('OAuth', () => {
         redirectTo: CALLBACK_URL,
       }),
     )
-    const result = await client.auth.oauth.exchangeCode(`${CALLBACK_URL}?code=nc_oc_code`)
+    const callback = new URL(authorizeUrl.searchParams.get('redirect_to') ?? '')
+    const result = await client.auth.oauth.exchangeCode(
+      `${CALLBACK_URL}?code=nc_oc_code&nelcota_state=${callback.searchParams.get('nelcota_state')}`,
+    )
 
     expect(authorizeUrl.pathname).toBe('/auth/v1/oauth/github/authorize')
     expect(authorizeUrl.searchParams.get('code_challenge_method')).toBe('S256')
@@ -59,10 +62,15 @@ describe('OAuth', () => {
   it('throws the error the API sent back and forgets the verifier', async () => {
     const api = new FakeApi()
     const client = clientFor(api)
-    await client.auth.oauth.getAuthorizeUrl({ provider: 'google', redirectTo: CALLBACK_URL })
+    const authorizeUrl = new URL(
+      await client.auth.oauth.getAuthorizeUrl({ provider: 'google', redirectTo: CALLBACK_URL }),
+    )
+    const state = new URL(authorizeUrl.searchParams.get('redirect_to') ?? '').searchParams.get(
+      'nelcota_state',
+    )
 
     await expect(
-      client.auth.oauth.exchangeCode(`${CALLBACK_URL}?error=access_denied`),
+      client.auth.oauth.exchangeCode(`${CALLBACK_URL}?error=access_denied&nelcota_state=${state}`),
     ).rejects.toMatchObject({ code: 'access_denied' })
     await expect(
       client.auth.oauth.exchangeCode(`${CALLBACK_URL}?code=nc_oc_code`),

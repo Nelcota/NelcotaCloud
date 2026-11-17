@@ -3,6 +3,7 @@ import { NelcotaError } from './nelcota-error'
 const API_KEY_HEADER = 'apikey'
 const REQUEST_ID_HEADER = 'x-request-id'
 const UNKNOWN_ERROR_CODE = 'unknown_error'
+const FILE_CONTENT_TYPE = 'application/octet-stream'
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
@@ -10,6 +11,8 @@ export type HttpRequest = {
   method: HttpMethod
   path: string
   body?: unknown
+  /** Sent as is (`application/octet-stream`) instead of a JSON `body`. */
+  file?: Blob
   accessToken?: string
 }
 
@@ -35,7 +38,7 @@ export class HttpClient {
     const response = await this.fetchFunction(`${this.baseUrl}${request.path}`, {
       method: request.method,
       headers: this.headersFor(request),
-      body: serializeBody(request.body),
+      body: bodyOf(request),
     })
 
     if (response.ok === false) {
@@ -55,6 +58,10 @@ export class HttpClient {
   private headersFor(request: HttpRequest): Record<string, string> {
     const headers: Record<string, string> = { [API_KEY_HEADER]: this.publishableKey }
 
+    if (request.file !== undefined) {
+      headers['content-type'] = FILE_CONTENT_TYPE
+    }
+
     if (request.body !== undefined) {
       headers['content-type'] = 'application/json'
     }
@@ -67,12 +74,16 @@ export class HttpClient {
   }
 }
 
-function serializeBody(body: unknown): string | undefined {
-  if (body === undefined) {
+function bodyOf(request: HttpRequest): Blob | string | undefined {
+  if (request.file !== undefined) {
+    return request.file
+  }
+
+  if (request.body === undefined) {
     return undefined
   }
 
-  return JSON.stringify(body)
+  return JSON.stringify(request.body)
 }
 
 async function toNelcotaError(response: Response): Promise<NelcotaError> {

@@ -14,6 +14,13 @@ export async function createPkcePair(): Promise<PkcePair> {
   return { verifier, challenge: await challengeFor(verifier) }
 }
 
+export function createOAuthState(): string {
+  const random = new Uint8Array(VERIFIER_BYTES)
+  globalThis.crypto.getRandomValues(random)
+
+  return toBase64Url(random)
+}
+
 /** S256: base64url(SHA-256(verifier)). */
 export async function challengeFor(verifier: string): Promise<string> {
   const digest = await globalThis.crypto.subtle.digest(
