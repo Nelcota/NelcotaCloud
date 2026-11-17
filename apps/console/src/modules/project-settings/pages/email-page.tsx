@@ -63,7 +63,7 @@ export function EmailPage(): JSX.Element {
             autoComplete="off"
             required
             placeholder="smtps://usuario:senha@smtp.exemplo.com:465"
-            hint="Host público e porta 25, 465, 587 ou 2525. As credenciais ficam cifradas e não voltam a aparecer."
+            hint="Use TLS: smtps:// na porta 465 ou smtp:// com ?tls=required. Host público; credenciais cifradas e exibidas só aqui."
             value={smtpUrl}
             onChange={(event) => setSmtpUrl(event.target.value)}
           />

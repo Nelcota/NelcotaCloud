@@ -1,17 +1,14 @@
 import { Link } from '@tanstack/react-router'
-import ArrowUpRight from '~icons/solar/arrow-right-up-linear'
 import FolderKanban from '~icons/solar/folder-with-files-linear'
 import Plus from '~icons/solar/add-linear'
 import type { JSX } from 'react'
 
+import { ProjectsBrowser } from '@/modules/projects/components/projects-browser'
 import type { components } from '@/shared/api/api-schema'
-import { Badge } from '@/shared/ui/badge'
 import { buttonVariants } from '@/shared/ui/button-variants'
 import { EmptyState } from '@/shared/ui/empty-state'
 
 type ProjectSummary = components['schemas']['ProjectSummary']
-
-const ROLE_LABELS: Record<ProjectSummary['role'], string> = { owner: 'Dono', member: 'Membro' }
 
 export function ProjectList({ projects }: { projects: ProjectSummary[] }): JSX.Element {
   if (projects.length === 0) {
@@ -30,41 +27,5 @@ export function ProjectList({ projects }: { projects: ProjectSummary[] }): JSX.E
     )
   }
 
-  return (
-    <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {projects.map((project) => (
-        <li key={project.id}>
-          <ProjectCard project={project} />
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-function ProjectCard({ project }: { project: ProjectSummary }): JSX.Element {
-  return (
-    <Link
-      to="/projects/$projectId"
-      params={{ projectId: project.id }}
-      className="group bg-card hover:border-primary/50 flex h-full flex-col rounded-xl border p-5 transition-[border-color,box-shadow,transform] hover:shadow-lg hover:shadow-black/5 motion-safe:hover:-translate-y-0.5 motion-safe:active:scale-[0.99]"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <span className="bg-secondary flex size-12 items-center justify-center rounded-lg">
-          <FolderKanban className="text-muted-foreground size-6" />
-        </span>
-        <Badge variant="outline">{ROLE_LABELS[project.role]}</Badge>
-      </div>
-      <span className="mt-4 flex items-center gap-1 font-semibold">
-        <span className="truncate">{project.name}</span>
-        <ArrowUpRight className="text-muted-foreground size-5 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
-      </span>
-      <span className="text-muted-foreground mt-0.5 truncate font-mono text-xs">
-        {project.slug}
-      </span>
-      <span aria-hidden="true" className="min-h-4 flex-1" />
-      <span className="text-muted-foreground truncate border-t pt-3 text-xs">
-        {project.site_url}
-      </span>
-    </Link>
-  )
+  return <ProjectsBrowser projects={projects} />
 }

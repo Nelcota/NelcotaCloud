@@ -1,39 +1,21 @@
-import { Link, useSearch } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import CircleCheck from '~icons/solar/check-circle-linear'
-import type { FormEvent, JSX } from 'react'
-import { useState } from 'react'
+import type { JSX } from 'react'
+import { useEffect, useState } from 'react'
 
 import { AuthCard } from '@/modules/account/components/auth-card'
-import { nelcota } from '@/shared/auth/nelcota'
-import { Button } from '@/shared/ui/button'
+import { ResetPasswordForm } from '@/modules/account/components/reset-password-form'
 import { buttonVariants } from '@/shared/ui/button-variants'
-import { ErrorAlert } from '@/shared/ui/error-alert'
-import { FormField } from '@/shared/ui/form-field'
+import { clearTokenFromLocation, tokenFromLocation } from '@/shared/routing/token-search'
 
-const MIN_PASSWORD_LENGTH = 8
-
-/** Opened from the reset email: `/auth/reset-password?token=…`. */
+/** Opened from the reset email with its one-time token in the URL fragment. */
 export function ResetPasswordPage(): JSX.Element {
-  const { token } = useSearch({ from: '/_public/auth/reset-password' })
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState<unknown>(null)
+  const [token] = useState(tokenFromLocation)
   const [isDone, setIsDone] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault()
-    setError(null)
-    setIsSubmitting(true)
-
-    try {
-      await nelcota.auth.resetPassword({ token: token, password })
-      setIsDone(true)
-    } catch (caught) {
-      setError(caught)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
+  useEffect(() => {
+    clearTokenFromLocation()
+  }, [])
 
   if (isDone) {
     return (
@@ -51,22 +33,7 @@ export function ResetPasswordPage(): JSX.Element {
 
   return (
     <AuthCard title="Nova senha" description="Escolha uma senha com pelo menos 8 caracteres.">
-      <form className="grid gap-4" onSubmit={submit}>
-        <FormField
-          label="Nova senha"
-          type="password"
-          autoComplete="new-password"
-          autoFocus
-          required
-          minLength={MIN_PASSWORD_LENGTH}
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-        />
-        <ErrorAlert error={error} />
-        <Button type="submit" size="lg" disabled={isSubmitting} aria-busy={isSubmitting}>
-          Salvar senha
-        </Button>
-      </form>
+      <ResetPasswordForm token={token} onDone={() => setIsDone(true)} />
     </AuthCard>
   )
 }

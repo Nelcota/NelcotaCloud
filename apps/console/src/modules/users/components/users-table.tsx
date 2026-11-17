@@ -44,7 +44,7 @@ export function UsersTable(props: UsersTableProps): JSX.Element | null {
   return (
     <div className="bg-card overflow-hidden rounded-xl border">
       <Table>
-        <TableHeader className="bg-muted/40">
+        <TableHeader>
           <TableRow>
             <TableHead className="px-4">Email</TableHead>
             <TableHead className="hidden sm:table-cell">Situação</TableHead>

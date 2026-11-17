@@ -2,7 +2,7 @@ import type { SignUpResult } from '@nelcota/sdk'
 import type { FormEvent, JSX } from 'react'
 import { useState } from 'react'
 
-import { nelcota } from '@/shared/auth/nelcota'
+import { useSignUpMutation } from '@/modules/account/queries/use-sign-up-mutation'
 import { Button } from '@/shared/ui/button'
 import { ErrorAlert } from '@/shared/ui/error-alert'
 import { FormField } from '@/shared/ui/form-field'
@@ -16,21 +16,11 @@ export function SignUpForm({
 }): JSX.Element {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<unknown>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const signUp = useSignUpMutation()
 
-  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
+  function submit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault()
-    setError(null)
-    setIsSubmitting(true)
-
-    try {
-      onResult(await nelcota.auth.signUp({ email, password }))
-    } catch (caught) {
-      setError(caught)
-    } finally {
-      setIsSubmitting(false)
-    }
+    signUp.mutate({ email, password }, { onSuccess: onResult })
   }
 
   return (
@@ -54,8 +44,8 @@ export function SignUpForm({
         value={password}
         onChange={(event) => setPassword(event.target.value)}
       />
-      <ErrorAlert error={error} />
-      <Button type="submit" size="lg" disabled={isSubmitting} aria-busy={isSubmitting}>
+      <ErrorAlert error={signUp.error} />
+      <Button type="submit" size="lg" disabled={signUp.isPending} aria-busy={signUp.isPending}>
         Criar conta
       </Button>
     </form>

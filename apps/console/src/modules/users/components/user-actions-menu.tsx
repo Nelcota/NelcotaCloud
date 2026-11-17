@@ -134,20 +134,13 @@ function ActionConfirmation({
   return (
     <ConfirmDialog
       isOpen
-      onOpenChange={(isOpen) => closeWhen(isOpen, onClose)}
+      onClose={onClose}
       title={confirmation.title(email)}
       description={confirmation.description}
       confirmLabel={confirmation.confirmLabel}
       isDestructive={confirmation.isDestructive}
+      change={confirmation.change(email)}
       onConfirm={() => onConfirm(action)}
     />
   )
-}
-
-function closeWhen(isOpen: boolean, onClose: () => void): void {
-  if (isOpen) {
-    return
-  }
-
-  onClose()
 }

@@ -3,6 +3,7 @@ import FolderKanban from '~icons/solar/folder-with-files-linear'
 import type { JSX, ReactNode } from 'react'
 
 import { AccountMenu } from '@/app/shell/account-menu'
+import { ConsoleSidebar } from '@/app/shell/console-sidebar'
 import { MfaReminderCard } from '@/app/shell/mfa-reminder-card'
 import { ProjectNav } from '@/app/shell/project-nav'
 import { type ProjectSection, projectLocation } from '@/app/shell/project-sections'
@@ -13,15 +14,16 @@ const SIDEBAR_LINK =
 
 /**
  * The open project's sidebar: its header and switcher, the daily pages, a way back to every
- * project, a security reminder, then settings and the account at the foot. The desktop
- * column and the mobile sheet render the same content.
+ * project, a security reminder, then settings and the account at the foot. Outside a project
+ * the console's own sidebar takes its place. The desktop column and the mobile sheet render
+ * the same content.
  */
-export function SidebarContent({ onNavigate }: { onNavigate?: () => void }): JSX.Element | null {
+export function SidebarContent({ onNavigate }: { onNavigate?: () => void }): JSX.Element {
   const { pathname } = useLocation()
   const location = projectLocation(pathname)
 
   if (location === null) {
-    return null
+    return <ConsoleSidebar pathname={pathname} onNavigate={onNavigate} />
   }
 
   const navProps = {
@@ -65,7 +67,7 @@ function FooterLinks(props: FooterLinksProps): JSX.Element {
     <div className="grid gap-2">
       <ProjectNav {...props} group="footer" />
       <hr className="border-sidebar-border mx-3" />
-      <AccountMenu placement="sidebar" />
+      <AccountMenu />
     </div>
   )
 }

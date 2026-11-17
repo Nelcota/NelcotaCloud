@@ -2,6 +2,7 @@ import type { JSX, ReactNode } from 'react'
 import { useState } from 'react'
 
 import { Button } from '@/shared/ui/button'
+import type { ConfirmChange } from '@/shared/ui/confirm-change'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
 
 type ConfirmButtonProps = {
@@ -9,11 +10,19 @@ type ConfirmButtonProps = {
   title: string
   description: string
   confirmLabel: string
-  onConfirm: () => void
+  onConfirm: () => void | Promise<void>
   isDestructive?: boolean
   isPending?: boolean
   /** See `ConfirmDialog`: text to type before an irreversible action. */
   confirmationText?: string
+  /** See `ConfirmDialog`: the change the action makes, played when the dialog opens. */
+  change?: ConfirmChange
+  /** See `ConfirmDialog`; rename "Cancelar" when the action itself is a cancellation. */
+  cancelLabel?: string
+  /** The button's accessible name, when its visible text is shortened (an icon on phones). */
+  triggerLabel?: string
+  /** Small by default, to sit in rows and section footers. */
+  size?: 'sm' | 'default'
 }
 
 /** A button whose action runs only after the user confirms it in a dialog. */
@@ -24,9 +33,10 @@ export function ConfirmButton(props: ConfirmButtonProps): JSX.Element {
     <>
       <Button
         variant={triggerVariant(props.isDestructive)}
-        size="sm"
+        size={props.size ?? 'sm'}
         disabled={props.isPending}
         aria-busy={props.isPending}
+        aria-label={props.triggerLabel}
         onClick={() => setIsOpen(true)}
       >
         {props.children}
@@ -39,6 +49,8 @@ export function ConfirmButton(props: ConfirmButtonProps): JSX.Element {
         confirmLabel={props.confirmLabel}
         isDestructive={props.isDestructive}
         confirmationText={props.confirmationText}
+        change={props.change}
+        cancelLabel={props.cancelLabel}
         onConfirm={props.onConfirm}
       />
     </>

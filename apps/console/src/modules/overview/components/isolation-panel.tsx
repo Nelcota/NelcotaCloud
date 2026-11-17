@@ -4,7 +4,7 @@ import LockKeyhole from '~icons/solar/lock-keyhole-linear'
 import type { IconComponent } from '@/shared/ui/icon-component'
 import type { JSX } from 'react'
 
-import { useProjectsQuery } from '@/modules/projects/queries/use-projects'
+import { useCurrentProject } from '@/modules/projects/queries/use-projects'
 import { Skeleton } from '@/shared/ui/skeleton'
 
 type Readout = {
@@ -16,8 +16,7 @@ type Readout = {
 
 /** What keeps this project apart from every other one, stated as facts rather than promises. */
 export function IsolationPanel({ projectId }: { projectId: string }): JSX.Element {
-  const projects = useProjectsQuery()
-  const slug = projects.data?.find((project) => project.id === projectId)?.slug
+  const slug = useCurrentProject(projectId)?.slug
 
   return (
     <section aria-labelledby="isolation-title" className="bg-card rounded-xl border">

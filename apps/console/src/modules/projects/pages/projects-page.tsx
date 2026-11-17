@@ -4,7 +4,7 @@ import type { JSX } from 'react'
 
 import { ProjectList } from '@/modules/projects/components/project-list'
 import { useProjectsQuery } from '@/modules/projects/queries/use-projects'
-import { ReceivedInvitations } from '@/modules/team/components/received-invitations'
+import { ReceivedInvitations } from '@/modules/projects/components/received-invitations'
 import type { components } from '@/shared/api/api-schema'
 import { buttonVariants } from '@/shared/ui/button-variants'
 import { ErrorAlert } from '@/shared/ui/error-alert'
@@ -13,7 +13,7 @@ import { Skeleton } from '@/shared/ui/skeleton'
 
 type ProjectSummary = components['schemas']['ProjectSummary']
 
-const SKELETON_CARDS = ['a', 'b', 'c']
+const SKELETON_ROWS = ['a', 'b', 'c']
 
 export function ProjectsPage(): JSX.Element {
   const projects = useProjectsQuery()
@@ -45,17 +45,19 @@ type ProjectsContentProps = {
 function ProjectsContent({ isPending, projects }: ProjectsContentProps): JSX.Element | null {
   if (isPending) {
     return (
-      <ul
+      <div
         aria-busy="true"
         aria-label="Carregando projetos"
-        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+        className="grid gap-px overflow-hidden rounded-xl border"
       >
-        {SKELETON_CARDS.map((card) => (
-          <li key={card}>
-            <Skeleton className="h-44 rounded-xl" />
-          </li>
+        {SKELETON_ROWS.map((row) => (
+          <div key={row} className="bg-card flex items-center gap-4 px-5 py-5">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-5 w-16 rounded-full" />
+            <Skeleton className="h-4 flex-1" />
+          </div>
         ))}
-      </ul>
+      </div>
     )
   }
 

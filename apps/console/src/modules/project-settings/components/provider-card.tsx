@@ -1,3 +1,4 @@
+import Login from '~icons/solar/login-3-linear'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
@@ -54,7 +55,7 @@ function ProviderStatus({ configured }: { configured: ConfiguredProvider | null 
   if (configured === null) {
     return (
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <Badge variant="secondary">Desativado</Badge>
+        <Badge variant="muted">Desativado</Badge>
         <span className="text-muted-foreground">Ninguém entra com este provedor ainda.</span>
       </div>
     )
@@ -113,6 +114,12 @@ function ProviderBody(props: ProviderBodyProps): JSX.Element {
         title={`Desativar o login com ${PROVIDER_NAMES[props.provider]}?`}
         description="O botão deixa de funcionar no app e as credenciais são apagadas. Usuários que entravam só por ele precisarão de outro jeito de entrar."
         confirmLabel="Desativar"
+        change={{
+          subject: `Login com ${PROVIDER_NAMES[props.provider]}`,
+          icon: Login,
+          from: 'Ativo',
+          to: 'Desativado',
+        }}
         isDestructive
         isPending={props.removal.isPending}
         onConfirm={props.removal.onRemove}

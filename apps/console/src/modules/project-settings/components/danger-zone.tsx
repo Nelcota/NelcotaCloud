@@ -1,7 +1,11 @@
+import Database from '~icons/solar/database-linear'
 import { useNavigate } from '@tanstack/react-router'
 import type { JSX } from 'react'
 
-import { useDeleteProjectMutation, useProjectsQuery } from '@/modules/projects/queries/use-projects'
+import {
+  useCurrentProject,
+  useDeleteProjectMutation,
+} from '@/modules/projects/queries/use-projects'
 import { ConfirmButton } from '@/shared/ui/confirm-button'
 import { ErrorAlert } from '@/shared/ui/error-alert'
 import { SettingsSection } from '@/shared/ui/settings-section'
@@ -14,7 +18,8 @@ type DangerZoneProps = {
 export function DangerZone({ projectId, projectName }: DangerZoneProps): JSX.Element {
   const navigate = useNavigate()
   const deletion = useDeleteProjectMutation()
-  const confirmationText = useProjectSlug(projectId) ?? projectName
+  // The slug is what the user types to confirm; the name is the fallback while it loads.
+  const confirmationText = useCurrentProject(projectId)?.slug ?? projectName
 
   function deleteProject(): void {
     deletion.mutate(projectId, { onSuccess: () => navigate({ to: '/' }) })
@@ -34,6 +39,7 @@ export function DangerZone({ projectId, projectName }: DangerZoneProps): JSX.Ele
             title={`Excluir ${projectName} para sempre?`}
             description="O banco de dados do projeto, seus usuários e suas chaves são apagados e não há como recuperar. Apps que usam este projeto param de funcionar na hora."
             confirmLabel="Excluir projeto"
+            change={{ subject: projectName, icon: Database, from: 'Ativo', to: 'Excluído' }}
             confirmationText={confirmationText}
             isDestructive
             isPending={deletion.isPending}
@@ -46,11 +52,4 @@ export function DangerZone({ projectId, projectName }: DangerZoneProps): JSX.Ele
       <ErrorAlert error={deletion.error} />
     </SettingsSection>
   )
-}
-
-/** The slug is what the user types to confirm; the name is the fallback while it loads. */
-function useProjectSlug(projectId: string): string | undefined {
-  const projects = useProjectsQuery()
-
-  return projects.data?.find((project) => project.id === projectId)?.slug
 }

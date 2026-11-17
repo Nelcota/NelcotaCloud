@@ -55,7 +55,7 @@ export function CreateKeyDialog(props: CreateKeyDialogProps): JSX.Element {
       </Button>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent>
-          <form onSubmit={submit} className="grid gap-4">
+          <form onSubmit={submit} className="grid gap-5">
             <DialogHeader>
               <DialogTitle>Nova {kindLabel(props.kind)}</DialogTitle>
               <DialogDescription>{KIND_HINTS[props.kind]}</DialogDescription>

@@ -6,16 +6,15 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 
-import { acceptInvitation } from '@/modules/team/api/accept-invitation'
-import { declineInvitation } from '@/modules/team/api/decline-invitation'
-import { listReceivedInvitations } from '@/modules/team/api/list-received-invitations'
+import { acceptInvitation } from '@/modules/projects/api/accept-invitation'
+import { declineInvitation } from '@/modules/projects/api/decline-invitation'
+import { listReceivedInvitations } from '@/modules/projects/api/list-received-invitations'
+import { PROJECTS_QUERY_KEY } from '@/modules/projects/queries/use-projects'
 import type { components } from '@/shared/api/api-schema'
 
 type Schemas = components['schemas']
 
 const INVITATIONS_KEY = ['invitations'] as const
-/** The projects list's key; accepting adds a project to it. Kept literal to avoid a cycle. */
-const PROJECTS_KEY = ['projects'] as const
 
 export function useReceivedInvitationsQuery(): UseQueryResult<Schemas['ReceivedInvitation'][]> {
   return useQuery({ queryKey: INVITATIONS_KEY, queryFn: listReceivedInvitations })
@@ -32,7 +31,7 @@ export function useAcceptInvitationMutation(): UseMutationResult<
     mutationFn: acceptInvitation,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: INVITATIONS_KEY })
-      await queryClient.invalidateQueries({ queryKey: PROJECTS_KEY })
+      await queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY })
     },
   })
 }

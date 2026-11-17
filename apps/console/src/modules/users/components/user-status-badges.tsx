@@ -32,5 +32,5 @@ function MfaBadge({ isEnabled }: { isEnabled: boolean }): JSX.Element | null {
     return null
   }
 
-  return <Badge variant="secondary">MFA</Badge>
+  return <Badge>MFA</Badge>
 }

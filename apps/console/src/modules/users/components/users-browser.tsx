@@ -1,0 +1,85 @@
+import type { JSX } from 'react'
+import { useDeferredValue, useState } from 'react'
+
+import { UserActionResult } from '@/modules/users/components/user-action-result'
+import { UserCount } from '@/modules/users/components/user-count'
+import { UsersPagination } from '@/modules/users/components/users-pagination'
+import { UsersTable } from '@/modules/users/components/users-table'
+import {
+  USERS_PAGE_SIZE,
+  type UserAction,
+  useUserActionMutation,
+  useUsersQuery,
+} from '@/modules/users/queries/use-users'
+import type { components } from '@/shared/api/api-schema'
+import { ErrorAlert } from '@/shared/ui/error-alert'
+import { SearchInput } from '@/shared/ui/search-input'
+
+type User = components['schemas']['User']
+
+/** The project's users, searched by email and paged, with an admin action on each one. */
+export function UsersBrowser({ projectId }: { projectId: string }): JSX.Element {
+  const [search, setSearch] = useState('')
+  const [offset, setOffset] = useState(0)
+  const deferredSearch = useDeferredValue(search)
+  const users = useUsersQuery(projectId, {
+    email: deferredSearch,
+    offset,
+    limit: USERS_PAGE_SIZE,
+  })
+  const action = useUserActionMutation(projectId)
+
+  function changeSearch(value: string): void {
+    setSearch(value)
+    setOffset(0)
+  }
+
+  function runAction(user: User, kind: UserAction): void {
+    action.mutate({ action: kind, userId: user.id, email: user.email })
+  }
+
+  return (
+    <>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <SearchInput label="Buscar por email" value={search} onChange={changeSearch} />
+        <UserCount total={users.data?.total} />
+      </div>
+      <ErrorAlert error={users.error ?? action.error} />
+      <UserActionResult done={doneAction(action.isSuccess, action.variables)} />
+      <UsersTable
+        users={users.data?.users}
+        search={deferredSearch}
+        hasFailed={users.isError}
+        pendingUserId={pendingUserId(action.isPending, action.variables)}
+        onAction={runAction}
+      />
+      <UsersPagination
+        offset={offset}
+        pageSize={USERS_PAGE_SIZE}
+        total={users.data?.total}
+        onOffsetChange={setOffset}
+      />
+    </>
+  )
+}
+
+type ActionVariables = { action: UserAction; userId: string; email: string } | undefined
+
+function doneAction(
+  isSuccess: boolean,
+  variables: ActionVariables,
+): { action: UserAction; email: string } | null {
+  if (isSuccess === false || variables === undefined) {
+    return null
+  }
+
+  return variables
+}
+
+function pendingUserId(isPending: boolean, variables: ActionVariables): string | null {
+  if (isPending === false || variables === undefined) {
+    return null
+  }
+
+  return variables.userId
+}

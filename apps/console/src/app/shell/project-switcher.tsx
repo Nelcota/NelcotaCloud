@@ -6,7 +6,7 @@ import Plus from '~icons/solar/add-linear'
 import type { JSX } from 'react'
 
 import { ApiStatusDot } from '@/app/shell/api-status-dot'
-import { useProjectsQuery } from '@/modules/projects/queries/use-projects'
+import { useCurrentProject, useProjectsQuery } from '@/modules/projects/queries/use-projects'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,7 +21,7 @@ import {
 export function ProjectSwitcher({ projectId }: { projectId: string }): JSX.Element {
   const navigate = useNavigate()
   const projects = useProjectsQuery()
-  const current = projects.data?.find((project) => project.id === projectId)
+  const current = useCurrentProject(projectId)
   const name = current?.name ?? 'Projeto'
 
   return (

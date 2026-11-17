@@ -19,6 +19,13 @@ export function useProjectsQuery(): UseQueryResult<Schemas['ProjectSummary'][]> 
   return useQuery({ queryKey: PROJECTS_QUERY_KEY, queryFn: listProjects })
 }
 
+/** The project with this id from the projects list; undefined while it loads. */
+export function useCurrentProject(projectId: string): Schemas['ProjectSummary'] | undefined {
+  const projects = useProjectsQuery()
+
+  return projects.data?.find((project) => project.id === projectId)
+}
+
 export function useCreateProjectMutation(): UseMutationResult<
   Schemas['CreatedTenantResponse'],
   Error,
