@@ -3,7 +3,7 @@ import { useState } from 'react'
 
 import { useUpdateMetadataMutation } from '@/modules/users/queries/use-update-metadata-mutation'
 import type { components } from '@/shared/api/api-schema'
-import { formatJsonObject, parseJsonObject } from '@/shared/lib/json-object'
+import { type JsonObject, formatJsonObject, parseJsonObject } from '@/shared/lib/json-object'
 import { Button } from '@/shared/ui/button'
 import { ErrorAlert } from '@/shared/ui/error-alert'
 import { JsonField } from '@/shared/ui/json-field'
@@ -14,11 +14,16 @@ type User = components['schemas']['User']
 
 type UserMetadataSectionProps = { projectId: string; user: User }
 
-/** Both JSON documents of a user, saved together. Mounted with the loaded user. */
+/**
+ * Both JSON documents of a user. Mounted with the loaded user; saving sends only the documents
+ * edited here, so a change the user made meanwhile (through the SDK) is not overwritten.
+ */
 export function UserMetadataSection({ projectId, user }: UserMetadataSectionProps): JSX.Element {
   const update = useUpdateMetadataMutation(projectId)
-  const [appText, setAppText] = useState(formatJsonObject(user.app_metadata))
-  const [userText, setUserText] = useState(formatJsonObject(user.user_metadata))
+  const [loadedAppText] = useState(formatJsonObject(user.app_metadata))
+  const [loadedUserText] = useState(formatJsonObject(user.user_metadata))
+  const [appText, setAppText] = useState(loadedAppText)
+  const [userText, setUserText] = useState(loadedUserText)
   const [isChecked, setIsChecked] = useState(false)
   const appMetadata = parseJsonObject(appText)
   const userMetadata = parseJsonObject(userText)
@@ -31,7 +36,10 @@ export function UserMetadataSection({ projectId, user }: UserMetadataSectionProp
       return
     }
 
-    const body = { app_metadata: appMetadata.object, user_metadata: userMetadata.object }
+    const body = {
+      app_metadata: editedDocument(appText, loadedAppText, appMetadata.object),
+      user_metadata: editedDocument(userText, loadedUserText, userMetadata.object),
+    }
     update.mutate({ userId: user.id, body })
   }
 
@@ -66,6 +74,19 @@ export function UserMetadataSection({ projectId, user }: UserMetadataSectionProp
       </SettingsSection>
     </form>
   )
+}
+
+/** The document when its text was edited; left out of the request (kept as is) otherwise. */
+function editedDocument(
+  text: string,
+  loadedText: string,
+  document: JsonObject,
+): JsonObject | undefined {
+  if (text === loadedText) {
+    return undefined
+  }
+
+  return document
 }
 
 /** Errors wait for the first save, so typing a document does not flag it halfway. */

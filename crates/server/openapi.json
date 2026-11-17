@@ -3406,6 +3406,16 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Too many changes in a short time",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
           }
         },
         "security": [

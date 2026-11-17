@@ -150,3 +150,38 @@ async fn admin_updates_refuse_bad_requests() -> TestResult {
     assert_eq!(publishable.status(), StatusCode::FORBIDDEN);
     server.drop_tenant(&tenant).await
 }
+
+#[tokio::test]
+async fn refuses_nul_characters_and_limits_changes_per_account() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    let session = server.sign_up(&tenant, &unique_email("limits")).await?;
+
+    let nul = update_own(
+        &server,
+        (&tenant, &session),
+        json!({ "user_metadata": { "a": "x\u{0}" } }),
+    )
+    .await?;
+    assert_eq!(nul.status(), StatusCode::BAD_REQUEST);
+
+    let mut statuses = Vec::new();
+    for attempt in 0..25 {
+        let body = json!({ "user_metadata": { "attempt": attempt } });
+        statuses.push(
+            update_own(&server, (&tenant, &session), body)
+                .await?
+                .status(),
+        );
+    }
+
+    assert!(
+        statuses
+            .iter()
+            .take(20)
+            .all(|status| *status == StatusCode::OK)
+    );
+    assert!(statuses.contains(&StatusCode::TOO_MANY_REQUESTS));
+
+    server.drop_tenant(&tenant).await
+}

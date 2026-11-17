@@ -36,6 +36,7 @@ pub struct UpdateCurrentUserBody {
         (status = 400, description = "Not a JSON object, or too large", body = ErrorBody),
         (status = 401, description = "Missing or invalid access token", body = ErrorBody),
         (status = 403, description = "The user is banned", body = ErrorBody),
+        (status = 429, description = "Too many changes in a short time", body = ErrorBody),
     )
 )]
 pub async fn update_current_user(
@@ -53,6 +54,12 @@ pub async fn update_current_user(
     if current.banned_at.is_some() {
         return Err(ApiError::from(TenantsRejection::UserBanned));
     }
+
+    state
+        .rate_limits
+        .profile_update
+        .check(tenant.tenant_id, user_id)
+        .map_err(|_| ApiError::RateLimited)?;
 
     let webhooks = state.webhooks.recorder(tenant.tenant_id).await?;
     let change = MetadataChange {

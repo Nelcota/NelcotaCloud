@@ -12,10 +12,11 @@ use crate::modules::tenants::settings::tenant_settings_update::{
 };
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::validated_json::ValidatedJson;
+use crate::shared::text::single_line::check_single_line;
 
 #[derive(Deserialize, Validate, ToSchema)]
 pub struct TenantSettingsBody {
-    #[validate(length(min = 1, max = 100))]
+    #[validate(length(min = 1, max = 100), custom(function = check_single_line))]
     pub name: Option<String>,
     #[validate(length(min = 1, max = 2048))]
     pub site_url: Option<String>,

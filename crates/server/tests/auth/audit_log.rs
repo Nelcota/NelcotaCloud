@@ -130,3 +130,83 @@ async fn refuses_invalid_pages_and_publishable_keys() -> TestResult {
     assert_eq!(publishable.status(), StatusCode::FORBIDDEN);
     server.drop_tenant(&tenant).await
 }
+
+/// A password typed into the email field must not land in the activity log.
+#[tokio::test]
+async fn never_records_text_that_is_not_an_email() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    let body = json!({ "email": "MinhaSenhaSecreta123", "password": "anything" });
+
+    let response = server
+        .post_auth("/auth/v1/login", &tenant.publishable_key, body)
+        .await?;
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+
+    let page = audit_page(&server, &tenant, "").await?;
+    let failed = field(&page, "/events/0");
+    assert_eq!(field(failed, "/action"), "login_failed");
+    assert_eq!(field(failed, "/email"), &Value::Null);
+    assert!(page.to_string().contains("MinhaSenhaSecreta123") == false);
+
+    server.drop_tenant(&tenant).await
+}
+
+#[tokio::test]
+async fn console_accounts_outside_the_project_see_no_activity_or_templates() -> TestResult {
+    let server = TestServer::start().await?;
+    let (platform, owner) = server
+        .create_platform_account(&unique_email("owner"))
+        .await?;
+    let stranger = server
+        .sign_up_console_account(&platform, &unique_email("stranger"))
+        .await?;
+    let body = json!({ "slug": crate::support::random_slug(), "name": "Audit", "site_url": crate::support::TEST_SITE_URL });
+    let created: Value = server
+        .client
+        .post(server.url("/platform/v1/projects"))
+        .bearer_auth(&owner.access_token)
+        .json(&body)
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+    let project_id = field(&created, "/tenant_id")
+        .as_str()
+        .unwrap_or_default()
+        .to_owned();
+
+    for path in [
+        "/auth/v1/admin/audit-events",
+        "/auth/v1/admin/email-templates",
+    ] {
+        let as_account = |token: &str| {
+            server
+                .client
+                .get(server.url(path))
+                .bearer_auth(token)
+                .header("x-nelcota-project", &project_id)
+                .send()
+        };
+        assert_eq!(
+            as_account(&owner.access_token).await?.status(),
+            StatusCode::OK,
+            "{path}"
+        );
+        assert_eq!(
+            as_account(&stranger.access_token).await?.status(),
+            StatusCode::FORBIDDEN,
+            "{path}"
+        );
+    }
+
+    server
+        .client
+        .delete(server.url(&format!("/platform/v1/projects/{project_id}")))
+        .bearer_auth(&owner.access_token)
+        .send()
+        .await?
+        .error_for_status()?;
+    server.drop_tenant(&platform).await
+}

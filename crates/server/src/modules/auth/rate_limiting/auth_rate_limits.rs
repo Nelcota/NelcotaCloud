@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use crate::modules::auth::rate_limiting::account_limiter::AccountLimiter;
 use crate::modules::auth::rate_limiting::attempt_limiter::AttemptLimiter;
 use crate::modules::auth::rate_limiting::client_ip_limiter::ClientIpLimiter;
 use crate::modules::auth::rate_limiting::quota_spec::{InvalidQuota, QuotaSpec};
@@ -52,6 +53,13 @@ const OAUTH_START_PER_CLIENT_IP: QuotaSpec = QuotaSpec {
     replenish_every: Duration::from_secs(6),
 };
 
+/// Profile changes: each one sends a `user.updated` webhook, so an account gets a burst of 20,
+/// then one every 3 seconds.
+const PROFILE_UPDATE_PER_ACCOUNT: QuotaSpec = QuotaSpec {
+    burst: 20,
+    replenish_every: Duration::from_secs(3),
+};
+
 /// Data API requests of apps (publishable key): a burst of 300, then 20 per second, per client.
 /// Bounds what one client can make a project's database do; servers with the secret key and the
 /// console are not limited here.
@@ -74,6 +82,8 @@ pub struct RateLimits {
     pub project_creation: ClientIpLimiter,
     /// Data API requests with the publishable key, per project and client IP.
     pub data_api: ClientIpLimiter,
+    /// A user changing their own profile (`PATCH /user`), per account.
+    pub profile_update: AccountLimiter,
 }
 
 impl RateLimits {
@@ -86,6 +96,7 @@ impl RateLimits {
             oauth_authorization: ClientIpLimiter::new(&OAUTH_START_PER_CLIENT_IP)?,
             project_creation: ClientIpLimiter::new(&PROJECT_CREATION_PER_CLIENT_IP)?,
             data_api: ClientIpLimiter::new(&DATA_API_PER_CLIENT_IP)?,
+            profile_update: AccountLimiter::new(&PROFILE_UPDATE_PER_ACCOUNT)?,
         })
     }
 
@@ -97,5 +108,6 @@ impl RateLimits {
         self.oauth_authorization.forget_idle_keys();
         self.project_creation.forget_idle_keys();
         self.data_api.forget_idle_keys();
+        self.profile_update.forget_idle_keys();
     }
 }

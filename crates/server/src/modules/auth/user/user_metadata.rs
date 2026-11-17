@@ -18,6 +18,14 @@ pub fn check_app_metadata_size(metadata: &MetadataObject) -> Result<(), Validati
 }
 
 fn check_size(metadata: &MetadataObject, max_bytes: usize) -> Result<(), ValidationError> {
+    if metadata
+        .iter()
+        .any(|(key, value)| key.contains('\0') || has_nul(value))
+    {
+        let message = "metadata cannot contain the NUL character (\\u0000)";
+        return Err(ValidationError::new("metadata_nul").with_message(message.into()));
+    }
+
     let serialized = serde_json::to_vec(metadata)
         .map_err(|_| ValidationError::new("metadata_not_serializable"))?;
 
@@ -29,11 +37,36 @@ fn check_size(metadata: &MetadataObject, max_bytes: usize) -> Result<(), Validat
     Ok(())
 }
 
+/// Postgres stores `jsonb` text without the NUL character, so a document with one would fail
+/// on write instead of being refused up front.
+fn has_nul(value: &Value) -> bool {
+    match value {
+        Value::String(text) => text.contains('\0'),
+        Value::Array(items) => items.iter().any(has_nul),
+        Value::Object(fields) => fields
+            .iter()
+            .any(|(key, field)| key.contains('\0') || has_nul(field)),
+        _ => false,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;
 
     use super::*;
+
+    #[test]
+    fn refuses_the_nul_character_anywhere() {
+        let in_value = json!({ "a": "x\u{0}" });
+        let nested = json!({ "a": [{ "b": "\u{0}" }] });
+        let in_key = json!({ "a\u{0}": 1 });
+
+        for document in [in_value, nested, in_key] {
+            let metadata = document.as_object().cloned().unwrap_or_default();
+            assert!(check_user_metadata_size(&metadata).is_err(), "{document}");
+        }
+    }
 
     fn metadata_of(text_length: usize) -> MetadataObject {
         let mut metadata = MetadataObject::new();

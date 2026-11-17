@@ -76,12 +76,14 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   verification link to an unverified, unbanned user under the public per-address email limit.
   The console shows them at `/projects/$projectId/users/$userId`.
 - User metadata (`auth/user/user_metadata*`): two JSON objects on `users`. `user_metadata`
-  (up to 16 KiB) is replaced by the user (`PATCH /auth/v1/user`, which refuses `app_metadata`)
+  (up to 16 KiB, no NUL characters) is replaced by the user (`PATCH /auth/v1/user`, which refuses `app_metadata`)
   or an admin; `app_metadata` (up to 4 KiB) only by admins (`PATCH /auth/v1/admin/users/{id}`)
   and is copied into access tokens as the `app_metadata` claim, so it reaches apps on the next
   login or refresh. Both changes report `user.updated`. The console edits them on the user page.
-- Activity log (`auth/audit`): the tenant's `audit_events` (90 days, pruned when read) records
-  logins (with method and client IP), wrong-password attempts (with the typed email), password
+- Activity log (`auth/audit`): the tenant's `audit_events` (90 days, pruned when read and, a
+  hundred oldest rows at a time, on each insert) records logins (with method and client IP),
+  wrong-password attempts (with the typed email only when it is a valid address: anything else
+  may be a mistyped password), password
   resets and admin actions on users with who did them (`AdminActor`: secret key or console
   account). Recorded after the action; a failed insert is logged, never failing the request.
   `GET /auth/v1/admin/audit-events` pages by `before` (event id); the console shows it at
@@ -138,8 +140,9 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   (`auth/rate_limiting`). Errors map SQLSTATE to stable codes (`permission_denied`,
   `unique_violation`, ...); the console's SQL editor (and its schema overview, which never runs
   as the superuser) passes Postgres's message on and keeps at most 1000 rows / 4 MiB of values.
-- Rate limits (`governor`, in memory, single instance) on signup, login, MFA codes, auth emails and
-  OAuth start,
+- Rate limits (`governor`, in memory, single instance) on signup, login, MFA codes, auth emails,
+  OAuth start, profile changes (`PATCH /user`, per account; each one sends a webhook) and Data API
+  requests with the publishable key,
   per tenant + email and per tenant + client IP (IPv6 per /64). Behind Cloudflare set
   `CLIENT_IP_HEADER=cf-connecting-ip`.
 - Signing keys are cached per tenant for 5 minutes and tenant pools while in use, with `moka`

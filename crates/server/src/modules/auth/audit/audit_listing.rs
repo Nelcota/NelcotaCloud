@@ -6,7 +6,7 @@ use uuid::Uuid;
 use crate::modules::auth::audit::audit_event::AuditEvent;
 
 /// How long events are kept; older ones are deleted when the log is read.
-const RETENTION_DAYS: i32 = 90;
+pub const RETENTION_DAYS: i32 = 90;
 
 /// One page of events, newest first.
 #[derive(Debug, Serialize, ToSchema)]

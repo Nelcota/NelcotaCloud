@@ -8,6 +8,7 @@ use uuid::Uuid;
 use crate::modules::auth::audit::audit_action::AuditAction;
 use crate::modules::auth::audit::audit_actor::{AuditActor, AuditActorKind};
 use crate::modules::auth::audit::login_method::LoginMethod;
+use crate::modules::auth::user::email_address::EmailAddress;
 use crate::modules::tenants::access::admin_actor::AdminActor;
 
 /// An event about to be recorded.
@@ -33,11 +34,15 @@ impl NewAuditEvent {
     }
 
     /// The typed email is kept because it may match no user (someone probing for accounts).
+    /// Only when it is a valid address: text that is not one is often a password typed (or
+    /// autofilled) into the wrong field, and must never be stored.
     pub fn failed_password_login(email: &str, ip_address: IpAddr) -> Self {
+        let email = EmailAddress::parse(email).ok();
+
         Self {
             action: AuditAction::LoginFailed,
             user_id: None,
-            email: Some(email.trim().to_lowercase()),
+            email: email.map(|address| address.as_str().to_owned()),
             actor: AuditActor::USER,
             login_method: Some(LoginMethod::Password),
             ip_address: Some(ip_address),
@@ -83,4 +88,28 @@ pub struct AuditEvent {
     pub ip_address: Option<String>,
     #[serde(with = "time::serde::rfc3339")]
     pub occurred_at: OffsetDateTime,
+}
+
+#[cfg(test)]
+mod tests {
+    use std::net::Ipv4Addr;
+
+    use super::*;
+
+    const CLIENT: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
+
+    #[test]
+    fn keeps_a_mistyped_address_normalized() {
+        let event = NewAuditEvent::failed_password_login(" Ana@Example.com ", CLIENT);
+
+        assert_eq!(event.email.as_deref(), Some("ana@example.com"));
+    }
+
+    /// A password typed into the email field must never reach the activity log.
+    #[test]
+    fn never_keeps_text_that_is_not_an_address() {
+        let event = NewAuditEvent::failed_password_login("MinhaSenha123", CLIENT);
+
+        assert_eq!(event.email, None);
+    }
 }
