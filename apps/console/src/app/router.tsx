@@ -92,6 +92,11 @@ const usersRoute = createRoute({ getParentRoute: () => projectRoute, path: '/use
   import('@/app/lazy-routes/users').then((module) => module.usersLazyRoute),
 )
 
+const userDetailRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: '/users/$userId',
+}).lazy(() => import('@/app/lazy-routes/user-detail').then((module) => module.userDetailLazyRoute))
+
 const providersRoute = createRoute({ getParentRoute: () => projectRoute, path: '/providers' }).lazy(
   () => import('@/app/lazy-routes/providers').then((module) => module.providersLazyRoute),
 )
@@ -121,6 +126,7 @@ const routeTree = rootRoute.addChildren([
       overviewRoute,
       apiKeysRoute,
       usersRoute,
+      userDetailRoute,
       providersRoute,
       emailRoute,
       webhooksRoute,

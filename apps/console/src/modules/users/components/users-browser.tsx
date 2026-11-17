@@ -63,6 +63,7 @@ export function UsersBrowser({ projectId }: { projectId: string }): JSX.Element 
       <ErrorAlert error={unblockError(action.error, action.variables)} />
       <UsersTable
         users={users.data?.users}
+        projectId={projectId}
         filter={{ search: deferredSearch, status }}
         hasFailed={users.isError}
         pendingUserId={pendingUserId(action.isPending, action.variables)}

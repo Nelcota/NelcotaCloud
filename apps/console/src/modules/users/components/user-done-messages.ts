@@ -6,5 +6,6 @@ export const DONE_MESSAGES: Record<UserAction, string> = {
   unban: 'Usuário desbloqueado',
   'end-sessions': 'Sessões encerradas',
   'reset-mfa': 'Autenticador removido',
+  'resend-verification': 'Email de confirmação reenviado',
   delete: 'Usuário excluído',
 }
