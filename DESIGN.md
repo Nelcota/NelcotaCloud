@@ -4,19 +4,19 @@ description: The engine room of a Brazilian Auth BaaS; graphite surfaces, one si
 colors:
   signal-blue: "oklch(0.55 0.2 262)"
   signal-blue-light: "oklch(0.53 0.2 262)"
-  signal-ink: "oklch(0.72 0.15 262)"
-  focus-ring: "oklch(0.66 0.16 262)"
-  graphite-floor: "oklch(0.165 0.004 286)"
-  graphite-panel: "oklch(0.2 0.005 286)"
-  graphite-raised: "oklch(0.22 0.005 286)"
-  graphite-sidebar: "oklch(0.185 0.005 286)"
-  graphite-control: "oklch(0.245 0.006 286)"
-  graphite-hover: "oklch(0.26 0.006 286)"
-  instrument-white: "oklch(0.95 0.003 286)"
-  gauge-gray: "oklch(0.7 0.012 286)"
-  hairline: "oklch(1 0 0 / 8%)"
-  input-stroke: "oklch(1 0 0 / 12%)"
-  alarm-red: "oklch(0.72 0.17 24)"
+  signal-ink: "oklch(0.77 0.13 262)"
+  focus-ring: "oklch(0.7 0.15 262)"
+  graphite-floor: "oklch(0.255 0.008 286)"
+  graphite-panel: "oklch(0.29 0.008 286)"
+  graphite-raised: "oklch(0.31 0.008 286)"
+  graphite-sidebar: "oklch(0.275 0.008 286)"
+  graphite-control: "oklch(0.325 0.009 286)"
+  graphite-hover: "oklch(0.34 0.009 286)"
+  instrument-white: "oklch(0.96 0.003 286)"
+  gauge-gray: "oklch(0.76 0.012 286)"
+  hairline: "oklch(1 0 0 / 10%)"
+  input-stroke: "oklch(1 0 0 / 14%)"
+  alarm-red: "oklch(0.8 0.13 24)"
   logo-tile: "#18181b"
   paper-floor: "oklch(0.985 0.002 286)"
   paper-panel: "oklch(1 0 0)"
@@ -181,7 +181,7 @@ Cool graphite neutrals with a single saturated blue signal and a red that only m
 
 ### Status
 
-- **Alarm Red** (`alarm-red` / `alarm-red-light`): destructive buttons (tinted 10–30% fills with
+- **Alarm Red** (`alarm-red` / `alarm-red-light`): destructive buttons (tinted 10–20% fills with
   red text), invalid fields, the danger zone border (40% opacity).
 - Success and warning badges use Tailwind emerald and amber at 10–15% fill with 700/400 text;
   they are status chips only, never surfaces.
@@ -194,7 +194,7 @@ Icon tiles, switches and status rows are graphite (`bg-secondary` + `text-muted-
 switch's on state is `foreground`), never blue.
 
 **The AA Pair Rule.** Every text/background pair meets 4.5:1 in both themes: white on
-`--primary`, `--primary-ink` on the page, and Alarm Red on its 10–30% tint.
+`--primary`, `--primary-ink` on the page, and Alarm Red on its 10–20% tint.
 
 **The Red Means Loss Rule.** Alarm Red is used only where something is revoked, deleted, banned
 or invalid. Never for emphasis, never as a brand color.
@@ -243,13 +243,17 @@ buttons and navigation stay in sentence case.
   stacked below on phones), then content in cards, grids of cards, or stacked settings sections.
 - **Spacing:** a 4px base. 16px inside cards, 20px inside settings sections, 2px between nav
   items, 24px between sidebar groups.
-- **Grids:** overview and project cards use 1 column on phones, 2–3 on wider screens; tables
-  scroll horizontally inside their container rather than breaking the page.
+- **Grids:** overview cards use 1 column on phones, 2–3 on wider screens; tables scroll
+  horizontally inside their container rather than breaking the page.
+- **Tables:** the header row sits on a faint muted tint (`TableHeader`) with 16px Gauge Gray
+  labels, led by an 18px icon where the data is not self-evident (API keys, projects), so it frames the columns without competing with the data. Rows are
+  separated by hairlines only (no vertical lines, no zebra stripes) and hover with a muted fill.
+  Identities (emails) never truncate away: they wrap, and secondary columns fold under them below `lg`.
 
 ## Elevation & Depth
 
 Flat by default. Depth is tonal: floor → sidebar → panel → raised, each a few lightness points
-apart, separated by 8% white hairlines in dark (solid light gray in light). Cards use a 10%
+apart, separated by 10% white hairlines in dark (solid light gray in light). Cards use a 10%
 foreground ring instead of a border. Shadows exist only on floating layers: menus and popovers
 (`shadow-md`/`shadow-lg`), dialogs and sheets (`shadow-xl`, with a black-tinted overlay).
 
@@ -288,8 +292,18 @@ Tactile and confident: they press, they ring, they never decorate.
 
 ### Chips / Badges
 
-- **Style:** 20px pills, 12px medium text, tinted fills (secondary, destructive, emerald success,
-  amber warning) or outline. Used for roles ("Dono"), key types and user status.
+One component (`Badge`, `badgeVariants`) for every pill, including the confirmation preview
+and the sidebar count. The variant is the meaning, never decoration:
+
+- **neutral** (8% foreground tint): what something is: a role, a key type, "Esta sessão",
+  "Padrão", "MFA", a count. Roles use `RoleBadge`: both neutral, the owner with the crown that
+  "Tornar dono" uses.
+- **success** (emerald), **warning** (amber), **destructive** (Alarm Red): a state that is
+  fine, needs attention, or blocks.
+- **muted** (hairline outline, Gauge Gray text): a state that is off: revoked, disabled.
+
+Shape: full pill, 24px tall, 10px side padding, 14px medium text, optional 16px leading icon.
+Blue is never a pill color: it stays for actions.
 
 ### Cards / Containers
 
@@ -328,8 +342,10 @@ Tactile and confident: they press, they ring, they never decorate.
     the email's name in semibold over the full email, and an up-down icon. Its menu opens
     upward at the block's width: Minha conta, theme, Sair.
 - **Top bar:** inside a project, only the mobile menu and the current page's name (the
-  account lives in the sidebar). Outside a project, where there is no sidebar, it shows the
-  logo, the API status and the compact account menu (36px avatar, email, chevron).
+  account lives in the sidebar). Outside a project, where there is no sidebar, its content
+  sits in the page's centered column: the logo and a trail ("NelcotaCloud / Projetos / Novo
+  projeto"; the name hides on phones), then the API status as an outlined pill, a hairline
+  divider and the compact account menu (36px avatar, email, chevron).
 - **Mobile:** the menu button opens a sheet with the same sidebar content.
 
 ### Empty State
@@ -344,6 +360,30 @@ A key the API returns once is a warning, not information: amber border and 10% a
 triangle icon, a heading that says to copy it now, the value in a mono block with Copy focused,
 and an explicit "Já guardei a chave" dismissal. While it is on screen, `SecretLeaveGuard` asks
 before any navigation or tab close. The value itself is never inside a live region.
+
+### Dialogs
+
+- **Size:** 672px wide (`sm:max-w-2xl`), 24px padding, 20px gaps, a 20px semibold title; the
+  footer bar spans the full width on a 50% muted fill. Taller than the screen, the dialog scrolls
+  inside. The profile photo editor is the one wider dialog (768px), for the crop area.
+- **Confirmations show the change:** a hairline row with the target's icon and name, then its
+  current state struck out, an arrow and the new state (Alarm Red tint when destructive, Signal
+  Ink on a blue tint otherwise), played once on open (`animate-change-*`). The resting styles are
+  the final frame, so reduced motion shows the result directly. Screen readers hear "Ativa passa
+  a Revogada". An action that changes two people (handing a project over) shows both rows,
+  yours included, and confirms with a neutral (secondary) button instead of the routine blue.
+
+### Feedback
+
+- **Success:** `showFlash` puts one sentence in the green notice above the page (`FlashNotice`,
+  a polite live region, sticky under the top bar so it is seen from far down the page) for six
+  seconds, optionally with the next step as a link ("Revisar chaves de API" after removing
+  someone); it survives navigation, so "Você saiu de Acme Loja" shows on the projects list.
+- **Failure:** a confirmation whose action can fail returns a promise: the dialog stays open and
+  busy until the API answers and shows the error inside itself, next to the decision.
+- **Rules before errors:** an action a rule forbids (the sole owner leaving) is shown disabled,
+  with the reason once below the items at full contrast (never inside the faded item), and the
+  reason names a reachable next step.
 
 ### Readout Strip
 

@@ -31,8 +31,11 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
 - Auth emails (verification, password reset, magic link) are HTML + text (askama template
   `templates/auth_email.html`, auto-escaped), sent in the background through the tenant's own SMTP
   server when configured (`tenants/smtp`), the platform's otherwise. Tenant SMTP hosts must be
-  public and on an SMTP port (SSRF guard, re-checked when a sender is built);
-  `TENANT_SMTP_ALLOW_ANY_HOST=true` lifts it for local development only.
+  public, on an SMTP port and use TLS (`smtps://` or `smtp://…?tls=required`) (SSRF guard,
+  re-checked when a sender is built); the sender is pinned to the first checked address that
+  accepts a connection, and is built inside the background task so requests never reveal
+  whether an email was sent. `TENANT_SMTP_ALLOW_ANY_HOST=true` lifts the guard for local
+  development only.
 - Every way to obtain tokens ends in `complete_login` (password, magic link, OAuth): users with a
   verified TOTP factor get `{mfa_required, mfa_token}` instead, redeemed at `/auth/v1/mfa/challenge`
   (5 wrong codes per challenge, each TOTP time step accepted once). `issue_session_with` refuses
@@ -55,7 +58,17 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
   deletes (owners only) their projects. Owners invite people by email
   (`tenant_invitations`, accepted by the console account with that verified email, joining as
   member) and remove members; `tenant_members.account_email` is refreshed when the account lists
-  its projects.
+  its projects. Owners change roles (`PATCH .../members/{account_id}`) and anyone leaves
+  (`DELETE .../membership`), and an owner hands the project over in one transaction
+  (`POST .../ownership-transfer`); all lock the project's memberships so it always keeps an owner
+  (`last_owner`), and promotion respects the 10-owned-projects limit (`owned_project_limit`).
+  Ownership is never handed out by invitation: invite as member, then promote.
+- Profile photos (`auth/avatar`): `PUT/DELETE /auth/v1/user/avatar` take the raw image (PNG,
+  JPEG, WebP, up to 1 MiB); the server decodes it with `image` (size limits against decompression
+  bombs), crops it to a 256px square and re-encodes it as JPEG (no EXIF), stored in the tenant's
+  `user_avatars`. `GET /auth/v1/users/{id}/avatar?apikey=<publishable key>&version=…` serves it
+  publicly (secret keys are refused in URLs); `User.avatar_updated_at` is the version. The console
+  crops in a modal (`react-easy-crop`) and uploads through the SDK (`auth.avatar`).
 - Tenant settings (`GET/PATCH /auth/v1/admin/settings`): name, `site_url`,
   `require_email_verification` (default true: password login and refresh need a verified email,
   and signup answers the same for new and existing emails).
@@ -70,11 +83,12 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
 - Every response carries a server-generated `x-request-id` (never the client's), also logged in
   the request span; responses default to `Cache-Control: no-store` (tower-http layers).
 - The API is described with OpenAPI (`utoipa`): each handler has a `#[utoipa::path]` and is
-  registered with `routes!` in `router.rs`, so the documented path is the served one. The API
+  registered with `routes!` in its module's `routes/<module>_routes.rs` (merged by `router.rs`),
+  so the documented path is the served one. The API
   serves it at `/openapi.json`; `crates/server/openapi.json` is the committed copy the console
   and the SDK generate their types from (a test fails when it is stale).
 - Stack: Rust, tokio, axum, sqlx (PostgreSQL 17 in Docker), validator, argon2, jsonwebtoken, oauth2,
-  reqwest, lettre, askama, totp-rs, thiserror, tracing, tower-http, moka, utoipa; tests use
+  reqwest, lettre, askama, totp-rs, image, thiserror, tracing, tower-http, moka, utoipa; tests use
   wiremock for OAuth providers.
 - SDK (`packages/sdk`, `@nelcota/sdk`): TypeScript client for tenant apps, no runtime
   dependencies. It keeps the session, renews it before expiry (one refresh in flight), handles
@@ -126,14 +140,17 @@ Modular monolith in `crates/server/src/`: one folder per business context under 
   info, tags and security schemes), `startup/` (error, settings and state builders, HTTP server),
   `bin/export_openapi.rs`.
 - `modules/<module>/`: everything one context owns, grouped in sub-packages by subject, plus its
-  handlers in `routes/` (one file per endpoint, no business logic beyond request/response mapping).
+  handlers in `routes/` (one file per endpoint, no business logic beyond request/response mapping;
+  use cases live in the sub-packages), and its refusals in `rejection/<module>_rejection.rs` (an
+  enum with the HTTP status and stable error code of each, converted into `ApiError`).
   - `tenants/`: `access` (TenantContext, AdminAccess, TenantAdmin), `api_keys` (issuance,
     revocation), `signing_keys` (keys, cache, rotation, access token JWTs), `database` (tenant
     pools, create/migrate/drop), `provisioning` (creation, deletion), `settings` (site URL, tenant
     settings), `smtp` (tenant SMTP settings, host policy, senders), `platform` (console accounts,
     memberships, roles).
   - `auth/`: `user` (record, lookup, registration, account updates, listing, administration),
-    `password`, `session` (refresh tokens, issuing, session listing), `login` (completion with the
+    `password`, `avatar` (profile photo processing and storage), `session` (refresh tokens,
+    issuing, session listing), `login` (completion with the
     MFA step), `mfa` (TOTP codes, factors, challenges), `one_time_token`, `email` (auth emails and
     template), `rate_limiting`.
   - `oauth/`: `provider` (providers, endpoints, credentials, configured providers), `client`,
@@ -141,8 +158,9 @@ Modular monolith in `crates/server/src/`: one folder per business context under 
     (identities, account linking).
   - `team/`: `member` (team members, owner checks), `invitation` (invitations, their email,
     answers by the invited account).
-- `shared/`: infrastructure with no business rules (`crypto`, `http` errors, JSON validation,
-  request id and span, `database` migrators, `email` SMTP sender). `shared` never imports from `modules`.
+- `shared/`: infrastructure with no business rules (`crypto`, `http` (generic `ApiError`, client
+  IP, bearer token), JSON validation, request id and span, `database` migrators, `email` SMTP
+  sender). `shared` never imports from `modules`.
 - A new file goes into the sub-package of its subject; create a sub-package when a module has
   several files about one subject. Never leave loose files at a module root; `mod.rs` files only
   declare modules.
@@ -212,6 +230,20 @@ clauses, no boolean variables for conditions, max 3 parameters, small files and 
   guarantees it and never remove it. Disabled elements use `cursor: not-allowed`, loading ones `cursor: progress`.
 - Every interactive element needs visible hover, press (a subtle scale-down, respecting reduced motion)
   and keyboard focus (`:focus-visible` ring) states.
+
+### No AI-style design
+
+Never ship the generic look of AI-generated UI. Every element must earn its place.
+
+- Copy: say it once, short and concrete. No tips ("Dica: …"), no sentences explaining what
+  the UI already shows, no repeating the same information in the description and in the field.
+- No decoration without a job: no icons inside tinted circles, no gradients or glows, no
+  uppercase tracked eyebrow labels ("PRÉ-VISUALIZAÇÃO"), no badges or emojis for flavor.
+- One control per action: no button that duplicates a link or a clickable area next to it.
+- Show only what the user needs to decide or act: no extra readouts (zoom percentages, counters)
+  or extra variants (three preview sizes when the app uses two).
+- Follow the existing components and tokens (`SettingsSection`, `Button`, borders, radii) instead
+  of inventing new styles for one screen.
 
 ## Tests
 
