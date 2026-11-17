@@ -25,6 +25,7 @@ use crate::modules::auth::routes::recover_password;
 use crate::modules::auth::routes::refresh_session;
 use crate::modules::auth::routes::remove_avatar;
 use crate::modules::auth::routes::request_magic_link;
+use crate::modules::auth::routes::resend_user_verification;
 use crate::modules::auth::routes::resend_verification;
 use crate::modules::auth::routes::reset_password;
 use crate::modules::auth::routes::reset_user_mfa;
@@ -102,4 +103,5 @@ fn user_admin_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(unban_user::unban_user))
         .routes(routes!(end_user_sessions::end_user_sessions))
         .routes(routes!(list_user_sessions::list_user_sessions))
+        .routes(routes!(resend_user_verification::resend_user_verification))
 }

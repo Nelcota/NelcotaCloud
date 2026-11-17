@@ -11,6 +11,7 @@ export const MESSAGES_BY_CODE: Record<string, string> = {
   invalid_refresh_token: 'Sua sessão terminou. Entre de novo.',
   invalid_access_token: 'Sua sessão terminou. Entre de novo.',
   user_banned: 'Esta conta está bloqueada.',
+  email_already_verified: 'Este email já foi confirmado.',
   too_many_requests: 'Muitas tentativas em pouco tempo. Espere um minuto e tente de novo.',
   slug_taken: 'Esse identificador já está em uso. Escolha outro.',
   project_access_denied: 'Você não tem mais acesso a este projeto.',
