@@ -1,13 +1,15 @@
 import type { JSX } from 'react'
 
 import { useUsersQuery } from '@/modules/users/queries/use-users'
+import { cn } from '@/shared/lib/class-names'
+import { badgeVariants } from '@/shared/ui/badge-variants'
 
 type SectionCountProps = {
   projectId: string
   segment: string
 }
 
-/** A live count next to a sidebar item; only Usuários has one today. */
+/** A live count next to a sidebar item (only Usuários has one): a neutral pill, not a status. */
 export function SectionCount({ projectId, segment }: SectionCountProps): JSX.Element | null {
   if (segment !== 'users') {
     return null
@@ -26,7 +28,7 @@ function UsersCount({ projectId }: { projectId: string }): JSX.Element | null {
   }
 
   return (
-    <span className="rounded-md bg-emerald-500/15 px-1.5 text-xs font-semibold text-emerald-700 tabular-nums dark:text-emerald-400">
+    <span className={cn(badgeVariants(), 'tabular-nums')}>
       <span className="sr-only">, </span>
       {total.toLocaleString('pt-BR')}
       <span className="sr-only"> usuários</span>

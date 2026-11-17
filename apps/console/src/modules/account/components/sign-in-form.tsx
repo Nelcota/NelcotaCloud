@@ -2,7 +2,7 @@ import type { SignInResult } from '@nelcota/sdk'
 import type { FormEvent, JSX } from 'react'
 import { useState } from 'react'
 
-import { nelcota } from '@/shared/auth/nelcota'
+import { useSignInMutation } from '@/modules/account/queries/use-sign-in-mutation'
 import { Button } from '@/shared/ui/button'
 import { ErrorAlert } from '@/shared/ui/error-alert'
 import { FormField } from '@/shared/ui/form-field'
@@ -15,21 +15,11 @@ type SignInFormProps = {
 export function SignInForm({ onResult, onForgotPassword }: SignInFormProps): JSX.Element {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<unknown>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const signIn = useSignInMutation()
 
-  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
+  function submit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault()
-    setError(null)
-    setIsSubmitting(true)
-
-    try {
-      onResult(await nelcota.auth.signInWithPassword({ email, password }))
-    } catch (caught) {
-      setError(caught)
-    } finally {
-      setIsSubmitting(false)
-    }
+    signIn.mutate({ email, password }, { onSuccess: onResult })
   }
 
   return (
@@ -43,7 +33,7 @@ export function SignInForm({ onResult, onForgotPassword }: SignInFormProps): JSX
         value={email}
         onChange={(event) => setEmail(event.target.value)}
       />
-      <div className="grid gap-1.5">
+      <div className="grid gap-2">
         <FormField
           label="Senha"
           type="password"
@@ -55,14 +45,14 @@ export function SignInForm({ onResult, onForgotPassword }: SignInFormProps): JSX
         <Button
           type="button"
           variant="link"
-          className="h-auto justify-self-end p-0 text-xs"
+          className="h-auto justify-self-end p-0 text-base"
           onClick={onForgotPassword}
         >
           Esqueci minha senha
         </Button>
       </div>
-      <ErrorAlert error={error} />
-      <Button type="submit" size="lg" disabled={isSubmitting} aria-busy={isSubmitting}>
+      <ErrorAlert error={signIn.error} />
+      <Button type="submit" size="lg" disabled={signIn.isPending} aria-busy={signIn.isPending}>
         Entrar
       </Button>
     </form>

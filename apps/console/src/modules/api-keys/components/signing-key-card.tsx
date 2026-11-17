@@ -1,3 +1,4 @@
+import Key from '~icons/solar/key-linear'
 import RefreshCw from '~icons/solar/refresh-linear'
 import type { JSX } from 'react'
 
@@ -9,14 +10,14 @@ export function SigningKeyCard({ projectId }: { projectId: string }): JSX.Elemen
   const rotation = useRotateSigningKeyMutation(projectId)
 
   return (
-    <section className="bg-card grid gap-4 rounded-xl border p-5">
+    <section className="bg-card grid gap-4 rounded-xl border p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex gap-3">
-          <span className="bg-secondary flex size-11 shrink-0 items-center justify-center rounded-lg">
-            <RefreshCw className="text-muted-foreground size-5" />
+        <div className="flex gap-4">
+          <span className="bg-secondary flex size-12 shrink-0 items-center justify-center rounded-lg">
+            <RefreshCw className="text-muted-foreground size-6" />
           </span>
           <div>
-            <h2 className="text-sm">Chave de assinatura dos tokens</h2>
+            <h2 className="text-base">Chave de assinatura dos tokens</h2>
             <p className="text-muted-foreground mt-1 max-w-xl text-sm text-pretty">
               Rotacione se suspeitar de vazamento. Tokens já emitidos valem até expirar; os novos
               usam a chave nova, publicada no JWKS.
@@ -28,6 +29,12 @@ export function SigningKeyCard({ projectId }: { projectId: string }): JSX.Elemen
             title="Rotacionar a chave de assinatura?"
             description="Os próximos tokens serão assinados por uma chave nova. A antiga continua no JWKS por um dia."
             confirmLabel="Rotacionar"
+            change={{
+              subject: 'Chave de assinatura atual',
+              icon: Key,
+              from: 'Assina tokens',
+              to: 'Só no JWKS por 1 dia',
+            }}
             isPending={rotation.isPending}
             onConfirm={() => rotation.mutate()}
           >

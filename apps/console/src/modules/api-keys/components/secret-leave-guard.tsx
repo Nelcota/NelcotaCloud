@@ -1,3 +1,4 @@
+import Key from '~icons/solar/key-linear'
 import { useBlocker } from '@tanstack/react-router'
 import type { JSX } from 'react'
 
@@ -29,6 +30,7 @@ export function SecretLeaveGuard({ isActive }: { isActive: boolean }): JSX.Eleme
       title="Sair sem copiar a chave?"
       description="Ela não aparece de novo. Se sair sem guardá-la, vai precisar criar outra chave e revogar esta."
       confirmLabel="Sair mesmo assim"
+      change={{ subject: 'Secret key nova', icon: Key, from: 'Visível', to: 'Nunca mais exibida' }}
       isDestructive
       onConfirm={() => blocker.proceed?.()}
     />

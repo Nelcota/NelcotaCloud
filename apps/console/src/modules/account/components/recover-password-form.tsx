@@ -1,7 +1,7 @@
 import type { FormEvent, JSX } from 'react'
 import { useState } from 'react'
 
-import { nelcota } from '@/shared/auth/nelcota'
+import { useRecoverPasswordMutation } from '@/modules/account/queries/use-recover-password-mutation'
 import { Button } from '@/shared/ui/button'
 import { ErrorAlert } from '@/shared/ui/error-alert'
 import { FormField } from '@/shared/ui/form-field'
@@ -9,22 +9,11 @@ import { FormField } from '@/shared/ui/form-field'
 /** Asks for a reset link; the answer is the same whether or not the email has an account. */
 export function RecoverPasswordForm({ onSent }: { onSent: () => void }): JSX.Element {
   const [email, setEmail] = useState('')
-  const [error, setError] = useState<unknown>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const recover = useRecoverPasswordMutation()
 
-  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
+  function submit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault()
-    setError(null)
-    setIsSubmitting(true)
-
-    try {
-      await nelcota.auth.recoverPassword({ email })
-      onSent()
-    } catch (caught) {
-      setError(caught)
-    } finally {
-      setIsSubmitting(false)
-    }
+    recover.mutate(email, { onSuccess: onSent })
   }
 
   return (
@@ -38,8 +27,8 @@ export function RecoverPasswordForm({ onSent }: { onSent: () => void }): JSX.Ele
         value={email}
         onChange={(event) => setEmail(event.target.value)}
       />
-      <ErrorAlert error={error} />
-      <Button type="submit" size="lg" disabled={isSubmitting} aria-busy={isSubmitting}>
+      <ErrorAlert error={recover.error} />
+      <Button type="submit" size="lg" disabled={recover.isPending} aria-busy={recover.isPending}>
         Enviar link de redefinição
       </Button>
     </form>

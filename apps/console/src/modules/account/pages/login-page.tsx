@@ -17,8 +17,8 @@ type LoginStep =
   | { kind: 'recover' }
   | { kind: 'notice'; message: string }
 
-const STEP_HEADINGS: Record<LoginStep['kind'], { title: string; description: string }> = {
-  'sign-in': { title: 'Entrar no console', description: 'Gerencie o Auth dos seus apps.' },
+const STEP_HEADINGS: Record<LoginStep['kind'], { title: string; description?: string }> = {
+  'sign-in': { title: 'Entrar na sua conta' },
   'sign-up': { title: 'Criar conta', description: 'Uma conta para criar e gerenciar projetos.' },
   mfa: {
     title: 'Verificação em duas etapas',
@@ -101,7 +101,7 @@ function StepContent(props: StepContentProps): JSX.Element {
     case 'recover':
       return <RecoverPasswordForm onSent={() => onStep(RECOVERY_SENT)} />
     case 'notice':
-      return <p className="text-sm text-pretty">{step.message}</p>
+      return <p className="text-lg text-pretty">{step.message}</p>
     case 'sign-in':
       return (
         <SignInForm
@@ -142,7 +142,7 @@ function StepFooter({
 
 function FooterLink({ label, onClick }: { label: string; onClick: () => void }): JSX.Element {
   return (
-    <Button variant="link" className="h-auto p-0" onClick={onClick}>
+    <Button variant="link" className="h-auto p-0 text-base" onClick={onClick}>
       {label}
     </Button>
   )

@@ -1,7 +1,7 @@
 import type { FormEvent, JSX } from 'react'
 import { useState } from 'react'
 
-import { nelcota } from '@/shared/auth/nelcota'
+import { useVerifyMfaMutation } from '@/modules/account/queries/use-verify-mfa-mutation'
 import { Button } from '@/shared/ui/button'
 import { ErrorAlert } from '@/shared/ui/error-alert'
 import { FormField } from '@/shared/ui/form-field'
@@ -14,22 +14,11 @@ type MfaChallengeFormProps = {
 /** Second step of a login when the account has TOTP on. */
 export function MfaChallengeForm({ mfaToken, onSignedIn }: MfaChallengeFormProps): JSX.Element {
   const [code, setCode] = useState('')
-  const [error, setError] = useState<unknown>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const verify = useVerifyMfaMutation()
 
-  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
+  function submit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault()
-    setError(null)
-    setIsSubmitting(true)
-
-    try {
-      await nelcota.auth.verifyMfa({ mfaToken, code })
-      onSignedIn()
-    } catch (caught) {
-      setError(caught)
-    } finally {
-      setIsSubmitting(false)
-    }
+    verify.mutate({ mfaToken, code }, { onSuccess: onSignedIn })
   }
 
   return (
@@ -46,8 +35,8 @@ export function MfaChallengeForm({ mfaToken, onSignedIn }: MfaChallengeFormProps
         value={code}
         onChange={(event) => setCode(event.target.value)}
       />
-      <ErrorAlert error={error} />
-      <Button type="submit" size="lg" disabled={isSubmitting} aria-busy={isSubmitting}>
+      <ErrorAlert error={verify.error} />
+      <Button type="submit" size="lg" disabled={verify.isPending} aria-busy={verify.isPending}>
         Confirmar
       </Button>
     </form>

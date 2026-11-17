@@ -1,3 +1,4 @@
+import Letter from '~icons/solar/letter-linear'
 import Mail from '~icons/solar/letter-linear'
 import Server from '~icons/solar/server-linear'
 import type { JSX } from 'react'
@@ -27,7 +28,7 @@ export function CurrentSmtp({ view, isResetting, onReset }: CurrentSmtpProps): J
         icon={<Mail className="text-muted-foreground size-5" />}
         title="SMTP da NelcotaCloud"
         detail="Funciona sem configurar nada. Para usar seu domínio no remetente, configure o seu servidor abaixo."
-        badge={<Badge variant="secondary">Padrão</Badge>}
+        badge={<Badge>Padrão</Badge>}
       />
     )
   }
@@ -37,12 +38,18 @@ export function CurrentSmtp({ view, isResetting, onReset }: CurrentSmtpProps): J
       icon={<Server className="text-muted-foreground size-5" />}
       title={view.smtp_host ?? 'Servidor próprio'}
       detail={`Remetente: ${view.email_from ?? '—'}`}
-      badge={<Badge variant="success">Seu servidor</Badge>}
+      badge={<Badge>Seu servidor</Badge>}
       action={
         <ConfirmButton
           title="Voltar ao SMTP da plataforma?"
           description="Os emails passam a sair pela NelcotaCloud. As credenciais do seu servidor são apagadas."
           confirmLabel="Voltar ao padrão"
+          change={{
+            subject: view.smtp_host ?? 'Servidor próprio',
+            icon: Letter,
+            from: 'Seu servidor',
+            to: 'SMTP da plataforma',
+          }}
           isPending={isResetting}
           onConfirm={onReset}
         >

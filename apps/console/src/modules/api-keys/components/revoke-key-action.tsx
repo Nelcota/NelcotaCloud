@@ -1,3 +1,5 @@
+import Key from '~icons/solar/key-linear'
+import TrashBin from '~icons/solar/trash-bin-trash-linear'
 import type { JSX } from 'react'
 
 import type { components } from '@/shared/api/api-schema'
@@ -21,7 +23,7 @@ export function RevokeKeyAction(props: RevokeKeyActionProps): JSX.Element | null
   const { apiKey, activeOfKind } = props
 
   if (apiKey.kind === 'secret' && activeOfKind <= 1) {
-    return <span className="text-muted-foreground text-xs">Única secret ativa</span>
+    return <span className="text-muted-foreground text-sm">Única secret ativa</span>
   }
 
   return (
@@ -29,10 +31,12 @@ export function RevokeKeyAction(props: RevokeKeyActionProps): JSX.Element | null
       title={revokeTitle(apiKey)}
       description={revokeConsequence(apiKey.kind, activeOfKind)}
       confirmLabel="Revogar"
+      change={{ subject: keyLabel(apiKey), icon: Key, from: 'Ativa', to: 'Revogada' }}
       isDestructive
       isPending={props.isPending}
       onConfirm={props.onRevoke}
     >
+      <TrashBin aria-hidden="true" className="size-4" />
       Revogar
     </ConfirmButton>
   )
@@ -47,6 +51,10 @@ function revokeTitle(apiKey: ApiKeySummary): string {
   }
 
   return `Revogar “${apiKey.name}” (${label})?`
+}
+
+function keyLabel(apiKey: ApiKeySummary): string {
+  return `${apiKey.kind} …${apiKey.hint}`
 }
 
 function revokeConsequence(kind: string, activeOfKind: number): string {

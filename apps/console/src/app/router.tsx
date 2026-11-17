@@ -11,7 +11,6 @@ import { NotFoundPage } from '@/app/not-found-page'
 import { RouteErrorPage } from '@/app/route-error-page'
 import { AppShell } from '@/app/shell/app-shell'
 import { nelcota } from '@/shared/auth/nelcota'
-import { tokenSearch } from '@/shared/routing/token-search'
 
 /**
  * Maps URLs to module pages; no logic lives here besides the login guard. Every page is a lazy
@@ -39,7 +38,6 @@ const loginRoute = createRoute({
 const verifyEmailRoute = createRoute({
   getParentRoute: () => publicRoute,
   path: '/auth/verify-email',
-  validateSearch: tokenSearch,
 }).lazy(() =>
   import('@/app/lazy-routes/verify-email').then((module) => module.verifyEmailLazyRoute),
 )
@@ -47,7 +45,6 @@ const verifyEmailRoute = createRoute({
 const resetPasswordRoute = createRoute({
   getParentRoute: () => publicRoute,
   path: '/auth/reset-password',
-  validateSearch: tokenSearch,
 }).lazy(() =>
   import('@/app/lazy-routes/reset-password').then((module) => module.resetPasswordLazyRoute),
 )

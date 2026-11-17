@@ -1,3 +1,4 @@
+import Monitor from '~icons/solar/monitor-linear'
 import type { SessionSummary } from '@nelcota/sdk'
 import type { JSX } from 'react'
 
@@ -28,6 +29,12 @@ export function SessionsSection(): JSX.Element {
           title="Sair dos outros dispositivos?"
           description="Todas as sessões terminam, menos esta. Quem estiver usando sua conta em outro lugar precisa entrar de novo."
           confirmLabel="Sair dos outros"
+          change={{
+            subject: 'Outros dispositivos',
+            icon: Monitor,
+            from: 'Conectados',
+            to: 'Desconectados',
+          }}
           isDestructive
           isPending={othersRevocation.isPending}
           onConfirm={() => othersRevocation.mutate()}
@@ -94,7 +101,7 @@ type SessionActionProps = {
 
 function SessionAction({ session, isPending, onRevoke }: SessionActionProps): JSX.Element {
   if (session.is_current) {
-    return <Badge variant="secondary">Esta sessão</Badge>
+    return <Badge>Esta sessão</Badge>
   }
 
   return (
@@ -102,6 +109,12 @@ function SessionAction({ session, isPending, onRevoke }: SessionActionProps): JS
       title="Encerrar esta sessão?"
       description="O navegador dela precisa entrar de novo para usar o console."
       confirmLabel="Encerrar"
+      change={{
+        subject: `Entrou em ${formatDateTime(session.started_at)}`,
+        icon: Monitor,
+        from: 'Ativa',
+        to: 'Encerrada',
+      }}
       isDestructive
       isPending={isPending}
       onConfirm={onRevoke}
