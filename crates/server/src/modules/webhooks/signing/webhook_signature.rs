@@ -49,6 +49,7 @@ fn sign(secret: &WebhookSecret, content: &SignedContent) -> Result<String, Inval
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::shared::crypto::random_bytes::random_bytes;
 
     /// The example from the Standard Webhooks specification, so any of its libraries accepts
     /// what we send.
@@ -89,7 +90,7 @@ mod tests {
 
     #[test]
     fn a_different_body_changes_the_signature() -> Result<(), InvalidSecretLength> {
-        let secrets = [WebhookSecret::from_key(vec![1; 24])];
+        let secrets = [WebhookSecret::from_key(random_bytes::<24>().to_vec())];
         let original = SignedContent {
             message_id: "evt",
             timestamp: 1,

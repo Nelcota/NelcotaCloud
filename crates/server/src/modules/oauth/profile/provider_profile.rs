@@ -3,6 +3,7 @@ use serde::de::DeserializeOwned;
 
 use crate::modules::oauth::profile::github_profile::fetch_github_profile;
 use crate::modules::oauth::profile::google_profile::fetch_google_profile;
+use crate::modules::oauth::profile::provider_url::{InsecureProviderUrl, secure_provider_url};
 use crate::modules::oauth::provider::oauth_provider::OAuthProvider;
 use crate::modules::oauth::provider::provider_endpoints::ProviderEndpoints;
 
@@ -16,6 +17,8 @@ pub enum ProfileError {
     Request(#[from] reqwest::Error),
     #[error("provider returned an empty user id")]
     MissingUserId,
+    #[error(transparent)]
+    InsecureUrl(#[from] InsecureProviderUrl),
 }
 
 /// What we keep from the provider: its stable user id, and the email only if it is verified.
@@ -46,6 +49,7 @@ pub(super) async fn get_json<T: DeserializeOwned>(
     request: &ProfileRequest<'_>,
     url: &str,
 ) -> Result<T, ProfileError> {
+    let url = secure_provider_url(url)?;
     let response = request
         .http_client
         .get(url)

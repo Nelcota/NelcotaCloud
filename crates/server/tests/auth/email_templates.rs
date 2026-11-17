@@ -124,8 +124,10 @@ Bcc: alguem@example.com"
     );
     let blank = magic_link_with("message", json!("   "));
     let with_html = magic_link_with("html", json!("<b>oi</b>"));
+    let with_link = magic_link_with("message", json!("Entre em https://evil.example agora"));
+    let with_domain = magic_link_with("note", json!("Dúvidas? Fale com suporte-falso.com"));
 
-    for body in [header_injection, blank, with_html] {
+    for body in [header_injection, blank, with_html, with_link, with_domain] {
         let response = put_template(&server, (&tenant, "magic_link"), body).await?;
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }

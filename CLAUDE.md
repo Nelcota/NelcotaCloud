@@ -42,7 +42,9 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   development only. Each project may reword the three link emails (`tenant_email_templates`,
   `/auth/v1/admin/email-templates/{kind}`): plain-text subject, heading, message, button and
   note, `{app_name}` replaced by the project name; the layout and the link stay the platform's,
-  and one-line fields refuse control characters (header injection).
+  one-line fields refuse control characters (header injection), and every field refuses links
+  and domain names (the emails go out with the platform's reputation, so custom words must not
+  point readers anywhere but the button).
 - Every way to obtain tokens ends in `complete_login` (password, magic link, OAuth): users with a
   verified TOTP factor get `{mfa_required, mfa_token}` instead, redeemed at `/auth/v1/mfa/challenge`
   (5 wrong codes per challenge, each TOTP time step accepted once). `issue_session_with` refuses
@@ -83,7 +85,7 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
 - Activity log (`auth/audit`): the tenant's `audit_events` (90 days, pruned when read and, a
   hundred oldest rows at a time, on each insert) records logins (with method and client IP),
   wrong-password attempts (with the typed email only when it is a valid address: anything else
-  may be a mistyped password), password
+  may be a mistyped password; linked to the account it names, for the log only), password
   resets and admin actions on users with who did them (`AdminActor`: secret key or console
   account). Recorded after the action; a failed insert is logged, never failing the request.
   `GET /auth/v1/admin/audit-events` pages by `before` (event id); the console shows it at
@@ -161,7 +163,8 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   dependencies. It keeps the session, renews it before expiry (one refresh in flight), handles
   OAuth with PKCE, magic links, MFA and sessions, and queries the database
   (`from('t').select(...).eq(...).execute()`, `rpc`) as the logged-in user. Types are generated from `openapi.json`. Uses
-  TypeScript 5.9 (tsdown and openapi-typescript need its compiler API).
+  TypeScript 7; `api:types` runs openapi-typescript with its own TypeScript 5.9 through `npx`
+  (it needs the compiler API, which TypeScript 7 does not have), like the console.
 - Console (`apps/console/`): React + TypeScript SPA built with Vite, TanStack Router and TanStack
   Query, Tailwind CSS and shadcn/ui; see "Console structure". It talks to the API only; the API
   address is fixed at build time by `VITE_API_URL`. It logs in with the SDK (compiled from

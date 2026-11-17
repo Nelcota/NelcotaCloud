@@ -15,15 +15,20 @@ pub fn check_new_password(password: &str) -> Result<(), BlankPassword> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::shared::crypto::random_bytes::random_test_password;
 
     #[test]
     fn rejects_whitespace_only_passwords() {
-        assert_eq!(check_new_password("        "), Err(BlankPassword));
-        assert_eq!(check_new_password("\t\n  \t\n"), Err(BlankPassword));
+        for whitespace in [' ', '\t', '\n'] {
+            let blank: String = std::iter::repeat_n(whitespace, 8).collect();
+            assert_eq!(check_new_password(&blank), Err(BlankPassword));
+        }
     }
 
     #[test]
     fn accepts_passwords_with_inner_spaces() {
-        assert_eq!(check_new_password("correct horse battery"), Ok(()));
+        let password = format!("{} {}", random_test_password(), random_test_password());
+
+        assert_eq!(check_new_password(&password), Ok(()));
     }
 }

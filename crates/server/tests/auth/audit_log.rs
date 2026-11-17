@@ -64,7 +64,7 @@ async fn records_logins_and_failed_attempts() -> TestResult {
     );
     let failed = field(&page, "/events/1");
     assert_eq!(field(failed, "/action"), "login_failed");
-    assert_eq!(field(failed, "/user_id"), &Value::Null);
+    assert_eq!(field(failed, "/user_id"), &json!(session.user.id));
     assert_eq!(field(failed, "/email"), &json!(tenant_user_email(&tenant)));
     assert_eq!(field(&page, "/next_before"), &Value::Null);
     server.drop_tenant(&tenant).await

@@ -3,6 +3,7 @@ use utoipa::ToSchema;
 use validator::{Validate, ValidationError};
 
 use crate::modules::auth::email::auth_email_dispatch::AuthEmailKind;
+use crate::modules::auth::email::email_text_links::check_no_links;
 
 /// Written in any field, replaced by the project's name when the email is sent.
 pub const APP_NAME_PLACEHOLDER: &str = "{app_name}";
@@ -19,12 +20,12 @@ pub struct EmailTemplateText {
     #[validate(length(min = 1, max = 150), custom(function = check_single_line))]
     pub heading: String,
     /// May span several lines.
-    #[validate(length(min = 1, max = 1000), custom(function = check_not_blank))]
+    #[validate(length(min = 1, max = 1000), custom(function = check_message))]
     pub message: String,
     #[validate(length(min = 1, max = 50), custom(function = check_single_line))]
     pub action_label: String,
     /// Shown under the button, smaller; may span several lines or be empty.
-    #[validate(length(max = 500))]
+    #[validate(length(max = 500), custom(function = check_no_links))]
     pub note: String,
 }
 
@@ -81,6 +82,7 @@ pub fn default_template_text(kind: AuthEmailKind) -> EmailTemplateText {
 /// Subjects become a mail header, so line breaks and other control characters are refused.
 fn check_single_line(text: &str) -> Result<(), ValidationError> {
     check_not_blank(text)?;
+    check_no_links(text)?;
 
     if text.chars().any(char::is_control) {
         return Err(ValidationError::new("single_line")
@@ -88,6 +90,12 @@ fn check_single_line(text: &str) -> Result<(), ValidationError> {
     }
 
     Ok(())
+}
+
+fn check_message(text: &str) -> Result<(), ValidationError> {
+    check_not_blank(text)?;
+
+    check_no_links(text)
 }
 
 fn check_not_blank(text: &str) -> Result<(), ValidationError> {

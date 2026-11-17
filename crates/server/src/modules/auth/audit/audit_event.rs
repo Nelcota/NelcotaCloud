@@ -33,15 +33,18 @@ impl NewAuditEvent {
         }
     }
 
-    /// The typed email is kept because it may match no user (someone probing for accounts).
-    /// Only when it is a valid address: text that is not one is often a password typed (or
+    /// The typed email is kept because it may match no user (someone probing for accounts);
+    /// `user_id` is the account it names, so the attempt shows on that user's page. Only a
+    /// valid address is ever passed: text that is not one is often a password typed (or
     /// autofilled) into the wrong field, and must never be stored.
-    pub fn failed_password_login(email: &str, ip_address: IpAddr) -> Self {
-        let email = EmailAddress::parse(email).ok();
-
+    pub fn failed_password_login(
+        email: Option<&EmailAddress>,
+        user_id: Option<Uuid>,
+        ip_address: IpAddr,
+    ) -> Self {
         Self {
             action: AuditAction::LoginFailed,
-            user_id: None,
+            user_id,
             email: email.map(|address| address.as_str().to_owned()),
             actor: AuditActor::USER,
             login_method: Some(LoginMethod::Password),
@@ -99,17 +102,21 @@ mod tests {
     const CLIENT: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
 
     #[test]
-    fn keeps_a_mistyped_address_normalized() {
-        let event = NewAuditEvent::failed_password_login(" Ana@Example.com ", CLIENT);
+    fn names_the_account_a_failed_login_was_for() -> Result<(), Box<dyn std::error::Error>> {
+        let email = EmailAddress::parse(" Ana@Example.com ")?;
+        let user_id = Uuid::new_v4();
+        let event = NewAuditEvent::failed_password_login(Some(&email), Some(user_id), CLIENT);
 
         assert_eq!(event.email.as_deref(), Some("ana@example.com"));
+        assert_eq!(event.user_id, Some(user_id));
+        Ok(())
     }
 
-    /// A password typed into the email field must never reach the activity log.
     #[test]
-    fn never_keeps_text_that_is_not_an_address() {
-        let event = NewAuditEvent::failed_password_login("MinhaSenha123", CLIENT);
+    fn keeps_no_email_when_none_was_valid() {
+        let event = NewAuditEvent::failed_password_login(None, None, CLIENT);
 
         assert_eq!(event.email, None);
+        assert_eq!(event.user_id, None);
     }
 }
