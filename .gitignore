@@ -8,4 +8,4 @@ node_modules
 dist
 
 # Runtime state of the impeccable design tool (live sessions and annotations).
-.impeccable/live/
+**/.impeccable/live/
