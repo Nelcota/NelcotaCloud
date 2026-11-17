@@ -24,9 +24,7 @@ pub async fn unban_user(
     admin: TenantAdminContext,
     Path(user_id): Path<Uuid>,
 ) -> Result<Json<User>, ApiError> {
-    let user = unban(&admin.pool, user_id)
-        .await
-        .map_err(ApiError::internal)?;
+    let user = unban(&admin.pool, user_id).await?;
     let Some(user) = user else {
         return Err(ApiError::NotFound("user"));
     };

@@ -4,6 +4,7 @@ use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
 
 use crate::app_state::AppState;
+use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::shared::crypto::opaque_token::hash_opaque_token;
 use crate::shared::http::api_error::ApiError;
 
@@ -27,15 +28,15 @@ impl FromRequestParts<AppState> for AdminAccess {
 fn check_admin_token(parts: &Parts, state: &AppState) -> Result<AdminAccess, ApiError> {
     let headers = &parts.headers;
     let Some(header_value) = headers.get(ADMIN_TOKEN_HEADER) else {
-        return Err(ApiError::AdminAccessDenied);
+        return Err(ApiError::from(TenantsRejection::AdminAccessDenied));
     };
     let admin_token = header_value
         .to_str()
-        .map_err(|_| ApiError::AdminAccessDenied)?;
+        .map_err(|_| ApiError::from(TenantsRejection::AdminAccessDenied))?;
 
     // Comparing digests instead of raw tokens keeps timing differences meaningless to attackers.
     if hash_opaque_token(admin_token.trim()) != state.settings.admin_token_hash {
-        return Err(ApiError::AdminAccessDenied);
+        return Err(ApiError::from(TenantsRejection::AdminAccessDenied));
     }
 
     Ok(AdminAccess)

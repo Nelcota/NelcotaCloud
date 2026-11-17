@@ -20,7 +20,7 @@ use crate::modules::tenants::signing_keys::signing_key_repository::{
 use crate::shared::crypto::secret_box::SecretBox;
 
 /// Each project is a database, so one account cannot create them without bound.
-const MAX_OWNED_PROJECTS: i64 = 10;
+pub const MAX_OWNED_PROJECTS: i64 = 10;
 
 /// Writes the tenant row, its signing key and both API keys inside the caller's transaction,
 /// so they become visible together, or not at all.
@@ -32,26 +32,41 @@ pub async fn register_tenant(
     let tenant_id = Uuid::new_v4();
     let signing_key = SigningKey::generate()?;
     let sealed_signing_key = SealedSigningKey::seal(&signing_key, tenant_id, secret_box)?;
-    let new_tenant = NewTenant {
-        tenant_id,
-        slug: &request.slug,
-        name: &request.name,
-        site_url: &request.site_url,
-        require_email_verification: request.require_email_verification,
-    };
-    insert_tenant(transaction, new_tenant).await?;
+    insert_tenant(transaction, NewTenant::of(tenant_id, &request)).await?;
     add_owner(transaction, tenant_id, request.owner_account_id).await?;
     insert_active_signing_key(transaction, tenant_id, &sealed_signing_key).await?;
-    let publishable_key =
-        issue_api_key(transaction, initial_key(tenant_id, ApiKeyKind::Publishable)).await?;
-    let secret_key = issue_api_key(transaction, initial_key(tenant_id, ApiKeyKind::Secret)).await?;
+    let (publishable_key, secret_key) = issue_initial_keys(transaction, tenant_id).await?;
 
     Ok(ProvisionedTenant {
         tenant_id,
         slug: request.slug,
-        publishable_key: publishable_key.key,
-        secret_key: secret_key.key,
+        publishable_key,
+        secret_key,
     })
+}
+
+/// The publishable and secret keys every project starts with.
+async fn issue_initial_keys(
+    transaction: &mut PgConnection,
+    tenant_id: Uuid,
+) -> Result<(String, String), sqlx::Error> {
+    let publishable = issue_api_key(transaction, initial_key(tenant_id, ApiKeyKind::Publishable));
+    let publishable_key = publishable.await?.key;
+    let secret_key = issue_api_key(transaction, initial_key(tenant_id, ApiKeyKind::Secret));
+
+    Ok((publishable_key, secret_key.await?.key))
+}
+
+impl<'a> NewTenant<'a> {
+    fn of(tenant_id: Uuid, request: &'a NewTenantRequest) -> Self {
+        Self {
+            tenant_id,
+            slug: &request.slug,
+            name: &request.name,
+            site_url: &request.site_url,
+            require_email_verification: request.require_email_verification,
+        }
+    }
 }
 
 /// The keys every project starts with; they have no name until the owner gives one.

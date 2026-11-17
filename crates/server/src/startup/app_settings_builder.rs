@@ -4,7 +4,6 @@ use crate::app_config::AppConfig;
 use crate::app_state::AppSettings;
 use crate::modules::auth::password::password_hashing::hash_password;
 use crate::modules::oauth::provider::provider_endpoints::OAuthEndpoints;
-use crate::modules::tenants::provisioning::tenant_slug::TenantSlug;
 use crate::shared::crypto::hex_encoding::encode_hex;
 use crate::shared::crypto::opaque_token::hash_opaque_token;
 use crate::shared::crypto::random_bytes::random_bytes;
@@ -21,17 +20,11 @@ pub async fn build_settings(
 
     Ok(AppSettings {
         token_issuer: config.token_issuer(),
-        tenant_database_base_url: config.tenant_database_base_url.clone(),
         admin_token_hash: hash_opaque_token(config.admin_token.trim()),
         dummy_password_hash: hash_password(unguessable_password).await?,
         oauth_endpoints,
         oauth_callback_url: config.oauth_callback_url(),
         client_ip_header: parse_client_ip_header(config.client_ip_header.as_deref())?,
-        platform_tenant_slug: config
-            .platform_tenant_slug
-            .as_deref()
-            .map(TenantSlug::parse)
-            .transpose()?,
     })
 }
 

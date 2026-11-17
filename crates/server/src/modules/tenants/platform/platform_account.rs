@@ -1,20 +1,26 @@
 use axum::extract::FromRequestParts;
-use axum::http::header::AUTHORIZATION;
 use axum::http::request::Parts;
+use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
-use crate::modules::tenants::platform::platform_tenant::find_platform_tenant_id;
-use crate::modules::tenants::signing_keys::access_token::{TokenAudience, verify_access_token};
+use crate::modules::tenants::platform::platform_account_status::{
+    PlatformAccountStatus, find_platform_account_status,
+};
+use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
+use crate::modules::tenants::settings::email_verification_policy::ensure_email_verified;
+use crate::modules::tenants::signing_keys::access_token::TokenAudience;
+use crate::modules::tenants::signing_keys::access_token_verification::verify_tenant_token;
 use crate::shared::http::api_error::ApiError;
-
-const BEARER_SCHEME: &str = "Bearer";
+use crate::shared::http::bearer_token::bearer_token;
 
 /// Someone logged into the console: a user of the platform tenant, proven by their access
 /// token, which must have been issued by the platform tenant itself.
 pub struct PlatformAccount {
     pub account_id: Uuid,
     pub email: String,
+    /// Accepting invitations always needs it, whatever the platform tenant requires.
+    pub is_email_verified: bool,
 }
 
 impl FromRequestParts<AppState> for PlatformAccount {
@@ -22,7 +28,7 @@ impl FromRequestParts<AppState> for PlatformAccount {
 
     async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, ApiError> {
         let Some(access_token) = bearer_token(parts) else {
-            return Err(ApiError::InvalidAccessToken);
+            return Err(ApiError::from(TenantsRejection::InvalidAccessToken));
         };
 
         verify_platform_token(state, access_token).await
@@ -33,51 +39,57 @@ pub async fn verify_platform_token(
     state: &AppState,
     access_token: &str,
 ) -> Result<PlatformAccount, ApiError> {
-    let platform_tenant_id = find_platform_tenant_id(state).await?;
-    let signing_keys = state
-        .signing_keys
-        .keys_for(platform_tenant_id)
-        .await
-        .map_err(ApiError::internal)?;
+    let platform_tenant_id = state.platform_tenant.find_id().await?;
     let audience = TokenAudience {
         issuer: &state.settings.token_issuer,
         tenant_id: platform_tenant_id,
     };
-    let claims = verify_access_token(access_token, &signing_keys, &audience)
-        .map_err(|_| ApiError::InvalidAccessToken)?;
+    let claims = verify_tenant_token(&state.signing_keys, &audience, access_token).await?;
+    let status = account_status(state, platform_tenant_id, claims.sub).await?;
+    let pool = &state.control_plane_pool;
+    ensure_account_allowed(pool, platform_tenant_id, &status).await?;
 
-    let tenant_pool = state
+    Ok(PlatformAccount {
+        account_id: claims.sub,
+        email: status.email,
+        is_email_verified: status.email_verified_at.is_some(),
+    })
+}
+
+/// Distinct errors, so the console can ask the account to confirm its email. Verification
+/// follows the platform tenant's own setting, so an instance without an email provider keeps
+/// working.
+async fn ensure_account_allowed(
+    control_plane_pool: &PgPool,
+    platform_tenant_id: Uuid,
+    status: &PlatformAccountStatus,
+) -> Result<(), ApiError> {
+    if status.banned_at.is_some() {
+        return Err(ApiError::from(TenantsRejection::UserBanned));
+    }
+
+    ensure_email_verified(
+        control_plane_pool,
+        platform_tenant_id,
+        status.email_verified_at,
+    )
+    .await
+}
+
+async fn account_status(
+    state: &AppState,
+    platform_tenant_id: Uuid,
+    account_id: Uuid,
+) -> Result<PlatformAccountStatus, ApiError> {
+    let platform_pool = state
         .tenant_pools
         .pool_for(platform_tenant_id)
         .await
         .map_err(ApiError::internal)?;
-    let account =
-        crate::modules::auth::user::user_lookup::find_user_by_id(&tenant_pool, claims.sub)
-            .await
-            .map_err(ApiError::internal)?;
-    let Some(account) = account else {
-        return Err(ApiError::InvalidAccessToken);
+    let status = find_platform_account_status(&platform_pool, account_id).await?;
+    let Some(status) = status else {
+        return Err(ApiError::from(TenantsRejection::InvalidAccessToken));
     };
 
-    if account.email_verified_at.is_none() || account.banned_at.is_some() {
-        return Err(ApiError::InvalidAccessToken);
-    }
-
-    Ok(PlatformAccount {
-        account_id: claims.sub,
-        email: account.email,
-    })
-}
-
-/// `Bearer <token>`, case-insensitive scheme; `None` when absent or blank.
-pub fn bearer_token(parts: &Parts) -> Option<&str> {
-    let header_text = parts.headers.get(AUTHORIZATION)?.to_str().ok()?;
-    let (scheme, token) = header_text.trim().split_once(' ')?;
-    let token = token.trim();
-
-    if scheme.eq_ignore_ascii_case(BEARER_SCHEME) == false || token.is_empty() {
-        return None;
-    }
-
-    Some(token)
+    Ok(status)
 }

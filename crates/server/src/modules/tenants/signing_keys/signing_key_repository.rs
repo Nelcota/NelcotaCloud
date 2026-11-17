@@ -72,14 +72,30 @@ pub async fn load_signing_keys(
     .bind(tenant_id)
     .fetch_all(pool)
     .await?;
+    let (active, retired) = prepare_keys(secret_box, tenant_id, rows)?;
+    let Some(active) = active else {
+        return Err(SigningKeyStoreError::NoActiveKey(tenant_id));
+    };
+
+    Ok(TenantSigningKeys::new(active, retired)?)
+}
+
+/// The active key, if any, and the retired ones that could be opened.
+fn prepare_keys(
+    secret_box: &SecretBox,
+    tenant_id: Uuid,
+    rows: Vec<StoredSigningKey>,
+) -> Result<(Option<PreparedSigningKey>, Vec<PreparedSigningKey>), SigningKeyStoreError> {
     let mut active = None;
     let mut retired = Vec::with_capacity(rows.len());
 
     for stored in rows {
         let key_id = stored.id;
-        let is_active = stored.is_active;
 
-        match (open_and_prepare(secret_box, tenant_id, &stored), is_active) {
+        match (
+            open_and_prepare(secret_box, tenant_id, &stored),
+            stored.is_active,
+        ) {
             (Ok(prepared), true) => active = Some(prepared),
             (Ok(prepared), false) => retired.push(prepared),
             (Err(error), true) => return Err(error),
@@ -89,11 +105,7 @@ pub async fn load_signing_keys(
         }
     }
 
-    let Some(active) = active else {
-        return Err(SigningKeyStoreError::NoActiveKey(tenant_id));
-    };
-
-    Ok(TenantSigningKeys::new(active, retired)?)
+    Ok((active, retired))
 }
 
 #[derive(sqlx::FromRow)]

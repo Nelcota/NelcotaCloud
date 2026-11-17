@@ -1,4 +1,4 @@
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
 use crate::modules::tenants::api_keys::api_key_kind::ApiKeyKind;
@@ -24,31 +24,47 @@ pub async fn revoke_api_key(
     key_id: Uuid,
 ) -> Result<(), ApiKeyRevocationError> {
     let mut transaction = pool.begin().await?;
-    let active_secret_keys: Vec<Uuid> = sqlx::query_scalar(
-        "SELECT id FROM tenant_api_keys WHERE tenant_id = $1 AND kind = $2 AND revoked_at IS NULL FOR UPDATE",
-    )
-    .bind(tenant_id)
-    .bind(ApiKeyKind::Secret.as_str())
-    .fetch_all(&mut *transaction)
-    .await?;
+    let active_secret_keys = lock_active_secret_keys(&mut transaction, tenant_id).await?;
 
     if active_secret_keys.as_slice() == [key_id] {
         return Err(ApiKeyRevocationError::LastSecretKey);
     }
 
-    let revoked: Option<Uuid> = sqlx::query_scalar(
-        "UPDATE tenant_api_keys SET revoked_at = now() WHERE id = $1 AND tenant_id = $2 AND revoked_at IS NULL RETURNING id",
-    )
-    .bind(key_id)
-    .bind(tenant_id)
-    .fetch_optional(&mut *transaction)
-    .await?;
-
-    if revoked.is_none() {
+    if mark_revoked(&mut transaction, tenant_id, key_id).await? == false {
         return Err(ApiKeyRevocationError::NotFound);
     }
 
     transaction.commit().await?;
 
     Ok(())
+}
+
+async fn lock_active_secret_keys(
+    connection: &mut PgConnection,
+    tenant_id: Uuid,
+) -> Result<Vec<Uuid>, sqlx::Error> {
+    sqlx::query_scalar(
+        "SELECT id FROM tenant_api_keys WHERE tenant_id = $1 AND kind = $2 AND revoked_at IS NULL FOR UPDATE",
+    )
+    .bind(tenant_id)
+    .bind(ApiKeyKind::Secret.as_str())
+    .fetch_all(connection)
+    .await
+}
+
+/// `false` when the tenant has no such key still active.
+async fn mark_revoked(
+    connection: &mut PgConnection,
+    tenant_id: Uuid,
+    key_id: Uuid,
+) -> Result<bool, sqlx::Error> {
+    let revoked: Option<Uuid> = sqlx::query_scalar(
+        "UPDATE tenant_api_keys SET revoked_at = now() WHERE id = $1 AND tenant_id = $2 AND revoked_at IS NULL RETURNING id",
+    )
+    .bind(key_id)
+    .bind(tenant_id)
+    .fetch_optional(connection)
+    .await?;
+
+    Ok(revoked.is_some())
 }

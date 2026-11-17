@@ -6,6 +6,7 @@ use crate::modules::oauth::provider::oauth_provider::OAuthProvider;
 use crate::modules::oauth::provider::oauth_provider_repository::{
     ProviderKey, delete_provider_credentials,
 };
+use crate::modules::oauth::rejection::oauth_rejection::OAuthRejection;
 use crate::modules::tenants::access::tenant_admin::TenantAdmin;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
@@ -28,15 +29,13 @@ pub async fn remove_oauth_provider(
     Path(provider_name): Path<String>,
 ) -> Result<StatusCode, ApiError> {
     let Some(provider) = OAuthProvider::parse(&provider_name) else {
-        return Err(ApiError::UnknownOAuthProvider);
+        return Err(ApiError::from(OAuthRejection::UnknownOAuthProvider));
     };
     let key = ProviderKey {
         tenant_id: admin.tenant_id,
         provider,
     };
-    delete_provider_credentials(&state.control_plane_pool, key)
-        .await
-        .map_err(ApiError::internal)?;
+    delete_provider_credentials(&state.control_plane_pool, key).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

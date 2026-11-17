@@ -44,7 +44,7 @@ mod tests {
             heading: "Heading".to_owned(),
             message: "Message".to_owned(),
             action_label: "Act",
-            link: "https://app.test/auth?token=abc&x=1".to_owned(),
+            link: "https://app.test/auth#token=abc".to_owned(),
             expiry_note: "Expires",
             ignore_note: "Ignore",
         }
@@ -66,11 +66,7 @@ mod tests {
     fn plain_text_carries_the_link() -> Result<(), askama::Error> {
         let email = render_auth_email(content_named("Acme"), "ana@example.com")?;
 
-        assert!(
-            email
-                .text_body
-                .contains("https://app.test/auth?token=abc&x=1")
-        );
+        assert!(email.text_body.contains("https://app.test/auth#token=abc"));
         Ok(())
     }
 }

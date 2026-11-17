@@ -34,9 +34,7 @@ pub async fn decline_invitation(
         account_id: account.account_id,
         email: email.as_str(),
     };
-    let is_declined = refuse(&state.control_plane_pool, answer)
-        .await
-        .map_err(ApiError::internal)?;
+    let is_declined = refuse(&state.control_plane_pool, answer).await?;
 
     if is_declined == false {
         return Err(ApiError::NotFound("invitation"));

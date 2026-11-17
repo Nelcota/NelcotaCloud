@@ -1,8 +1,9 @@
 use std::time::Duration;
 
 use reqwest::StatusCode;
-use serde_json::json;
+use serde_json::{Value, json};
 
+use crate::mfa::user_with_totp;
 use crate::support::{TestResult, TestServer, error_code, unique_email};
 
 const ATTACKER_PASSWORD: &str = "attacker password";
@@ -59,6 +60,53 @@ async fn latest_signup_takes_over_an_unverified_account() -> TestResult {
     assert_eq!(owner_attempt.status(), StatusCode::OK);
 
     server.drop_tenant(&tenant).await
+}
+
+/// The squatter added an authenticator while the tenant let unverified users in; the owner's
+/// signup, once verification is required, must not leave it guarding the account.
+#[tokio::test]
+async fn signup_takeover_removes_the_squatter_authenticator() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    let api_key = &tenant.publishable_key;
+    let email = unique_email("squatted-mfa");
+    user_with_totp(&server, &tenant, &email, 0).await?;
+    let squatter_link = server.wait_for_email_token(&email).await?;
+    require_email_verification(&server, &tenant.secret_key).await?;
+
+    let owner = json!({ "email": email, "password": OWNER_PASSWORD });
+    let owner_signup = server.post_auth("/auth/v1/signup", api_key, owner).await?;
+    assert_eq!(owner_signup.status(), StatusCode::ACCEPTED);
+    let owner_link = wait_for_new_token(&server, &email, &squatter_link).await?;
+    let verify = json!({ "token": owner_link });
+    let verified = server
+        .post_auth("/auth/v1/verify-email", api_key, verify)
+        .await?;
+    assert_eq!(verified.status(), StatusCode::OK);
+
+    let owner_login = json!({ "email": email, "password": OWNER_PASSWORD });
+    let login: Value = server
+        .post_auth("/auth/v1/login", api_key, owner_login)
+        .await?
+        .json()
+        .await?;
+    assert!(login.get("mfa_required").is_none());
+    assert!(login.get("access_token").is_some());
+
+    server.drop_tenant(&tenant).await
+}
+
+async fn require_email_verification(server: &TestServer, secret_key: &str) -> TestResult {
+    let change = server
+        .client
+        .patch(server.url("/auth/v1/admin/settings"))
+        .header("apikey", secret_key)
+        .json(&json!({ "require_email_verification": true }))
+        .send()
+        .await?;
+    assert_eq!(change.status(), StatusCode::OK);
+
+    Ok(())
 }
 
 #[tokio::test]

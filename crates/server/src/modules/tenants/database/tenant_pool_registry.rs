@@ -72,7 +72,7 @@ impl TenantPoolRegistry {
             return Err(TenantPoolError::TenantNotFound(tenant_id));
         };
         let slug = TenantSlug::parse(&raw_slug)?;
-        let database_server = TenantDatabaseServer::new(&self.tenant_database_base_url);
+        let database_server = self.database_server();
         let pool = PgPoolOptions::new()
             .max_connections(MAX_CONNECTIONS_PER_TENANT)
             .idle_timeout(TENANT_POOL_IDLE_TIMEOUT)
@@ -82,6 +82,11 @@ impl TenantPoolRegistry {
         TENANT_MIGRATOR.run(&pool).await?;
 
         Ok(pool)
+    }
+
+    /// The server that holds every tenant database.
+    pub fn database_server(&self) -> TenantDatabaseServer<'_> {
+        TenantDatabaseServer::new(&self.tenant_database_base_url)
     }
 
     /// Closes and forgets the tenant's pool, before its database is dropped.

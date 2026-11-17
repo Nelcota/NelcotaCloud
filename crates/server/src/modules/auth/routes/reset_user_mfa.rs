@@ -24,9 +24,7 @@ pub async fn reset_user_mfa(
     admin: TenantAdminContext,
     Path(user_id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
-    let deleted = delete_mfa_factor(&admin.pool, user_id)
-        .await
-        .map_err(ApiError::internal)?;
+    let deleted = delete_mfa_factor(&admin.pool, user_id).await?;
 
     if deleted == false {
         return Err(ApiError::NotFound("authenticator"));

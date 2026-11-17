@@ -1,4 +1,3 @@
-use crate::shared::http::api_error::ErrorBody;
 use axum::extract::{Path, Query, State};
 use axum::response::Redirect;
 use oauth2::url::Url;
@@ -8,14 +7,15 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::app_state::AppState;
-use crate::modules::auth::rate_limiting::client_ip::ClientIp;
 use crate::modules::oauth::login::app_pkce::parse_code_challenge;
 use crate::modules::oauth::login::authorization_start::AuthorizationStart;
 use crate::modules::oauth::login::oauth_login_error::OAuthLoginError;
 use crate::modules::oauth::provider::oauth_provider::OAuthProvider;
+use crate::modules::oauth::rejection::oauth_rejection::OAuthRejection;
 use crate::modules::tenants::access::api_key_tenant::ApiKeyTenant;
 use crate::modules::tenants::settings::loaded_tenant_settings::load_tenant_settings;
-use crate::shared::http::api_error::ApiError;
+use crate::shared::http::api_error::{ApiError, ErrorBody};
+use crate::shared::http::client_ip::ClientIp;
 
 const S256_METHOD: &str = "S256";
 
@@ -58,14 +58,10 @@ pub async fn authorize_oauth(
     state
         .rate_limits
         .oauth_authorization
-        .check(tenant.tenant_id, client_ip)
-        .map_err(|_| ApiError::RateLimited)?;
-    let Some(provider) = OAuthProvider::parse(&provider_name) else {
-        return Err(ApiError::UnknownOAuthProvider);
-    };
+        .check(tenant.tenant_id, client_ip)?;
     let start = AuthorizationStart {
         tenant_id: tenant.tenant_id,
-        provider,
+        provider: known_provider(&provider_name)?,
         redirect_to: allowed_redirect(&state, tenant.tenant_id, &query.redirect_to).await?,
         app_code_challenge: app_code_challenge(&query)?,
     };
@@ -97,7 +93,7 @@ async fn allowed_redirect(
     raw_redirect_to: &str,
 ) -> Result<Url, ApiError> {
     let redirect_to = Url::parse(raw_redirect_to.trim()).map_err(ApiError::invalid_request)?;
-    let settings = load_tenant_settings(state, tenant_id).await?;
+    let settings = load_tenant_settings(&state.control_plane_pool, tenant_id).await?;
 
     if settings.site_url.allows_redirect_to(&redirect_to) == false {
         return Err(ApiError::InvalidRequest(
@@ -110,7 +106,17 @@ async fn allowed_redirect(
 
 fn map_start_error(error: OAuthLoginError) -> ApiError {
     match error {
-        OAuthLoginError::ProviderNotConfigured => ApiError::OAuthProviderNotConfigured,
+        OAuthLoginError::ProviderNotConfigured => {
+            ApiError::from(OAuthRejection::OAuthProviderNotConfigured)
+        }
         other => ApiError::internal(other),
     }
+}
+
+fn known_provider(provider_name: &str) -> Result<OAuthProvider, ApiError> {
+    let Some(provider) = OAuthProvider::parse(provider_name) else {
+        return Err(ApiError::from(OAuthRejection::UnknownOAuthProvider));
+    };
+
+    Ok(provider)
 }

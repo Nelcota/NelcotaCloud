@@ -1,3 +1,4 @@
+use utoipa::openapi::Components;
 use utoipa::openapi::OpenApi as OpenApiDocument;
 use utoipa::openapi::security::{ApiKey, ApiKeyValue, HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
@@ -42,32 +43,42 @@ struct SecuritySchemes;
 impl Modify for SecuritySchemes {
     fn modify(&self, document: &mut OpenApiDocument) {
         let components = document.components.get_or_insert_with(Default::default);
-        let api_key = ApiKey::Header(ApiKeyValue::with_description(
-            API_KEY_HEADER,
-            "The tenant's publishable key (browser apps) or secret key (servers, admin routes)",
-        ));
-        let admin_token = ApiKey::Header(ApiKeyValue::new(ADMIN_TOKEN_HEADER));
-        let bearer = HttpBuilder::new()
-            .scheme(HttpAuthScheme::Bearer)
-            .bearer_format("JWT")
-            .build();
-        components.add_security_scheme("api_key", SecurityScheme::ApiKey(api_key));
-        components.add_security_scheme("admin_token", SecurityScheme::ApiKey(admin_token));
-        let platform_account = HttpBuilder::new()
-            .scheme(HttpAuthScheme::Bearer)
-            .bearer_format("JWT")
-            .description(Some(
-                "Access token of a console account (a user of the platform tenant)",
-            ))
-            .build();
-        let project = ApiKey::Header(ApiKeyValue::with_description(
-            PROJECT_HEADER,
-            "Id of the project a console account manages; it must be a member",
-        ));
-        components.add_security_scheme("bearer", SecurityScheme::Http(bearer));
-        components.add_security_scheme("platform_account", SecurityScheme::Http(platform_account));
-        components.add_security_scheme("project", SecurityScheme::ApiKey(project));
+        add_key_schemes(components);
+        add_bearer_schemes(components);
     }
+}
+
+/// Credentials sent in their own headers: API keys, the admin token and the console project.
+fn add_key_schemes(components: &mut Components) {
+    let api_key = ApiKey::Header(ApiKeyValue::with_description(
+        API_KEY_HEADER,
+        "The tenant's publishable key (browser apps) or secret key (servers, admin routes)",
+    ));
+    let admin_token = ApiKey::Header(ApiKeyValue::new(ADMIN_TOKEN_HEADER));
+    let project = ApiKey::Header(ApiKeyValue::with_description(
+        PROJECT_HEADER,
+        "Id of the project a console account manages; it must be a member",
+    ));
+    components.add_security_scheme("api_key", SecurityScheme::ApiKey(api_key));
+    components.add_security_scheme("admin_token", SecurityScheme::ApiKey(admin_token));
+    components.add_security_scheme("project", SecurityScheme::ApiKey(project));
+}
+
+/// Access tokens: of a tenant's users, and of console accounts.
+fn add_bearer_schemes(components: &mut Components) {
+    let bearer = HttpBuilder::new()
+        .scheme(HttpAuthScheme::Bearer)
+        .bearer_format("JWT")
+        .build();
+    let platform_account = HttpBuilder::new()
+        .scheme(HttpAuthScheme::Bearer)
+        .bearer_format("JWT")
+        .description(Some(
+            "Access token of a console account (a user of the platform tenant)",
+        ))
+        .build();
+    components.add_security_scheme("bearer", SecurityScheme::Http(bearer));
+    components.add_security_scheme("platform_account", SecurityScheme::Http(platform_account));
 }
 
 #[cfg(test)]

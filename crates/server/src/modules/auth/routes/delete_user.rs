@@ -23,9 +23,7 @@ pub async fn delete_user(
     admin: TenantAdminContext,
     Path(user_id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
-    let deleted = delete(&admin.pool, user_id)
-        .await
-        .map_err(ApiError::internal)?;
+    let deleted = delete(&admin.pool, user_id).await?;
 
     if deleted == false {
         return Err(ApiError::NotFound("user"));

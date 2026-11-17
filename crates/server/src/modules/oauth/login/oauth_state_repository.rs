@@ -68,20 +68,24 @@ pub async fn take_pending_authorization(
     .bind(state_hash)
     .fetch_optional(pool)
     .await?;
-    let Some(row) = row else {
-        return Ok(None);
-    };
-    let Some(provider) = OAuthProvider::parse(&row.provider) else {
-        return Err(OAuthStateError::UnknownProvider);
-    };
 
-    Ok(Some(PendingAuthorization {
-        tenant_id: row.tenant_id,
-        provider,
-        pkce_verifier_ciphertext: row.pkce_verifier_ciphertext,
-        redirect_to: row.redirect_to,
-        app_code_challenge: row.app_code_challenge,
-    }))
+    row.map(PendingAuthorizationRow::into_pending).transpose()
+}
+
+impl PendingAuthorizationRow {
+    fn into_pending(self) -> Result<PendingAuthorization, OAuthStateError> {
+        let Some(provider) = OAuthProvider::parse(&self.provider) else {
+            return Err(OAuthStateError::UnknownProvider);
+        };
+
+        Ok(PendingAuthorization {
+            tenant_id: self.tenant_id,
+            provider,
+            pkce_verifier_ciphertext: self.pkce_verifier_ciphertext,
+            redirect_to: self.redirect_to,
+            app_code_challenge: self.app_code_challenge,
+        })
+    }
 }
 
 /// Binds the encrypted PKCE verifier to its tenant and provider.
@@ -96,4 +100,35 @@ pub async fn delete_expired_authorizations(pool: &PgPool) -> Result<(), sqlx::Er
         .await?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn row(provider: &str) -> PendingAuthorizationRow {
+        PendingAuthorizationRow {
+            tenant_id: Uuid::new_v4(),
+            provider: provider.to_owned(),
+            pkce_verifier_ciphertext: vec![1, 2, 3],
+            redirect_to: "https://app.test/callback".to_owned(),
+            app_code_challenge: "challenge".to_owned(),
+        }
+    }
+
+    #[test]
+    fn a_stored_provider_this_server_does_not_know_is_refused() {
+        let pending = row("myspace").into_pending();
+
+        assert!(matches!(pending, Err(OAuthStateError::UnknownProvider)));
+    }
+
+    #[test]
+    fn a_known_provider_keeps_every_stored_field() -> Result<(), OAuthStateError> {
+        let pending = row("github").into_pending()?;
+
+        assert_eq!(pending.provider, OAuthProvider::GitHub);
+        assert_eq!(pending.redirect_to, "https://app.test/callback");
+        Ok(())
+    }
 }

@@ -45,9 +45,7 @@ pub async fn list_users(
         limit: query.limit.unwrap_or(DEFAULT_PAGE_SIZE),
         offset: query.offset.unwrap_or_default(),
     };
-    let page = find_users(&admin.pool, &user_query)
-        .await
-        .map_err(ApiError::internal)?;
+    let page = find_users(&admin.pool, &user_query).await?;
 
     Ok(Json(page))
 }

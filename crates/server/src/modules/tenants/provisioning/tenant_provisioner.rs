@@ -14,7 +14,7 @@ use crate::shared::crypto::secret_box::SecretBox;
 pub struct TenantProvisioner<'a> {
     pub control_plane_pool: &'a PgPool,
     pub secret_box: &'a SecretBox,
-    pub tenant_database_base_url: &'a str,
+    pub database_server: TenantDatabaseServer<'a>,
 }
 
 pub struct NewTenantRequest {
@@ -42,28 +42,20 @@ impl TenantProvisioner<'_> {
         &self,
         request: NewTenantRequest,
     ) -> Result<ProvisionedTenant, ProvisioningError> {
-        let database_server = TenantDatabaseServer::new(self.tenant_database_base_url);
+        let database_server = &self.database_server;
         let slug = request.slug.clone();
         let mut transaction = self.control_plane_pool.begin().await?;
-        lock_slug(&mut transaction, &slug).await?;
-
-        if slug_exists(&mut *transaction, &slug).await? {
-            return Err(ProvisioningError::SlugTaken);
-        }
-
+        claim_slug(&mut transaction, &slug).await?;
         let provisioning = self
-            .create_and_register(&database_server, &mut transaction, request)
+            .create_and_register(database_server, &mut transaction, request)
             .await;
-        let provisioned = match provisioning {
-            Ok(provisioned) => provisioned,
-            Err(error) => {
-                database_server.drop_database(&slug).await;
-                return Err(error);
-            }
+        let Ok(provisioned) = provisioning else {
+            database_server.drop_database(&slug).await;
+            return provisioning;
         };
 
         if let Err(error) = transaction.commit().await {
-            self.drop_database_unless_registered(&database_server, &slug)
+            self.drop_database_unless_registered(database_server, &slug)
                 .await;
             return Err(ProvisioningError::Database(error));
         }
@@ -135,6 +127,20 @@ async fn create_fresh_database(
     tracing::warn!(slug = slug.as_str(), "replacing orphan tenant database");
     database_server.drop_database(slug).await;
     database_server.create_database(slug).await?;
+
+    Ok(())
+}
+
+/// Holds the slug lock until the transaction ends, refusing a slug already in use.
+async fn claim_slug(
+    transaction: &mut PgConnection,
+    slug: &TenantSlug,
+) -> Result<(), ProvisioningError> {
+    lock_slug(transaction, slug).await?;
+
+    if slug_exists(&mut *transaction, slug).await? {
+        return Err(ProvisioningError::SlugTaken);
+    }
 
     Ok(())
 }

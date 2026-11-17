@@ -1,4 +1,5 @@
 pub mod access_token;
+pub mod access_token_verification;
 pub mod prepared_signing_key;
 pub mod signing_key;
 pub mod signing_key_cache;

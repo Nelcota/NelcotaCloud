@@ -2,6 +2,7 @@ use axum::http::StatusCode;
 
 use crate::modules::auth::session::authenticated_user::AuthenticatedUser;
 use crate::modules::auth::user::user_administration::delete_user;
+use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
 /// `DELETE /user`: the logged-in user deletes their own account and all its data (the right
@@ -18,12 +19,10 @@ use crate::shared::http::api_error::{ApiError, ErrorBody};
 )]
 pub async fn delete_own_account(authenticated: AuthenticatedUser) -> Result<StatusCode, ApiError> {
     let tenant = &authenticated.tenant;
-    let deleted = delete_user(&tenant.pool, authenticated.claims.sub)
-        .await
-        .map_err(ApiError::internal)?;
+    let deleted = delete_user(&tenant.pool, authenticated.claims.sub).await?;
 
     if deleted == false {
-        return Err(ApiError::InvalidAccessToken);
+        return Err(ApiError::from(TenantsRejection::InvalidAccessToken));
     }
 
     Ok(StatusCode::NO_CONTENT)

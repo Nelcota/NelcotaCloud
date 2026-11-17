@@ -36,28 +36,26 @@ pub async fn issue_api_key(
     connection: &mut PgConnection,
     request: ApiKeyRequest<'_>,
 ) -> Result<IssuedApiKey, sqlx::Error> {
-    let owner = request.owner;
     let name = request.name.trim();
-    let kind = owner.kind;
+    let kind = request.owner.kind;
     let token = OpaqueToken::generate(kind.token_prefix());
-    let hint = key_hint(&token.plaintext);
-    let stored = StoredApiKey {
+    let issued = IssuedApiKey {
         id: Uuid::new_v4(),
-        owner,
-        key_hash: &token.hash,
-        key_hint: &hint,
-        name,
-    };
-    let id = stored.id;
-    insert_api_key(connection, stored).await?;
-
-    Ok(IssuedApiKey {
-        id,
         kind: kind.as_str(),
         name: name.to_owned(),
+        hint: key_hint(&token.plaintext),
         key: token.plaintext,
-        hint,
-    })
+    };
+    let stored = StoredApiKey {
+        id: issued.id,
+        owner: request.owner,
+        key_hash: &token.hash,
+        key_hint: &issued.hint,
+        name,
+    };
+    insert_api_key(connection, stored).await?;
+
+    Ok(issued)
 }
 
 fn key_hint(plaintext: &str) -> String {

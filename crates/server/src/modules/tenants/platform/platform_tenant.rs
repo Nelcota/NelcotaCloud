@@ -1,10 +1,12 @@
 use std::time::Duration;
 
 use moka::future::Cache;
+use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::app_state::AppState;
 use crate::modules::tenants::provisioning::tenant_repository::find_tenant_id_by_slug;
+use crate::modules::tenants::provisioning::tenant_slug::TenantSlug;
+use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::shared::http::api_error::ApiError;
 
 /// Every console request needs the platform tenant's id; a minute is short enough to follow an
@@ -19,46 +21,49 @@ enum PlatformTenantLookupError {
     Database(#[from] sqlx::Error),
 }
 
-/// Remembers the id of the tenant named by `PLATFORM_TENANT_SLUG`.
+/// Finds the tenant named by `PLATFORM_TENANT_SLUG` and remembers its id.
 pub struct PlatformTenantDirectory {
+    control_plane_pool: PgPool,
+    /// `None` disables the platform API.
+    slug: Option<TenantSlug>,
     ids: Cache<(), Uuid>,
 }
 
 impl PlatformTenantDirectory {
-    pub fn new() -> Self {
+    pub fn new(control_plane_pool: PgPool, slug: Option<TenantSlug>) -> Self {
         let ids = Cache::builder()
             .max_capacity(1)
             .time_to_live(PLATFORM_TENANT_TIME_TO_LIVE)
             .build();
 
-        Self { ids }
+        Self {
+            control_plane_pool,
+            slug,
+            ids,
+        }
     }
-}
 
-impl Default for PlatformTenantDirectory {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// The tenant whose users are platform accounts. Until the operator creates it the platform API
-/// answers 503; a missing tenant is not cached, so it works as soon as it exists.
-pub async fn find_platform_tenant_id(state: &AppState) -> Result<Uuid, ApiError> {
-    let Some(slug) = &state.settings.platform_tenant_slug else {
-        return Err(ApiError::PlatformNotConfigured);
-    };
-    let lookup = async {
-        let tenant_id = find_tenant_id_by_slug(&state.control_plane_pool, slug).await?;
-        let Some(tenant_id) = tenant_id else {
-            return Err(PlatformTenantLookupError::Missing);
+    /// The tenant whose users are platform accounts. Until the operator creates it the platform
+    /// API answers 503; a missing tenant is not cached, so it works as soon as it exists.
+    pub async fn find_id(&self) -> Result<Uuid, ApiError> {
+        let Some(slug) = &self.slug else {
+            return Err(ApiError::from(TenantsRejection::PlatformNotConfigured));
         };
+        let lookup = async {
+            let tenant_id = find_tenant_id_by_slug(&self.control_plane_pool, slug).await?;
+            let Some(tenant_id) = tenant_id else {
+                return Err(PlatformTenantLookupError::Missing);
+            };
 
-        Ok(tenant_id)
-    };
-    let found = state.platform_tenant.ids.try_get_with((), lookup).await;
+            Ok(tenant_id)
+        };
+        let found = self.ids.try_get_with((), lookup).await;
 
-    found.map_err(|error| match *error {
-        PlatformTenantLookupError::Missing => ApiError::PlatformNotConfigured,
-        PlatformTenantLookupError::Database(_) => ApiError::internal(error),
-    })
+        found.map_err(|error| match *error {
+            PlatformTenantLookupError::Missing => {
+                ApiError::from(TenantsRejection::PlatformNotConfigured)
+            }
+            PlatformTenantLookupError::Database(_) => ApiError::internal(error),
+        })
+    }
 }

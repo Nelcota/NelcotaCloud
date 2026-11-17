@@ -27,9 +27,7 @@ pub async fn list_my_invitations(
     let Ok(email) = EmailAddress::parse(&account.email) else {
         return Ok(Json(Vec::new()));
     };
-    let invitations = list_invitations_for(&state.control_plane_pool, email.as_str())
-        .await
-        .map_err(ApiError::internal)?;
+    let invitations = list_invitations_for(&state.control_plane_pool, email.as_str()).await?;
 
     Ok(Json(invitations))
 }

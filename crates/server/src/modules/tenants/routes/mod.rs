@@ -12,3 +12,5 @@ pub mod read_tenant_settings;
 pub mod reset_smtp;
 pub mod revoke_api_key;
 pub mod rotate_signing_key;
+pub mod tenant_creation_body;
+pub mod tenants_routes;

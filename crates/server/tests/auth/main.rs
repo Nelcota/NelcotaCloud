@@ -1,4 +1,6 @@
 mod account_takeover;
+mod auth_edges;
+mod avatars;
 mod concurrency;
 mod email;
 mod fake_github;
@@ -11,6 +13,7 @@ mod oauth;
 mod oauth_providers_admin;
 mod openapi;
 mod platform;
+mod project_rules;
 mod rate_limiting;
 mod rejections;
 mod response_headers;

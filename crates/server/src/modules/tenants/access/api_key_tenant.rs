@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::app_state::AppState;
 use crate::modules::tenants::api_keys::api_key_kind::ApiKeyKind;
 use crate::modules::tenants::api_keys::api_key_repository::find_active_api_key_owner;
+use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::shared::crypto::opaque_token::hash_opaque_token;
 use crate::shared::http::api_error::ApiError;
 use crate::shared::http::request_span::record_tenant;
@@ -24,9 +25,11 @@ impl FromRequestParts<AppState> for ApiKeyTenant {
     async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, ApiError> {
         let headers = &parts.headers;
         let Some(header_value) = headers.get(API_KEY_HEADER) else {
-            return Err(ApiError::MissingApiKey);
+            return Err(ApiError::from(TenantsRejection::MissingApiKey));
         };
-        let api_key = header_value.to_str().map_err(|_| ApiError::InvalidApiKey)?;
+        let api_key = header_value
+            .to_str()
+            .map_err(|_| ApiError::from(TenantsRejection::InvalidApiKey))?;
 
         Self::resolve(state, api_key).await
     }
@@ -40,7 +43,7 @@ impl ApiKeyTenant {
             .await
             .map_err(ApiError::internal)?;
         let Some(owner) = owner else {
-            return Err(ApiError::InvalidApiKey);
+            return Err(ApiError::from(TenantsRejection::InvalidApiKey));
         };
         record_tenant(owner.tenant_id);
 
@@ -53,7 +56,7 @@ impl ApiKeyTenant {
     /// For endpoints that change the tenant's own configuration.
     pub fn require_secret_key(&self) -> Result<(), ApiError> {
         if self.api_key_kind != ApiKeyKind::Secret {
-            return Err(ApiError::SecretKeyRequired);
+            return Err(ApiError::from(TenantsRejection::SecretKeyRequired));
         }
 
         Ok(())

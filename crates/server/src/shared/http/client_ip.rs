@@ -1,31 +1,42 @@
 use std::future::{Future, ready};
 use std::net::{IpAddr, SocketAddr};
 
-use axum::extract::{ConnectInfo, FromRequestParts};
+use axum::extract::{ConnectInfo, FromRef, FromRequestParts};
 use axum::http::request::Parts;
 use axum::http::{HeaderMap, HeaderName};
 
-use crate::app_state::AppState;
 use crate::shared::http::api_error::ApiError;
 
 /// The client's IP. Without `CLIENT_IP_HEADER` it is the TCP peer; with it (e.g.
 /// `cf-connecting-ip` behind Cloudflare) the header set by the proxy is trusted instead.
 pub struct ClientIp(pub IpAddr);
 
-impl FromRequestParts<AppState> for ClientIp {
+/// The header the trusted proxy sets with the client's IP; `None` reads the TCP peer.
+pub struct ClientIpSource(pub Option<HeaderName>);
+
+impl<S> FromRequestParts<S> for ClientIp
+where
+    S: Send + Sync,
+    ClientIpSource: FromRef<S>,
+{
     type Rejection = ApiError;
 
     /// Nothing to wait for: the IP is read from the request, so the future is already resolved.
     fn from_request_parts(
         parts: &mut Parts,
-        state: &AppState,
+        state: &S,
     ) -> impl Future<Output = Result<Self, ApiError>> + Send {
-        ready(resolve_client_ip(parts, state))
+        let ClientIpSource(header_name) = ClientIpSource::from_ref(state);
+
+        ready(resolve_client_ip(parts, header_name.as_ref()))
     }
 }
 
-fn resolve_client_ip(parts: &Parts, state: &AppState) -> Result<ClientIp, ApiError> {
-    if let Some(header_name) = &state.settings.client_ip_header {
+fn resolve_client_ip(
+    parts: &Parts,
+    header_name: Option<&HeaderName>,
+) -> Result<ClientIp, ApiError> {
+    if let Some(header_name) = header_name {
         return client_ip_from_header(&parts.headers, header_name);
     }
 
@@ -49,21 +60,21 @@ fn client_ip_from_header(
         tracing::warn!(header = %header_name, "request without a valid trusted client IP header");
         ApiError::InvalidRequest(format!("missing or invalid {header_name} header"))
     };
-    let Some(header_value) = headers.get(header_name) else {
+    let header_value = headers.get(header_name);
+    let header_text = header_value.and_then(|value| value.to_str().ok());
+    let Some(client_ip) = header_text.and_then(proxy_seen_address) else {
         return Err(missing_header());
     };
-    let header_text = header_value.to_str().map_err(|_| missing_header())?;
-    // In X-Forwarded-For style lists the client controls every entry but the last one, which
-    // the trusted proxy in front of us appended.
-    let Some(proxy_seen_address) = header_text.rsplit(',').next() else {
-        return Err(missing_header());
-    };
-    let client_ip = proxy_seen_address
-        .trim()
-        .parse::<IpAddr>()
-        .map_err(|_| missing_header())?;
 
     Ok(ClientIp(client_ip))
+}
+
+/// In X-Forwarded-For style lists the client controls every entry but the last one, which the
+/// trusted proxy in front of us appended.
+fn proxy_seen_address(header_text: &str) -> Option<IpAddr> {
+    let last_entry = header_text.rsplit(',').next()?;
+
+    last_entry.trim().parse::<IpAddr>().ok()
 }
 
 #[cfg(test)]
@@ -104,5 +115,12 @@ mod tests {
 
         headers.insert(HEADER, HeaderValue::from_static("not-an-ip"));
         assert!(client_ip_from_header(&headers, &HEADER).is_err());
+    }
+
+    /// An empty last entry means the proxy appended nothing usable: no client IP is trusted.
+    #[test]
+    fn refuses_a_list_whose_last_entry_is_empty() {
+        assert_eq!(proxy_seen_address("203.0.113.7,"), None);
+        assert_eq!(proxy_seen_address(""), None);
     }
 }

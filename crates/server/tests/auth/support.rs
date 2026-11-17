@@ -179,9 +179,37 @@ impl TestServer {
         email: &str,
     ) -> TestResult<(CreatedTenant, Session)> {
         let platform = self.create_tenant_with_slug(&self.platform_slug).await?;
-        let session = self.sign_up(&platform, email).await?;
+        let session = self.sign_up_console_account(&platform, email).await?;
 
         Ok((platform, session))
+    }
+
+    /// Console accounts need a verified email: signs up, opens the verification link and logs
+    /// in again, so the session belongs to a verified account.
+    pub async fn sign_up_console_account(
+        &self,
+        platform: &CreatedTenant,
+        email: &str,
+    ) -> TestResult<Session> {
+        self.sign_up(platform, email).await?;
+        let api_key = &platform.publishable_key;
+        self.post_auth(
+            "/auth/v1/verify-email/resend",
+            api_key,
+            json!({ "email": email }),
+        )
+        .await?
+        .error_for_status()?;
+        let token = self.wait_for_email_token(email).await?;
+        self.post_auth("/auth/v1/verify-email", api_key, json!({ "token": token }))
+            .await?
+            .error_for_status()?;
+        let credentials = json!({ "email": email, "password": TEST_PASSWORD });
+        let login = self
+            .post_auth("/auth/v1/login", api_key, credentials)
+            .await?;
+
+        Ok(login.error_for_status()?.json().await?)
     }
 
     pub async fn create_tenant_with_slug(&self, slug: &str) -> TestResult<CreatedTenant> {
@@ -347,6 +375,19 @@ impl TestServer {
         maintenance.close().await?;
 
         Ok(exists)
+    }
+
+    /// A direct connection to a tenant's database, for state no endpoint can create quickly.
+    pub async fn tenant_database(&self, tenant: &CreatedTenant) -> TestResult<PgConnection> {
+        let base_url = self.config.tenant_database_base_url.trim_end_matches('/');
+        let database_url = format!("{base_url}/tenant_{}", tenant.slug);
+
+        Ok(PgConnection::connect(&database_url).await?)
+    }
+
+    /// A direct connection to the control plane, for state no endpoint can create quickly.
+    pub async fn control_plane(&self) -> TestResult<PgConnection> {
+        Ok(PgConnection::connect(&self.config.control_plane_database_url).await?)
     }
 
     /// Removes the tenant row and its database so test runs do not pile up databases.

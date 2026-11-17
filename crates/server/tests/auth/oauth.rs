@@ -4,6 +4,7 @@ use reqwest::{Response, StatusCode, Url};
 use serde_json::json;
 
 use crate::fake_github::{FAKE_CLIENT_ID, FAKE_CLIENT_SECRET, FakeAccount};
+use crate::mfa::user_with_totp;
 use crate::support::{
     CreatedTenant, Session, TEST_PASSWORD, TEST_SITE_URL, TestResult, TestServer, error_code,
     unique_email,
@@ -152,6 +153,22 @@ async fn verified_provider_email_takes_over_an_unverified_password_account() -> 
     assert_eq!(squatter_login.status(), StatusCode::UNAUTHORIZED);
     let squatter_refresh = server.refresh(&tenant, &squatter.refresh_token).await?;
     assert_eq!(squatter_refresh.status(), StatusCode::UNAUTHORIZED);
+
+    server.drop_tenant(&tenant).await
+}
+
+/// An authenticator the squatter added would otherwise ask the real owner for a code they
+/// cannot produce.
+#[tokio::test]
+async fn taking_over_an_unverified_account_removes_the_squatter_authenticator() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    configure_github(&server, &tenant).await?;
+    let email = unique_email("hijack-mfa");
+    let (squatter, _secret) = user_with_totp(&server, &tenant, &email, 0).await?;
+
+    let session = full_login(&server, &tenant, &github_account(8, &email, true)).await?;
+    assert_eq!(session.user.id, squatter.user.id);
 
     server.drop_tenant(&tenant).await
 }

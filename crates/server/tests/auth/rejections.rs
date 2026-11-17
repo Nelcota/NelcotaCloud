@@ -1,6 +1,7 @@
-use crate::support::{TEST_PASSWORD, TestResult, TestServer, error_code, random_slug};
 use reqwest::StatusCode;
 use serde_json::json;
+
+use crate::support::{TEST_PASSWORD, TestResult, TestServer, error_code, random_slug};
 
 #[tokio::test]
 async fn rejects_tokens_from_another_tenant() -> TestResult {

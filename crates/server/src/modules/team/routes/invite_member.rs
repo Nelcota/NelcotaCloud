@@ -8,16 +8,17 @@ use validator::Validate;
 
 use crate::app_state::AppState;
 use crate::modules::auth::rate_limiting::attempt_limiter::Attempt;
-use crate::modules::auth::rate_limiting::client_ip::ClientIp;
 use crate::modules::auth::user::email_address::EmailAddress;
 use crate::modules::team::invitation::invitation_email::{InvitationNotice, send_invitation_email};
 use crate::modules::team::invitation::invitation_repository::{
     InvitationError, NewInvitation, PendingInvitation, insert_invitation,
 };
-use crate::modules::team::member::team_access::require_owner;
 use crate::modules::team::member::team_member_repository::is_member_email;
+use crate::modules::team::rejection::team_rejection::TeamRejection;
 use crate::modules::tenants::platform::platform_account::PlatformAccount;
+use crate::modules::tenants::platform::project_access::require_owner;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
+use crate::shared::http::client_ip::ClientIp;
 use crate::shared::http::validated_json::ValidatedJson;
 
 #[derive(Deserialize, Validate, ToSchema)]
@@ -50,7 +51,7 @@ pub async fn invite_member(
     Path(project_id): Path<Uuid>,
     ValidatedJson(body): ValidatedJson<InvitationBody>,
 ) -> Result<(StatusCode, Json<PendingInvitation>), ApiError> {
-    require_owner(&state, project_id, &account).await?;
+    require_owner(&state.control_plane_pool, project_id, &account).await?;
     let Ok(email) = EmailAddress::parse(&body.email) else {
         return Err(ApiError::InvalidRequest("invalid email address".to_owned()));
     };
@@ -59,11 +60,7 @@ pub async fn invite_member(
         email: email.as_str(),
         client_ip,
     };
-    state
-        .rate_limits
-        .email_delivery
-        .check(&attempt)
-        .map_err(|_| ApiError::RateLimited)?;
+    state.rate_limits.email_delivery.check(&attempt)?;
     let invitation = store_invitation(&state, &account, project_id, &email).await?;
     let notice = InvitationNotice {
         project_id,
@@ -82,14 +79,10 @@ async fn store_invitation(
     email: &EmailAddress,
 ) -> Result<PendingInvitation, ApiError> {
     let pool = &state.control_plane_pool;
-    let is_member = is_member_email(pool, project_id, email.as_str())
-        .await
-        .map_err(ApiError::internal)?;
+    let is_member = is_member_email(pool, project_id, email.as_str()).await?;
 
     if is_member {
-        return Err(ApiError::Conflict(
-            "this email is already a member".to_owned(),
-        ));
+        return Err(ApiError::from(TeamRejection::AlreadyMember));
     }
 
     let invitation = NewInvitation {
@@ -101,7 +94,7 @@ async fn store_invitation(
     insert_invitation(pool, invitation)
         .await
         .map_err(|error| match error {
-            InvitationError::AlreadyInvited => ApiError::Conflict(error.to_string()),
+            InvitationError::AlreadyInvited => ApiError::from(TeamRejection::AlreadyInvited),
             InvitationError::Database(_) => ApiError::internal(error),
         })
 }

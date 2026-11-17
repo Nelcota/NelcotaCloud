@@ -1,19 +1,24 @@
 use std::sync::Arc;
 
+use axum::extract::FromRef;
+use axum::http::HeaderName;
 use sqlx::PgPool;
 
-use crate::shared::crypto::secret_box::SecretBox;
-use axum::http::HeaderName;
-
+use crate::modules::auth::email::auth_mailer::AuthMailer;
 use crate::modules::auth::rate_limiting::auth_rate_limits::RateLimits;
+use crate::modules::auth::session::session_grant::TokenSigning;
 use crate::modules::oauth::login::oauth_login_context::OAuthLoginContext;
 use crate::modules::oauth::provider::provider_endpoints::OAuthEndpoints;
 use crate::modules::tenants::database::tenant_pool_registry::TenantPoolRegistry;
 use crate::modules::tenants::platform::platform_tenant::PlatformTenantDirectory;
-use crate::modules::tenants::provisioning::tenant_slug::TenantSlug;
+use crate::modules::tenants::provisioning::tenant_provisioner::TenantProvisioner;
+use crate::modules::tenants::provisioning::tenant_removal::TenantRemoval;
 use crate::modules::tenants::signing_keys::signing_key_cache::SigningKeyCache;
+use crate::modules::tenants::smtp::smtp_settings_change::SmtpSettingsStore;
 use crate::modules::tenants::smtp::tenant_email_senders::TenantEmailSenders;
 use crate::shared::crypto::opaque_token::TokenHash;
+use crate::shared::crypto::secret_box::SecretBox;
+use crate::shared::http::client_ip::ClientIpSource;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -30,7 +35,51 @@ pub struct AppState {
     pub settings: Arc<AppSettings>,
 }
 
+impl FromRef<AppState> for ClientIpSource {
+    fn from_ref(state: &AppState) -> Self {
+        Self(state.settings.client_ip_header.clone())
+    }
+}
+
 impl AppState {
+    pub fn tenant_removal(&self) -> TenantRemoval<'_> {
+        TenantRemoval {
+            control_plane_pool: &self.control_plane_pool,
+            tenant_pools: &self.tenant_pools,
+            signing_keys: &self.signing_keys,
+        }
+    }
+
+    pub fn auth_mailer(&self) -> AuthMailer {
+        AuthMailer {
+            control_plane_pool: self.control_plane_pool.clone(),
+            email_senders: Arc::clone(&self.email_senders),
+        }
+    }
+
+    pub fn token_signing(&self) -> TokenSigning<'_> {
+        TokenSigning {
+            signing_keys: &self.signing_keys,
+            issuer: &self.settings.token_issuer,
+        }
+    }
+
+    pub fn tenant_provisioner(&self) -> TenantProvisioner<'_> {
+        TenantProvisioner {
+            control_plane_pool: &self.control_plane_pool,
+            secret_box: &self.secret_box,
+            database_server: self.tenant_pools.database_server(),
+        }
+    }
+
+    pub fn smtp_settings_store(&self) -> SmtpSettingsStore<'_> {
+        SmtpSettingsStore {
+            control_plane_pool: &self.control_plane_pool,
+            secret_box: &self.secret_box,
+            email_senders: &self.email_senders,
+        }
+    }
+
     pub fn oauth_login_context(&self) -> OAuthLoginContext<'_> {
         let settings = &self.settings;
 
@@ -46,7 +95,6 @@ impl AppState {
 
 pub struct AppSettings {
     pub token_issuer: String,
-    pub tenant_database_base_url: String,
     /// Only the SHA-256 of the admin token is kept in memory and compared.
     pub admin_token_hash: TokenHash,
     /// Verified against when an email does not exist, so login timing does not reveal accounts.
@@ -54,6 +102,4 @@ pub struct AppSettings {
     pub oauth_endpoints: OAuthEndpoints,
     pub oauth_callback_url: String,
     pub client_ip_header: Option<HeaderName>,
-    /// The tenant whose users log into the console; `None` disables the platform API.
-    pub platform_tenant_slug: Option<TenantSlug>,
 }

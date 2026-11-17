@@ -1383,7 +1383,7 @@
           "auth"
         ],
         "summary": "`POST /magic-link/verify`: trades the token from the emailed link for a session.",
-        "description": "Opening the link proves control of the inbox. On an account nobody verified, whoever set\nits password may not own the email, so the password is dropped and its sessions end.",
+        "description": "Opening the link proves control of the inbox. On an account nobody verified, whoever set\nits password may not own the email, so its password, sessions and authenticator go.",
         "operationId": "verify_magic_link",
         "requestBody": {
           "content": {
@@ -2284,6 +2284,193 @@
         ]
       }
     },
+    "/auth/v1/user/avatar": {
+      "put": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "`PUT /user/avatar`: the body is the image itself (PNG, JPEG or WebP, up to 1 MiB). The\nserver crops it to a centered square, resizes it and stores it as JPEG.",
+        "operationId": "upload_avatar",
+        "requestBody": {
+          "description": "The image file: PNG, JPEG or WebP, up to 1 MiB",
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageFile"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The user with the new photo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Empty, unreadable or unsupported image",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The user is banned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The image is larger than 1 MiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": [],
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "`DELETE /user/avatar`: removes the profile photo; succeeds when there was none.",
+        "operationId": "remove_avatar",
+        "responses": {
+          "204": {
+            "description": "Photo removed"
+          },
+          "401": {
+            "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": [],
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/users/{user_id}/avatar": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "`GET /users/{user_id}/avatar`: a user's profile photo, public so apps can show it to others.",
+        "operationId": "read_avatar",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "Id of the user",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "apikey",
+            "in": "query",
+            "description": "The publishable key travels in the query: the URL goes in an `<img src>`.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "description": "The user's `avatar_updated_at`; any value works, it only changes the URL for caches.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The photo, a square JPEG",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageFile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A secret key in the URL, or an invalid query",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The user has no photo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/v1/verify-email": {
       "post": {
         "tags": [
@@ -2899,6 +3086,217 @@
             "platform_account": []
           }
         ]
+      },
+      "patch": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "`PATCH /platform/v1/projects/{project_id}/members/{account_id}`: makes a member an owner,\nor an owner a member. Owners only; the project always keeps at least one owner.",
+        "operationId": "change_role",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "description": "Id of the project",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "account_id",
+            "in": "path",
+            "description": "Console account of the member",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberRoleBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Role changed"
+          },
+          "403": {
+            "description": "Not an owner of this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The last owner, or the account owns too many projects",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platform_account": []
+          }
+        ]
+      }
+    },
+    "/platform/v1/projects/{project_id}/membership": {
+      "delete": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "`DELETE /platform/v1/projects/{project_id}/membership`: the signed-in account leaves the\nproject. Owners leave only while another owner stays.",
+        "operationId": "leave",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "description": "Id of the project",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Left the project"
+          },
+          "404": {
+            "description": "Not a member of this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The last owner cannot leave",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platform_account": []
+          }
+        ]
+      }
+    },
+    "/platform/v1/projects/{project_id}/ownership-transfer": {
+      "post": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "`POST /platform/v1/projects/{project_id}/ownership-transfer`: hands the project to another\nmember in one step. Owners only.",
+        "operationId": "transfer",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "description": "Id of the project",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnershipTransferBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "The member is an owner; you are a member"
+          },
+          "400": {
+            "description": "Transferring to yourself",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an owner of this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The member owns too many projects",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platform_account": []
+          }
+        ]
       }
     },
     "/platform/v1/projects/{project_id}/team": {
@@ -3151,6 +3549,11 @@
           }
         }
       },
+      "ImageFile": {
+        "type": "string",
+        "format": "binary",
+        "description": "Raw image bytes in a request or response body, described as a binary file so generated\nclients send and receive a file instead of a list of numbers."
+      },
       "InvitationBody": {
         "type": "object",
         "required": [
@@ -3217,6 +3620,17 @@
           }
         ],
         "description": "A session, or the MFA step that must come first."
+      },
+      "MemberRoleBody": {
+        "type": "object",
+        "required": [
+          "role"
+        ],
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/ProjectRole"
+          }
+        }
       },
       "MfaChallengeBody": {
         "type": "object",
@@ -3303,6 +3717,19 @@
         "properties": {
           "token": {
             "type": "string"
+          }
+        }
+      },
+      "OwnershipTransferBody": {
+        "type": "object",
+        "required": [
+          "account_id"
+        ],
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The member who becomes an owner; the caller becomes a member."
           }
         }
       },
@@ -3560,7 +3987,7 @@
           },
           "smtp_url": {
             "type": "string",
-            "description": "`smtps://user:password@host:465` (implicit TLS) or `smtp://user:password@host:587`."
+            "description": "`smtps://user:password@host:465` or `smtp://user:password@host:587?tls=required`."
           }
         }
       },
@@ -3736,6 +4163,14 @@
           "mfa_enabled"
         ],
         "properties": {
+          "avatar_updated_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When the profile photo last changed; `null` without one. Served at\n`/auth/v1/users/{id}/avatar`, with this value as `version` so caches fetch a new photo."
+          },
           "banned_at": {
             "type": [
               "string",

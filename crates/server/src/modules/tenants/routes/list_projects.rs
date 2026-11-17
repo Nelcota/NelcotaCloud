@@ -2,10 +2,9 @@ use axum::Json;
 use axum::extract::State;
 
 use crate::app_state::AppState;
-use crate::modules::tenants::platform::membership_repository::{
-    ProjectSummary, list_projects_of, refresh_member_email,
-};
+use crate::modules::tenants::platform::membership_repository::refresh_member_email;
 use crate::modules::tenants::platform::platform_account::PlatformAccount;
+use crate::modules::tenants::platform::project_listing::{ProjectSummary, list_projects_of};
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
 /// `GET /platform/v1/projects`: the projects the console account is a member of.
@@ -26,9 +25,7 @@ pub async fn list_projects(
 ) -> Result<Json<Vec<ProjectSummary>>, ApiError> {
     let pool = &state.control_plane_pool;
     // The console loads this list first, so it keeps each member's email current for team lists.
-    refresh_member_email(pool, account.account_id, &account.email.to_lowercase())
-        .await
-        .map_err(ApiError::internal)?;
+    refresh_member_email(pool, account.account_id, &account.email.to_lowercase()).await?;
     let projects = list_projects_of(pool, account.account_id)
         .await
         .map_err(ApiError::internal)?;

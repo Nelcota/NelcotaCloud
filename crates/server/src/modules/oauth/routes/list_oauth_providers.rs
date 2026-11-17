@@ -30,9 +30,7 @@ pub async fn list_oauth_providers(
     State(state): State<AppState>,
     admin: TenantAdmin,
 ) -> Result<Json<ConfiguredProviders>, ApiError> {
-    let providers = list_configured_providers(&state.control_plane_pool, admin.tenant_id)
-        .await
-        .map_err(ApiError::internal)?;
+    let providers = list_configured_providers(&state.control_plane_pool, admin.tenant_id).await?;
 
     Ok(Json(ConfiguredProviders { providers }))
 }

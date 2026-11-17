@@ -1,4 +1,9 @@
+pub mod pinned_email_sender;
+pub mod smtp_address_probe;
 pub mod smtp_endpoint;
 pub mod smtp_host_policy;
+pub mod smtp_settings_change;
 pub mod smtp_settings_repository;
+pub mod smtp_settings_view;
+pub mod tenant_email_delivery;
 pub mod tenant_email_senders;

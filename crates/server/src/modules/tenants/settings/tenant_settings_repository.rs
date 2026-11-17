@@ -1,9 +1,8 @@
-use serde::Serialize;
 use sqlx::PgPool;
-use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::modules::tenants::settings::site_url::SiteUrl;
+use crate::modules::tenants::settings::tenant_settings::TenantSettings;
 
 /// Columns of every query returning `TenantSettings`; a macro so queries are built at compile
 /// time with `concat!` instead of `format!` on every call.
@@ -11,14 +10,6 @@ macro_rules! settings_columns {
     () => {
         "name, site_url, require_email_verification"
     };
-}
-
-/// Settings a tenant manages itself with its secret key.
-#[derive(Debug, Clone, Serialize, sqlx::FromRow, ToSchema)]
-pub struct TenantSettings {
-    pub name: String,
-    pub site_url: String,
-    pub require_email_verification: bool,
 }
 
 /// Fields left as `None` keep their current value.

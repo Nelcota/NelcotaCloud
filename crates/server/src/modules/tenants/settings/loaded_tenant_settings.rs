@@ -1,10 +1,8 @@
+use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::app_state::AppState;
 use crate::modules::tenants::settings::site_url::SiteUrl;
-use crate::modules::tenants::settings::tenant_settings_repository::{
-    find_require_email_verification, find_tenant_settings,
-};
+use crate::modules::tenants::settings::tenant_settings_repository::find_tenant_settings;
 use crate::shared::http::api_error::ApiError;
 
 /// Tenant settings with the site URL already validated.
@@ -15,12 +13,10 @@ pub struct LoadedTenantSettings {
 }
 
 pub async fn load_tenant_settings(
-    state: &AppState,
+    control_plane_pool: &PgPool,
     tenant_id: Uuid,
 ) -> Result<LoadedTenantSettings, ApiError> {
-    let settings = find_tenant_settings(&state.control_plane_pool, tenant_id)
-        .await
-        .map_err(ApiError::internal)?;
+    let settings = find_tenant_settings(control_plane_pool, tenant_id).await?;
     let Some(settings) = settings else {
         return Err(ApiError::internal(format!("tenant {tenant_id} not found")));
     };
@@ -31,19 +27,4 @@ pub async fn load_tenant_settings(
         site_url,
         require_email_verification: settings.require_email_verification,
     })
-}
-
-/// Whether password login and refresh need a verified email in this tenant.
-pub async fn requires_email_verification(
-    state: &AppState,
-    tenant_id: Uuid,
-) -> Result<bool, ApiError> {
-    let requirement = find_require_email_verification(&state.control_plane_pool, tenant_id)
-        .await
-        .map_err(ApiError::internal)?;
-    let Some(requirement) = requirement else {
-        return Err(ApiError::internal(format!("tenant {tenant_id} not found")));
-    };
-
-    Ok(requirement)
 }

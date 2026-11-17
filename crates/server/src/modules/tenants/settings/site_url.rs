@@ -1,7 +1,7 @@
 use oauth2::url::Url;
 
 const ALLOWED_SCHEMES: [&str; 2] = ["http", "https"];
-const TOKEN_QUERY_PARAMETER: &str = "token";
+const TOKEN_FRAGMENT_PARAMETER: &str = "token=";
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 #[error("site URL must be an absolute http(s) URL without credentials")]
@@ -46,9 +46,8 @@ impl SiteUrl {
         let base_path = link.path().trim_end_matches('/').to_owned();
         link.set_path(&format!("{base_path}/{path}"));
         link.set_fragment(None);
-        link.query_pairs_mut()
-            .clear()
-            .append_pair(TOKEN_QUERY_PARAMETER, token);
+        link.set_query(None);
+        link.set_fragment(Some(&format!("{TOKEN_FRAGMENT_PARAMETER}{token}")));
 
         link.into()
     }
@@ -91,7 +90,7 @@ mod tests {
 
         assert_eq!(
             link,
-            "https://app.test/base/auth/verify-email?token=abc+123"
+            "https://app.test/base/auth/verify-email#token=abc%20123"
         );
         Ok(())
     }
