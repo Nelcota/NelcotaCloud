@@ -35,17 +35,9 @@ pub fn new_totp_enrollment(label: &TotpLabel) -> Result<TotpEnrollment, TotpErro
 /// The time step a code belongs to (current, previous or next), or `None` if it is wrong.
 /// The caller must accept each step only once.
 pub fn matched_step(secret: &[u8], code: &str) -> Result<Option<u64>, TotpError> {
-    let digits: String = code
-        .chars()
-        .filter(|character| character.is_whitespace() == false)
-        .collect();
-
-    if digits.len() != CODE_LENGTH
-        || digits.chars().all(|character| character.is_ascii_digit()) == false
-    {
+    let Some(digits) = code_digits(code) else {
         return Ok(None);
-    }
-
+    };
     let label = TotpLabel {
         issuer: "NelcotaCloud",
         account: "user",
@@ -68,6 +60,24 @@ fn build_totp(secret: &[u8], label: &TotpLabel) -> Result<Totp, TotpError> {
         .with_issuer(Some(issuer))
         .with_account_name(account)
         .build()
+}
+
+/// The code without spaces, if it is exactly the expected number of digits.
+fn code_digits(code: &str) -> Option<String> {
+    let digits: String = code
+        .chars()
+        .filter(|character| character.is_whitespace() == false)
+        .collect();
+
+    if digits.len() != CODE_LENGTH {
+        return None;
+    }
+
+    if digits.chars().all(|character| character.is_ascii_digit()) == false {
+        return None;
+    }
+
+    Some(digits)
 }
 
 #[cfg(test)]
@@ -113,5 +123,14 @@ mod tests {
                 || enrollment.otpauth_uri.contains("ana@example.com")
         );
         Ok(())
+    }
+
+    #[test]
+    fn codes_are_six_digits_with_any_spacing() {
+        assert_eq!(code_digits(" 123 456 "), Some("123456".to_owned()));
+        assert_eq!(code_digits("12345"), None);
+        assert_eq!(code_digits("1234567"), None);
+        assert_eq!(code_digits("12a456"), None);
+        assert_eq!(code_digits("１２３４５６"), None);
     }
 }

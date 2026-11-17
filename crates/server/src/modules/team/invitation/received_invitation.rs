@@ -1,5 +1,5 @@
 use serde::Serialize;
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -55,21 +55,41 @@ pub async fn accept_invitation(
     let Some((tenant_id, role)) = invitation else {
         return Ok(None);
     };
+    let membership = InvitedMembership {
+        tenant_id,
+        role: &role,
+        answer: &answer,
+    };
+    join_unless_member(&mut transaction, membership).await?;
+    transaction.commit().await?;
 
-    // An account that is already a member keeps its current role.
+    Ok(Some(tenant_id))
+}
+
+struct InvitedMembership<'a> {
+    tenant_id: Uuid,
+    role: &'a str,
+    answer: &'a InvitationAnswer<'a>,
+}
+
+/// An account that is already a member keeps its current role.
+async fn join_unless_member(
+    connection: &mut PgConnection,
+    membership: InvitedMembership<'_>,
+) -> Result<(), sqlx::Error> {
+    let answer = membership.answer;
     sqlx::query(
         "INSERT INTO tenant_members (tenant_id, account_id, role, account_email) \
          VALUES ($1, $2, $3, $4) ON CONFLICT (tenant_id, account_id) DO NOTHING",
     )
-    .bind(tenant_id)
+    .bind(membership.tenant_id)
     .bind(answer.account_id)
-    .bind(role)
+    .bind(membership.role)
     .bind(answer.email)
-    .execute(&mut *transaction)
+    .execute(connection)
     .await?;
-    transaction.commit().await?;
 
-    Ok(Some(tenant_id))
+    Ok(())
 }
 
 /// Declines an invitation; `false` when no pending invitation matches the id and email.

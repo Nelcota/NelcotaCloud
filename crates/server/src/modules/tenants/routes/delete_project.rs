@@ -3,10 +3,9 @@ use axum::http::StatusCode;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
-use crate::modules::tenants::platform::membership_repository::find_project_role;
 use crate::modules::tenants::platform::platform_account::PlatformAccount;
-use crate::modules::tenants::platform::project_role::ProjectRole;
-use crate::modules::tenants::provisioning::tenant_removal::remove_tenant;
+use crate::modules::tenants::provisioning::tenant_removal::ProjectRemovalError;
+use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
 /// `DELETE /platform/v1/projects/{project_id}`: deletes the project, its users and its
@@ -28,17 +27,15 @@ pub async fn delete_project(
     account: PlatformAccount,
     Path(project_id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
-    let role = find_project_role(&state.control_plane_pool, project_id, account.account_id)
-        .await
-        .map_err(ApiError::internal)?;
+    let removal = state.tenant_removal();
+    let removed = removal
+        .remove_owned_project(project_id, account.account_id)
+        .await;
 
-    if role != Some(ProjectRole::Owner) {
-        return Err(ApiError::ProjectAccessDenied);
-    }
-
-    remove_tenant(&state, project_id)
-        .await
-        .map_err(ApiError::internal)?;
+    removed.map_err(|error| match error {
+        ProjectRemovalError::NotOwner => ApiError::from(TenantsRejection::ProjectAccessDenied),
+        other => ApiError::internal(other),
+    })?;
 
     Ok(StatusCode::NO_CONTENT)
 }

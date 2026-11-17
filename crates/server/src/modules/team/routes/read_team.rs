@@ -8,9 +8,9 @@ use crate::app_state::AppState;
 use crate::modules::team::invitation::invitation_repository::{
     PendingInvitation, list_project_invitations,
 };
-use crate::modules::team::member::team_access::role_in_project;
 use crate::modules::team::member::team_member_repository::{TeamMember, list_team_members};
 use crate::modules::tenants::platform::platform_account::PlatformAccount;
+use crate::modules::tenants::platform::project_access::role_in_project;
 use crate::modules::tenants::platform::project_role::ProjectRole;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
@@ -40,14 +40,12 @@ pub async fn read_team(
     account: PlatformAccount,
     Path(project_id): Path<Uuid>,
 ) -> Result<Json<TeamView>, ApiError> {
-    let role = role_in_project(&state, project_id, &account).await?;
+    let role = role_in_project(&state.control_plane_pool, project_id, &account).await?;
     let pool = &state.control_plane_pool;
     let members = list_team_members(pool, project_id)
         .await
         .map_err(ApiError::internal)?;
-    let invitations = list_project_invitations(pool, project_id)
-        .await
-        .map_err(ApiError::internal)?;
+    let invitations = list_project_invitations(pool, project_id).await?;
 
     Ok(Json(TeamView {
         members,

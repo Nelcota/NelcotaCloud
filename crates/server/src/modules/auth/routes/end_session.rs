@@ -24,9 +24,7 @@ pub async fn end_session(
     Path(session_id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
     let tenant = &authenticated.tenant;
-    let ended = end_session_of_user(&tenant.pool, authenticated.claims.sub, session_id)
-        .await
-        .map_err(ApiError::internal)?;
+    let ended = end_session_of_user(&tenant.pool, authenticated.claims.sub, session_id).await?;
 
     if ended == false {
         return Err(ApiError::NotFound("session"));

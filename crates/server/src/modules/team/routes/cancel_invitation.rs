@@ -4,8 +4,8 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::modules::team::invitation::invitation_repository::delete_project_invitation;
-use crate::modules::team::member::team_access::require_owner;
 use crate::modules::tenants::platform::platform_account::PlatformAccount;
+use crate::modules::tenants::platform::project_access::require_owner;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
 /// `DELETE /platform/v1/projects/{project_id}/invitations/{invitation_id}`: withdraws a
@@ -30,11 +30,9 @@ pub async fn cancel_invitation(
     account: PlatformAccount,
     Path((project_id, invitation_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, ApiError> {
-    require_owner(&state, project_id, &account).await?;
+    require_owner(&state.control_plane_pool, project_id, &account).await?;
     let is_deleted =
-        delete_project_invitation(&state.control_plane_pool, project_id, invitation_id)
-            .await
-            .map_err(ApiError::internal)?;
+        delete_project_invitation(&state.control_plane_pool, project_id, invitation_id).await?;
 
     if is_deleted == false {
         return Err(ApiError::NotFound("invitation"));

@@ -4,7 +4,7 @@ use reqwest::{Method, StatusCode};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use crate::support::{CreatedTenant, TestResult, TestServer, field, unique_email};
+use crate::support::{CreatedTenant, TestResult, TestServer, error_code, field, unique_email};
 
 const TENANT_SENDER: &str = "acme-mail@tenant.test";
 
@@ -153,5 +153,35 @@ async fn test_emails_go_only_through_the_tenant_smtp_server() -> TestResult {
     let sent = send_test(&server, &tenant, &recipient).await?;
     assert_eq!(sent.status(), StatusCode::NO_CONTENT);
     assert_eq!(sender_of_latest_email(&recipient).await?, TENANT_SENDER);
+    server.drop_tenant(&tenant).await
+}
+
+/// A port nothing listens on: bound by the OS for a moment, then released.
+async fn closed_port() -> TestResult<u16> {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let port = listener.local_addr()?.port();
+    drop(listener);
+
+    Ok(port)
+}
+
+/// A server that accepts no connection is the owner's to fix: a 502 with its own code, never
+/// a 500, so the console can say the SMTP server could not be reached.
+#[tokio::test]
+async fn an_unreachable_smtp_server_fails_the_test_with_bad_gateway() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    let port = closed_port().await?;
+    let settings = json!({
+        "smtp_url": format!("smtp://127.0.0.1:{port}"),
+        "email_from": TENANT_SENDER,
+    });
+    let saved = smtp_request(&server, &tenant, Method::PUT, Some(settings)).await?;
+    assert_eq!(saved.status(), StatusCode::OK);
+
+    let sent = send_test(&server, &tenant, &unique_email("unreachable")).await?;
+
+    assert_eq!(sent.status(), StatusCode::BAD_GATEWAY);
+    assert_eq!(error_code(sent).await?, "smtp_delivery_failed");
     server.drop_tenant(&tenant).await
 }

@@ -4,3 +4,4 @@ pub mod session_family;
 pub mod session_grant;
 pub mod session_issuer;
 pub mod session_listing;
+pub mod session_renewal;

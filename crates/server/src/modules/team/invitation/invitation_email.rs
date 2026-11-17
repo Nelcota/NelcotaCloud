@@ -1,11 +1,12 @@
+use std::sync::Arc;
+
 use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::modules::auth::email::auth_email::AuthEmailContent;
 use crate::modules::auth::email::auth_email_template::render_auth_email;
-use crate::modules::tenants::platform::platform_tenant::find_platform_tenant_id;
 use crate::modules::tenants::settings::loaded_tenant_settings::load_tenant_settings;
-use crate::shared::email::email_sender::send_in_background;
+use crate::modules::tenants::smtp::tenant_email_delivery::send_tenant_email_in_background;
 use crate::shared::http::api_error::ApiError;
 
 /// Who is invited where, by whom.
@@ -21,9 +22,9 @@ pub async fn send_invitation_email(
     state: &AppState,
     notice: InvitationNotice<'_>,
 ) -> Result<(), ApiError> {
-    let platform_tenant_id = find_platform_tenant_id(state).await?;
-    let console = load_tenant_settings(state, platform_tenant_id).await?;
-    let project = load_tenant_settings(state, notice.project_id).await?;
+    let platform_tenant_id = state.platform_tenant.find_id().await?;
+    let console = load_tenant_settings(&state.control_plane_pool, platform_tenant_id).await?;
+    let project = load_tenant_settings(&state.control_plane_pool, notice.project_id).await?;
     let content = invitation_content(InvitationWords {
         platform_name: &console.name,
         project_name: &project.name,
@@ -31,12 +32,7 @@ pub async fn send_invitation_email(
         console_url: console.site_url.as_str(),
     });
     let email = render_auth_email(content, notice.recipient).map_err(ApiError::internal)?;
-    let sender = state
-        .email_senders
-        .sender_for(platform_tenant_id)
-        .await
-        .map_err(ApiError::internal)?;
-    send_in_background(sender, email);
+    send_tenant_email_in_background(Arc::clone(&state.email_senders), platform_tenant_id, email);
 
     Ok(())
 }

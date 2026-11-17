@@ -7,7 +7,7 @@ use uuid::Uuid;
 /// built at compile time with `concat!` instead of `format!` on every call.
 macro_rules! user_columns {
     () => {
-        "id, email, email_verified_at, banned_at, created_at, EXISTS (SELECT 1 FROM mfa_factors WHERE mfa_factors.user_id = users.id AND mfa_factors.verified_at IS NOT NULL) AS mfa_enabled"
+        "id, email, email_verified_at, banned_at, created_at, EXISTS (SELECT 1 FROM mfa_factors WHERE mfa_factors.user_id = users.id AND mfa_factors.verified_at IS NOT NULL) AS mfa_enabled, (SELECT user_avatars.updated_at FROM user_avatars WHERE user_avatars.user_id = users.id) AS avatar_updated_at"
     };
 }
 pub(crate) use user_columns;
@@ -25,6 +25,10 @@ pub struct User {
     pub created_at: OffsetDateTime,
     /// A verified TOTP authenticator is required at login.
     pub mfa_enabled: bool,
+    /// When the profile photo last changed; `null` without one. Served at
+    /// `/auth/v1/users/{id}/avatar`, with this value as `version` so caches fetch a new photo.
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub avatar_updated_at: Option<OffsetDateTime>,
 }
 
 /// A user with the password hash, read only for password login.

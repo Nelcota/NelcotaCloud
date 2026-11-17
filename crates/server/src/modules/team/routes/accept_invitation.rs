@@ -10,6 +10,7 @@ use crate::modules::team::invitation::received_invitation::{
 };
 use crate::modules::team::member::team_access::invited_email_of;
 use crate::modules::tenants::platform::platform_account::PlatformAccount;
+use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
 #[derive(Serialize, ToSchema)]
@@ -37,25 +38,9 @@ pub async fn accept_invitation(
     Path(invitation_id): Path<Uuid>,
 ) -> Result<Json<AcceptedInvitation>, ApiError> {
     let email = invited_email_of(&account)?;
-    let platform_tenant_id =
-        crate::modules::tenants::platform::platform_tenant::find_platform_tenant_id(&state).await?;
-    let platform_pool = state
-        .tenant_pools
-        .pool_for(platform_tenant_id)
-        .await
-        .map_err(ApiError::internal)?;
-    let platform_user = crate::modules::auth::user::user_lookup::find_user_by_id(
-        &platform_pool,
-        account.account_id,
-    )
-    .await
-    .map_err(ApiError::internal)?;
-    let Some(platform_user) = platform_user else {
-        return Err(ApiError::InvalidAccessToken);
-    };
 
-    if platform_user.email_verified_at.is_none() {
-        return Err(ApiError::EmailNotVerified);
+    if account.is_email_verified == false {
+        return Err(ApiError::from(TenantsRejection::EmailNotVerified));
     }
 
     let answer = InvitationAnswer {
@@ -63,9 +48,7 @@ pub async fn accept_invitation(
         account_id: account.account_id,
         email: email.as_str(),
     };
-    let joined = join_project(&state.control_plane_pool, answer)
-        .await
-        .map_err(ApiError::internal)?;
+    let joined = join_project(&state.control_plane_pool, answer).await?;
     let Some(project_id) = joined else {
         return Err(ApiError::NotFound("invitation"));
     };

@@ -1,4 +1,3 @@
-use crate::shared::http::api_error::ErrorBody;
 use axum::Json;
 use axum::extract::State;
 use serde::Deserialize;
@@ -7,11 +6,11 @@ use validator::Validate;
 
 use crate::app_state::AppState;
 use crate::modules::tenants::access::tenant_admin::TenantAdmin;
-use crate::modules::tenants::settings::site_url::SiteUrl;
-use crate::modules::tenants::settings::tenant_settings_repository::{
-    TenantSettings, TenantSettingsChange, update_tenant_settings,
+use crate::modules::tenants::settings::tenant_settings::TenantSettings;
+use crate::modules::tenants::settings::tenant_settings_update::{
+    TenantSettingsUpdate, update_settings,
 };
-use crate::shared::http::api_error::ApiError;
+use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::validated_json::ValidatedJson;
 
 #[derive(Deserialize, Validate, ToSchema)]
@@ -41,36 +40,12 @@ pub async fn change_tenant_settings(
     admin: TenantAdmin,
     ValidatedJson(body): ValidatedJson<TenantSettingsBody>,
 ) -> Result<Json<TenantSettings>, ApiError> {
-    let name = body.name.as_deref().map(str::trim);
-
-    if name.is_some_and(str::is_empty) {
-        return Err(ApiError::InvalidRequest(
-            "name must not be blank".to_owned(),
-        ));
-    }
-
-    let site_url = parse_site_url(body.site_url.as_deref())?;
-    let change = TenantSettingsChange {
-        name,
-        site_url: site_url.as_ref(),
+    let update = TenantSettingsUpdate {
+        name: body.name.as_deref(),
+        site_url: body.site_url.as_deref(),
         require_email_verification: body.require_email_verification,
     };
-    let settings = update_tenant_settings(&state.control_plane_pool, admin.tenant_id, change)
-        .await
-        .map_err(ApiError::internal)?;
-    let Some(settings) = settings else {
-        return Err(ApiError::internal(format!(
-            "tenant {} not found",
-            admin.tenant_id
-        )));
-    };
+    let pool = &state.control_plane_pool;
 
-    Ok(Json(settings))
-}
-
-fn parse_site_url(raw_site_url: Option<&str>) -> Result<Option<SiteUrl>, ApiError> {
-    raw_site_url
-        .map(SiteUrl::parse)
-        .transpose()
-        .map_err(ApiError::invalid_request)
+    Ok(Json(update_settings(pool, admin.tenant_id, update).await?))
 }

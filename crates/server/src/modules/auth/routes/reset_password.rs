@@ -1,4 +1,3 @@
-use crate::shared::http::api_error::ErrorBody;
 use axum::http::StatusCode;
 use serde::Deserialize;
 use utoipa::ToSchema;
@@ -8,10 +7,11 @@ use crate::modules::auth::one_time_token::one_time_token_purpose::OneTimeTokenPu
 use crate::modules::auth::one_time_token::one_time_token_repository::consume_one_time_token;
 use crate::modules::auth::password::password_hashing::hash_password;
 use crate::modules::auth::password::password_policy::check_new_password;
+use crate::modules::auth::rejection::auth_rejection::AuthRejection;
 use crate::modules::auth::session::refresh_token_repository::end_all_user_sessions;
 use crate::modules::auth::user::user_account_updates::set_password;
 use crate::modules::tenants::access::tenant_context::TenantContext;
-use crate::shared::http::api_error::ApiError;
+use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::validated_json::ValidatedJson;
 
 #[derive(Deserialize, Validate, ToSchema)]
@@ -40,25 +40,19 @@ pub async fn reset_password(
     ValidatedJson(body): ValidatedJson<ResetPasswordBody>,
 ) -> Result<StatusCode, ApiError> {
     check_new_password(&body.password).map_err(ApiError::invalid_request)?;
-    let mut transaction = tenant.pool.begin().await.map_err(ApiError::internal)?;
+    let mut transaction = tenant.pool.begin().await?;
     let purpose = OneTimeTokenPurpose::PasswordReset;
-    let consumed = consume_one_time_token(&mut transaction, purpose, &body.token)
-        .await
-        .map_err(ApiError::internal)?;
+    let consumed = consume_one_time_token(&mut transaction, purpose, &body.token).await?;
     let Some(consumed) = consumed else {
-        return Err(ApiError::InvalidToken);
+        return Err(ApiError::from(AuthRejection::InvalidToken));
     };
     let user_id = consumed.user_id;
     let password_hash = hash_password(body.password)
         .await
         .map_err(ApiError::internal)?;
-    set_password(&mut transaction, user_id, &password_hash)
-        .await
-        .map_err(ApiError::internal)?;
-    end_all_user_sessions(&mut transaction, user_id)
-        .await
-        .map_err(ApiError::internal)?;
-    transaction.commit().await.map_err(ApiError::internal)?;
+    set_password(&mut transaction, user_id, &password_hash).await?;
+    end_all_user_sessions(&mut transaction, user_id).await?;
+    transaction.commit().await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

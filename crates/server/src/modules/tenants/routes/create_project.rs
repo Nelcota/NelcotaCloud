@@ -4,12 +4,12 @@ use axum::http::StatusCode;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
-use crate::modules::auth::rate_limiting::client_ip::ClientIp;
 use crate::modules::tenants::platform::platform_account::PlatformAccount;
-use crate::modules::tenants::routes::create_tenant::{
-    CreateTenantBody, CreatedTenantResponse, provision_from_body,
+use crate::modules::tenants::routes::tenant_creation_body::{
+    CreateTenantBody, CreatedTenantResponse, provision_tenant,
 };
 use crate::shared::http::api_error::{ApiError, ErrorBody};
+use crate::shared::http::client_ip::ClientIp;
 use crate::shared::http::validated_json::ValidatedJson;
 
 /// `POST /platform/v1/projects`: a new project (tenant) owned by the console account. Its API
@@ -38,9 +38,9 @@ pub async fn create_project(
     state
         .rate_limits
         .project_creation
-        .check(Uuid::nil(), client_ip)
-        .map_err(|_| ApiError::RateLimited)?;
-    let created = provision_from_body(&state, body, Some(account.account_id)).await?;
+        .check(Uuid::nil(), client_ip)?;
+    let request = body.into_request(Some(account.account_id))?;
+    let created = provision_tenant(&state, request).await?;
 
     Ok((StatusCode::CREATED, Json(created)))
 }

@@ -10,7 +10,7 @@ use crate::support::{
 const STEP_SECONDS: i64 = 30;
 
 /// The code an authenticator app shows `steps_from_now` time steps from now.
-fn totp_code(secret_base32: &str, steps_from_now: i64) -> TestResult<String> {
+pub fn totp_code(secret_base32: &str, steps_from_now: i64) -> TestResult<String> {
     let secret = Secret::try_from_base32(secret_base32)?;
     let totp = Builder::new()
         .with_secret(secret)
@@ -23,7 +23,7 @@ fn totp_code(secret_base32: &str, steps_from_now: i64) -> TestResult<String> {
     Ok(totp.generate(u64::try_from(time)?).to_string())
 }
 
-async fn user_request(
+pub async fn user_request(
     server: &TestServer,
     tenant: &CreatedTenant,
     session: &Session,
@@ -44,7 +44,7 @@ async fn user_request(
 }
 
 /// Signs up, adds an authenticator and verifies it with the code of `steps_from_now`.
-async fn user_with_totp(
+pub async fn user_with_totp(
     server: &TestServer,
     tenant: &CreatedTenant,
     email: &str,
@@ -78,7 +78,7 @@ async fn user_with_totp(
     Ok((session, secret))
 }
 
-async fn log_in(server: &TestServer, tenant: &CreatedTenant, email: &str) -> TestResult<Value> {
+pub async fn log_in(server: &TestServer, tenant: &CreatedTenant, email: &str) -> TestResult<Value> {
     let body = json!({ "email": email, "password": TEST_PASSWORD });
     let response = server
         .post_auth("/auth/v1/login", &tenant.publishable_key, body)
@@ -88,7 +88,7 @@ async fn log_in(server: &TestServer, tenant: &CreatedTenant, email: &str) -> Tes
     Ok(response.json().await?)
 }
 
-async fn challenge(
+pub async fn challenge(
     server: &TestServer,
     tenant: &CreatedTenant,
     mfa_token: &str,

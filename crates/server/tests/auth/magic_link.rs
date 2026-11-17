@@ -7,7 +7,7 @@ use crate::support::{CreatedTenant, TEST_PASSWORD, TestResult, TestServer, field
 
 const MAGIC_LINK_PREFIX: &str = "nc_ml_";
 
-async fn request_link(
+pub async fn request_link(
     server: &TestServer,
     tenant: &CreatedTenant,
     email: &str,
@@ -34,7 +34,7 @@ async fn request_link(
     Err("no magic link arrived".into())
 }
 
-async fn verify(
+pub async fn verify(
     server: &TestServer,
     tenant: &CreatedTenant,
     token: &str,

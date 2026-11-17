@@ -1,20 +1,21 @@
 use std::net::IpAddr;
-use utoipa::ToSchema;
 
 use axum::http::StatusCode;
 use serde::Deserialize;
 use tracing::{Instrument, Span};
+use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::app_state::AppState;
 use crate::modules::auth::email::auth_email_dispatch::{
     AuthEmailKind, AuthEmailRequest, send_auth_email,
 };
+use crate::modules::auth::email::auth_mailer::AuthMailer;
 use crate::modules::auth::rate_limiting::attempt_limiter::Attempt;
 use crate::modules::auth::user::email_address::EmailAddress;
+use crate::modules::auth::user::passwordless_signup::find_or_create_passwordless_user;
 use crate::modules::auth::user::user_lookup::find_user_by_email;
 use crate::modules::auth::user::user_record::User;
-use crate::modules::auth::user::user_registration::insert_passwordless_user;
 use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::shared::http::api_error::ApiError;
 
@@ -45,13 +46,9 @@ pub fn request_email_link(
         client_ip: request.client_ip,
     };
     // Applies to unknown emails too, so the limit itself reveals nothing about accounts.
-    state
-        .rate_limits
-        .email_delivery
-        .check(&attempt)
-        .map_err(|_| ApiError::RateLimited)?;
+    state.rate_limits.email_delivery.check(&attempt)?;
     let job = EmailLinkJob {
-        state: state.clone(),
+        mailer: state.auth_mailer(),
         tenant,
         raw_email: request.raw_email.to_owned(),
         kind: request.kind,
@@ -63,7 +60,7 @@ pub fn request_email_link(
 }
 
 struct EmailLinkJob {
-    state: AppState,
+    mailer: AuthMailer,
     tenant: TenantContext,
     raw_email: String,
     kind: AuthEmailKind,
@@ -78,11 +75,7 @@ impl EmailLinkJob {
             return Ok(());
         };
 
-        if user.banned_at.is_some() {
-            return Ok(());
-        }
-
-        if matches!(self.kind, AuthEmailKind::Verification) && user.email_verified_at.is_some() {
+        if is_skipped(self.kind, &user) {
             return Ok(());
         }
 
@@ -91,32 +84,70 @@ impl EmailLinkJob {
             kind: self.kind,
         };
 
-        send_auth_email(&self.state, &self.tenant, request).await
+        send_auth_email(&self.mailer, &self.tenant, request).await
     }
 
     /// Magic links also sign people up: an unknown email gets a passwordless account.
     async fn recipient(&self, email: &EmailAddress) -> Result<Option<User>, ApiError> {
         let pool = &self.tenant.pool;
-        let user = find_user_by_email(pool, email)
-            .await
-            .map_err(ApiError::internal)?;
+        let found = match self.kind {
+            AuthEmailKind::MagicLink => find_or_create_passwordless_user(pool, email).await,
+            AuthEmailKind::Verification | AuthEmailKind::PasswordReset => {
+                find_user_by_email(pool, email).await
+            }
+        };
 
-        if user.is_some() || matches!(self.kind, AuthEmailKind::MagicLink) == false {
-            return Ok(user);
+        found.map_err(ApiError::internal)
+    }
+}
+
+/// Banned users get nothing, and verified users no new verification link.
+fn is_skipped(kind: AuthEmailKind, user: &User) -> bool {
+    let is_verification = matches!(kind, AuthEmailKind::Verification);
+
+    user.banned_at.is_some() || (is_verification && user.email_verified_at.is_some())
+}
+
+#[cfg(test)]
+mod tests {
+    use time::OffsetDateTime;
+    use uuid::Uuid;
+
+    use super::*;
+
+    fn user(is_banned: bool, is_verified: bool) -> User {
+        let now = OffsetDateTime::now_utc();
+
+        User {
+            id: Uuid::new_v4(),
+            email: "ana@example.com".to_owned(),
+            email_verified_at: is_verified.then_some(now),
+            banned_at: is_banned.then_some(now),
+            created_at: now,
+            mfa_enabled: false,
+            avatar_updated_at: None,
         }
+    }
 
-        let mut connection = pool.acquire().await.map_err(ApiError::internal)?;
-        let created = insert_passwordless_user(&mut connection, email)
-            .await
-            .map_err(ApiError::internal)?;
-
-        if created.is_some() {
-            return Ok(created);
+    #[test]
+    fn banned_users_get_no_email_of_any_kind() {
+        for kind in [
+            AuthEmailKind::Verification,
+            AuthEmailKind::PasswordReset,
+            AuthEmailKind::MagicLink,
+        ] {
+            assert!(is_skipped(kind, &user(true, false)), "{kind:?}");
         }
+    }
 
-        // Another request created the account meanwhile.
-        find_user_by_email(pool, email)
-            .await
-            .map_err(ApiError::internal)
+    /// A verified user still gets reset and magic links; only a new verification link is useless.
+    #[test]
+    fn verified_users_get_every_link_but_verification() {
+        let verified = user(false, true);
+
+        assert!(is_skipped(AuthEmailKind::Verification, &verified));
+        assert!(is_skipped(AuthEmailKind::PasswordReset, &verified) == false);
+        assert!(is_skipped(AuthEmailKind::MagicLink, &verified) == false);
+        assert!(is_skipped(AuthEmailKind::Verification, &user(false, false)) == false);
     }
 }

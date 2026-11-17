@@ -1,6 +1,6 @@
 use axum::http::StatusCode;
 
-use crate::modules::auth::routes::refresh_session::RefreshTokenBody;
+use crate::modules::auth::routes::refresh_token_body::RefreshTokenBody;
 use crate::modules::auth::session::refresh_token_repository::revoke_family_of_token;
 use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::shared::crypto::opaque_token::hash_opaque_token;
@@ -23,9 +23,7 @@ pub async fn log_out(
     ValidatedJson(body): ValidatedJson<RefreshTokenBody>,
 ) -> Result<StatusCode, ApiError> {
     let token_hash = hash_opaque_token(body.refresh_token.trim());
-    revoke_family_of_token(&tenant.pool, &token_hash)
-        .await
-        .map_err(ApiError::internal)?;
+    revoke_family_of_token(&tenant.pool, &token_hash).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

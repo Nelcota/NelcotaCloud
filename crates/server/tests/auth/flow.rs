@@ -1,7 +1,8 @@
-use crate::support::{Session, TEST_PASSWORD, TestResult, TestServer, error_code};
 use reqwest::StatusCode;
 use serde::Deserialize;
 use serde_json::{Value, json};
+
+use crate::support::{Session, TEST_PASSWORD, TestResult, TestServer, error_code};
 
 #[derive(Deserialize)]
 struct JwkSet {

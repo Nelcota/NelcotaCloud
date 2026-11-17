@@ -1,5 +1,6 @@
 use sqlx::PgConnection;
 
+use crate::modules::auth::mfa::mfa_factor_repository::delete_mfa_factor;
 use crate::modules::auth::one_time_token::one_time_token_purpose::OneTimeTokenPurpose;
 use crate::modules::auth::one_time_token::one_time_token_repository::invalidate_pending_tokens;
 use crate::modules::auth::session::refresh_token_repository::end_all_user_sessions;
@@ -11,8 +12,8 @@ use crate::modules::auth::user::user_record::User;
 /// Lets a new signup take over an account whose email was never verified.
 ///
 /// Nobody has proven they own that inbox, so the latest signup takes the account over: its
-/// password replaces the old one, the old sessions end and the old verification links stop
-/// working. Otherwise whoever signed up first would keep their password after the real owner
+/// password replaces the old one, the old sessions and authenticator are removed and the old
+/// verification links stop working. Otherwise whoever signed up first would keep their password after the real owner
 /// verifies the email.
 ///
 /// Returns `None` when the account is already verified (it has a proven owner, nothing changes).
@@ -35,6 +36,7 @@ pub async fn take_over_unverified_account(
     }
 
     end_all_user_sessions(transaction, user.id).await?;
+    delete_mfa_factor(&mut *transaction, user.id).await?;
     let purpose = OneTimeTokenPurpose::EmailVerification;
     invalidate_pending_tokens(transaction, user.id, purpose).await?;
 

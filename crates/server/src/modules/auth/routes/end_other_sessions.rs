@@ -18,9 +18,7 @@ use crate::shared::http::api_error::{ApiError, ErrorBody};
 pub async fn end_other_sessions(authenticated: AuthenticatedUser) -> Result<StatusCode, ApiError> {
     let tenant = &authenticated.tenant;
     let claims = &authenticated.claims;
-    end_others(&tenant.pool, claims.sub, claims.sid)
-        .await
-        .map_err(ApiError::internal)?;
+    end_others(&tenant.pool, claims.sub, claims.sid).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

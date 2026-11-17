@@ -6,6 +6,7 @@ use crate::modules::auth::mfa::mfa_challenge_repository::create_mfa_challenge;
 use crate::modules::auth::mfa::mfa_factor_repository::has_verified_mfa_factor;
 use crate::modules::auth::session::session_grant::{SessionRequest, issue_session_with};
 use crate::modules::auth::session::session_issuer::SessionTokens;
+use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::shared::http::api_error::ApiError;
 
 /// The first factor passed; with MFA on, a TOTP code is still needed at `POST /mfa/challenge`.
@@ -33,15 +34,13 @@ pub async fn complete_login(
     let user = &request.grant.user;
 
     if user.banned_at.is_some() {
-        return Err(ApiError::UserBanned);
+        return Err(ApiError::from(TenantsRejection::UserBanned));
     }
 
     let has_mfa = has_verified_mfa_factor(&mut *request.connection, user.id).await;
 
-    if has_mfa.map_err(ApiError::internal)? {
-        let mfa_token = create_mfa_challenge(&mut *request.connection, user.id)
-            .await
-            .map_err(ApiError::internal)?;
+    if has_mfa? {
+        let mfa_token = create_mfa_challenge(&mut *request.connection, user.id).await?;
         let required = MfaRequired {
             mfa_required: true,
             mfa_token,
@@ -50,6 +49,6 @@ pub async fn complete_login(
     }
 
     Ok(LoginResponse::Session(
-        issue_session_with(state, request).await?,
+        issue_session_with(&state.token_signing(), request).await?,
     ))
 }

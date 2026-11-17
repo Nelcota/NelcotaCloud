@@ -22,9 +22,7 @@ pub async fn list_api_keys(
     State(state): State<AppState>,
     admin: TenantAdmin,
 ) -> Result<Json<Vec<ApiKeySummary>>, ApiError> {
-    let keys = find_api_keys(&state.control_plane_pool, admin.tenant_id)
-        .await
-        .map_err(ApiError::internal)?;
+    let keys = find_api_keys(&state.control_plane_pool, admin.tenant_id).await?;
 
     Ok(Json(keys))
 }

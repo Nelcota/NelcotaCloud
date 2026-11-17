@@ -29,9 +29,7 @@ pub async fn read_mfa_status(
     authenticated: AuthenticatedUser,
 ) -> Result<Json<MfaStatus>, ApiError> {
     let tenant = &authenticated.tenant;
-    let factor = find_mfa_factor(&tenant.pool, authenticated.claims.sub)
-        .await
-        .map_err(ApiError::internal)?;
+    let factor = find_mfa_factor(&tenant.pool, authenticated.claims.sub).await?;
     let verified_at = factor.as_ref().map(|factor| factor.verified_at);
     let status = MfaStatus {
         totp_enabled: matches!(verified_at, Some(Some(_))),

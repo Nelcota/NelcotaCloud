@@ -45,18 +45,12 @@ pub async fn create_api_key(
         tenant_id: admin.tenant_id,
         kind: body.kind,
     };
-    let mut connection = state
-        .control_plane_pool
-        .acquire()
-        .await
-        .map_err(ApiError::internal)?;
+    let mut connection = state.control_plane_pool.acquire().await?;
     let request = ApiKeyRequest {
         owner,
         name: &body.name,
     };
-    let issued = issue_api_key(&mut connection, request)
-        .await
-        .map_err(ApiError::internal)?;
+    let issued = issue_api_key(&mut connection, request).await?;
 
     Ok((StatusCode::CREATED, Json(issued)))
 }

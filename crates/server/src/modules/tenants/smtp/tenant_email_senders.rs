@@ -5,8 +5,12 @@ use moka::future::Cache;
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::modules::tenants::smtp::pinned_email_sender::{
+    PinnedConnection, PinnedSenderError, pinned_email_sender,
+};
+use crate::modules::tenants::smtp::smtp_address_probe::{SmtpUnreachable, first_reachable_address};
 use crate::modules::tenants::smtp::smtp_endpoint::{SmtpEndpoint, SmtpEndpointError};
-use crate::modules::tenants::smtp::smtp_host_policy::{SmtpHostPolicyError, check_smtp_endpoint};
+use crate::modules::tenants::smtp::smtp_host_policy::{SmtpHostPolicyError, resolve_smtp_endpoint};
 use crate::modules::tenants::smtp::smtp_settings_repository::{
     find_smtp_settings, smtp_url_context,
 };
@@ -29,6 +33,10 @@ pub enum TenantSmtpError {
     Endpoint(#[from] SmtpEndpointError),
     #[error(transparent)]
     HostPolicy(#[from] SmtpHostPolicyError),
+    #[error(transparent)]
+    Unreachable(#[from] SmtpUnreachable),
+    #[error(transparent)]
+    PinnedSender(#[from] PinnedSenderError),
     #[error(transparent)]
     Email(#[from] EmailError),
 }
@@ -76,12 +84,11 @@ impl TenantEmailSenders {
     }
 
     /// Applied to settings a tenant is about to save, and to stored ones before each use.
-    pub async fn check_endpoint(&self, endpoint: &SmtpEndpoint) -> Result<(), SmtpHostPolicyError> {
-        if self.allow_any_host {
-            return Ok(());
-        }
-
-        check_smtp_endpoint(endpoint).await
+    pub async fn check_endpoint(
+        &self,
+        endpoint: &SmtpEndpoint,
+    ) -> Result<Vec<std::net::IpAddr>, SmtpHostPolicyError> {
+        resolve_smtp_endpoint(endpoint, self.allow_any_host == false).await
     }
 
     /// Drops the cached sender after the tenant changed its settings.
@@ -89,19 +96,33 @@ impl TenantEmailSenders {
         self.senders.invalidate(&tenant_id).await;
     }
 
+    fn open_smtp_url(&self, tenant_id: Uuid, ciphertext: &[u8]) -> Result<String, TenantSmtpError> {
+        let url_bytes = self
+            .secret_box
+            .open(ciphertext, &smtp_url_context(tenant_id))?;
+
+        String::from_utf8(url_bytes).map_err(|_| TenantSmtpError::InvalidUrlEncoding)
+    }
+
     async fn load_sender(&self, tenant_id: Uuid) -> Result<Arc<EmailSender>, TenantSmtpError> {
         let stored = find_smtp_settings(&self.control_plane_pool, tenant_id).await?;
         let Some(stored) = stored else {
             return Ok(Arc::clone(&self.platform_sender));
         };
-        let url_bytes = self
-            .secret_box
-            .open(&stored.smtp_url_ciphertext, &smtp_url_context(tenant_id))?;
-        let smtp_url =
-            String::from_utf8(url_bytes).map_err(|_| TenantSmtpError::InvalidUrlEncoding)?;
+        let smtp_url = self.open_smtp_url(tenant_id, &stored.smtp_url_ciphertext)?;
         let endpoint = SmtpEndpoint::parse(&smtp_url)?;
-        self.check_endpoint(&endpoint).await?;
+        let addresses = self.check_endpoint(&endpoint).await?;
+        let address = first_reachable_address(&addresses, endpoint.port).await?;
 
-        Ok(Arc::new(EmailSender::new(&smtp_url, &stored.email_from)?))
+        let connection = PinnedConnection {
+            smtp_url: &smtp_url,
+            endpoint: &endpoint,
+            address,
+        };
+
+        Ok(Arc::new(pinned_email_sender(
+            &connection,
+            &stored.email_from,
+        )?))
     }
 }

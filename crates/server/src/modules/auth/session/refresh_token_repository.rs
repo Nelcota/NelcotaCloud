@@ -46,6 +46,13 @@ pub async fn insert_refresh_token(
     Ok(())
 }
 
+const CONSUME_REFRESH_TOKEN: &str = "UPDATE refresh_tokens AS token SET revoked_at = now() FROM users \
+     WHERE token.token_hash = $1 AND token.revoked_at IS NULL AND token.expires_at > now() \
+     AND users.id = token.user_id AND users.banned_at IS NULL \
+     AND (users.sessions_invalidated_at IS NULL OR token.family_started_at > users.sessions_invalidated_at) \
+     AND NOT EXISTS (SELECT 1 FROM revoked_token_families revoked WHERE revoked.family_id = token.family_id) \
+     RETURNING token.user_id, token.family_id, token.family_started_at";
+
 /// Consumes a refresh token, or reports it as reused or invalid.
 ///
 /// Revokes the token in one conditional UPDATE, so two concurrent refreshes cannot both win.
@@ -55,27 +62,20 @@ pub async fn consume_refresh_token(
     pool: &PgPool,
     token_hash: &[u8],
 ) -> Result<RefreshTokenStatus, sqlx::Error> {
-    let consumed: Option<(Uuid, Uuid, OffsetDateTime)> = sqlx::query_as(
-        "UPDATE refresh_tokens AS token SET revoked_at = now() FROM users \
-         WHERE token.token_hash = $1 AND token.revoked_at IS NULL AND token.expires_at > now() \
-         AND users.id = token.user_id AND users.banned_at IS NULL \
-         AND (users.sessions_invalidated_at IS NULL OR token.family_started_at > users.sessions_invalidated_at) \
-         AND NOT EXISTS (SELECT 1 FROM revoked_token_families revoked WHERE revoked.family_id = token.family_id) \
-         RETURNING token.user_id, token.family_id, token.family_started_at",
-    )
-    .bind(token_hash)
-    .fetch_optional(pool)
-    .await?;
+    let consumed: Option<(Uuid, Uuid, OffsetDateTime)> = sqlx::query_as(CONSUME_REFRESH_TOKEN)
+        .bind(token_hash)
+        .fetch_optional(pool)
+        .await?;
 
-    if let Some((user_id, family_id, started_at)) = consumed {
-        let family = SessionFamily {
-            id: family_id,
-            started_at: Some(started_at),
-        };
-        return Ok(RefreshTokenStatus::Consumed { user_id, family });
-    }
+    let Some((user_id, family_id, started_at)) = consumed else {
+        return find_reused_family(pool, token_hash).await;
+    };
+    let family = SessionFamily {
+        id: family_id,
+        started_at: Some(started_at),
+    };
 
-    find_reused_family(pool, token_hash).await
+    Ok(RefreshTokenStatus::Consumed { user_id, family })
 }
 
 async fn find_reused_family(

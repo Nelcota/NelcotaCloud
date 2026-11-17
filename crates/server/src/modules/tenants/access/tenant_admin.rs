@@ -4,9 +4,11 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::modules::tenants::access::api_key_tenant::{API_KEY_HEADER, ApiKeyTenant};
-use crate::modules::tenants::platform::membership_repository::find_project_role;
-use crate::modules::tenants::platform::platform_account::{bearer_token, verify_platform_token};
+use crate::modules::tenants::platform::platform_account::verify_platform_token;
+use crate::modules::tenants::platform::project_access::role_in_project;
+use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::shared::http::api_error::ApiError;
+use crate::shared::http::bearer_token::bearer_token;
 use crate::shared::http::request_span::record_tenant;
 
 /// Names the project a console request manages, next to the account's access token.
@@ -29,18 +31,11 @@ impl FromRequestParts<AppState> for TenantAdmin {
         }
 
         let Some(access_token) = bearer_token(parts) else {
-            return Err(ApiError::MissingApiKey);
+            return Err(ApiError::from(TenantsRejection::MissingApiKey));
         };
         let project_id = project_id(parts)?;
         let account = verify_platform_token(state, access_token).await?;
-        let role = find_project_role(&state.control_plane_pool, project_id, account.account_id)
-            .await
-            .map_err(ApiError::internal)?;
-
-        if role.is_none() {
-            return Err(ApiError::ProjectAccessDenied);
-        }
-
+        role_in_project(&state.control_plane_pool, project_id, &account).await?;
         record_tenant(project_id);
 
         Ok(Self {

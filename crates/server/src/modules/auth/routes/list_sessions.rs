@@ -20,9 +20,7 @@ pub async fn list_sessions(
 ) -> Result<Json<Vec<SessionSummary>>, ApiError> {
     let tenant = &authenticated.tenant;
     let claims = &authenticated.claims;
-    let mut sessions = list_active_sessions(&tenant.pool, claims.sub)
-        .await
-        .map_err(ApiError::internal)?;
+    let mut sessions = list_active_sessions(&tenant.pool, claims.sub).await?;
 
     for session in &mut sessions {
         session.is_current = session.id == claims.sid;

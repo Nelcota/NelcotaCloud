@@ -1,9 +1,6 @@
-use std::sync::Arc;
-
 use lettre::message::Mailbox;
 use lettre::message::MultiPart;
 use lettre::{Address, AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
-use tracing::{Instrument, Span};
 
 use crate::shared::email::outgoing_email::OutgoingEmail;
 
@@ -37,6 +34,16 @@ impl EmailSender {
         })
     }
 
+    /// For transports configured by the caller (e.g. pinned to an already checked address).
+    pub fn with_transport(
+        transport: AsyncSmtpTransport<Tokio1Executor>,
+        from: &str,
+    ) -> Result<Self, EmailError> {
+        let from = from.trim().parse::<Mailbox>()?;
+
+        Ok(Self { transport, from })
+    }
+
     pub async fn send(&self, email: OutgoingEmail) -> Result<(), EmailError> {
         let message = Message::builder()
             .from(self.from.clone())
@@ -53,16 +60,11 @@ impl EmailSender {
     }
 }
 
-/// Sends without making the request wait for SMTP, and so without the response time
-/// revealing whether an email was sent. Runs in the caller's span, so failures keep the
-/// request's context.
-pub fn send_in_background(sender: Arc<EmailSender>, email: OutgoingEmail) {
-    let delivery = async move {
-        if let Err(error) = sender.send(email).await {
-            log_failed_delivery(&error);
-        }
-    };
-    tokio::spawn(delivery.instrument(Span::current()));
+/// For background deliveries, where nobody waits for the result: failures are only logged.
+pub async fn deliver_and_log(sender: &EmailSender, email: OutgoingEmail) {
+    if let Err(error) = sender.send(email).await {
+        log_failed_delivery(&error);
+    }
 }
 
 /// The SMTP server's reply text can quote the recipient, so a rejection is logged by its

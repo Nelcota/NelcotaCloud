@@ -23,9 +23,7 @@ pub async fn end_user_sessions(
     admin: TenantAdminContext,
     Path(user_id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
-    let found = end_sessions_of_user(&admin.pool, user_id)
-        .await
-        .map_err(ApiError::internal)?;
+    let found = end_sessions_of_user(&admin.pool, user_id).await?;
 
     if found == false {
         return Err(ApiError::NotFound("user"));

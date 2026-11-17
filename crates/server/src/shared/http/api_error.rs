@@ -1,11 +1,13 @@
 use std::fmt::Display;
-use utoipa::ToSchema;
 
 use axum::Json;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use serde::Serialize;
+use utoipa::ToSchema;
 
+/// What a handler answers when it cannot do what was asked. Only refusals any HTTP API has live
+/// here; each module defines its own and turns them into a `Rejection`.
 #[derive(Debug, thiserror::Error)]
 pub enum ApiError {
     #[error("{0}")]
@@ -14,52 +16,25 @@ pub enum ApiError {
     UnsupportedMediaType,
     #[error("the request body is too large")]
     PayloadTooLarge,
-    #[error("missing apikey header")]
-    MissingApiKey,
-    #[error("invalid API key")]
-    InvalidApiKey,
-    #[error("missing or invalid access token")]
-    InvalidAccessToken,
-    #[error("invalid email or password")]
-    InvalidCredentials,
-    #[error("invalid refresh token")]
-    InvalidRefreshToken,
-    #[error("email is already registered")]
-    EmailTaken,
-    #[error("tenant slug is already taken")]
-    SlugTaken,
-    #[error("admin access denied")]
-    AdminAccessDenied,
-    #[error("this operation requires the tenant's secret API key")]
-    SecretKeyRequired,
-    #[error("unknown OAuth provider")]
-    UnknownOAuthProvider,
-    #[error("this OAuth provider is not configured for the tenant")]
-    OAuthProviderNotConfigured,
-    #[error("the token is invalid or expired")]
-    InvalidToken,
-    #[error("the OAuth login code is invalid or expired")]
-    InvalidOAuthCode,
-    #[error("the email address must be verified before logging in")]
-    EmailNotVerified,
-    #[error("the authentication code is invalid")]
-    InvalidMfaCode,
-    #[error("this user is banned")]
-    UserBanned,
     #[error("too many attempts, try again later")]
     RateLimited,
     #[error("{0} not found")]
     NotFound(&'static str),
     #[error("{0}")]
     Conflict(String),
-    #[error("the platform API is not configured on this server")]
-    PlatformNotConfigured,
-    #[error("you are not a member of this project")]
-    ProjectAccessDenied,
-    #[error("the SMTP server did not accept the email")]
-    SmtpDeliveryFailed,
+    #[error("{}", .0.message)]
+    Rejected(Rejection),
     #[error("internal server error")]
     Internal,
+}
+
+/// A refusal defined by a module: its HTTP status, the stable code clients match on, and a
+/// message for people.
+#[derive(Debug)]
+pub struct Rejection {
+    pub status: StatusCode,
+    pub code: &'static str,
+    pub message: String,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -87,34 +62,19 @@ impl ApiError {
                 (StatusCode::UNSUPPORTED_MEDIA_TYPE, "unsupported_media_type")
             }
             Self::PayloadTooLarge => (StatusCode::PAYLOAD_TOO_LARGE, "payload_too_large"),
-            Self::MissingApiKey => (StatusCode::UNAUTHORIZED, "missing_api_key"),
-            Self::InvalidApiKey => (StatusCode::UNAUTHORIZED, "invalid_api_key"),
-            Self::InvalidAccessToken => (StatusCode::UNAUTHORIZED, "invalid_access_token"),
-            Self::InvalidCredentials => (StatusCode::UNAUTHORIZED, "invalid_credentials"),
-            Self::InvalidRefreshToken => (StatusCode::UNAUTHORIZED, "invalid_refresh_token"),
-            Self::EmailTaken => (StatusCode::CONFLICT, "email_taken"),
-            Self::SlugTaken => (StatusCode::CONFLICT, "slug_taken"),
-            Self::AdminAccessDenied => (StatusCode::UNAUTHORIZED, "admin_access_denied"),
-            Self::SecretKeyRequired => (StatusCode::FORBIDDEN, "secret_key_required"),
-            Self::UnknownOAuthProvider => (StatusCode::NOT_FOUND, "unknown_provider"),
-            Self::OAuthProviderNotConfigured => {
-                (StatusCode::BAD_REQUEST, "provider_not_configured")
-            }
-            Self::InvalidToken => (StatusCode::BAD_REQUEST, "invalid_token"),
-            Self::InvalidOAuthCode => (StatusCode::UNAUTHORIZED, "invalid_oauth_code"),
-            Self::EmailNotVerified => (StatusCode::FORBIDDEN, "email_not_verified"),
-            Self::InvalidMfaCode => (StatusCode::UNAUTHORIZED, "invalid_mfa_code"),
-            Self::UserBanned => (StatusCode::FORBIDDEN, "user_banned"),
             Self::RateLimited => (StatusCode::TOO_MANY_REQUESTS, "too_many_requests"),
             Self::NotFound(_) => (StatusCode::NOT_FOUND, "not_found"),
             Self::Conflict(_) => (StatusCode::CONFLICT, "conflict"),
-            Self::PlatformNotConfigured => {
-                (StatusCode::SERVICE_UNAVAILABLE, "platform_not_configured")
-            }
-            Self::ProjectAccessDenied => (StatusCode::FORBIDDEN, "project_access_denied"),
-            Self::SmtpDeliveryFailed => (StatusCode::BAD_GATEWAY, "smtp_delivery_failed"),
+            Self::Rejected(rejection) => (rejection.status, rejection.code),
             Self::Internal => (StatusCode::INTERNAL_SERVER_ERROR, "internal_error"),
         }
+    }
+}
+
+/// Database failures are never the client's fault: logged, answered as a generic 500.
+impl From<sqlx::Error> for ApiError {
+    fn from(error: sqlx::Error) -> Self {
+        Self::internal(error)
     }
 }
 
@@ -127,5 +87,89 @@ impl IntoResponse for ApiError {
         };
 
         (status, Json(body)).into_response()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::body::to_bytes;
+
+    use super::*;
+
+    async fn body_of(response: Response) -> serde_json::Value {
+        let bytes = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap_or_default();
+
+        serde_json::from_slice(&bytes).unwrap_or_default()
+    }
+
+    #[tokio::test]
+    async fn a_rejection_answers_with_its_own_status_code_and_message() {
+        let rejection = Rejection {
+            status: StatusCode::IM_A_TEAPOT,
+            code: "teapot",
+            message: "short and stout".to_owned(),
+        };
+        let response = ApiError::Rejected(rejection).into_response();
+
+        assert_eq!(response.status(), StatusCode::IM_A_TEAPOT);
+        let body = body_of(response).await;
+        assert_eq!(
+            body.get("error").and_then(serde_json::Value::as_str),
+            Some("teapot")
+        );
+        assert_eq!(
+            body.get("message").and_then(serde_json::Value::as_str),
+            Some("short and stout")
+        );
+    }
+
+    /// The database's message may name tables or values: it must never reach the client.
+    #[tokio::test]
+    async fn database_errors_become_a_generic_internal_error() {
+        let error = ApiError::from(sqlx::Error::RowNotFound);
+        let response = error.into_response();
+
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        let body = body_of(response).await;
+        assert_eq!(
+            body.get("error").and_then(serde_json::Value::as_str),
+            Some("internal_error")
+        );
+        assert_eq!(
+            body.get("message").and_then(serde_json::Value::as_str),
+            Some("internal server error")
+        );
+    }
+
+    #[test]
+    fn generic_errors_keep_their_codes() {
+        let cases = [
+            (
+                ApiError::InvalidRequest("x".to_owned()),
+                StatusCode::BAD_REQUEST,
+                "invalid_request",
+            ),
+            (
+                ApiError::RateLimited,
+                StatusCode::TOO_MANY_REQUESTS,
+                "too_many_requests",
+            ),
+            (
+                ApiError::NotFound("user"),
+                StatusCode::NOT_FOUND,
+                "not_found",
+            ),
+            (
+                ApiError::Conflict("x".to_owned()),
+                StatusCode::CONFLICT,
+                "conflict",
+            ),
+        ];
+
+        for (error, status, code) in cases {
+            assert_eq!(error.status_and_code(), (status, code));
+        }
     }
 }

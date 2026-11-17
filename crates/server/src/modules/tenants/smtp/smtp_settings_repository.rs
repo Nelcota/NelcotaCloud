@@ -1,19 +1,7 @@
-use serde::Serialize;
 use sqlx::PgPool;
-use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::modules::tenants::smtp::smtp_endpoint::SmtpEndpoint;
-
-/// What the owner sees: where emails go, never the credentials.
-#[derive(Debug, Serialize, ToSchema)]
-pub struct SmtpSettingsView {
-    /// False while the tenant uses the platform's SMTP server.
-    pub is_custom: bool,
-    pub smtp_host: Option<String>,
-    pub smtp_port: Option<i32>,
-    pub email_from: Option<String>,
-}
 
 /// The stored settings, with the URL still encrypted.
 #[derive(sqlx::FromRow)]
@@ -29,28 +17,6 @@ pub struct NewSmtpSettings<'a> {
     pub endpoint: &'a SmtpEndpoint,
     pub smtp_url_ciphertext: &'a [u8],
     pub email_from: &'a str,
-}
-
-impl StoredSmtpSettings {
-    pub fn view(self) -> SmtpSettingsView {
-        SmtpSettingsView {
-            is_custom: true,
-            smtp_host: Some(self.smtp_host),
-            smtp_port: Some(self.smtp_port),
-            email_from: Some(self.email_from),
-        }
-    }
-}
-
-impl SmtpSettingsView {
-    pub fn platform_default() -> Self {
-        Self {
-            is_custom: false,
-            smtp_host: None,
-            smtp_port: None,
-            email_from: None,
-        }
-    }
 }
 
 pub async fn find_smtp_settings(

@@ -55,13 +55,7 @@ pub async fn consume_one_time_token(
     let Some(owner_id) = lock_token_owner(connection, purpose, token_hash).await? else {
         return Ok(None);
     };
-    let consumed: Option<(Uuid, Option<String>)> = sqlx::query_as(
-        "UPDATE one_time_tokens SET consumed_at = now() WHERE token_hash = $1 AND purpose = $2 AND consumed_at IS NULL AND expires_at > now() RETURNING user_id, code_challenge",
-    )
-    .bind(token_hash)
-    .bind(purpose.as_str())
-    .fetch_optional(&mut *connection)
-    .await?;
+    let consumed = mark_consumed(connection, purpose, token_hash).await?;
     let Some((user_id, code_challenge)) = consumed else {
         return Ok(None);
     };
@@ -107,4 +101,19 @@ pub async fn invalidate_pending_tokens(
     .await?;
 
     Ok(())
+}
+
+/// The token's user and code challenge, if it was still valid; it is consumed either way.
+async fn mark_consumed(
+    connection: &mut PgConnection,
+    purpose: OneTimeTokenPurpose,
+    token_hash: [u8; 32],
+) -> Result<Option<(Uuid, Option<String>)>, sqlx::Error> {
+    sqlx::query_as(
+        "UPDATE one_time_tokens SET consumed_at = now() WHERE token_hash = $1 AND purpose = $2 AND consumed_at IS NULL AND expires_at > now() RETURNING user_id, code_challenge",
+    )
+    .bind(token_hash)
+    .bind(purpose.as_str())
+    .fetch_optional(connection)
+    .await
 }

@@ -122,7 +122,9 @@ async fn other_accounts_cannot_touch_a_project() -> TestResult {
     let (platform, owner) = server
         .create_platform_account(&unique_email("owner"))
         .await?;
-    let stranger = server.sign_up(&platform, &unique_email("stranger")).await?;
+    let stranger = server
+        .sign_up_console_account(&platform, &unique_email("stranger"))
+        .await?;
     let created = create_project(&server, &owner).await?;
     let project_id = field(&created, "/tenant_id")
         .as_str()
@@ -136,6 +138,60 @@ async fn other_accounts_cannot_touch_a_project() -> TestResult {
 
     delete_project(&server, &owner, &project_id).await?;
     server.drop_tenant(&platform).await
+}
+
+/// Without an email provider the platform tenant can leave verification off: unverified
+/// console accounts then manage projects like any other.
+#[tokio::test]
+async fn unverified_accounts_work_while_the_platform_does_not_require_verification() -> TestResult {
+    let server = TestServer::start().await?;
+    let platform = server
+        .create_tenant_with_slug(&server.platform_slug)
+        .await?;
+    let unverified = server
+        .sign_up(&platform, &unique_email("unverified"))
+        .await?;
+
+    let projects = list_projects(&server, &unverified).await?;
+
+    assert_eq!(projects.status(), StatusCode::OK);
+    server.drop_tenant(&platform).await
+}
+
+/// Once the platform requires verification, accounts made before keep logging in but must
+/// confirm their email; the error says so instead of "invalid token".
+#[tokio::test]
+async fn unverified_accounts_are_asked_to_confirm_once_the_platform_requires_it() -> TestResult {
+    let server = TestServer::start().await?;
+    let platform = server
+        .create_tenant_with_slug(&server.platform_slug)
+        .await?;
+    let unverified = server
+        .sign_up(&platform, &unique_email("unverified"))
+        .await?;
+    server
+        .client
+        .patch(server.url("/auth/v1/admin/settings"))
+        .header("apikey", &platform.secret_key)
+        .json(&json!({ "require_email_verification": true }))
+        .send()
+        .await?
+        .error_for_status()?;
+
+    let projects = list_projects(&server, &unverified).await?;
+
+    assert_eq!(projects.status(), StatusCode::FORBIDDEN);
+    assert_eq!(error_code(projects).await?, "email_not_verified");
+    server.drop_tenant(&platform).await
+}
+
+async fn list_projects(server: &TestServer, account: &Session) -> TestResult<Response> {
+    as_account(
+        server,
+        account,
+        (Method::GET, "/platform/v1/projects", None),
+    )
+    .await
 }
 
 /// A user of an ordinary tenant is not a console account, even with a valid token.

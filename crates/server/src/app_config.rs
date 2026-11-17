@@ -1,24 +1,7 @@
-use oauth2::url::Url;
 use serde::Deserialize;
 
-const MASTER_KEY_HEX_LENGTH: usize = 64;
-const MIN_ADMIN_TOKEN_LENGTH: usize = 32;
-const PUBLIC_URL_SCHEMES: [&str; 2] = ["http", "https"];
-const POSTGRES_URL_SCHEMES: [&str; 2] = ["postgres", "postgresql"];
-
-#[derive(Debug, thiserror::Error, PartialEq, Eq)]
-pub enum ConfigError {
-    #[error("invalid environment: {0}")]
-    Environment(String),
-    #[error("MASTER_KEY_HEX must be {MASTER_KEY_HEX_LENGTH} hex characters")]
-    InvalidMasterKey,
-    #[error("ADMIN_TOKEN must be at least {MIN_ADMIN_TOKEN_LENGTH} characters")]
-    AdminTokenTooShort,
-    #[error("{0} must not be empty")]
-    EmptyValue(&'static str),
-    #[error("{0} must be {1}")]
-    InvalidUrl(&'static str, &'static str),
-}
+use crate::startup::config_error::{ConfigError, MASTER_KEY_HEX_LENGTH, MIN_ADMIN_TOKEN_LENGTH};
+use crate::startup::config_urls::{validate_public_base_url, validate_tenant_database_base_url};
 
 #[derive(Clone, Deserialize)]
 pub struct AppConfig {
@@ -122,49 +105,6 @@ impl AppConfig {
     pub fn oauth_callback_url(&self) -> String {
         format!("{}/oauth/callback", self.token_issuer())
     }
-}
-
-/// Becomes the JWT issuer and the OAuth callback, so it must be a plain http(s) origin or path.
-fn validate_public_base_url(raw_url: &str) -> Result<(), ConfigError> {
-    let invalid = ConfigError::InvalidUrl("PUBLIC_BASE_URL", "an http(s) URL without query");
-    let Ok(url) = Url::parse(raw_url.trim()) else {
-        return Err(invalid);
-    };
-
-    if PUBLIC_URL_SCHEMES.contains(&url.scheme()) == false || url.host_str().is_none() {
-        return Err(invalid);
-    }
-
-    if url.query().is_some() || url.fragment().is_some() {
-        return Err(invalid);
-    }
-
-    Ok(())
-}
-
-/// Each tenant database name is appended to it, so it must not carry a database path or query.
-fn validate_tenant_database_base_url(raw_url: &str) -> Result<(), ConfigError> {
-    let invalid = ConfigError::InvalidUrl(
-        "TENANT_DATABASE_BASE_URL",
-        "a postgres:// server URL without database name, query or fragment",
-    );
-    let Ok(url) = Url::parse(raw_url.trim()) else {
-        return Err(invalid);
-    };
-
-    if POSTGRES_URL_SCHEMES.contains(&url.scheme()) == false || url.host_str().is_none() {
-        return Err(invalid);
-    }
-
-    // A fragment would swallow the appended database name: every tenant would share one database.
-    if url.path().trim_matches('/').is_empty() == false
-        || url.query().is_some()
-        || url.fragment().is_some()
-    {
-        return Err(invalid);
-    }
-
-    Ok(())
 }
 
 #[cfg(test)]

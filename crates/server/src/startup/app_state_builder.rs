@@ -11,6 +11,7 @@ use crate::modules::oauth::login::oauth_state_repository::delete_expired_authori
 use crate::modules::oauth::provider::provider_endpoints::OAuthEndpoints;
 use crate::modules::tenants::database::tenant_pool_registry::TenantPoolRegistry;
 use crate::modules::tenants::platform::platform_tenant::PlatformTenantDirectory;
+use crate::modules::tenants::provisioning::tenant_slug::TenantSlug;
 use crate::modules::tenants::signing_keys::signing_key_cache::SigningKeyCache;
 use crate::modules::tenants::smtp::tenant_email_senders::{
     TenantEmailSenders, TenantEmailSendersConfig,
@@ -35,26 +36,19 @@ pub async fn build_app_state_with_endpoints(
     config: &AppConfig,
     oauth_endpoints: OAuthEndpoints,
 ) -> Result<AppState, StartupError> {
-    let master_key = decode_hex(config.master_key_hex.trim())?;
-    let secret_box = Arc::new(SecretBox::new(&master_key)?);
+    let secret_box = Arc::new(secret_box(config)?);
     let control_plane_pool = connect_control_plane(config).await?;
     let settings = build_settings(config, oauth_endpoints).await?;
     let rate_limits = Arc::new(RateLimits::new()?);
-    let email_senders = TenantEmailSenders::new(TenantEmailSendersConfig {
-        control_plane_pool: control_plane_pool.clone(),
-        secret_box: Arc::clone(&secret_box),
-        platform_sender: Arc::new(EmailSender::new(&config.smtp_url, &config.email_from)?),
-        allow_any_host: config.tenant_smtp_allow_any_host.unwrap_or(false),
-    });
+    let email_senders = email_senders(config, &control_plane_pool, &secret_box)?;
     spawn_maintenance(control_plane_pool.clone(), Arc::clone(&rate_limits));
 
+    let tenant_pools = tenant_pool_registry(config, &control_plane_pool);
+
     Ok(AppState {
-        tenant_pools: Arc::new(TenantPoolRegistry::new(
-            control_plane_pool.clone(),
-            config.tenant_database_base_url.clone(),
-        )),
+        tenant_pools: Arc::new(tenant_pools),
         signing_keys: Arc::new(signing_key_cache(&control_plane_pool, &secret_box)),
-        platform_tenant: Arc::new(PlatformTenantDirectory::new()),
+        platform_tenant: Arc::new(platform_tenant_directory(config, &control_plane_pool)?),
         rate_limits,
         email_senders: Arc::new(email_senders),
         http_client: build_http_client()?,
@@ -62,6 +56,46 @@ pub async fn build_app_state_with_endpoints(
         control_plane_pool,
         secret_box,
     })
+}
+
+fn secret_box(config: &AppConfig) -> Result<SecretBox, StartupError> {
+    let master_key = decode_hex(config.master_key_hex.trim())?;
+
+    Ok(SecretBox::new(&master_key)?)
+}
+
+fn tenant_pool_registry(config: &AppConfig, control_plane_pool: &PgPool) -> TenantPoolRegistry {
+    let base_url = config.tenant_database_base_url.clone();
+
+    TenantPoolRegistry::new(control_plane_pool.clone(), base_url)
+}
+
+fn email_senders(
+    config: &AppConfig,
+    control_plane_pool: &PgPool,
+    secret_box: &Arc<SecretBox>,
+) -> Result<TenantEmailSenders, StartupError> {
+    let platform_sender = EmailSender::new(&config.smtp_url, &config.email_from)?;
+
+    Ok(TenantEmailSenders::new(TenantEmailSendersConfig {
+        control_plane_pool: control_plane_pool.clone(),
+        secret_box: Arc::clone(secret_box),
+        platform_sender: Arc::new(platform_sender),
+        allow_any_host: config.tenant_smtp_allow_any_host.unwrap_or(false),
+    }))
+}
+
+fn platform_tenant_directory(
+    config: &AppConfig,
+    control_plane_pool: &PgPool,
+) -> Result<PlatformTenantDirectory, StartupError> {
+    let raw_slug = config.platform_tenant_slug.as_deref();
+    let slug = raw_slug.map(TenantSlug::parse).transpose()?;
+
+    Ok(PlatformTenantDirectory::new(
+        control_plane_pool.clone(),
+        slug,
+    ))
 }
 
 /// Connects and brings the control plane schema up to date.

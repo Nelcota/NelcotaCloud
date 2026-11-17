@@ -24,9 +24,7 @@ pub async fn get_user(
     admin: TenantAdminContext,
     Path(user_id): Path<Uuid>,
 ) -> Result<Json<User>, ApiError> {
-    let user = find_user_by_id(&admin.pool, user_id)
-        .await
-        .map_err(ApiError::internal)?;
+    let user = find_user_by_id(&admin.pool, user_id).await?;
     let Some(user) = user else {
         return Err(ApiError::NotFound("user"));
     };

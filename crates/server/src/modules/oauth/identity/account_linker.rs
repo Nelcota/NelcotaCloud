@@ -1,12 +1,11 @@
 use sqlx::error::DatabaseError;
 use sqlx::{PgConnection, PgPool};
 
-use crate::modules::auth::session::refresh_token_repository::end_all_user_sessions;
 use crate::modules::auth::user::email_address::{EmailAddress, InvalidEmailAddress};
-use crate::modules::auth::user::user_account_updates::claim_account_for_verified_email;
 use crate::modules::auth::user::user_lookup::find_user_by_email;
 use crate::modules::auth::user::user_record::User;
 use crate::modules::auth::user::user_registration::{InsertUserError, insert_oauth_user};
+use crate::modules::auth::user::verified_inbox_claim::claim_verified_inbox;
 use crate::modules::oauth::identity::identity_repository::{
     IdentityKey, find_identity_user, has_provider_identity, insert_identity,
 };
@@ -59,19 +58,7 @@ async fn link_identity(
         return Ok(user);
     }
 
-    // Linking by email is only safe when the provider vouches for the address.
-    let Some(raw_email) = &profile.verified_email else {
-        return Err(AccountLinkError::NoVerifiedEmail);
-    };
-    let email = EmailAddress::parse(raw_email)?;
-    let user = match find_user_by_email(&mut *transaction, &email).await? {
-        Some(existing_user) => {
-            claim_existing_account(&mut transaction, existing_user, &key).await?
-        }
-        None => insert_oauth_user(&mut transaction, &email)
-            .await
-            .map_err(map_insert_user_error)?,
-    };
+    let user = account_for_email(&mut transaction, profile, &key).await?;
     insert_identity(&mut transaction, user.id, &key)
         .await
         .map_err(map_unique_violation)?;
@@ -80,9 +67,29 @@ async fn link_identity(
     Ok(user)
 }
 
+/// The account with the provider's verified email: an existing one claimed, or a new one.
+/// Linking by email is only safe when the provider vouches for the address.
+async fn account_for_email(
+    transaction: &mut PgConnection,
+    profile: &ProviderProfile,
+    key: &IdentityKey<'_>,
+) -> Result<User, AccountLinkError> {
+    let Some(raw_email) = &profile.verified_email else {
+        return Err(AccountLinkError::NoVerifiedEmail);
+    };
+    let email = EmailAddress::parse(raw_email)?;
+
+    match find_user_by_email(&mut *transaction, &email).await? {
+        Some(existing_user) => claim_existing_account(transaction, existing_user, key).await,
+        None => insert_oauth_user(transaction, &email)
+            .await
+            .map_err(map_insert_user_error),
+    }
+}
+
 /// Links to an existing account with the same email. If that account never verified its
-/// email, whoever created it may not own the inbox: their password is dropped and every session
-/// they hold ends. An account already linked to another identity of this provider is refused,
+/// email, whoever created it may not own the inbox, so the account is claimed for the provider's
+/// verified owner. An account already linked to another identity of this provider is refused,
 /// so a recycled email address cannot take over the old account.
 async fn claim_existing_account(
     transaction: &mut PgConnection,
@@ -93,13 +100,7 @@ async fn claim_existing_account(
         return Err(AccountLinkError::ProviderAccountMismatch);
     }
 
-    let user = claim_account_for_verified_email(transaction, existing_user.id).await?;
-
-    if existing_user.email_verified_at.is_none() {
-        end_all_user_sessions(transaction, existing_user.id).await?;
-    }
-
-    Ok(user)
+    Ok(claim_verified_inbox(transaction, existing_user).await?)
 }
 
 fn map_insert_user_error(error: InsertUserError) -> AccountLinkError {

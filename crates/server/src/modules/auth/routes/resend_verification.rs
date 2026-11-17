@@ -1,4 +1,3 @@
-use crate::shared::http::api_error::ErrorBody;
 use axum::extract::State;
 use axum::http::StatusCode;
 
@@ -7,9 +6,9 @@ use crate::modules::auth::email::auth_email_dispatch::AuthEmailKind;
 use crate::modules::auth::email::auth_email_request::{
     EmailBody, EmailLinkRequest, request_email_link,
 };
-use crate::modules::auth::rate_limiting::client_ip::ClientIp;
 use crate::modules::tenants::access::tenant_context::TenantContext;
-use crate::shared::http::api_error::ApiError;
+use crate::shared::http::api_error::{ApiError, ErrorBody};
+use crate::shared::http::client_ip::ClientIp;
 use crate::shared::http::validated_json::ValidatedJson;
 
 /// `POST /verify-email/resend`: emails a new verification link to an unverified account.

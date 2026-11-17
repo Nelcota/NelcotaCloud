@@ -4,7 +4,6 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::modules::tenants::access::admin_access::AdminAccess;
-use crate::modules::tenants::provisioning::tenant_removal::remove_tenant;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
 /// `DELETE /admin/v1/tenants/{tenant_id}`: deletes the tenant, its users and its database.
@@ -25,7 +24,9 @@ pub async fn delete_tenant(
     State(state): State<AppState>,
     Path(tenant_id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
-    let removed = remove_tenant(&state, tenant_id)
+    let removed = state
+        .tenant_removal()
+        .remove_tenant(tenant_id)
         .await
         .map_err(ApiError::internal)?;
 

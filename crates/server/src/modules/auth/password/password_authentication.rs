@@ -31,11 +31,9 @@ pub async fn authenticate_with_password(
         None => (None, None),
     };
     // Verification runs on the blocking pool and takes its own copy; the original is returned.
-    let hash_to_check = stored_hash
-        .clone()
-        .unwrap_or_else(|| dummy_password_hash.to_owned());
+    let hash_to_check = stored_hash.as_deref().unwrap_or(dummy_password_hash);
 
-    if verify_password(password, hash_to_check).await? == false {
+    if verify_password(password, hash_to_check.to_owned()).await? == false {
         return Err(PasswordAuthenticationError::InvalidCredentials);
     }
 
@@ -47,4 +45,79 @@ pub async fn authenticate_with_password(
         user,
         password_hash,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use time::OffsetDateTime;
+    use uuid::Uuid;
+
+    use super::*;
+    use crate::modules::auth::password::password_hashing::hash_password;
+
+    type TestResult = Result<(), Box<dyn std::error::Error>>;
+
+    fn credentials(password_hash: Option<String>) -> UserCredentials {
+        UserCredentials {
+            user: User {
+                id: Uuid::new_v4(),
+                email: "ana@example.com".to_owned(),
+                email_verified_at: None,
+                banned_at: None,
+                created_at: OffsetDateTime::now_utc(),
+                mfa_enabled: false,
+                avatar_updated_at: None,
+            },
+            password_hash,
+        }
+    }
+
+    #[tokio::test]
+    async fn the_right_password_returns_the_hash_it_matched() -> TestResult {
+        let stored = hash_password("correct horse".to_owned()).await?;
+        let verified = authenticate_with_password(
+            Some(credentials(Some(stored.clone()))),
+            "correct horse".to_owned(),
+            &hash_password("dummy".to_owned()).await?,
+        )
+        .await?;
+
+        assert_eq!(verified.password_hash, stored);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn a_wrong_password_is_refused() -> TestResult {
+        let stored = hash_password("correct horse".to_owned()).await?;
+        let dummy = hash_password("dummy".to_owned()).await?;
+        let refused =
+            authenticate_with_password(Some(credentials(Some(stored))), "wrong".to_owned(), &dummy)
+                .await;
+
+        assert!(matches!(
+            refused,
+            Err(PasswordAuthenticationError::InvalidCredentials)
+        ));
+        Ok(())
+    }
+
+    /// Guessing the dummy password must not log into an unknown email or a passwordless
+    /// (OAuth or magic link) account.
+    #[tokio::test]
+    async fn the_dummy_password_never_logs_anyone_in() -> TestResult {
+        let dummy = hash_password("dummy".to_owned()).await?;
+        let unknown = authenticate_with_password(None, "dummy".to_owned(), &dummy).await;
+        let passwordless =
+            authenticate_with_password(Some(credentials(None)), "dummy".to_owned(), &dummy).await;
+
+        assert!(matches!(
+            unknown,
+            Err(PasswordAuthenticationError::InvalidCredentials)
+        ));
+        assert!(matches!(
+            passwordless,
+            Err(PasswordAuthenticationError::InvalidCredentials)
+        ));
+        Ok(())
+    }
 }

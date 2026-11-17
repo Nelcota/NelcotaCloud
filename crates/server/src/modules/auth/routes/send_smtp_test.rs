@@ -6,15 +6,13 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::app_state::AppState;
-use crate::modules::auth::email::auth_email::{AuthEmailContext, smtp_test_email};
-use crate::modules::auth::email::auth_email_template::render_auth_email;
+use crate::modules::auth::email::smtp_test_delivery::deliver_smtp_test;
 use crate::modules::auth::rate_limiting::attempt_limiter::Attempt;
-use crate::modules::auth::rate_limiting::client_ip::ClientIp;
 use crate::modules::auth::user::email_address::EmailAddress;
 use crate::modules::tenants::access::tenant_admin::TenantAdmin;
-use crate::modules::tenants::settings::loaded_tenant_settings::load_tenant_settings;
 use crate::modules::tenants::smtp::smtp_settings_repository::find_smtp_settings;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
+use crate::shared::http::client_ip::ClientIp;
 use crate::shared::http::validated_json::ValidatedJson;
 
 #[derive(Deserialize, Validate, ToSchema)]
@@ -53,9 +51,22 @@ pub async fn send_smtp_test(
     let Ok(recipient) = EmailAddress::parse(&body.to) else {
         return Err(ApiError::InvalidRequest("invalid email address".to_owned()));
     };
-    let stored = find_smtp_settings(&state.control_plane_pool, tenant_id)
-        .await
-        .map_err(ApiError::internal)?;
+    require_own_smtp(&state, tenant_id).await?;
+    let attempt = Attempt {
+        tenant_id,
+        email: recipient.as_str(),
+        client_ip,
+    };
+    state.rate_limits.email_delivery.check(&attempt)?;
+
+    deliver_smtp_test(&state, tenant_id, &recipient).await?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// The platform's server is not the tenant's to test.
+async fn require_own_smtp(state: &AppState, tenant_id: Uuid) -> Result<(), ApiError> {
+    let stored = find_smtp_settings(&state.control_plane_pool, tenant_id).await?;
 
     if stored.is_none() {
         return Err(ApiError::Conflict(
@@ -63,42 +74,5 @@ pub async fn send_smtp_test(
         ));
     }
 
-    let attempt = Attempt {
-        tenant_id,
-        email: recipient.as_str(),
-        client_ip,
-    };
-    state
-        .rate_limits
-        .email_delivery
-        .check(&attempt)
-        .map_err(|_| ApiError::RateLimited)?;
-
-    deliver_test(&state, tenant_id, &recipient).await
-}
-
-async fn deliver_test(
-    state: &AppState,
-    tenant_id: Uuid,
-    recipient: &EmailAddress,
-) -> Result<StatusCode, ApiError> {
-    let settings = load_tenant_settings(state, tenant_id).await?;
-    let context = AuthEmailContext {
-        tenant_name: &settings.name,
-        site_url: &settings.site_url,
-    };
-    let email = render_auth_email(smtp_test_email(&context), recipient.as_str())
-        .map_err(ApiError::internal)?;
-    let sender = state
-        .email_senders
-        .sender_for(tenant_id)
-        .await
-        .map_err(ApiError::internal)?;
-
-    if let Err(error) = sender.send(email).await {
-        tracing::warn!(%error, "SMTP test email was not delivered");
-        return Err(ApiError::SmtpDeliveryFailed);
-    }
-
-    Ok(StatusCode::NO_CONTENT)
+    Ok(())
 }

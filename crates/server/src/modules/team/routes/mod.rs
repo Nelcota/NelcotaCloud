@@ -1,7 +1,11 @@
 pub mod accept_invitation;
 pub mod cancel_invitation;
+pub mod change_member_role;
 pub mod decline_invitation;
 pub mod invite_member;
+pub mod leave_project;
 pub mod list_my_invitations;
 pub mod read_team;
 pub mod remove_member;
+pub mod team_routes;
+pub mod transfer_ownership;

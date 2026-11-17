@@ -48,14 +48,7 @@ pub struct SessionIssuer<'a> {
 }
 
 impl SessionIssuer<'_> {
-    /// `family` groups every rotation of one login, so reuse can revoke the whole chain. The
-    /// refresh token is written on `connection`, so callers can do it inside their transaction.
-    pub async fn issue(
-        &self,
-        connection: &mut PgConnection,
-        user: User,
-        family: SessionFamily,
-    ) -> Result<SessionTokens, SessionError> {
+    fn access_token(&self, user: &User, family: &SessionFamily) -> Result<String, SessionError> {
         let now = OffsetDateTime::now_utc();
         let claims = AccessTokenClaims {
             sub: user.id,
@@ -66,7 +59,19 @@ impl SessionIssuer<'_> {
             email: user.email.clone(),
             sid: family.id,
         };
-        let access_token = sign_access_token(&claims, self.signing_key)?;
+
+        Ok(sign_access_token(&claims, self.signing_key)?)
+    }
+
+    /// `family` groups every rotation of one login, so reuse can revoke the whole chain. The
+    /// refresh token is written on `connection`, so callers can do it inside their transaction.
+    pub async fn issue(
+        &self,
+        connection: &mut PgConnection,
+        user: User,
+        family: SessionFamily,
+    ) -> Result<SessionTokens, SessionError> {
+        let access_token = self.access_token(&user, &family)?;
         let refresh_token = OpaqueToken::generate(REFRESH_TOKEN_PREFIX);
         let new_refresh_token = NewRefreshToken {
             user_id: user.id,
