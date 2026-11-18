@@ -220,3 +220,41 @@ async fn writes_answer_objects_run_batches_in_order_and_refuse_paging() -> TestR
 
     server.drop_tenant(&tenant).await
 }
+
+#[tokio::test]
+async fn oversized_combined_write_result_rolls_back_all_batches() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    developer_sql(
+        &server,
+        &tenant,
+        "CREATE TABLE documents (
+            id integer PRIMARY KEY,
+            label text DEFAULT 'default',
+            content text NOT NULL DEFAULT repeat('x', 9000000)
+        )",
+    )
+    .await?;
+
+    let credentials = Credentials::service(&tenant);
+    let response = rest(
+        &server,
+        credentials,
+        RestRequest::with_body(
+            Method::POST,
+            "/documents",
+            json!([
+                { "id": 1 },
+                { "id": 2, "label": "explicit" }
+            ]),
+        )
+        .prefer("return=representation"),
+    )
+    .await?;
+
+    assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    assert_eq!(error_code(response).await?, "response_too_large");
+    let rows = rest_json(&server, credentials, "/documents?select=id").await?;
+    assert_eq!(rows, json!([]));
+    server.drop_tenant(&tenant).await
+}

@@ -45,6 +45,26 @@ fn table<'a>(schema: &'a Value, name: &str) -> Option<&'a Value> {
 }
 
 #[tokio::test]
+async fn sql_editor_does_not_reuse_developer_sessions() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    let query = "SELECT pg_backend_pid() AS pid";
+    let first: Value = run_sql(&server, &tenant, query)
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+    let next: Value = run_sql(&server, &tenant, query)
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+
+    assert_ne!(field(&first, "/rows/0/0"), field(&next, "/rows/0/0"));
+    server.drop_tenant(&tenant).await
+}
+
+#[tokio::test]
 async fn manages_tables_columns_and_policies() -> TestResult {
     let server = TestServer::start().await?;
     let tenant = server.create_tenant().await?;
@@ -305,10 +325,12 @@ async fn sql_falling_back_to_the_login_role_stays_in_the_project() -> TestResult
     let server = TestServer::start().await?;
     let tenant = server.create_tenant().await?;
     let neighbour = server.create_tenant().await?;
-    // Opens the neighbour's Data API pool, so its login role has a connection to aim at.
-    run_sql(&server, &neighbour, "SELECT 1")
+    run_sql(&server, &neighbour, "CREATE TABLE items (id integer)")
         .await?
         .error_for_status()?;
+    // A Data API request leaves an idle connection under the neighbour's login role.
+    let rows = rest_json(&server, Credentials::service(&neighbour), "/items").await?;
+    assert_eq!(rows, json!([]));
 
     let fallen_back: Value = run_sql(&server, &tenant, "RESET ROLE; SELECT current_user AS who")
         .await?
