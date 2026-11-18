@@ -23,7 +23,7 @@ use crate::shared::http::api_error::{ApiError, ErrorBody};
         (status = 202, description = "Queued; it is sent within seconds"),
         (status = 403, description = "Requires the secret API key, or membership in the project", body = ErrorBody),
         (status = 404, description = "No such endpoint or delivery in this project", body = ErrorBody),
-        (status = 409, description = "The delivery is being sent right now", body = ErrorBody),
+        (status = 409, description = "The delivery is being sent right now, or the endpoint is disabled", body = ErrorBody),
         (status = 429, description = "Too many test events and resends for this project", body = ErrorBody),
     )
 )]
@@ -33,8 +33,16 @@ pub async fn retry_webhook_delivery(
     Path((endpoint_id, delivery_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, ApiError> {
     let tenant_id = admin.tenant_id;
+    let endpoint = require_endpoint(&state, tenant_id, endpoint_id).await?;
+
+    // The worker would give the delivery up at once: a disabled endpoint receives nothing.
+    if endpoint.is_enabled == false {
+        return Err(ApiError::Conflict(
+            "the endpoint is disabled: enable it to send deliveries again".to_owned(),
+        ));
+    }
+
     state.webhooks.manual_sends.check(tenant_id)?;
-    require_endpoint(&state, tenant_id, endpoint_id).await?;
 
     match requeue_delivery(&admin.pool, endpoint_id, delivery_id).await? {
         Requeue::Queued => {

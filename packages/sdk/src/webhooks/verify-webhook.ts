@@ -60,7 +60,7 @@ function header(headers: WebhookHeaders, name: string): string | null {
     return headers.get(name)
   }
 
-  const value = headers[name] ?? headers[name.toLowerCase()]
+  const value = headers[name] ?? headerIgnoringCase(headers, name)
 
   if (Array.isArray(value)) {
     return value[0] ?? null
@@ -69,12 +69,36 @@ function header(headers: WebhookHeaders, name: string): string | null {
   return value ?? null
 }
 
+/** Plain records keep the case the sender used (`Webhook-Id`); header names ignore case. */
+function headerIgnoringCase(
+  headers: Record<string, string | string[] | undefined>,
+  name: string,
+): string | string[] | undefined {
+  const lowerName = name.toLowerCase()
+  const key = Object.keys(headers).find((candidate) => candidate.toLowerCase() === lowerName)
+
+  if (key === undefined) {
+    return undefined
+  }
+
+  return headers[key]
+}
+
 function checkTimestamp(timestamp: string, options: VerifyWebhookOptions): void {
   const sentAt = Number(timestamp)
   const now = (options.now ?? Date.now)() / MILLISECONDS_PER_SECOND
   const tolerance = options.toleranceSeconds ?? DEFAULT_TOLERANCE_SECONDS
 
-  if (Number.isFinite(sentAt) === false || Math.abs(now - sentAt) > tolerance) {
+  // A NaN or negative tolerance would accept every timestamp, or none.
+  if (Number.isFinite(tolerance) === false || tolerance < 0) {
+    throw new RangeError('toleranceSeconds must be a finite number of seconds, 0 or more.')
+  }
+
+  if (
+    timestamp.trim() === '' ||
+    Number.isFinite(sentAt) === false ||
+    Math.abs(now - sentAt) > tolerance
+  ) {
     throw new WebhookVerificationError(
       'timestamp_out_of_range',
       'The webhook is too old or too new.',

@@ -1,17 +1,14 @@
 import type { HttpClient } from '../http/http-client'
-import { NelcotaError } from '../http/nelcota-error'
 import type { AuthEvent, AuthStateListener, Session, User } from '../types'
 import { AuthListeners } from './auth-listeners'
 import { notAuthenticated } from './not-authenticated'
-import { renewSession } from './renew-session'
 import { sessionChangeEvent } from './session-change'
+import { type RefreshHost, refreshOrAdopt } from './session-refresh'
 import type { SessionStore } from './session-store'
 import { withTabLock } from './tab-lock'
 
 /** Access tokens are renewed this long before they expire, so requests never carry a dead one. */
 const REFRESH_MARGIN_MS = 60_000
-const UNAUTHORIZED = 401
-const FORBIDDEN = 403
 
 /** Holds the current session, renews it and tells listeners when it changes. */
 export class SessionManager {
@@ -131,53 +128,16 @@ export class SessionManager {
       return null
     }
 
-    return withTabLock(this.store.lockName(), () => this.refreshOrAdopt(session))
-  }
-
-  private async refreshOrAdopt(session: Session): Promise<Session | null> {
-    const stored = this.store.load()
-
-    if (this.session !== session) {
-      return this.session
+    const host: RefreshHost = {
+      http: this.http,
+      store: this.store,
+      now: this.now,
+      current: () => this.session,
+      start: (renewed, event) => this.start(renewed, event),
+      end: () => this.end(),
     }
 
-    if (stored !== null && stored.refreshToken !== session.refreshToken) {
-      this.start(stored, sessionChangeEvent(session, stored))
-      return stored
-    }
-
-    try {
-      const renewed = await renewSession(this.http, session.refreshToken)
-
-      return this.adoptRenewal(session, renewed)
-    } catch (error) {
-      return this.endIfRejected(session, error)
-    }
-  }
-
-  /** The user may sign out or in while the refresh is in flight; what they did wins. */
-  private adoptRenewal(original: Session, renewed: Session): Session | null {
-    if (this.session !== original) {
-      return this.session
-    }
-
-    this.start(renewed, 'TOKEN_REFRESHED')
-
-    return renewed
-  }
-
-  /** A refused refresh token (revoked, reused, banned user) ends the session; other errors propagate. */
-  private endIfRejected(original: Session, error: unknown): Session | null {
-    if (this.session !== original) {
-      return this.session
-    }
-
-    if (error instanceof NelcotaError && [UNAUTHORIZED, FORBIDDEN].includes(error.status)) {
-      this.end()
-      return null
-    }
-
-    throw error
+    return withTabLock(this.store.lockName(), () => refreshOrAdopt(host, session))
   }
 
   /** Another tab already wrote the change to storage, so this tab only mirrors it. */

@@ -46,21 +46,38 @@ pub async fn find_user_by_id<'e>(
     .await
 }
 
+/// What the password lock found.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PasswordLock {
+    /// Locked, with the password still the one that was checked.
+    Locked,
+    /// A reset or OAuth claim changed the password since it was checked.
+    Changed,
+    /// Banned since the password was checked.
+    Banned,
+}
+
 /// Locks the user's row until the transaction ends, if `password_hash` is still its password.
 ///
-/// A password reset or OAuth claim committed meanwhile makes this return `false`; one that
-/// runs later waits for the lock and then sees (and revokes) the session created under it.
+/// A password reset or OAuth claim committed meanwhile makes this `Changed`, a ban `Banned`
+/// (read under the lock, so it is never stale); one that runs later waits for the lock and then
+/// sees (and revokes) the session created under it.
 pub async fn lock_if_password_unchanged(
     connection: &mut PgConnection,
     user_id: Uuid,
     password_hash: &str,
-) -> Result<bool, sqlx::Error> {
-    let locked: Option<Uuid> =
-        sqlx::query_scalar("SELECT id FROM users WHERE id = $1 AND password_hash = $2 FOR SHARE")
-            .bind(user_id)
-            .bind(password_hash)
-            .fetch_optional(connection)
-            .await?;
+) -> Result<PasswordLock, sqlx::Error> {
+    let locked: Option<bool> = sqlx::query_scalar(
+        "SELECT banned_at IS NOT NULL FROM users WHERE id = $1 AND password_hash = $2 FOR SHARE",
+    )
+    .bind(user_id)
+    .bind(password_hash)
+    .fetch_optional(connection)
+    .await?;
 
-    Ok(locked.is_some())
+    Ok(match locked {
+        None => PasswordLock::Changed,
+        Some(true) => PasswordLock::Banned,
+        Some(false) => PasswordLock::Locked,
+    })
 }

@@ -82,7 +82,7 @@ async fn retries_a_failed_delivery_with_the_same_id() -> TestResult {
         "receivers deduplicate by webhook-id"
     );
 
-    let log = delivery_log(&server, &tenant, &endpoint_id).await?;
+    let log = delivered_log(&server, &tenant, &endpoint_id).await?;
     assert_eq!(field(&log, "/0/status"), &json!("delivered"));
     assert_eq!(field(&log, "/0/attempts"), &json!(2));
     assert_eq!(field(&log, "/0/last_response_status"), &json!(204));
@@ -100,7 +100,7 @@ async fn an_owner_can_send_a_delivery_again() -> TestResult {
         create_endpoint(&server, &tenant, (&receiver.url(), &["user.created"])).await?;
     server.sign_up(&tenant, &unique_email("resend")).await?;
     receiver.wait_for(1).await?;
-    let log = delivery_log(&server, &tenant, &endpoint_id).await?;
+    let log = delivered_log(&server, &tenant, &endpoint_id).await?;
     let delivery_id = text(field(&log, "/0/id"))?;
 
     let suffix = format!("/{endpoint_id}/deliveries/{delivery_id}/retry");
@@ -178,4 +178,23 @@ async fn delivery_log(
     let response = send(webhooks_request(server, tenant, (Method::GET, &suffix))).await?;
 
     Ok(response.error_for_status()?.json().await?)
+}
+
+/// The receiver answers before the worker commits the attempt: waits until the log shows it.
+async fn delivered_log(
+    server: &TestServer,
+    tenant: &crate::support::CreatedTenant,
+    endpoint_id: &str,
+) -> TestResult<Value> {
+    for _ in 0..50 {
+        let log = delivery_log(server, tenant, endpoint_id).await?;
+
+        if log.pointer("/0/status") == Some(&json!("delivered")) {
+            return Ok(log);
+        }
+
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
+
+    Err("the delivery was never recorded as delivered".into())
 }

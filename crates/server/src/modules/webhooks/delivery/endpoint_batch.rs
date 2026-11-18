@@ -31,8 +31,10 @@ pub async fn send_claimed(
     let mut sends = JoinSet::new();
 
     for (endpoint_id, deliveries) in group_by_endpoint(claimed) {
+        // An endpoint unknown to this run was created (or enabled) after its targets were read:
+        // its deliveries stay pending for the next run, which knows it. Deliveries of deleted
+        // endpoints were given up when the run started.
         let Some(target) = targets.get(&endpoint_id) else {
-            reports.extend(deliveries.iter().map(abandoned));
             continue;
         };
         let transport = transport.clone();
@@ -73,7 +75,7 @@ async fn send_in_order(
     for delivery in deliveries {
         let message = WebhookMessage {
             id: delivery.event_id.to_string(),
-            body: delivery.payload.to_string(),
+            body: delivery.payload,
         };
         let outcome = transport.send(&target, &message).await;
         reports.push(AttemptReport {
@@ -85,16 +87,4 @@ async fn send_in_order(
     }
 
     reports
-}
-
-fn abandoned(delivery: &ClaimedDelivery) -> AttemptReport {
-    AttemptReport {
-        delivery_id: delivery.id,
-        previous_attempts: delivery.attempts,
-        outcome: DeliveryOutcome::Failed {
-            status: None,
-            error: "the endpoint was deleted or disabled".to_owned(),
-        },
-        can_retry: false,
-    }
 }

@@ -1,4 +1,5 @@
 pub mod condition;
+pub mod embed_paths;
 pub mod filter_parser;
 pub mod logic_tree_parser;
 pub mod order_parser;

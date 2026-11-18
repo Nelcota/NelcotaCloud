@@ -29,21 +29,21 @@ impl<'a> WriteTarget<'a> {
         }
     }
 
-    pub fn push_insert(&self, sql: &mut QueryBuilder<Postgres>, batch: &InsertBatch) {
+    pub fn push_insert(&self, sql: &mut QueryBuilder<Postgres>, batch: InsertBatch) {
         let table_sql = &self.table_sql;
         let columns = quoted_list(&batch.columns);
         sql.push(format!(
             "INSERT INTO {table_sql} AS {ROOT_ALIAS} ({columns}) SELECT {columns} \
              FROM json_populate_recordset(NULL::{table_sql}, CAST("
         ));
-        sql.push_bind(batch.rows_json.clone()).push(" AS json))");
+        sql.push_bind(batch.rows_json).push(" AS json))");
         push_conflict(sql, batch.conflict.as_ref());
     }
 
     pub fn push_update(
         &self,
         sql: &mut QueryBuilder<Postgres>,
-        values: &UpdateValues,
+        values: UpdateValues,
         query: &ReadQuery,
     ) -> Result<(), DatabaseRejection> {
         let table_sql = &self.table_sql;
@@ -57,8 +57,7 @@ impl<'a> WriteTarget<'a> {
             "UPDATE {table_sql} AS {ROOT_ALIAS} SET {assignments} \
              FROM json_populate_record(NULL::{table_sql}, CAST("
         ));
-        sql.push_bind(values.values_json.clone())
-            .push(" AS json)) AS _b");
+        sql.push_bind(values.values_json).push(" AS json)) AS _b");
 
         push_filters(sql, self.aliased(), query)
     }

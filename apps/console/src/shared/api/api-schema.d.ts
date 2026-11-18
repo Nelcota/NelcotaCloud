@@ -2187,6 +2187,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
+            /** @description The project already holds the most active keys allowed */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
         };
     };
     revoke_api_key: {
@@ -2589,6 +2598,15 @@ export interface operations {
             };
             /** @description Requires the secret API key, or membership in the project */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many rotations within a day */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3494,7 +3512,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description The delivery is being sent right now */
+            /** @description The delivery is being sent right now, or the endpoint is disabled */
             409: {
                 headers: {
                     [name: string]: unknown;

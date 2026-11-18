@@ -34,11 +34,21 @@ export class FilterBuilder<T> {
     this.request = request
   }
 
+  /** `eq(column, null)` matches `NULL` (`is.null`): `= NULL` would match no row. */
   eq(column: string, value: FilterValue): this {
+    if (value === null) {
+      return this.filter(column, 'is', 'null')
+    }
+
     return this.filter(column, 'eq', formatValue(value))
   }
 
+  /** `neq(column, null)` matches every non-`NULL` value (`not.is.null`). */
   neq(column: string, value: FilterValue): this {
+    if (value === null) {
+      return this.filter(column, 'not.is', 'null')
+    }
+
     return this.filter(column, 'neq', formatValue(value))
   }
 
@@ -71,6 +81,7 @@ export class FilterBuilder<T> {
     return this.filter(column, 'is', formatValue(value))
   }
 
+  /** `null` never matches in a list (as in SQL): use `is(column, null)` for it. */
   in(column: string, values: readonly FilterValue[]): this {
     return this.filter(column, 'in', formatList(values))
   }
@@ -90,6 +101,14 @@ export class FilterBuilder<T> {
 
   /** `not('deleted_at', 'is', null)`. */
   not(column: string, operator: FilterOperator, value: FilterValue | readonly FilterValue[]): this {
+    if (value === null && operator === 'eq') {
+      return this.neq(column, null)
+    }
+
+    if (value === null && operator === 'neq') {
+      return this.eq(column, null)
+    }
+
     return this.filter(column, `not.${operator}`, negatedValue(operator, value))
   }
 

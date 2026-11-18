@@ -1,6 +1,7 @@
 use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
+use crate::modules::tenants::api_keys::api_key_cache::ApiKeyCache;
 use crate::modules::tenants::database::tenant_pool_registry::TenantPoolRegistry;
 use crate::modules::tenants::platform::membership_repository::{
     MembershipError, lock_project_role,
@@ -30,6 +31,7 @@ pub struct TenantRemoval<'a> {
     pub control_plane_pool: &'a PgPool,
     pub tenant_pools: &'a TenantPoolRegistry,
     pub signing_keys: &'a SigningKeyCache,
+    pub api_keys: &'a ApiKeyCache,
 }
 
 impl TenantRemoval<'_> {
@@ -38,6 +40,7 @@ impl TenantRemoval<'_> {
         let mut transaction = self.control_plane_pool.begin().await?;
         let is_removed = self.remove_within(&mut transaction, tenant_id).await?;
         transaction.commit().await?;
+        self.forget_cached(tenant_id).await;
 
         Ok(is_removed)
     }
@@ -60,6 +63,7 @@ impl TenantRemoval<'_> {
         self.remove_within(&mut transaction, project_id).await?;
         let commit = transaction.commit().await;
         commit.map_err(TenantDeletionError::from)?;
+        self.forget_cached(project_id).await;
 
         Ok(())
     }
@@ -73,10 +77,17 @@ impl TenantRemoval<'_> {
             return Ok(false);
         };
         self.tenant_pools.forget(tenant_id).await;
-        self.signing_keys.forget(tenant_id).await;
         let database_server = self.tenant_pools.database_server();
         database_server.try_drop_database(&slug).await?;
 
         Ok(true)
+    }
+
+    /// After the commit: a request that loaded the tenant while it was being removed cannot
+    /// leave its pool or keys cached.
+    async fn forget_cached(&self, tenant_id: Uuid) {
+        self.tenant_pools.forget(tenant_id).await;
+        self.signing_keys.forget(tenant_id);
+        self.api_keys.forget_tenant(tenant_id);
     }
 }

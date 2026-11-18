@@ -4,13 +4,12 @@ use sqlx::{AssertSqlSafe, Postgres, Transaction};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use tokio::sync::OwnedSemaphorePermit;
-
 use crate::app_state::AppState;
 use crate::modules::database::admin::developer_sql::sql_error_response::sql_error_response;
 use crate::modules::database::execution::query_guard::{
-    BACKEND_IDENTITY_COLUMNS, BackendIdentity, QueryGuard,
+    BackendIdentity, QueryGuard, backend_identity_columns,
 };
+use crate::modules::database::execution::session_slots::SessionSlot;
 use crate::modules::tenants::database::database_roles::DEVELOPER_ROLE;
 use crate::shared::http::api_error::ApiError;
 
@@ -19,11 +18,12 @@ const DEVELOPER_STATEMENT_TIMEOUT: Duration = Duration::from_secs(15);
 
 /// Switches the transaction to the developer role. The session itself is the project's own
 /// authenticator, so SQL that falls back to it (`RESET ROLE`, `COMMIT`) stays in the project.
-fn prepare_developer() -> String {
-    format!(
-        "SELECT {BACKEND_IDENTITY_COLUMNS}, set_config('role', $1, true), set_config('statement_timeout', $2, true), set_config('search_path', 'public', true)"
-    )
-}
+const PREPARE_DEVELOPER: &str = concat!(
+    "SELECT ",
+    backend_identity_columns!(),
+    ", set_config('role', $1, true), set_config('statement_timeout', $2, true), ",
+    "set_config('search_path', 'public', true)"
+);
 
 /// Backend id and start, then the three `set_config` results.
 type PreparedRow = (i32, OffsetDateTime, String, String, String);
@@ -34,12 +34,12 @@ pub struct DeveloperSession {
     pub transaction: Transaction<'static, Postgres>,
     pub guard: QueryGuard,
     /// Held until the session ends, so it counts against the instance's session limit.
-    _slot: OwnedSemaphorePermit,
+    _slot: SessionSlot,
 }
 
 impl DeveloperSession {
     pub async fn open(state: &AppState, tenant_id: Uuid) -> Result<Self, ApiError> {
-        let slot = state.data_api_slots.acquire().await?;
+        let slot = state.data_api_slots.acquire(tenant_id).await?;
         let tenant_pools = &state.tenant_pools;
         let data_pool = tenant_pools
             .data_api_pool_for(tenant_id)
@@ -53,7 +53,7 @@ impl DeveloperSession {
         // Closing the connection discards settings and temporary objects that survive commit.
         connection.close_on_drop();
         let mut transaction = Transaction::begin(connection, None).await?;
-        let (pid, started_at, ..): PreparedRow = sqlx::query_as(AssertSqlSafe(prepare_developer()))
+        let (pid, started_at, ..): PreparedRow = sqlx::query_as(PREPARE_DEVELOPER)
             .bind(DEVELOPER_ROLE)
             .bind(DEVELOPER_STATEMENT_TIMEOUT.as_millis().to_string())
             .fetch_one(&mut *transaction)

@@ -256,7 +256,7 @@ async fn wait_for_blocked_ownership_check(server: &TestServer) -> TestResult {
     for _ in 0..100 {
         let is_blocked: bool = sqlx::query_scalar(
             "SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE wait_event_type = 'Lock' \
-             AND query LIKE '%tenant_members%' AND query LIKE '%FOR SHARE%')",
+             AND query LIKE '%tenant_members%' AND query LIKE '%ORDER BY account_id FOR UPDATE%')",
         )
         .fetch_one(&mut observer)
         .await?;

@@ -63,7 +63,9 @@ pub async fn read_rows(
                     .fetch_one(&mut *session.transaction),
             )
             .await?;
-        result.total = planned_rows(&plan);
+        // An estimate below the rows this page already reached would hide the next pages.
+        let rows_reached = i64::from(offset).saturating_add(result.row_count);
+        result.total = planned_rows(&plan).map(|planned| planned.max(rows_reached));
     }
 
     if preferences.is_single_object && result.row_count != 1 {
@@ -78,6 +80,10 @@ pub async fn read_rows(
 
 fn planned_rows(plan: &Value) -> Option<i64> {
     let estimate = plan.pointer(PLAN_ROWS_POINTER)?.as_f64()?;
+
+    if estimate.is_finite() == false || estimate < 0.0 {
+        return None;
+    }
 
     format!("{estimate:.0}").parse().ok()
 }
@@ -94,5 +100,7 @@ mod tests {
 
         assert_eq!(planned_rows(&plan), Some(1234));
         assert_eq!(planned_rows(&json!([])), None);
+        let negative = json!([{ "Plan": { "Plan Rows": -1.0 } }]);
+        assert_eq!(planned_rows(&negative), None);
     }
 }

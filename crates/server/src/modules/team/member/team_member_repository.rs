@@ -64,24 +64,6 @@ pub async fn is_member_email(
     .await
 }
 
-/// Removes a member. Owners are never removed this way, so a project always keeps its owner;
-/// `false` when no such member exists.
-pub async fn remove_team_member(
-    pool: &PgPool,
-    tenant_id: Uuid,
-    account_id: Uuid,
-) -> Result<bool, sqlx::Error> {
-    let result = sqlx::query(
-        "DELETE FROM tenant_members WHERE tenant_id = $1 AND account_id = $2 AND role = 'member'",
-    )
-    .bind(tenant_id)
-    .bind(account_id)
-    .execute(pool)
-    .await?;
-
-    Ok(result.rows_affected() > 0)
-}
-
 impl TeamMemberRow {
     fn into_member(self) -> Result<TeamMember, TeamMemberError> {
         let Some(role) = ProjectRole::parse(&self.role) else {

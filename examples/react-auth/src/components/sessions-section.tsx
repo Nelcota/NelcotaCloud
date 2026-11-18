@@ -55,7 +55,7 @@ export function SessionsSection(): JSX.Element {
 type SessionItemProps = { session: SessionSummary; onRevoke: (sessionId: string) => void }
 
 function SessionItem({ session, onRevoke }: SessionItemProps): JSX.Element {
-  const startedAt = dateFormat.format(new Date(session.started_at))
+  const startedAt = formatDate(session.started_at)
 
   if (session.is_current) {
     return <li>Iniciada em {startedAt} (esta sessão)</li>
@@ -69,4 +69,15 @@ function SessionItem({ session, onRevoke }: SessionItemProps): JSX.Element {
       </button>
     </li>
   )
+}
+
+/** An unreadable date would make `Intl.DateTimeFormat.format` throw and break the list. */
+function formatDate(value: string): string {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return '—'
+  }
+
+  return dateFormat.format(date)
 }

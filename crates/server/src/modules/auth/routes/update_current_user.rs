@@ -59,7 +59,7 @@ pub async fn update_current_user(
         .rate_limits
         .profile_update
         .check(tenant.tenant_id, user_id)
-        .map_err(|_| ApiError::RateLimited)?;
+        .map_err(ApiError::from)?;
 
     let webhooks = state.webhooks.recorder(tenant.tenant_id).await?;
     let change = MetadataChange {
@@ -68,9 +68,9 @@ pub async fn update_current_user(
         app_metadata: None,
     };
     let user = update_user_metadata(&tenant.pool, change, &webhooks).await?;
-    let Some(user) = user else {
+    let Some(change) = user else {
         return Err(ApiError::from(TenantsRejection::InvalidAccessToken));
     };
 
-    Ok(Json(user))
+    Ok(Json(change.into_user()))
 }

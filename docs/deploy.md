@@ -14,6 +14,8 @@ proxy and TLS) and the backup job. A staging environment is the same stack on it
 Behind Cloudflare's proxy (orange cloud), set SSL/TLS to **Full (strict)**,
 `CLIENT_IP_HEADER=cf-connecting-ip`, and allow ports 80/443 only from
 [Cloudflare's IP ranges](https://www.cloudflare.com/ips/); otherwise clients could fake their IP.
+Docker publishes ports through its own iptables chains, ahead of `ufw`: put those rules in the
+`DOCKER-USER` chain (or the provider's network firewall), or they do not apply to Caddy.
 
 ## 2. First boot
 

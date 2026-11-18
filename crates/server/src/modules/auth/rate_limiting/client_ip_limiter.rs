@@ -33,11 +33,9 @@ impl ClientIpLimiter {
             client: client_network(client_ip),
         };
 
-        if self.limiter.check_key(&key).is_err() {
-            return Err(AttemptRejected);
-        }
-
-        Ok(())
+        self.limiter
+            .check_key(&key)
+            .map_err(|not_until| AttemptRejected::waiting(&not_until))
     }
 
     /// Drops keys whose limit has fully replenished.
@@ -48,7 +46,7 @@ impl ClientIpLimiter {
 }
 
 /// IPv4 (and IPv4-mapped IPv6) per address; other IPv6 per /64 network.
-fn client_network(client_ip: IpAddr) -> IpAddr {
+pub(crate) fn client_network(client_ip: IpAddr) -> IpAddr {
     let IpAddr::V6(address) = client_ip else {
         return client_ip;
     };

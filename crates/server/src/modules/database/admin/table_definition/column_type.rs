@@ -55,6 +55,11 @@ impl ColumnType {
         }
     }
 
+    /// Date, time and timestamp columns (not arrays of them).
+    pub fn is_date_or_time(&self) -> bool {
+        self.is_array == false && (self.sql.starts_with("date") || self.sql.starts_with("time"))
+    }
+
     pub fn can_be_identity(&self) -> bool {
         self.is_array == false && IDENTITY_TYPES.contains(&self.sql)
     }

@@ -45,6 +45,16 @@ pub async fn list_users(
     Query(query): Query<UserListQuery>,
 ) -> Result<Json<UserPage>, ApiError> {
     query.validate().map_err(ApiError::invalid_request)?;
+
+    // Spaces only would become an empty pattern and silently list every user.
+    if query
+        .email
+        .as_deref()
+        .is_some_and(|email| email.trim().is_empty())
+    {
+        return Err(ApiError::invalid_request("email must not be blank"));
+    }
+
     let user_query = UserQuery {
         email_contains: query.email.as_deref(),
         status: query.status,

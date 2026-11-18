@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::modules::tenants::access::tenant_admin::TenantAdmin;
+use crate::modules::tenants::signing_keys::signing_key_repository::SigningKeyStoreError;
 use crate::modules::tenants::signing_keys::signing_key_rotation::rotate_signing_key as rotate;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
@@ -24,6 +25,7 @@ pub struct RotatedSigningKey {
     security(("api_key" = []), ("platform_account" = [], "project" = [])),
     responses(
         (status = 200, description = "Key rotated", body = RotatedSigningKey),
+        (status = 409, description = "Too many rotations within a day", body = ErrorBody),
         (status = 403, description = "Requires the secret API key, or membership in the project", body = ErrorBody),
     )
 )]
@@ -34,8 +36,11 @@ pub async fn rotate_signing_key(
     let tenant_id = admin.tenant_id;
     let key_id = rotate(&state.control_plane_pool, tenant_id, &state.secret_box)
         .await
-        .map_err(ApiError::internal)?;
-    state.signing_keys.forget(tenant_id).await;
+        .map_err(|error| match error {
+            SigningKeyStoreError::TooManyRotations(_) => ApiError::Conflict(error.to_string()),
+            other => ApiError::internal(other),
+        })?;
+    state.signing_keys.forget(tenant_id);
 
     Ok(Json(RotatedSigningKey { key_id }))
 }

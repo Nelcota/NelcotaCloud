@@ -219,7 +219,8 @@ async fn the_sql_editor_runs_scripts_as_the_developer_role() -> TestResult {
     assert_eq!(field(&result, "/columns"), &json!(["n", "double"]));
     assert_eq!(field(&result, "/rows/0"), &json!(["1", "2"]));
     assert_eq!(field(&result, "/row_count"), 1500);
-    assert_eq!(field(&result, "/rows_affected"), 1500 + 1500);
+    // Only the INSERT changed rows; the SELECT reads them.
+    assert_eq!(field(&result, "/rows_affected"), 1500);
     assert_eq!(field(&result, "/is_truncated"), true);
     assert_eq!(field(&result, "/rows").as_array().map(Vec::len), Some(1000));
 
@@ -235,6 +236,21 @@ async fn the_sql_editor_runs_scripts_as_the_developer_role() -> TestResult {
         assert_eq!(response.status(), StatusCode::BAD_REQUEST, "{escape}");
         assert_eq!(error_code(response).await?, "sql_error");
     }
+
+    // The last query found nothing: its empty result set, not the previous one, is shown.
+    let empty: Value = run_sql(
+        &server,
+        &tenant,
+        "SELECT 1 AS earlier; -- note; not a statement
+         SELECT n AS later FROM numbers WHERE n < 0; UPDATE numbers SET n = n WHERE false;",
+    )
+    .await?
+    .error_for_status()?
+    .json()
+    .await?;
+    assert_eq!(field(&empty, "/columns"), &json!(["later"]));
+    assert_eq!(field(&empty, "/rows"), &json!([]));
+    assert_eq!(field(&empty, "/row_count"), 0);
 
     let slow = run_sql(&server, &tenant, "SELECT pg_sleep(30)").await?;
     assert_eq!(slow.status(), StatusCode::GATEWAY_TIMEOUT);

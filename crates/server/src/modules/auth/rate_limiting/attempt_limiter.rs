@@ -44,11 +44,9 @@ impl AttemptLimiter {
             email: attempt.email.trim().to_lowercase(),
         };
 
-        if self.by_email.check_key(&email_key).is_err() {
-            return Err(AttemptRejected);
-        }
-
-        Ok(())
+        self.by_email
+            .check_key(&email_key)
+            .map_err(|not_until| AttemptRejected::waiting(&not_until))
     }
 
     /// Drops keys whose limit has fully replenished, so memory does not grow with every email seen.

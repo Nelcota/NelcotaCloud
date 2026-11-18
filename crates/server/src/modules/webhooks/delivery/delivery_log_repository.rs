@@ -88,8 +88,8 @@ pub async fn requeue_delivery(
     }
 
     let updated = sqlx::query(
-        "UPDATE webhook_deliveries SET delivered_at = NULL, failed_at = NULL, next_attempt_at = now() \
-         WHERE id = (SELECT id FROM webhook_deliveries WHERE id = $1 AND endpoint_id = $2 \
+        "UPDATE webhook_deliveries SET delivered_at = NULL, failed_at = NULL, next_attempt_at = now(), \
+         attempts = 0 WHERE id = (SELECT id FROM webhook_deliveries WHERE id = $1 AND endpoint_id = $2 \
          FOR UPDATE SKIP LOCKED)",
     )
     .bind(delivery_id)

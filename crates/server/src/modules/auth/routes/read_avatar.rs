@@ -11,7 +11,6 @@ use crate::app_state::AppState;
 use crate::modules::auth::avatar::avatar_repository::find_avatar;
 use crate::modules::auth::avatar::image_file::ImageFile;
 use crate::modules::tenants::access::api_key_tenant::ApiKeyTenant;
-use crate::modules::tenants::api_keys::api_key_kind::ApiKeyKind;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
 const AVATAR_CONTENT_TYPE: &str = "image/jpeg";
@@ -52,7 +51,7 @@ pub async fn read_avatar(
     Query(query): Query<AvatarQuery>,
 ) -> Result<Response, ApiError> {
     query.validate().map_err(ApiError::invalid_request)?;
-    let tenant = publishable_tenant(&state, &query.apikey).await?;
+    let tenant = ApiKeyTenant::resolve_publishable(&state, &query.apikey).await?;
     let pool = state
         .tenant_pools
         .pool_for(tenant.tenant_id)
@@ -87,17 +86,4 @@ fn avatar_headers() -> [(&'static str, HeaderValue); 4] {
             HeaderValue::from_static(ANY_ORIGIN_MAY_EMBED),
         ),
     ]
-}
-
-/// URLs end up in logs and browser history; a secret key must never travel in one.
-async fn publishable_tenant(state: &AppState, api_key: &str) -> Result<ApiKeyTenant, ApiError> {
-    let tenant = ApiKeyTenant::resolve(state, api_key).await?;
-
-    if tenant.api_key_kind != ApiKeyKind::Publishable {
-        return Err(ApiError::invalid_request(
-            "use the publishable key in avatar URLs",
-        ));
-    }
-
-    Ok(tenant)
 }

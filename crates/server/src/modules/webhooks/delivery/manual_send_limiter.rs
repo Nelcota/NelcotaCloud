@@ -1,6 +1,7 @@
 use std::num::NonZeroU32;
 use std::time::Duration;
 
+use governor::clock::{Clock, DefaultClock};
 use governor::{DefaultKeyedRateLimiter, Quota, RateLimiter};
 use uuid::Uuid;
 
@@ -17,11 +18,13 @@ pub struct InvalidSendQuota;
 
 #[derive(Debug, thiserror::Error)]
 #[error("too many manual webhook sends")]
-pub struct ManualSendRejected;
+pub struct ManualSendRejected {
+    retry_after: Duration,
+}
 
 impl From<ManualSendRejected> for ApiError {
-    fn from(_: ManualSendRejected) -> Self {
-        Self::RateLimited
+    fn from(rejected: ManualSendRejected) -> Self {
+        Self::RateLimited(rejected.retry_after)
     }
 }
 
@@ -42,11 +45,13 @@ impl ManualSendLimiter {
     }
 
     pub fn check(&self, tenant_id: Uuid) -> Result<(), ManualSendRejected> {
-        if self.limiter.check_key(&tenant_id).is_err() {
-            return Err(ManualSendRejected);
-        }
+        self.limiter.check_key(&tenant_id).map_err(|not_until| {
+            let now = DefaultClock::default().now();
 
-        Ok(())
+            ManualSendRejected {
+                retry_after: not_until.wait_time_from(now),
+            }
+        })
     }
 }
 

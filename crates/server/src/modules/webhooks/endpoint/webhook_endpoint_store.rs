@@ -44,9 +44,7 @@ impl WebhookEndpointStore<'_> {
         tenant_id: Uuid,
     ) -> Result<Vec<WebhookEndpointView>, WebhookEndpointError> {
         let stored = list_endpoints(self.control_plane_pool, tenant_id).await?;
-        let views = stored.into_iter().map(WebhookEndpointView::try_from);
-
-        Ok(views.collect::<Result<_, _>>()?)
+        Ok(stored.into_iter().map(WebhookEndpointView::from).collect())
     }
 
     pub async fn create(
@@ -97,7 +95,7 @@ impl WebhookEndpointStore<'_> {
             return Err(WebhookEndpointError::NotFound);
         }
 
-        self.subscriptions.forget(tenant_id).await;
+        self.subscriptions.forget(tenant_id);
 
         if update.is_enabled == Some(false) {
             mark_due_now(self.control_plane_pool, &[tenant_id]).await?;
@@ -115,7 +113,7 @@ impl WebhookEndpointStore<'_> {
             return Err(WebhookEndpointError::NotFound);
         }
 
-        self.subscriptions.forget(tenant_id).await;
+        self.subscriptions.forget(tenant_id);
         // The worker gives up the endpoint's pending deliveries on its next look.
         mark_due_now(self.control_plane_pool, &[tenant_id]).await?;
 
@@ -150,7 +148,7 @@ impl WebhookEndpointStore<'_> {
             return Err(WebhookEndpointError::NotFound);
         };
 
-        Ok(WebhookEndpointView::try_from(stored)?)
+        Ok(WebhookEndpointView::from(stored))
     }
 
     async fn with_secret(
@@ -159,7 +157,7 @@ impl WebhookEndpointStore<'_> {
         endpoint_id: Uuid,
         secret: &WebhookSecret,
     ) -> Result<WebhookEndpointWithSecret, WebhookEndpointError> {
-        self.subscriptions.forget(tenant_id).await;
+        self.subscriptions.forget(tenant_id);
         let endpoint = self.view(tenant_id, endpoint_id).await?;
 
         Ok(WebhookEndpointWithSecret {

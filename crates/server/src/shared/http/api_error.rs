@@ -1,7 +1,9 @@
 use std::fmt::Display;
+use std::time::Duration;
 
 use axum::Json;
-use axum::http::StatusCode;
+use axum::http::header::RETRY_AFTER;
+use axum::http::{HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use serde::Serialize;
 use utoipa::ToSchema;
@@ -16,8 +18,12 @@ pub enum ApiError {
     UnsupportedMediaType,
     #[error("the request body is too large")]
     PayloadTooLarge,
+    /// Answered with `Retry-After`, so clients wait instead of retrying at once.
     #[error("too many attempts, try again later")]
-    RateLimited,
+    RateLimited(Duration),
+    /// The server is out of capacity for this kind of work right now (not the client's fault).
+    #[error("the server is busy, try again shortly")]
+    ServiceBusy,
     #[error("{0} not found")]
     NotFound(&'static str),
     #[error("{0}")]
@@ -64,6 +70,18 @@ impl ApiError {
         Some(rejection.code)
     }
 
+    /// Whole seconds to wait, rounded up so a client never comes back too early.
+    fn retry_after_seconds(&self) -> Option<u64> {
+        let Self::RateLimited(wait) = self else {
+            return None;
+        };
+        let rounded_up = wait
+            .as_secs()
+            .saturating_add(u64::from(wait.subsec_nanos() > 0));
+
+        Some(rounded_up.max(1))
+    }
+
     fn status_and_code(&self) -> (StatusCode, &'static str) {
         match self {
             Self::InvalidRequest(_) => (StatusCode::BAD_REQUEST, "invalid_request"),
@@ -71,7 +89,8 @@ impl ApiError {
                 (StatusCode::UNSUPPORTED_MEDIA_TYPE, "unsupported_media_type")
             }
             Self::PayloadTooLarge => (StatusCode::PAYLOAD_TOO_LARGE, "payload_too_large"),
-            Self::RateLimited => (StatusCode::TOO_MANY_REQUESTS, "too_many_requests"),
+            Self::RateLimited(_) => (StatusCode::TOO_MANY_REQUESTS, "too_many_requests"),
+            Self::ServiceBusy => (StatusCode::SERVICE_UNAVAILABLE, "service_busy"),
             Self::NotFound(_) => (StatusCode::NOT_FOUND, "not_found"),
             Self::Conflict(_) => (StatusCode::CONFLICT, "conflict"),
             Self::Rejected(rejection) => (rejection.status, rejection.code),
@@ -90,12 +109,20 @@ impl From<sqlx::Error> for ApiError {
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status, code) = self.status_and_code();
+        let retry_after = self.retry_after_seconds();
         let body = ErrorBody {
             error: code,
             message: self.to_string(),
         };
+        let mut response = (status, Json(body)).into_response();
 
-        (status, Json(body)).into_response()
+        if let Some(seconds) = retry_after {
+            response
+                .headers_mut()
+                .insert(RETRY_AFTER, HeaderValue::from(seconds));
+        }
+
+        response
     }
 }
 
@@ -153,6 +180,14 @@ mod tests {
     }
 
     #[test]
+    fn rate_limits_say_how_long_to_wait() {
+        let response = ApiError::RateLimited(Duration::from_millis(2_100)).into_response();
+        let retry_after = response.headers().get(RETRY_AFTER).cloned();
+
+        assert_eq!(retry_after, Some(HeaderValue::from(3_u64)));
+    }
+
+    #[test]
     fn generic_errors_keep_their_codes() {
         let cases = [
             (
@@ -161,9 +196,14 @@ mod tests {
                 "invalid_request",
             ),
             (
-                ApiError::RateLimited,
+                ApiError::RateLimited(Duration::from_secs(1)),
                 StatusCode::TOO_MANY_REQUESTS,
                 "too_many_requests",
+            ),
+            (
+                ApiError::ServiceBusy,
+                StatusCode::SERVICE_UNAVAILABLE,
+                "service_busy",
             ),
             (
                 ApiError::NotFound("user"),

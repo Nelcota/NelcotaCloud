@@ -6,6 +6,9 @@ services:
   postgres:
     image: postgres:17
     restart: unless-stopped
+    # Every project's pools share this server: idle tenant connections close within a minute
+    # and Data API sessions are capped per instance, but bursts across many projects need room.
+    command: ["postgres", "-c", "max_connections=300"]
     environment:
       POSTGRES_USER: nelcota
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}

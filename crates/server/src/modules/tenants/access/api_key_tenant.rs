@@ -4,7 +4,6 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::modules::tenants::api_keys::api_key_kind::ApiKeyKind;
-use crate::modules::tenants::api_keys::api_key_repository::find_active_api_key_owner;
 use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::shared::crypto::opaque_token::hash_opaque_token;
 use crate::shared::http::api_error::ApiError;
@@ -39,7 +38,9 @@ impl ApiKeyTenant {
     /// Also used directly by routes reached through browser redirects, which cannot send headers.
     pub async fn resolve(state: &AppState, api_key: &str) -> Result<Self, ApiError> {
         let key_hash = hash_opaque_token(api_key.trim());
-        let owner = find_active_api_key_owner(&state.control_plane_pool, &key_hash)
+        let owner = state
+            .api_keys
+            .owner_of(key_hash)
             .await
             .map_err(ApiError::internal)?;
         let Some(owner) = owner else {
@@ -51,6 +52,20 @@ impl ApiKeyTenant {
             tenant_id: owner.tenant_id,
             api_key_kind: owner.kind,
         })
+    }
+
+    /// For keys sent in a URL (avatar links, OAuth start): URLs end up in logs and browser
+    /// history, so a secret key must never travel in one.
+    pub async fn resolve_publishable(state: &AppState, api_key: &str) -> Result<Self, ApiError> {
+        let tenant = Self::resolve(state, api_key).await?;
+
+        if tenant.api_key_kind != ApiKeyKind::Publishable {
+            return Err(ApiError::invalid_request(
+                "use the publishable key in URLs, never the secret key",
+            ));
+        }
+
+        Ok(tenant)
     }
 
     /// For endpoints that change the tenant's own configuration.

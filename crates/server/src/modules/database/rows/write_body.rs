@@ -127,17 +127,30 @@ pub fn conflict_action(
 
     let updated_columns = match resolution {
         Resolution::IgnoreDuplicates => Vec::new(),
-        Resolution::MergeDuplicates => inserted_columns
-            .iter()
-            .filter(|column| target_columns.contains(column) == false)
-            .cloned()
-            .collect(),
+        Resolution::MergeDuplicates => merged_columns(inserted_columns, &target_columns),
     };
 
     Ok(ConflictAction {
         target_columns,
         updated_columns,
     })
+}
+
+/// The columns a merge overwrites. When the rows set only the conflict columns, one of them is
+/// set to itself: `DO NOTHING` would leave the existing row out of the response, as if nothing
+/// matched.
+fn merged_columns(inserted_columns: &[String], target_columns: &[String]) -> Vec<String> {
+    let others: Vec<String> = inserted_columns
+        .iter()
+        .filter(|column| target_columns.contains(column) == false)
+        .cloned()
+        .collect();
+
+    if others.is_empty() {
+        return target_columns.iter().take(1).cloned().collect();
+    }
+
+    others
 }
 
 fn add_columns(

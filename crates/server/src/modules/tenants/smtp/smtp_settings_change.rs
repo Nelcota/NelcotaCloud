@@ -73,7 +73,7 @@ impl SmtpSettingsStore<'_> {
             email_from: change.email_from,
         };
         save_smtp_settings(self.control_plane_pool, settings).await?;
-        self.email_senders.forget(tenant_id).await;
+        self.email_senders.forget(tenant_id);
 
         self.stored_view(tenant_id).await
     }
@@ -81,7 +81,7 @@ impl SmtpSettingsStore<'_> {
     /// Back to the platform's SMTP server.
     pub async fn reset(&self, tenant_id: Uuid) -> Result<(), sqlx::Error> {
         delete_smtp_settings(self.control_plane_pool, tenant_id).await?;
-        self.email_senders.forget(tenant_id).await;
+        self.email_senders.forget(tenant_id);
 
         Ok(())
     }

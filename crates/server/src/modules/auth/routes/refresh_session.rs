@@ -7,6 +7,7 @@ use crate::modules::auth::session::session_issuer::SessionTokens;
 use crate::modules::auth::session::session_renewal::renew_session;
 use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
+use crate::shared::http::client_ip::ClientIp;
 use crate::shared::http::validated_json::ValidatedJson;
 
 /// `POST /refresh`: rotates the refresh token. The presented token is consumed first, so a
@@ -26,8 +27,13 @@ use crate::shared::http::validated_json::ValidatedJson;
 pub async fn refresh_session(
     State(state): State<AppState>,
     tenant: TenantContext,
+    ClientIp(client_ip): ClientIp,
     ValidatedJson(body): ValidatedJson<RefreshTokenBody>,
 ) -> Result<Json<SessionTokens>, ApiError> {
+    state
+        .rate_limits
+        .token_redemption
+        .check(tenant.tenant_id, client_ip)?;
     Ok(Json(
         renew_session(&state, &tenant, &body.refresh_token).await?,
     ))

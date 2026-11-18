@@ -13,34 +13,6 @@ pub struct MembershipTarget {
     pub account_id: Uuid,
 }
 
-/// Gives a member another role. Demoting keeps at least one owner; promoting respects the
-/// limit of projects an account may own.
-pub async fn change_member_role(
-    pool: &PgPool,
-    target: MembershipTarget,
-    role: ProjectRole,
-) -> Result<(), OwnershipError> {
-    let mut transaction = pool.begin().await?;
-    let current = lock_membership(&mut transaction, target).await?;
-
-    if current == role {
-        return Ok(());
-    }
-
-    if role == ProjectRole::Member {
-        ensure_another_owner(&mut transaction, target).await?;
-    }
-
-    if role == ProjectRole::Owner {
-        ensure_below_owner_limit(&mut transaction, target.account_id).await?;
-    }
-
-    set_role(&mut transaction, target, role).await?;
-    transaction.commit().await?;
-
-    Ok(())
-}
-
 /// The account leaves the project; an owner only while another owner stays.
 pub async fn leave_project(pool: &PgPool, target: MembershipTarget) -> Result<(), OwnershipError> {
     let mut transaction = pool.begin().await?;
@@ -85,7 +57,7 @@ pub(super) async fn lock_membership(
     Ok(role)
 }
 
-async fn ensure_another_owner(
+pub(super) async fn ensure_another_owner(
     connection: &mut PgConnection,
     target: MembershipTarget,
 ) -> Result<(), OwnershipError> {

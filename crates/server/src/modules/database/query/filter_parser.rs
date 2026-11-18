@@ -27,7 +27,7 @@ fn parse_operation(text: &str) -> Result<Operation, DatabaseRejection> {
             "filter {text} must look like operator.value"
         )));
     };
-    let value = unquote(value);
+    let value = unquote(value)?;
 
     match operator {
         "eq" => Ok(Operation::Compare(Comparison::Equal, value)),
@@ -64,7 +64,15 @@ fn parse_in_list(value: &str) -> Result<Vec<String>, DatabaseRejection> {
             "in needs a list like (a,b)",
         ));
     };
-    let values: Vec<String> = split_top_level(inner)?.into_iter().map(unquote).collect();
+    // `in.()` matches no row, like an empty list in SQL.
+    if inner.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let values: Vec<String> = split_top_level(inner)?
+        .into_iter()
+        .map(unquote)
+        .collect::<Result<_, _>>()?;
 
     if values.len() > MAX_IN_VALUES {
         return Err(DatabaseRejection::invalid_query(
@@ -129,6 +137,10 @@ mod tests {
             Operation::CaseInsensitiveLike("%ana%".to_owned())
         );
         assert_eq!(null.operation, Operation::Is(IsValue::Null));
+        assert_eq!(
+            parse_filter("id", "in.()")?.operation,
+            Operation::In(Vec::new())
+        );
         Ok(())
     }
 

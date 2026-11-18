@@ -49,7 +49,7 @@ pub async fn log_in(
         client_ip,
     };
     // Checked before hashing, so rejected attempts cost no Argon2 work.
-    state.rate_limits.login.check(&attempt)?;
+    state.rate_limits.check_login(&attempt)?;
     let login = PasswordLogin {
         email: &body.email,
         password: body.password,

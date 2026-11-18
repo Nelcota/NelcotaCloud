@@ -49,6 +49,10 @@ pub async fn reset_password(
     ClientIp(client_ip): ClientIp,
     ValidatedJson(body): ValidatedJson<ResetPasswordBody>,
 ) -> Result<StatusCode, ApiError> {
+    state
+        .rate_limits
+        .token_redemption
+        .check(tenant.tenant_id, client_ip)?;
     check_new_password(&body.password).map_err(ApiError::invalid_request)?;
     let webhooks = state.webhooks.recorder(tenant.tenant_id).await?;
     let mut transaction = tenant.pool.begin().await?;

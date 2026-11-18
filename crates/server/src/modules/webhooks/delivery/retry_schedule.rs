@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-/// Waits after each failed attempt: about a day and a half in total, enough to ride out a
+/// Waits after each failed attempt: about 28 hours in total, enough to ride out a
 /// receiver's deploy or an overnight outage. After the last one the delivery gives up.
 const RETRY_DELAYS: [Duration; 7] = [
     Duration::from_secs(5),

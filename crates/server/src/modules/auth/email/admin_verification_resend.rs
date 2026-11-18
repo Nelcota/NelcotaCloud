@@ -49,7 +49,7 @@ pub async fn resend_verification_email(
         email: &user.email,
         client_ip: resend.client_ip,
     };
-    state.rate_limits.email_delivery.check(&attempt)?;
+    state.rate_limits.check_email(&attempt)?;
     let request = AuthEmailRequest {
         user: &user,
         kind: AuthEmailKind::Verification,

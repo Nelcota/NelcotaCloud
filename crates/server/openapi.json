@@ -203,6 +203,16 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "The project already holds the most active keys allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -799,6 +809,16 @@
           },
           "403": {
             "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Too many rotations within a day",
             "content": {
               "application/json": {
                 "schema": {
@@ -2119,7 +2139,7 @@
             }
           },
           "409": {
-            "description": "The delivery is being sent right now",
+            "description": "The delivery is being sent right now, or the endpoint is disabled",
             "content": {
               "application/json": {
                 "schema": {

@@ -140,4 +140,36 @@ describe('verifyWebhook', () => {
 
     expect(await codeOf(verify)).toBe('missing_headers')
   })
+
+  it('reads headers in any case from plain records', async () => {
+    const signature = await sign(EVENT, SPEC_TIMESTAMP)
+    const event = await verifyWebhook({
+      payload: EVENT,
+      headers: {
+        'Webhook-Id': SPEC_ID,
+        'Webhook-Timestamp': SPEC_TIMESTAMP,
+        'Webhook-Signature': signature,
+      },
+      secret: SPEC_SECRET,
+      now: SPEC_NOW,
+    })
+
+    expect(event.type).toBe('user.created')
+  })
+
+  it('refuses a tolerance that is not a number of seconds', async () => {
+    const signature = await sign(EVENT, SPEC_TIMESTAMP)
+
+    for (const toleranceSeconds of [Number.NaN, -1]) {
+      const verify = verifyWebhook({
+        payload: EVENT,
+        headers: headers(signature),
+        secret: SPEC_SECRET,
+        toleranceSeconds,
+        now: SPEC_NOW,
+      })
+
+      await expect(verify).rejects.toThrow(RangeError)
+    }
+  })
 })

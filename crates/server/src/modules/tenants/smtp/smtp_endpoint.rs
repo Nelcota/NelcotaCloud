@@ -18,6 +18,8 @@ pub enum SmtpEndpointError {
     MissingHost,
     #[error("SMTP requires implicit TLS (smtps://) or required STARTTLS (?tls=required)")]
     TlsRequired,
+    #[error("SMTP URL has a user name without a password")]
+    IncompleteCredentials,
 }
 
 /// Where a tenant's SMTP URL connects to.
@@ -53,9 +55,18 @@ impl SmtpEndpoint {
             SMTPS_SCHEME => SmtpTlsMode::Implicit,
             _ => return Err(SmtpEndpointError::UnsupportedScheme),
         };
-        let Some(host) = url.host_str() else {
+        // `smtps:///` has an empty host rather than none.
+        let Some(host) = url
+            .host_str()
+            .filter(|host| host.trim().is_empty() == false)
+        else {
             return Err(SmtpEndpointError::MissingHost);
         };
+
+        // The sender would connect without credentials and every email would fail unseen.
+        if url.username().is_empty() == false && url.password().is_none() {
+            return Err(SmtpEndpointError::IncompleteCredentials);
+        }
 
         Ok(Self {
             host: host.trim_matches(['[', ']']).to_owned(),
@@ -92,6 +103,25 @@ mod tests {
         assert_eq!((smtps.host.as_str(), smtps.port), ("smtp.example.com", 465));
         assert_eq!((smtp.host.as_str(), smtp.port), ("smtp.example.com", 587));
         Ok(())
+    }
+
+    #[test]
+    fn rejects_empty_hosts_and_half_credentials() {
+        assert_eq!(
+            SmtpEndpoint::parse("smtps:///"),
+            Err(SmtpEndpointError::MissingHost)
+        );
+
+        for url in [
+            "smtps://apikey@smtp.example.com",
+            "smtps://user:@smtp.example.com",
+        ] {
+            assert_eq!(
+                SmtpEndpoint::parse(url),
+                Err(SmtpEndpointError::IncompleteCredentials),
+                "{url}"
+            );
+        }
     }
 
     #[test]

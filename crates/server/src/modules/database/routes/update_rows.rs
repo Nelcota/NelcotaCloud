@@ -38,7 +38,7 @@ pub async fn update_rows(
     headers: HeaderMap,
     body: Bytes,
 ) -> Result<Response, ApiError> {
-    let request = write_request(query_string.as_deref(), &headers, &body)?;
+    let mut request = write_request(query_string.as_deref(), &headers, &body)?;
     let status = request.success_status();
     let result = write_rows(&state, &caller, request.write(WriteKind::Update, &table)).await?;
 

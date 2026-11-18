@@ -3,7 +3,10 @@ use axum::http::StatusCode;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
-use crate::modules::team::member::team_member_repository::remove_team_member;
+use crate::modules::team::member::owner_actions::{
+    OwnerAction, remove_member as remove_from_project,
+};
+use crate::modules::team::member::ownership_changes::MembershipTarget;
 use crate::modules::tenants::platform::platform_account::PlatformAccount;
 use crate::modules::tenants::platform::project_access::require_owner;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
@@ -31,11 +34,14 @@ pub async fn remove_member(
     Path((project_id, member_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, ApiError> {
     require_owner(&state.control_plane_pool, project_id, &account).await?;
-    let is_removed = remove_team_member(&state.control_plane_pool, project_id, member_id).await?;
-
-    if is_removed == false {
-        return Err(ApiError::NotFound("member"));
-    }
+    let action = OwnerAction {
+        actor_account_id: account.account_id,
+        target: MembershipTarget {
+            tenant_id: project_id,
+            account_id: member_id,
+        },
+    };
+    remove_from_project(&state.control_plane_pool, action).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

@@ -5,12 +5,12 @@ use crate::modules::tenants::api_keys::api_key_issuance::{ApiKeyRequest, issue_a
 use crate::modules::tenants::api_keys::api_key_kind::ApiKeyKind;
 use crate::modules::tenants::api_keys::api_key_repository::ApiKeyOwner;
 use crate::modules::tenants::platform::membership_repository::{
-    count_owned_projects, insert_membership,
+    NewMembership, count_owned_projects, insert_membership,
 };
 use crate::modules::tenants::platform::project_role::ProjectRole;
 use crate::modules::tenants::provisioning::provisioning_error::ProvisioningError;
 use crate::modules::tenants::provisioning::tenant_provisioner::{
-    NewTenantRequest, ProvisionedTenant,
+    NewTenantRequest, ProjectOwner, ProvisionedTenant,
 };
 use crate::modules::tenants::provisioning::tenant_repository::{NewTenant, insert_tenant};
 use crate::modules::tenants::signing_keys::signing_key::SigningKey;
@@ -33,7 +33,7 @@ pub async fn register_tenant(
     let signing_key = SigningKey::generate()?;
     let sealed_signing_key = SealedSigningKey::seal(&signing_key, tenant_id, secret_box)?;
     insert_tenant(transaction, NewTenant::of(tenant_id, &request)).await?;
-    add_owner(transaction, tenant_id, request.owner_account_id).await?;
+    add_owner(transaction, tenant_id, request.owner.as_ref()).await?;
     insert_active_signing_key(transaction, tenant_id, &sealed_signing_key).await?;
     let (publishable_key, secret_key) = issue_initial_keys(transaction, tenant_id).await?;
 
@@ -80,17 +80,23 @@ fn initial_key(tenant_id: Uuid, kind: ApiKeyKind) -> ApiKeyRequest<'static> {
 async fn add_owner(
     transaction: &mut PgConnection,
     tenant_id: Uuid,
-    owner_account_id: Option<Uuid>,
+    owner: Option<&ProjectOwner>,
 ) -> Result<(), ProvisioningError> {
-    let Some(account_id) = owner_account_id else {
+    let Some(owner) = owner else {
         return Ok(());
     };
 
-    if count_owned_projects(transaction, account_id).await? >= MAX_OWNED_PROJECTS {
+    if count_owned_projects(transaction, owner.account_id).await? >= MAX_OWNED_PROJECTS {
         return Err(ProvisioningError::ProjectLimitReached(MAX_OWNED_PROJECTS));
     }
 
-    insert_membership(transaction, tenant_id, account_id, ProjectRole::Owner).await?;
+    let membership = NewMembership {
+        tenant_id,
+        account_id: owner.account_id,
+        account_email: &owner.email,
+        role: ProjectRole::Owner,
+    };
+    insert_membership(transaction, membership).await?;
 
     Ok(())
 }

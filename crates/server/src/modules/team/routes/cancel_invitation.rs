@@ -3,7 +3,9 @@ use axum::http::StatusCode;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
-use crate::modules::team::invitation::invitation_repository::delete_project_invitation;
+use crate::modules::team::invitation::invitation_repository::{
+    InvitationCancellation, delete_project_invitation,
+};
 use crate::modules::tenants::platform::platform_account::PlatformAccount;
 use crate::modules::tenants::platform::project_access::require_owner;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
@@ -31,8 +33,12 @@ pub async fn cancel_invitation(
     Path((project_id, invitation_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, ApiError> {
     require_owner(&state.control_plane_pool, project_id, &account).await?;
-    let is_deleted =
-        delete_project_invitation(&state.control_plane_pool, project_id, invitation_id).await?;
+    let cancellation = InvitationCancellation {
+        tenant_id: project_id,
+        invitation_id,
+        owner_account_id: account.account_id,
+    };
+    let is_deleted = delete_project_invitation(&state.control_plane_pool, cancellation).await?;
 
     if is_deleted == false {
         return Err(ApiError::NotFound("invitation"));

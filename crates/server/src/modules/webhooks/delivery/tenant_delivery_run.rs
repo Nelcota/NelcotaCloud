@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use sqlx::{PgConnection, PgPool};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::modules::tenants::database::tenant_pool_registry::{
@@ -52,9 +53,14 @@ pub async fn deliver_tenant(
     let tenant_id = due.tenant_id;
     let pool = context.tenant_pools.pool_for(tenant_id).await?;
     let control_plane_pool = &context.control_plane_pool;
-    let targets = load_delivery_targets(control_plane_pool, &context.secret_box, tenant_id).await?;
-    let enabled_endpoint_ids: Vec<Uuid> = targets.keys().copied().collect();
-    abandon_orphaned_deliveries(&pool, &enabled_endpoint_ids).await?;
+    // Read on the tenant's clock before the targets, so deliveries recorded afterwards (maybe for
+    // an endpoint created meanwhile) are never given up as orphans by this run.
+    let targets_loaded_at: OffsetDateTime =
+        sqlx::query_scalar("SELECT now()").fetch_one(&pool).await?;
+    let loaded = load_delivery_targets(control_plane_pool, &context.secret_box, tenant_id).await?;
+    let enabled_endpoint_ids = &loaded.enabled_endpoint_ids;
+    abandon_orphaned_deliveries(&pool, enabled_endpoint_ids, targets_loaded_at).await?;
+    let targets = loaded.targets;
 
     for _ in 0..MAX_BATCHES_PER_RUN {
         if deliver_batch(context, &pool, &targets).await? == 0 {
@@ -76,7 +82,8 @@ async fn deliver_batch(
     targets: &DeliveryTargets,
 ) -> Result<usize, DeliveryRunError> {
     let mut transaction = pool.begin().await?;
-    let claimed = claim_due_deliveries(&mut transaction, BATCH_SIZE).await?;
+    let endpoint_ids: Vec<Uuid> = targets.keys().copied().collect();
+    let claimed = claim_due_deliveries(&mut transaction, &endpoint_ids, BATCH_SIZE).await?;
     let claimed_count = claimed.len();
 
     if claimed.is_empty() {

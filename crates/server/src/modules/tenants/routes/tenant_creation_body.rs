@@ -6,7 +6,7 @@ use validator::Validate;
 use crate::app_state::AppState;
 use crate::modules::tenants::provisioning::provisioning_error::ProvisioningError;
 use crate::modules::tenants::provisioning::tenant_provisioner::{
-    NewTenantRequest, ProvisionedTenant,
+    NewTenantRequest, ProjectOwner, ProvisionedTenant,
 };
 use crate::modules::tenants::provisioning::tenant_slug::TenantSlug;
 use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
@@ -35,12 +35,9 @@ pub struct CreatedTenantResponse {
 }
 
 impl CreateTenantBody {
-    /// Validates the body; with `owner_account_id`, that platform account becomes the owner of
-    /// the new tenant in the same transaction.
-    pub fn into_request(
-        self,
-        owner_account_id: Option<Uuid>,
-    ) -> Result<NewTenantRequest, ApiError> {
+    /// Validates the body; with an `owner`, that platform account becomes the owner of the new
+    /// tenant in the same transaction.
+    pub fn into_request(self, owner: Option<ProjectOwner>) -> Result<NewTenantRequest, ApiError> {
         let slug = TenantSlug::parse(&self.slug).map_err(ApiError::invalid_request)?;
         let site_url = SiteUrl::parse(&self.site_url).map_err(ApiError::invalid_request)?;
         let name = self.name.trim();
@@ -56,7 +53,7 @@ impl CreateTenantBody {
             name: name.to_owned(),
             site_url,
             require_email_verification: self.require_email_verification.unwrap_or(true),
-            owner_account_id,
+            owner,
         })
     }
 }
@@ -110,19 +107,22 @@ mod tests {
 
         assert!(request.require_email_verification);
         assert_eq!(request.name, "Acme");
-        assert_eq!(request.owner_account_id, None);
+        assert_eq!(request.owner, None);
         Ok(())
     }
 
     #[test]
     fn keeps_the_owner_and_an_explicit_choice() -> Result<(), ApiError> {
-        let owner = Uuid::new_v4();
+        let owner = ProjectOwner {
+            account_id: Uuid::new_v4(),
+            email: "owner@example.com".to_owned(),
+        };
         let mut sent = body("acme", "Acme", "https://app.acme.test");
         sent.require_email_verification = Some(false);
-        let request = sent.into_request(Some(owner))?;
+        let request = sent.into_request(Some(owner.clone()))?;
 
         assert!(request.require_email_verification == false);
-        assert_eq!(request.owner_account_id, Some(owner));
+        assert_eq!(request.owner, Some(owner));
         Ok(())
     }
 

@@ -23,7 +23,14 @@ pub struct NewTenantRequest {
     pub site_url: SiteUrl,
     pub require_email_verification: bool,
     /// The platform account that becomes the owner, when created from the console.
-    pub owner_account_id: Option<Uuid>,
+    pub owner: Option<ProjectOwner>,
+}
+
+/// The console account creating a project, with its email for the team list.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProjectOwner {
+    pub account_id: Uuid,
+    pub email: String,
 }
 
 /// API keys are returned in plaintext only here; afterwards only their hashes exist.

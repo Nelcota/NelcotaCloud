@@ -8,7 +8,7 @@ use crate::modules::auth::session::refresh_token_repository::{
 use crate::modules::auth::session::session_family::SessionFamily;
 use crate::modules::auth::session::session_grant::{SessionGrant, issue_session};
 use crate::modules::auth::session::session_issuer::SessionTokens;
-use crate::modules::auth::user::user_lookup::find_user_by_id;
+use crate::modules::auth::user::user_record::User;
 use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::modules::tenants::settings::email_verification_policy::ensure_email_verified;
 use crate::shared::crypto::opaque_token::hash_opaque_token;
@@ -21,11 +21,7 @@ pub async fn renew_session(
     tenant: &TenantContext,
     refresh_token: &str,
 ) -> Result<SessionTokens, ApiError> {
-    let (user_id, family) = consume_token(tenant, refresh_token).await?;
-    let user = find_user_by_id(&tenant.pool, user_id).await?;
-    let Some(user) = user else {
-        return Err(ApiError::from(AuthRejection::InvalidRefreshToken));
-    };
+    let (user, family) = consume_token(tenant, refresh_token).await?;
     // Sessions issued while the tenant allowed unverified users stop renewing once it does not.
     let pool = &state.control_plane_pool;
     ensure_email_verified(pool, tenant.tenant_id, user.email_verified_at).await?;
@@ -38,11 +34,11 @@ pub async fn renew_session(
 async fn consume_token(
     tenant: &TenantContext,
     refresh_token: &str,
-) -> Result<(Uuid, SessionFamily), ApiError> {
+) -> Result<(User, SessionFamily), ApiError> {
     let token_hash = hash_opaque_token(refresh_token.trim());
 
     match consume_refresh_token(&tenant.pool, &token_hash).await? {
-        RefreshTokenStatus::Consumed { user_id, family } => Ok((user_id, family)),
+        RefreshTokenStatus::Consumed { user, family } => Ok((user, family)),
         RefreshTokenStatus::Reused { family_id } => {
             Err(revoke_reused_family(tenant, family_id).await)
         }

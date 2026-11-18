@@ -2,7 +2,9 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::modules::auth::session::refresh_token_repository::end_all_user_sessions;
+use crate::modules::auth::user::status_change::StatusChange;
 use crate::modules::auth::user::user_events::{record_sessions_revoked, record_user_event};
+use crate::modules::auth::user::user_locks::lock_user_by_id;
 use crate::modules::auth::user::user_record::{User, user_columns};
 use crate::modules::webhooks::event::webhook_event::RevokedSessions;
 use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
@@ -15,47 +17,57 @@ pub async fn ban_user(
     pool: &PgPool,
     user_id: Uuid,
     webhooks: &WebhookRecorder,
-) -> Result<Option<User>, ApiError> {
+) -> Result<Option<StatusChange>, ApiError> {
     let mut transaction = pool.begin().await?;
-    let user: Option<User> = sqlx::query_as(concat!(
-        "UPDATE users SET banned_at = COALESCE(banned_at, now()), updated_at = now() WHERE id = $1 RETURNING ",
+    let Some(current) = lock_user_by_id(&mut transaction, user_id).await? else {
+        return Ok(None);
+    };
+
+    if current.banned_at.is_some() {
+        return Ok(Some(StatusChange::Unchanged(current)));
+    }
+
+    let user: User = sqlx::query_as(concat!(
+        "UPDATE users SET banned_at = now(), updated_at = now() WHERE id = $1 RETURNING ",
         user_columns!()
     ))
     .bind(user_id)
-    .fetch_optional(&mut *transaction)
+    .fetch_one(&mut *transaction)
     .await?;
-    let Some(user) = user else {
-        return Ok(None);
-    };
     end_all_user_sessions(&mut transaction, user_id).await?;
     let event = (WebhookEventType::UserBanned, &user);
     record_user_event(&mut transaction, webhooks, event).await?;
     transaction.commit().await?;
 
-    Ok(Some(user))
+    Ok(Some(StatusChange::Changed(user)))
 }
 
 pub async fn unban_user(
     pool: &PgPool,
     user_id: Uuid,
     webhooks: &WebhookRecorder,
-) -> Result<Option<User>, ApiError> {
+) -> Result<Option<StatusChange>, ApiError> {
     let mut transaction = pool.begin().await?;
-    let user: Option<User> = sqlx::query_as(concat!(
+    let Some(current) = lock_user_by_id(&mut transaction, user_id).await? else {
+        return Ok(None);
+    };
+
+    if current.banned_at.is_none() {
+        return Ok(Some(StatusChange::Unchanged(current)));
+    }
+
+    let user: User = sqlx::query_as(concat!(
         "UPDATE users SET banned_at = NULL, updated_at = now() WHERE id = $1 RETURNING ",
         user_columns!()
     ))
     .bind(user_id)
-    .fetch_optional(&mut *transaction)
+    .fetch_one(&mut *transaction)
     .await?;
-    let Some(user) = user else {
-        return Ok(None);
-    };
     let event = (WebhookEventType::UserUnbanned, &user);
     record_user_event(&mut transaction, webhooks, event).await?;
     transaction.commit().await?;
 
-    Ok(Some(user))
+    Ok(Some(StatusChange::Changed(user)))
 }
 
 /// Ends every session of the user (e.g. after a suspected compromise). `false` if no such user.

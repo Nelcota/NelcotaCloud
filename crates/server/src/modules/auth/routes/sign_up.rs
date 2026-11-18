@@ -63,7 +63,7 @@ pub async fn sign_up(
         client_ip,
     };
     // Before hashing: every signup costs an Argon2 run and may send an email.
-    state.rate_limits.signup.check(&attempt)?;
+    state.rate_limits.check_signup(&attempt)?;
     let email = EmailAddress::parse(&body.email).map_err(ApiError::invalid_request)?;
     check_new_password(&body.password).map_err(ApiError::invalid_request)?;
     let password_hash = hash_password(body.password)

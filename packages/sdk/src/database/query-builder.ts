@@ -22,12 +22,20 @@ export class QueryBuilder<Row, T> extends FilterBuilder<T> {
 
   /** At most `count` rows (the API answers at most 1000). */
   limit(count: number, options: { referencedTable?: string } = {}): this {
+    assertRowCount('limit', count)
     this.request.params.push([pathed(options.referencedTable, 'limit'), String(count)])
     return this
   }
 
   /** Rows `from` to `to`, both included and counted from 0: `range(0, 9)` is the first ten. */
   range(from: number, to: number): this {
+    assertRowCount('from', from)
+    assertRowCount('to', to)
+
+    if (to < from) {
+      throw new RangeError('range: to must not be below from.')
+    }
+
     this.request.params.push(['offset', String(from)], ['limit', String(to - from + 1)])
     return this
   }
@@ -88,4 +96,11 @@ export function compact(columns: string): string {
   }
 
   return compacted
+}
+
+/** Row positions and counts are whole numbers, 0 or more: NaN, decimals or negatives would reach the API as a confusing parse error. */
+function assertRowCount(name: string, value: number): void {
+  if (Number.isSafeInteger(value) === false || value < 0) {
+    throw new RangeError(`${name} must be a whole number, 0 or more.`)
+  }
 }

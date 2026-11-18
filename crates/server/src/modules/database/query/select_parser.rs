@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::modules::database::query::query_names::{parse_alias, parse_name};
 use crate::modules::database::query::select_item::{
     CastType, ColumnSelection, EmbedSelection, SelectItem,
@@ -22,10 +24,35 @@ fn parse_items(text: &str, depth: usize) -> Result<Vec<SelectItem>, DatabaseReje
         ));
     }
 
-    split_top_level(text)?
+    let items = split_top_level(text)?
         .into_iter()
         .map(|item| parse_item(item, depth))
-        .collect()
+        .collect::<Result<Vec<_>, _>>()?;
+    ensure_unique_keys(&items)?;
+
+    Ok(items)
+}
+
+/// Two items with one key would write the same JSON key twice (clients keep only one), and two
+/// embeds with one key would share their filters.
+fn ensure_unique_keys(items: &[SelectItem]) -> Result<(), DatabaseRejection> {
+    let mut keys = HashSet::with_capacity(items.len());
+
+    for item in items {
+        let key = match item {
+            SelectItem::AllColumns => continue,
+            SelectItem::Column(column) => column.key(),
+            SelectItem::Embed(embed) => embed.key(),
+        };
+
+        if keys.insert(key) == false {
+            return Err(DatabaseRejection::invalid_query(format!(
+                "\"{key}\" appears twice in select: give one of them an alias"
+            )));
+        }
+    }
+
+    Ok(())
 }
 
 fn parse_item(text: &str, depth: usize) -> Result<SelectItem, DatabaseRejection> {
@@ -145,6 +172,20 @@ mod tests {
         assert!(embed.is_inner);
         assert_eq!(embed.items.len(), 2);
         Ok(())
+    }
+
+    #[test]
+    fn refuses_repeated_keys() {
+        for select in [
+            "id,id",
+            "a:title,a:body",
+            "users(id),users(name)",
+            "author:users(id),author",
+        ] {
+            assert!(parse_select(select).is_err(), "{select}");
+        }
+
+        assert!(parse_select("id,other:id,*").is_ok());
     }
 
     #[test]

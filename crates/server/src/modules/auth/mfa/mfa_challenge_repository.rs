@@ -27,6 +27,23 @@ pub async fn create_mfa_challenge(
     Ok(token.plaintext)
 }
 
+/// Locks the challenge's user (`FOR SHARE`), before the challenge itself.
+///
+/// Paths that change a user lock its row first, so this waits for a takeover, reset or ban in progress, which
+/// also deletes the user's pending challenges.
+pub async fn lock_challenge_owner(
+    connection: &mut PgConnection,
+    token_hash: &TokenHash,
+) -> Result<Option<Uuid>, sqlx::Error> {
+    sqlx::query_scalar(
+        "SELECT users.id FROM users \
+         WHERE users.id = (SELECT user_id FROM mfa_challenges WHERE token_hash = $1) FOR SHARE",
+    )
+    .bind(token_hash)
+    .fetch_optional(connection)
+    .await
+}
+
 /// Locks a usable challenge (not consumed, not expired, attempts left) and returns its user.
 pub async fn lock_mfa_challenge(
     connection: &mut PgConnection,

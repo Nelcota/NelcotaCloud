@@ -3,7 +3,7 @@ use sqlx::{PgConnection, PgPool};
 
 use crate::modules::auth::user::email_address::{EmailAddress, InvalidEmailAddress};
 use crate::modules::auth::user::user_events::{UserEventError, record_user_event};
-use crate::modules::auth::user::user_lookup::find_user_by_email;
+use crate::modules::auth::user::user_locks::lock_user_by_email;
 use crate::modules::auth::user::user_record::User;
 use crate::modules::auth::user::user_registration::{InsertUserError, insert_oauth_user};
 use crate::modules::auth::user::verified_inbox_claim::claim_verified_inbox;
@@ -82,9 +82,12 @@ async fn account_for_email(
     let Some(raw_email) = &profile.verified_email else {
         return Err(AccountLinkError::NoVerifiedEmail);
     };
-    let email = EmailAddress::parse(raw_email)?;
+    // A malformed address from the provider vouches for nothing: like no verified email.
+    let Ok(email) = EmailAddress::parse(raw_email) else {
+        return Err(AccountLinkError::NoVerifiedEmail);
+    };
 
-    if let Some(existing_user) = find_user_by_email(&mut *transaction, &email).await? {
+    if let Some(existing_user) = lock_user_by_email(&mut *transaction, &email).await? {
         return claim_existing_account(transaction, (existing_user, key), webhooks).await;
     }
 

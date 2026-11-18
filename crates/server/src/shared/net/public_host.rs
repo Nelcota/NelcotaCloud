@@ -10,9 +10,17 @@ const LOCAL_NAME_SUFFIXES: [&str; 4] = [".local", ".localhost", ".internal", ".l
 pub fn is_public_host_name(host: &str) -> bool {
     let host = host.trim_start_matches('[').trim_end_matches(']');
     let host = host.to_ascii_lowercase();
+    // "localhost." is "localhost": a trailing dot only makes the name fully qualified.
+    let host = host.trim_end_matches('.');
 
     if let Ok(ip) = host.parse::<IpAddr>() {
         return is_public_ip(ip);
+    }
+
+    // Resolvers read "127.1" or "0x7f.0.0.1" as IPv4 addresses that `IpAddr` does not parse:
+    // a name whose last label is a number is never a public host name.
+    if host.rsplit('.').next().is_some_and(is_numeric_label) {
+        return false;
     }
 
     // Single-label names ("postgres", "api") are container and intranet hosts.
@@ -24,6 +32,17 @@ pub fn is_public_host_name(host: &str) -> bool {
         .iter()
         .any(|suffix| host.ends_with(suffix))
         == false
+}
+
+/// A decimal ("1") or hexadecimal ("0x7f") label, as IPv4 parts are written.
+fn is_numeric_label(label: &str) -> bool {
+    if let Some(hex_digits) = label.strip_prefix("0x") {
+        return hex_digits
+            .chars()
+            .all(|character| character.is_ascii_hexdigit());
+    }
+
+    label.is_empty() == false && label.chars().all(|character| character.is_ascii_digit())
 }
 
 pub fn is_public_ip(ip: IpAddr) -> bool {
@@ -93,6 +112,14 @@ mod tests {
             "fd00::1",
             "fe80::1",
             "::ffff:10.0.0.1",
+            "localhost.",
+            "api.internal.",
+            "printer.local.",
+            "127.1",
+            "10.1",
+            "0x7f.0.0.1",
+            "",
+            ".",
         ] {
             assert!(is_public_host_name(host) == false, "{host}");
         }
@@ -106,6 +133,8 @@ mod tests {
             "8.8.8.8",
             "2001:4860:4860::8888",
             "[2001:4860:4860::8888]",
+            "smtp.example.com.",
+            "mail.1password.com",
         ] {
             assert!(is_public_host_name(host), "{host}");
         }

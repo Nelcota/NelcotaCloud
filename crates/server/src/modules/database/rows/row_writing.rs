@@ -39,7 +39,7 @@ pub struct RowWrite<'a> {
 pub async fn write_rows(
     state: &AppState,
     caller: &DataApiCaller,
-    write: RowWrite<'_>,
+    mut write: RowWrite<'_>,
 ) -> Result<RowsResult, ApiError> {
     let mut session = DataApiSession::open(state, caller, TransactionAccess::ReadWrite).await?;
     let schema = Arc::clone(&session.schema);
@@ -50,12 +50,12 @@ pub async fn write_rows(
     };
     let query = write.query;
     let returns_rows = write.preferences.returns_rows;
-    let change = write_change(table, &write)?;
+    let change = write_change(table, &mut write)?;
 
     if returns_rows {
         let mut rows = ReturningRows::new();
 
-        for mut statement in write_returning_statements(&schema, table, query, &change)? {
+        for mut statement in write_returning_statements(&schema, table, query, change)? {
             let row: StatementRow = session
                 .guard
                 .run(
@@ -74,7 +74,7 @@ pub async fn write_rows(
 
     let mut rows_affected: u64 = 0;
 
-    for mut statement in write_statements(table, query, &change)? {
+    for mut statement in write_statements(table, query, change)? {
         let outcome = session
             .guard
             .run(statement.build().execute(&mut *session.transaction))
@@ -82,12 +82,23 @@ pub async fn write_rows(
         rows_affected = rows_affected.saturating_add(outcome.rows_affected());
     }
 
+    // Like with `return=representation`: a single-object write that touched more or fewer
+    // rows is refused, and dropping the session rolls it back.
+    if write.preferences.is_single_object && rows_affected != 1 {
+        return Err(ApiError::from(DatabaseRejection::NotSingleRow(
+            rows_affected,
+        )));
+    }
+
     session.commit().await?;
 
     Ok(RowsResult::without_rows(rows_affected))
 }
 
-fn write_change(table: &TableModel, write: &RowWrite) -> Result<WriteChange, DatabaseRejection> {
+fn write_change(
+    table: &TableModel,
+    write: &mut RowWrite,
+) -> Result<WriteChange, DatabaseRejection> {
     let query = write.query;
 
     if write.kind != WriteKind::Insert && query.has_root_conditions() == false {
@@ -105,7 +116,7 @@ fn write_change(table: &TableModel, write: &RowWrite) -> Result<WriteChange, Dat
 
     match write.kind {
         WriteKind::Insert => {
-            let mut batches = insert_batches(table, write.body.clone())?;
+            let mut batches = insert_batches(table, std::mem::take(&mut write.body))?;
             if let Some(resolution) = write.preferences.resolution {
                 let on_conflict = query.on_conflict.as_deref();
                 for batch in &mut batches {
@@ -115,7 +126,9 @@ fn write_change(table: &TableModel, write: &RowWrite) -> Result<WriteChange, Dat
             }
             Ok(WriteChange::Insert(batches))
         }
-        WriteKind::Update => update_values(table, write.body.clone()).map(WriteChange::Update),
+        WriteKind::Update => {
+            update_values(table, std::mem::take(&mut write.body)).map(WriteChange::Update)
+        }
         WriteKind::Delete => Ok(WriteChange::Delete),
     }
 }

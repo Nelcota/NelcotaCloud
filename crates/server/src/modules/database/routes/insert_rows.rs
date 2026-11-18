@@ -41,7 +41,7 @@ pub async fn insert_rows(
     headers: HeaderMap,
     body: Bytes,
 ) -> Result<Response, ApiError> {
-    let request = write_request(query_string.as_deref(), &headers, &body)?;
+    let mut request = write_request(query_string.as_deref(), &headers, &body)?;
     let result = write_rows(&state, &caller, request.write(WriteKind::Insert, &table)).await?;
 
     rows_response(StatusCode::CREATED, result)

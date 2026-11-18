@@ -1,6 +1,5 @@
 use std::time::Duration;
 
-use serde_json::Value;
 use sqlx::{PgConnection, PgPool};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -19,42 +18,60 @@ pub struct ClaimedDelivery {
     pub event_id: Uuid,
     pub endpoint_id: Uuid,
     pub attempts: i32,
-    pub payload: Value,
+    /// The event as JSON text, sent as is (never parsed and serialized again).
+    pub payload: String,
 }
 
 /// Claims due deliveries, at most `PER_ENDPOINT_IN_BATCH` per endpoint: the batch's
 /// transaction stays open while sending, so one slow receiver must not hold it for long.
+///
+/// The due conditions are checked again on the locked row: a row another worker delivered or
+/// rescheduled while this statement waited is re-read, then skipped, never sent again. Only
+/// deliveries of `endpoint_ids` (the run's targets) are claimed: those of an endpoint created
+/// after the targets were read wait for the next run instead of filling every batch.
 pub async fn claim_due_deliveries(
     connection: &mut PgConnection,
+    endpoint_ids: &[Uuid],
     limit: i64,
 ) -> Result<Vec<ClaimedDelivery>, sqlx::Error> {
     sqlx::query_as(
-        "SELECT delivery.id, delivery.event_id, delivery.endpoint_id, delivery.attempts, event.payload \
+        "SELECT delivery.id, delivery.event_id, delivery.endpoint_id, delivery.attempts, event.payload::text AS payload \
          FROM webhook_deliveries delivery JOIN webhook_events event ON event.id = delivery.event_id \
          WHERE delivery.id IN (SELECT ranked.id FROM (SELECT id, next_attempt_at, row_number() OVER \
          (PARTITION BY endpoint_id ORDER BY next_attempt_at) AS position FROM webhook_deliveries \
-         WHERE delivered_at IS NULL AND failed_at IS NULL AND next_attempt_at <= now()) ranked \
+         WHERE delivered_at IS NULL AND failed_at IS NULL AND next_attempt_at <= now() \
+         AND endpoint_id = ANY($3::uuid[])) ranked \
          WHERE ranked.position <= $2 ORDER BY ranked.next_attempt_at LIMIT $1) \
+         AND delivery.delivered_at IS NULL AND delivery.failed_at IS NULL \
+         AND delivery.next_attempt_at <= now() \
          ORDER BY delivery.next_attempt_at FOR UPDATE OF delivery SKIP LOCKED",
     )
     .bind(limit)
     .bind(PER_ENDPOINT_IN_BATCH)
+    .bind(endpoint_ids)
     .fetch_all(connection)
     .await
 }
 
 /// Gives up pending deliveries whose endpoint was deleted or disabled, so their payloads
 /// (user data) expire with the rest and are never sent if the endpoint comes back.
+///
+/// Only deliveries created before `targets_loaded_at`: an endpoint created (or enabled) after
+/// the targets were read is missing from `enabled_endpoint_ids`, and its deliveries wait for
+/// the next run instead of being given up.
 pub async fn abandon_orphaned_deliveries(
     pool: &PgPool,
     enabled_endpoint_ids: &[Uuid],
+    targets_loaded_at: OffsetDateTime,
 ) -> Result<u64, sqlx::Error> {
     let abandoned = sqlx::query(
         "UPDATE webhook_deliveries SET failed_at = now(), last_error = $2 \
-         WHERE delivered_at IS NULL AND failed_at IS NULL AND endpoint_id <> ALL($1::uuid[])",
+         WHERE delivered_at IS NULL AND failed_at IS NULL AND endpoint_id <> ALL($1::uuid[]) \
+         AND created_at < $3",
     )
     .bind(enabled_endpoint_ids)
     .bind(ORPHANED_ERROR)
+    .bind(targets_loaded_at)
     .execute(pool)
     .await?;
 

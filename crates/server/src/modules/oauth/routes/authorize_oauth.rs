@@ -54,7 +54,7 @@ pub async fn authorize_oauth(
     Query(query): Query<AuthorizeQuery>,
 ) -> Result<Redirect, ApiError> {
     query.validate().map_err(ApiError::invalid_request)?;
-    let tenant = ApiKeyTenant::resolve(&state, &query.apikey).await?;
+    let tenant = ApiKeyTenant::resolve_publishable(&state, &query.apikey).await?;
     state
         .rate_limits
         .oauth_authorization

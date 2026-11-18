@@ -2,9 +2,10 @@ import Rows from '~icons/solar/list-linear'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
-import type { RowsPage } from '@/modules/database/api/read-rows'
+import { type RowsPage, isCountEstimated } from '@/modules/database/api/read-rows'
 import { DataGrid } from '@/modules/database/components/data-grid'
 import { RowsPagination } from '@/modules/database/components/rows-pagination'
+import { useTableCountQuery } from '@/modules/database/queries/use-table-count-query'
 import { ROWS_PAGE_SIZE, useTableRowsQuery } from '@/modules/database/queries/use-table-rows-query'
 import type { components } from '@/shared/api/api-schema'
 import { EmptyState } from '@/shared/ui/empty-state'
@@ -23,6 +24,9 @@ export function TableRowsSection({ projectId, table }: TableRowsSectionProps): J
     offset,
     limit: ROWS_PAGE_SIZE,
     orderColumn: orderColumnOf(table),
+  })
+  const total = useTableCountQuery(projectId, {
+    table: table.name,
     estimatedRows: table.estimated_rows ?? null,
   })
 
@@ -34,7 +38,8 @@ export function TableRowsSection({ projectId, table }: TableRowsSectionProps): J
         offset={offset}
         pageSize={ROWS_PAGE_SIZE}
         shown={page.data?.rows.length ?? 0}
-        total={page.data?.total ?? null}
+        total={total.data ?? null}
+        isTotalEstimated={isCountEstimated(table.estimated_rows ?? null)}
         onOffsetChange={setOffset}
       />
     </div>

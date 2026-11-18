@@ -22,12 +22,16 @@ export function loadSavedQuery(projectId: string): string {
 
 /** Storage may be full or blocked (private windows); the editor keeps working without it. */
 export function saveQuery(projectId: string, query: string): void {
-  if (query.length > MAX_SAVED_LENGTH) {
-    return
-  }
+  const key = STORAGE_PREFIX + projectId
 
   try {
-    localStorage.setItem(STORAGE_PREFIX + projectId, query)
+    // Too long to keep: drop the older, shorter text, or a reload would bring it back.
+    if (query.length > MAX_SAVED_LENGTH) {
+      localStorage.removeItem(key)
+      return
+    }
+
+    localStorage.setItem(key, query)
   } catch {
     return
   }

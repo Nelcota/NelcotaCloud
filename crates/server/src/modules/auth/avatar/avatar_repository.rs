@@ -35,14 +35,15 @@ pub async fn find_avatar(
         .await
 }
 
+/// `false` when the user had no photo.
 pub async fn delete_avatar<'e>(
     executor: impl PgExecutor<'e>,
     user_id: Uuid,
-) -> Result<(), sqlx::Error> {
-    sqlx::query("DELETE FROM user_avatars WHERE user_id = $1")
+) -> Result<bool, sqlx::Error> {
+    let deleted = sqlx::query("DELETE FROM user_avatars WHERE user_id = $1")
         .bind(user_id)
         .execute(executor)
         .await?;
 
-    Ok(())
+    Ok(deleted.rows_affected() > 0)
 }

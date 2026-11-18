@@ -51,8 +51,11 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   banned users. Access tokens carry `sid` (the session, i.e. refresh token family).
 - Magic links sign unknown emails up (passwordless account); opening one verifies the email and,
   on an unverified account, drops its password and ends its sessions (like an OAuth takeover).
-- Key rotation: API keys are created and revoked individually (the last active secret key cannot
-  be revoked); rotating the signing key keeps retired keys in the JWKS for a day.
+- Key rotation: API keys are created and revoked individually (at most 20 active per project;
+  the last active secret key cannot be revoked); rotating the signing key keeps retired keys in
+  the JWKS for a day (at most 5 at once), and they stop verifying after that day even if nobody
+  rotates again. Keys sent in URLs (avatar links, OAuth start) must be publishable
+  (`ApiKeyTenant::resolve_publishable`).
 - OAuth (Google, GitHub) uses each tenant's own OAuth app, PKCE and a one-time `state`. The callback
   returns a short-lived one-time code to the app, never tokens in the URL; the app redeems it with
   its own PKCE verifier (`code_challenge` at `/authorize`, `code_verifier` at `/oauth/token`).
@@ -111,7 +114,7 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   opens a tenant database when it has deliveries due; it claims them with
   `FOR UPDATE SKIP LOCKED` in a transaction held while sending (a dead worker releases them),
   at most 2 per endpoint per batch, one request at a time per endpoint, and retries with
-  jitter for about a day and a half. A hint always sets the schedule to `now()`. Deleting or
+  jitter for about 28 hours. A hint always sets the schedule to `now()`. Deleting or
   disabling an endpoint gives up its pending deliveries on the next run; the schedule also
   wakes for retention (7 days). A sweep every 5 minutes recovers lost wake-ups. Test events
   and resends are rate limited per project. Receivers must be https on public addresses,
@@ -129,7 +132,8 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   switched with `set_config(..., true)`; GETs are read-only; statement timeouts per role
   (5/8/30 s, 15 s for the console's SQL) and a `QueryGuard` that terminates the backend (matched
   by pid and start time) through the platform's pool if a function lifts the timeout. At most
-  40 sessions run at once per instance (`SessionSlots`). Every table created in `public` gets
+  40 sessions run at once per instance and 5 per project (`SessionSlots`; waiting over 5 s
+  answers 503). Every table created in `public` gets
   row level security on, views get `security_invoker` and materialized views lose the request
   roles' access (event trigger); every DDL bumps `auth.schema_version`
   (`auth.current_schema_version()`), which keys the per-project `SchemaCache`. Client names are
@@ -138,17 +142,32 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   embeds are `LATERAL` subqueries over foreign keys or a linking table, at most 1000 rows per
   response, writes need a filter for update/delete and refuse `limit`/`offset`, and inserts are
   grouped by the columns each row sets (one statement per group, in order) so left-out columns
-  take their defaults. Publishable-key requests are rate limited per project and client IP
-  (`auth/rate_limiting`). Errors map SQLSTATE to stable codes (`permission_denied`,
+  take their defaults. Publishable-key requests are rate limited per project and client IP,
+  secret-key and console ones per project (`auth/rate_limiting`). Filters, order or pages named
+  after an embed missing from `select` are refused (they would be ignored); `not.or`/`not.and`
+  negate groups; `in.()` matches nothing. Errors map SQLSTATE to stable codes (`permission_denied`,
   `unique_violation`, ...); the console's SQL editor (and its schema overview, which never runs
-  as the superuser) passes Postgres's message on and keeps at most 1000 rows / 4 MiB of values.
-- Rate limits (`governor`, in memory, single instance) on signup, login, MFA codes, auth emails,
-  OAuth start, profile changes (`PATCH /user`, per account; each one sends a webhook) and Data API
-  requests with the publishable key,
-  per tenant + email and per tenant + client IP (IPv6 per /64). Behind Cloudflare set
+  as the superuser) passes Postgres's message on and keeps at most 1000 rows / 4 MiB of values;
+  a last query that found no rows shows its own empty header (prepared again, never re-run).
+- Rate limits (`governor`, in memory, single instance; quotas in `rate_limit_quotas.rs`) on
+  signup, login (per email from one network, per email, per client IP), the Argon2 work a client
+  causes across projects, MFA codes, auth emails (per address, per recipient across projects,
+  per project), token and code redemption, OAuth start, invitations, project creation, profile
+  and avatar changes, and Data API requests, plus a global per-client-IP limit on every request
+  (`request_limit.rs`). Keys are tenant + email and tenant + client IP (IPv6 per /64). Refusals
+  are 429 with `Retry-After`. Argon2 and avatar decoding run behind semaphores (busy: 503);
+  request bodies time out after 30 s and requests after 60 s. Behind Cloudflare set
   `CLIENT_IP_HEADER=cf-connecting-ip`.
-- Signing keys are cached per tenant for 5 minutes and tenant pools while in use, with `moka`
-  (`SigningKeyCache`, `TenantPoolRegistry`): concurrent misses share one load.
+- Signing keys (5 minutes), API key owners (`ApiKeyCache`, 60 s, only keys that exist), SMTP
+  senders and webhook subscriptions are cached with `moka`, tenant pools while in use
+  (`TenantPoolRegistry`): concurrent misses share one load. Caches whose entries a change must
+  drop use a per-tenant `CacheGeneration` advanced after the change commits (entries keyed by
+  it, or checked against a snapshot taken before loading), so a load in flight never puts a
+  stale value back and one tenant's change never empties the others' entries.
+- Team changes (role, removal, invitation, cancellation) check that the actor is still an owner
+  inside the statement or transaction that locks the project's memberships (in account order,
+  as project deletion does); OAuth linking and magic links read the user `FOR UPDATE` before
+  deciding on it.
 - Every response carries a server-generated `x-request-id` (never the client's), also logged in
   the request span; responses default to `Cache-Control: no-store` (tower-http layers).
 - The API is described with OpenAPI (`utoipa`): each handler has a `#[utoipa::path]` and is

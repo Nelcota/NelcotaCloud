@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::modules::auth::mfa::mfa_challenge_repository::{
-    consume_mfa_challenge, lock_mfa_challenge, record_failed_mfa_attempt,
+    consume_mfa_challenge, lock_challenge_owner, lock_mfa_challenge, record_failed_mfa_attempt,
 };
 use crate::modules::auth::rejection::auth_rejection::AuthRejection;
 use crate::modules::auth::session::session_family::SessionFamily;
@@ -79,10 +79,19 @@ async fn challenged_user(
     transaction: &mut PgConnection,
     token_hash: &TokenHash,
 ) -> Result<User, ApiError> {
-    let user_id = lock_mfa_challenge(transaction, token_hash).await?;
+    // User first, then the challenge (read again after the user lock): never the reverse.
+    if lock_challenge_owner(&mut *transaction, token_hash)
+        .await?
+        .is_none()
+    {
+        return Err(ApiError::from(AuthRejection::InvalidToken));
+    }
+
+    let user_id = lock_mfa_challenge(&mut *transaction, token_hash).await?;
     let Some(user_id) = user_id else {
         return Err(ApiError::from(AuthRejection::InvalidToken));
     };
+    // Read under the lock, so a ban committed meanwhile is seen (and refused) here.
     let user = find_user_by_id(&mut *transaction, user_id).await?;
     let Some(user) = user else {
         return Err(ApiError::from(AuthRejection::InvalidToken));
