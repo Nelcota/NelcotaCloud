@@ -45,14 +45,17 @@ impl CacheGeneration {
 
     /// Called after the tenant's change committed.
     pub fn advance(&self, tenant_id: Uuid) {
-        let next = self
-            .sequence
-            .fetch_add(1, Ordering::SeqCst)
-            .saturating_add(1);
         let mut by_tenant = self
             .by_tenant
             .lock()
             .unwrap_or_else(PoisonError::into_inner);
+
+        // Assign the sequence under the same lock that publishes it so concurrent
+        // invalidations cannot overwrite a newer generation with an older one.
+        let next = self
+            .sequence
+            .fetch_add(1, Ordering::SeqCst)
+            .saturating_add(1);
         by_tenant.insert(tenant_id, next);
     }
 }
@@ -75,5 +78,26 @@ mod tests {
         assert!(generation.is_current(untouched, snapshot));
         assert!(generation.is_current(changed, snapshot) == false);
         assert!(generation.is_current(changed, generation.snapshot()));
+    }
+
+    #[test]
+    fn concurrent_invalidations_publish_the_latest_generation() {
+        let generation = CacheGeneration::new();
+        let tenant_id = Uuid::new_v4();
+        let start = std::sync::Barrier::new(4);
+
+        std::thread::scope(|scope| {
+            for _ in 0..4 {
+                scope.spawn(|| {
+                    start.wait();
+
+                    for _ in 0..256 {
+                        generation.advance(tenant_id);
+                    }
+                });
+            }
+        });
+
+        assert_eq!(generation.of(tenant_id), generation.snapshot());
     }
 }

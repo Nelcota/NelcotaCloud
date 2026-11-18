@@ -29,18 +29,27 @@ pub enum PasswordHashingError {
 
 /// Argon2id with the crate defaults. Runs on the blocking pool: hashing is CPU and memory heavy.
 pub async fn hash_password(password: String) -> Result<String, PasswordHashingError> {
-    let _slot = ARGON2_SLOTS.acquire().await?;
+    let slot = ARGON2_SLOTS.acquire().await?;
 
-    tokio::task::spawn_blocking(move || hash_password_blocking(&password)).await?
+    tokio::task::spawn_blocking(move || {
+        // Cancelling the request does not interrupt the blocking work.
+        let _slot = slot;
+        hash_password_blocking(&password)
+    })
+    .await?
 }
 
 pub async fn verify_password(
     password: String,
     stored_hash: String,
 ) -> Result<bool, PasswordHashingError> {
-    let _slot = ARGON2_SLOTS.acquire().await?;
+    let slot = ARGON2_SLOTS.acquire().await?;
 
-    tokio::task::spawn_blocking(move || verify_password_blocking(&password, &stored_hash)).await?
+    tokio::task::spawn_blocking(move || {
+        let _slot = slot;
+        verify_password_blocking(&password, &stored_hash)
+    })
+    .await?
 }
 
 fn hash_password_blocking(password: &str) -> Result<String, PasswordHashingError> {

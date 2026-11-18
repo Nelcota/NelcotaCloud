@@ -22,8 +22,13 @@ static DECODE_SLOTS: Semaphore = Semaphore::const_new(DECODES_AT_ONCE);
 
 /// Runs on the blocking pool: decoding and resizing an image is CPU heavy.
 pub async fn process_avatar(upload: Bytes) -> Result<Vec<u8>, AvatarProcessingError> {
-    let _slot = DECODE_SLOTS.acquire().await?;
-    let avatar = tokio::task::spawn_blocking(move || normalize_avatar(&upload)).await??;
+    let slot = DECODE_SLOTS.acquire().await?;
+    let avatar = tokio::task::spawn_blocking(move || {
+        // Cancelling the request does not interrupt the decoder.
+        let _slot = slot;
+        normalize_avatar(&upload)
+    })
+    .await??;
 
     Ok(avatar)
 }
