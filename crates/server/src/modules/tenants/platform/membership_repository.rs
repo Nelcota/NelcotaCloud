@@ -11,18 +11,27 @@ pub enum MembershipError {
     UnknownRole,
 }
 
+/// A membership to create, with the account's current email for team lists.
+pub struct NewMembership<'a> {
+    pub tenant_id: Uuid,
+    pub account_id: Uuid,
+    pub account_email: &'a str,
+    pub role: ProjectRole,
+}
+
 pub async fn insert_membership(
     connection: &mut PgConnection,
-    tenant_id: Uuid,
-    account_id: Uuid,
-    role: ProjectRole,
+    membership: NewMembership<'_>,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query("INSERT INTO tenant_members (tenant_id, account_id, role) VALUES ($1, $2, $3)")
-        .bind(tenant_id)
-        .bind(account_id)
-        .bind(role.as_str())
-        .execute(connection)
-        .await?;
+    sqlx::query(
+        "INSERT INTO tenant_members (tenant_id, account_id, account_email, role) VALUES ($1, $2, $3, $4)",
+    )
+    .bind(membership.tenant_id)
+    .bind(membership.account_id)
+    .bind(membership.account_email)
+    .bind(membership.role.as_str())
+    .execute(connection)
+    .await?;
 
     Ok(())
 }

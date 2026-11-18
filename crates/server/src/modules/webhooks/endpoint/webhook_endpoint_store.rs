@@ -44,9 +44,7 @@ impl WebhookEndpointStore<'_> {
         tenant_id: Uuid,
     ) -> Result<Vec<WebhookEndpointView>, WebhookEndpointError> {
         let stored = list_endpoints(self.control_plane_pool, tenant_id).await?;
-        let views = stored.into_iter().map(WebhookEndpointView::try_from);
-
-        Ok(views.collect::<Result<_, _>>()?)
+        Ok(stored.into_iter().map(WebhookEndpointView::from).collect())
     }
 
     pub async fn create(
@@ -150,7 +148,7 @@ impl WebhookEndpointStore<'_> {
             return Err(WebhookEndpointError::NotFound);
         };
 
-        Ok(WebhookEndpointView::try_from(stored)?)
+        Ok(WebhookEndpointView::from(stored))
     }
 
     async fn with_secret(

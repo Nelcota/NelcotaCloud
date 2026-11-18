@@ -10,6 +10,7 @@ use crate::modules::tenants::api_keys::api_key_issuance::{
     ApiKeyRequest, IssuedApiKey, MAX_KEY_NAME_LENGTH, issue_api_key,
 };
 use crate::modules::tenants::api_keys::api_key_kind::ApiKeyKind;
+use crate::modules::tenants::api_keys::api_key_limit::{MAX_ACTIVE_API_KEYS, has_room_for_api_key};
 use crate::modules::tenants::api_keys::api_key_repository::ApiKeyOwner;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::validated_json::ValidatedJson;
@@ -34,6 +35,7 @@ pub struct CreateApiKeyBody {
     responses(
         (status = 201, description = "Key created; store it now, it is not shown again", body = IssuedApiKey),
         (status = 403, description = "Requires the secret API key, or membership in the project", body = ErrorBody),
+        (status = 409, description = "The project already holds the most active keys allowed", body = ErrorBody),
     )
 )]
 pub async fn create_api_key(
@@ -45,12 +47,20 @@ pub async fn create_api_key(
         tenant_id: admin.tenant_id,
         kind: body.kind,
     };
-    let mut connection = state.control_plane_pool.acquire().await?;
+    let mut transaction = state.control_plane_pool.begin().await?;
+
+    if has_room_for_api_key(&mut transaction, admin.tenant_id).await? == false {
+        return Err(ApiError::Conflict(format!(
+            "a project holds at most {MAX_ACTIVE_API_KEYS} active keys: revoke one first"
+        )));
+    }
+
     let request = ApiKeyRequest {
         owner,
         name: &body.name,
     };
-    let issued = issue_api_key(&mut connection, request).await?;
+    let issued = issue_api_key(&mut transaction, request).await?;
+    transaction.commit().await?;
 
     Ok((StatusCode::CREATED, Json(issued)))
 }

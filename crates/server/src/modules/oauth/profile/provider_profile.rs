@@ -1,3 +1,4 @@
+use reqwest::StatusCode;
 use reqwest::header::{ACCEPT, USER_AGENT};
 use serde::de::DeserializeOwned;
 
@@ -49,16 +50,39 @@ pub(super) async fn get_json<T: DeserializeOwned>(
     request: &ProfileRequest<'_>,
     url: &str,
 ) -> Result<T, ProfileError> {
+    let response = send_get(request, url).await?.error_for_status()?;
+
+    Ok(response.json().await?)
+}
+
+/// Like `get_json`, `None` when the provider refuses access to this resource (403, 404): an
+/// app registered without that permission still logs in, with what the other calls returned.
+pub(super) async fn get_optional_json<T: DeserializeOwned>(
+    request: &ProfileRequest<'_>,
+    url: &str,
+) -> Result<Option<T>, ProfileError> {
+    let response = send_get(request, url).await?;
+    let status = response.status();
+
+    if status == StatusCode::FORBIDDEN || status == StatusCode::NOT_FOUND {
+        return Ok(None);
+    }
+
+    Ok(Some(response.error_for_status()?.json().await?))
+}
+
+async fn send_get(
+    request: &ProfileRequest<'_>,
+    url: &str,
+) -> Result<reqwest::Response, ProfileError> {
     let url = secure_provider_url(url)?;
-    let response = request
+
+    Ok(request
         .http_client
         .get(url)
         .bearer_auth(request.access_token)
         .header(USER_AGENT, CLIENT_USER_AGENT)
         .header(ACCEPT, JSON_MEDIA_TYPE)
         .send()
-        .await?
-        .error_for_status()?;
-
-    Ok(response.json().await?)
+        .await?)
 }

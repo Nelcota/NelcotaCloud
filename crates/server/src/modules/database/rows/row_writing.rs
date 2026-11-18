@@ -81,6 +81,14 @@ pub async fn write_rows(
         rows_affected = rows_affected.saturating_add(outcome.rows_affected());
     }
 
+    // Like with `return=representation`: a single-object write that touched more or fewer
+    // rows is refused, and dropping the session rolls it back.
+    if write.preferences.is_single_object && rows_affected != 1 {
+        return Err(ApiError::from(DatabaseRejection::NotSingleRow(
+            rows_affected,
+        )));
+    }
+
     session.commit().await?;
 
     Ok(RowsResult::without_rows(rows_affected))

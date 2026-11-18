@@ -82,7 +82,10 @@ async fn account_for_email(
     let Some(raw_email) = &profile.verified_email else {
         return Err(AccountLinkError::NoVerifiedEmail);
     };
-    let email = EmailAddress::parse(raw_email)?;
+    // A malformed address from the provider vouches for nothing: like no verified email.
+    let Ok(email) = EmailAddress::parse(raw_email) else {
+        return Err(AccountLinkError::NoVerifiedEmail);
+    };
 
     if let Some(existing_user) = lock_user_by_email(&mut *transaction, &email).await? {
         return claim_existing_account(transaction, (existing_user, key), webhooks).await;

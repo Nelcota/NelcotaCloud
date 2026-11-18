@@ -37,8 +37,13 @@ impl SiteUrl {
 
     /// Same origin and under the site's path, so the OAuth flow cannot be abused as an open
     /// redirect, not even to another app hosted on the same origin (e.g. `user.github.io/other`).
+    /// Same origin, under the site's path, and without credentials (`https://x:y@app/`), which
+    /// the origin comparison ignores.
     pub fn allows_redirect_to(&self, target: &Url) -> bool {
-        target.origin() == self.0.origin() && is_under_path(target.path(), self.0.path())
+        target.origin() == self.0.origin()
+            && is_under_path(target.path(), self.0.path())
+            && target.username().is_empty()
+            && target.password().is_none()
     }
 
     pub fn link_with_token(&self, path: &str, token: &str) -> String {

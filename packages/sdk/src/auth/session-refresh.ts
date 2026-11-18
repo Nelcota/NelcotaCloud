@@ -14,6 +14,7 @@ const STORAGE_SETTLE_MS = 300
 export type RefreshHost = {
   http: HttpClient
   store: SessionStore
+  now: () => number
   current(): Session | null
   start(session: Session, event: AuthEvent): void
   end(): void
@@ -33,7 +34,7 @@ export async function refreshOrAdopt(host: RefreshHost, session: Session): Promi
   }
 
   try {
-    const renewed = await renewSession(host.http, session.refreshToken)
+    const renewed = await renewSession(host.http, session.refreshToken, host.now)
 
     return adoptRenewal(host, session, renewed)
   } catch (error) {

@@ -4,8 +4,8 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::modules::webhooks::endpoint::webhook_endpoint_repository::StoredWebhookEndpoint;
-use crate::modules::webhooks::event::webhook_event_type::{UnknownEventType, WebhookEventType};
-use crate::modules::webhooks::outbox::webhook_subscriptions::parse_event_types;
+use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
+use crate::modules::webhooks::outbox::webhook_subscriptions::known_event_types;
 
 /// An endpoint as its owner sees it; the secret is never shown again after creation.
 #[derive(Debug, Serialize, ToSchema)]
@@ -27,18 +27,16 @@ pub struct WebhookEndpointWithSecret {
     pub secret: String,
 }
 
-impl TryFrom<StoredWebhookEndpoint> for WebhookEndpointView {
-    type Error = UnknownEventType;
+impl From<StoredWebhookEndpoint> for WebhookEndpointView {
+    fn from(stored: StoredWebhookEndpoint) -> Self {
+        let event_types = known_event_types(&stored.event_types);
 
-    fn try_from(stored: StoredWebhookEndpoint) -> Result<Self, Self::Error> {
-        let event_types = parse_event_types(&stored.event_types)?;
-
-        Ok(Self {
+        Self {
             id: stored.id,
             url: stored.url,
             event_types,
             is_enabled: stored.is_enabled,
             created_at: stored.created_at,
-        })
+        }
     }
 }

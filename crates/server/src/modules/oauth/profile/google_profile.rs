@@ -24,7 +24,8 @@ pub(super) async fn fetch_google_profile(
 
     let verified_email = user_info
         .email
-        .filter(|_| user_info.email_verified == Some(true));
+        .filter(|_| user_info.email_verified == Some(true))
+        .filter(|email| email.trim().is_empty() == false);
 
     Ok(ProviderProfile {
         provider_user_id: user_info.sub,

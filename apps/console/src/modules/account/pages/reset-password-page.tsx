@@ -31,6 +31,20 @@ export function ResetPasswordPage(): JSX.Element {
     )
   }
 
+  // The link was cut, or the page reloaded after the token left the URL: nothing to redeem.
+  if (token === '') {
+    return (
+      <AuthCard
+        title="Link inválido"
+        description="Abra o link do email de novo ou peça outro na tela de login."
+      >
+        <Link to="/login" className={buttonVariants({ size: 'lg' })}>
+          Ir para o login
+        </Link>
+      </AuthCard>
+    )
+  }
+
   return (
     <AuthCard title="Nova senha" description="Escolha uma senha com pelo menos 8 caracteres.">
       <ResetPasswordForm token={token} onDone={() => setIsDone(true)} />

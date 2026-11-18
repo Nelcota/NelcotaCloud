@@ -36,7 +36,8 @@ pub async fn lock_challenge_owner(
     token_hash: &TokenHash,
 ) -> Result<Option<Uuid>, sqlx::Error> {
     sqlx::query_scalar(
-        "SELECT users.id FROM users          WHERE users.id = (SELECT user_id FROM mfa_challenges WHERE token_hash = $1) FOR SHARE",
+        "SELECT users.id FROM users \
+         WHERE users.id = (SELECT user_id FROM mfa_challenges WHERE token_hash = $1) FOR SHARE",
     )
     .bind(token_hash)
     .fetch_optional(connection)

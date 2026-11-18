@@ -4,6 +4,7 @@ use validator::{Validate, ValidationError};
 
 use crate::modules::auth::email::auth_email_dispatch::AuthEmailKind;
 use crate::modules::auth::email::email_text_links::check_no_links;
+use crate::shared::text::not_blank::check_not_blank;
 
 /// Written in any field, replaced by the project's name when the email is sent.
 pub const APP_NAME_PLACEHOLDER: &str = "{app_name}";
@@ -25,7 +26,7 @@ pub struct EmailTemplateText {
     #[validate(length(min = 1, max = 50), custom(function = check_single_line))]
     pub action_label: String,
     /// Shown under the button, smaller; may span several lines or be empty.
-    #[validate(length(max = 500), custom(function = check_no_links))]
+    #[validate(length(max = 500), custom(function = check_note))]
     pub note: String,
 }
 
@@ -94,13 +95,21 @@ fn check_single_line(text: &str) -> Result<(), ValidationError> {
 
 fn check_message(text: &str) -> Result<(), ValidationError> {
     check_not_blank(text)?;
+    check_no_nul(text)?;
 
     check_no_links(text)
 }
 
-fn check_not_blank(text: &str) -> Result<(), ValidationError> {
-    if text.trim().is_empty() {
-        return Err(ValidationError::new("blank").with_message("must not be blank".into()));
+fn check_note(text: &str) -> Result<(), ValidationError> {
+    check_no_nul(text)?;
+
+    check_no_links(text)
+}
+
+/// Postgres refuses NUL in text: it would end the save in a server error instead of a 400.
+fn check_no_nul(text: &str) -> Result<(), ValidationError> {
+    if text.contains('\0') {
+        return Err(ValidationError::new("nul").with_message("must not contain NUL".into()));
     }
 
     Ok(())

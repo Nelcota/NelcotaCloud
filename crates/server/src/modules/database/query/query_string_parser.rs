@@ -61,17 +61,16 @@ fn apply_parameter(query: &mut ReadQuery, key: &str, value: &str) -> Result<(), 
         return Err(DatabaseRejection::invalid_query("empty parameter name"));
     };
 
+    let negated_group = take_negated_group(&mut segments, &last);
+
     if segments.len() > MAX_PATH_DEPTH {
         return Err(DatabaseRejection::invalid_query(
             "parameter path is too deep",
         ));
     }
 
-    if let ("or" | "and", Some(NEGATION_SEGMENT)) =
-        (last.as_str(), segments.last().map(String::as_str))
-    {
-        segments.pop();
-        let group = parse_logic_tree(group_kind(&last), true, value)?;
+    if let Some(kind) = negated_group {
+        let group = parse_logic_tree(kind, true, value)?;
         query
             .node_mut(segments)
             .conditions
@@ -82,11 +81,17 @@ fn apply_parameter(query: &mut ReadQuery, key: &str, value: &str) -> Result<(), 
     apply_to_node(query, segments, &last, value)
 }
 
-fn group_kind(name: &str) -> GroupKind {
-    match name {
-        "or" => GroupKind::Or,
-        _ => GroupKind::And,
-    }
+/// `not.or` / `not.and`: "not" negates the group, it is not part of the embed path, so it is
+/// removed before the path is checked.
+fn take_negated_group(segments: &mut EmbedPath, last: &str) -> Option<GroupKind> {
+    let kind = match (last, segments.last().map(String::as_str)) {
+        ("or", Some(NEGATION_SEGMENT)) => GroupKind::Or,
+        ("and", Some(NEGATION_SEGMENT)) => GroupKind::And,
+        _ => return None,
+    };
+    segments.pop();
+
+    Some(kind)
 }
 
 fn apply_to_node(

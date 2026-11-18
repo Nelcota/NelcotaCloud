@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::modules::tenants::platform::platform_account::PlatformAccount;
+use crate::modules::tenants::provisioning::tenant_provisioner::ProjectOwner;
 use crate::modules::tenants::routes::tenant_creation_body::{
     CreateTenantBody, CreatedTenantResponse, provision_tenant,
 };
@@ -43,7 +44,11 @@ pub async fn create_project(
         .rate_limits
         .project_creation_per_account
         .check(Uuid::nil(), account.account_id)?;
-    let request = body.into_request(Some(account.account_id))?;
+    let owner = ProjectOwner {
+        account_id: account.account_id,
+        email: account.email.clone(),
+    };
+    let request = body.into_request(Some(owner))?;
     let created = provision_tenant(&state, request).await?;
 
     Ok((StatusCode::CREATED, Json(created)))

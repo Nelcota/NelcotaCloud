@@ -71,7 +71,13 @@ impl SqlResult {
     fn absorb(&mut self, item: Either<PgQueryResult, PgRow>) {
         match item {
             Either::Left(outcome) => {
-                self.rows_affected = self.rows_affected.saturating_add(outcome.rows_affected());
+                // A statement that returned rows reports how many it read (`SELECT 10`): only
+                // statements without rows count as changes. An empty SELECT and an UPDATE of no
+                // rows look the same here, so the last result set with rows stays shown.
+                if self.starts_new_set {
+                    self.rows_affected = self.rows_affected.saturating_add(outcome.rows_affected());
+                }
+
                 self.starts_new_set = true;
             }
             Either::Right(row) => self.add_row(&row),

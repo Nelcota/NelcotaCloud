@@ -103,7 +103,8 @@ fn condition(expression: Option<&str>) -> Result<Option<&str>, DatabaseRejection
         return Ok(None);
     };
 
-    if expression.len() > MAX_EXPRESSION_LENGTH {
+    // Characters, like every other length the admin API checks.
+    if expression.chars().count() > MAX_EXPRESSION_LENGTH {
         return Err(DatabaseRejection::invalid_query(
             "the condition is too long",
         ));

@@ -10,11 +10,12 @@ use crate::modules::database::admin::developer_sql::sql_run::{SqlResult, run_scr
 use crate::modules::tenants::access::tenant_admin::TenantAdmin;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::validated_json::ValidatedJson;
+use crate::shared::text::not_blank::check_not_blank;
 
 #[derive(Debug, Deserialize, ToSchema, Validate)]
 pub struct RunSqlRequest {
     /// One or more statements, run in one transaction.
-    #[validate(length(min = 1, max = 100000))]
+    #[validate(length(min = 1, max = 100000), custom(function = check_not_blank))]
     pub query: String,
 }
 

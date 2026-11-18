@@ -3,6 +3,7 @@ use uuid::Uuid;
 
 use crate::modules::tenants::signing_keys::prepared_signing_key::PreparedSigningKey;
 use crate::modules::tenants::signing_keys::signing_key::{SigningKey, SigningKeyError};
+use crate::modules::tenants::signing_keys::signing_key_rotation::RETIRED_KEY_RETENTION_SECONDS;
 use crate::modules::tenants::signing_keys::tenant_signing_keys::TenantSigningKeys;
 use crate::shared::crypto::secret_box::{SecretBox, SecretBoxError};
 
@@ -18,6 +19,8 @@ pub enum SigningKeyStoreError {
     InvalidKey(#[from] SigningKeyError),
     #[error("failed to serialize the tenant JWKS: {0}")]
     Jwks(#[from] serde_json::Error),
+    #[error("too many recent rotations: at most {0} retired keys are kept at once")]
+    TooManyRotations(i64),
 }
 
 /// A signing key whose private part is already encrypted with the master key.
@@ -66,10 +69,15 @@ pub async fn load_signing_keys(
     tenant_id: Uuid,
     secret_box: &SecretBox,
 ) -> Result<TenantSigningKeys, SigningKeyStoreError> {
+    // Retired keys verify only within their retention: one rotated out because it leaked must
+    // stop verifying even if nobody rotates again (rotation is what deletes it).
     let rows: Vec<StoredSigningKey> = sqlx::query_as(
-        "SELECT id, private_key_ciphertext, is_active FROM tenant_signing_keys WHERE tenant_id = $1 ORDER BY created_at DESC",
+        "SELECT id, private_key_ciphertext, is_active FROM tenant_signing_keys WHERE tenant_id = $1 \
+         AND (is_active OR deactivated_at > now() - $2::bigint * interval '1 second') \
+         ORDER BY created_at DESC",
     )
     .bind(tenant_id)
+    .bind(RETIRED_KEY_RETENTION_SECONDS)
     .fetch_all(pool)
     .await?;
     let (active, retired) = prepare_keys(secret_box, tenant_id, rows)?;

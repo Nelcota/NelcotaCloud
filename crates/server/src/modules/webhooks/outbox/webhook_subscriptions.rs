@@ -6,7 +6,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::modules::webhooks::endpoint::webhook_endpoint_repository::list_endpoints;
-use crate::modules::webhooks::event::webhook_event_type::{UnknownEventType, WebhookEventType};
+use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
 use crate::shared::cache::cache_generation::CacheGeneration;
 
 /// Changes made through this instance invalidate at once; the time bound only matters when
@@ -18,8 +18,6 @@ const MAX_CACHED_TENANTS: u64 = 10_000;
 pub enum SubscriptionsError {
     #[error("database error while loading webhook endpoints: {0}")]
     Database(#[from] sqlx::Error),
-    #[error(transparent)]
-    UnknownEventType(#[from] UnknownEventType),
 }
 
 /// An enabled endpoint and the events it receives.
@@ -76,7 +74,7 @@ impl WebhookSubscriptions {
         let mut subscribed = Vec::with_capacity(stored.len());
 
         for endpoint in stored.into_iter().filter(|endpoint| endpoint.is_enabled) {
-            let event_types = parse_event_types(&endpoint.event_types)?;
+            let event_types = known_event_types(&endpoint.event_types);
             subscribed.push(SubscribedEndpoint {
                 endpoint_id: endpoint.id,
                 event_types,
@@ -87,9 +85,17 @@ impl WebhookSubscriptions {
     }
 }
 
-pub fn parse_event_types(raw: &[String]) -> Result<Vec<WebhookEventType>, UnknownEventType> {
+/// Stored event types this version knows. A name it does not know (an event removed later, a
+/// manual edit) is logged and skipped: it must not fail every request that changes a user.
+pub fn known_event_types(raw: &[String]) -> Vec<WebhookEventType> {
     raw.iter()
-        .map(|name| WebhookEventType::parse(name))
+        .filter_map(|name| match WebhookEventType::parse(name) {
+            Ok(event_type) => Some(event_type),
+            Err(error) => {
+                tracing::warn!(%error, "skipping an unknown stored webhook event type");
+                None
+            }
+        })
         .collect()
 }
 

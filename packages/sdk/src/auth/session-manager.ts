@@ -131,6 +131,7 @@ export class SessionManager {
     const host: RefreshHost = {
       http: this.http,
       store: this.store,
+      now: this.now,
       current: () => this.session,
       start: (renewed, event) => this.start(renewed, event),
       end: () => this.end(),

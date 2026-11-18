@@ -44,23 +44,28 @@ pub async fn list_active_sessions(
     .await
 }
 
-/// Ends one session of the user; `false` when it is not theirs.
+/// Ends one session of the user; `false` when it is not theirs. Ending a session that already
+/// ended (revoked or expired) changes nothing and sends no webhook.
 pub async fn end_session_of_user(
     pool: &PgPool,
     (user_id, session_id): (Uuid, Uuid),
     webhooks: &WebhookRecorder,
 ) -> Result<bool, ApiError> {
     let mut transaction = pool.begin().await?;
-    let owns_session: bool = sqlx::query_scalar(
-        "SELECT EXISTS (SELECT 1 FROM refresh_tokens WHERE family_id = $1 AND user_id = $2)",
+    let session: Option<bool> = sqlx::query_scalar(
+        "SELECT bool_or(revoked_at IS NULL AND expires_at > now()) FROM refresh_tokens \
+         WHERE family_id = $1 AND user_id = $2 HAVING count(*) > 0",
     )
     .bind(session_id)
     .bind(user_id)
-    .fetch_one(&mut *transaction)
+    .fetch_optional(&mut *transaction)
     .await?;
-
-    if owns_session == false {
+    let Some(is_active) = session else {
         return Ok(false);
+    };
+
+    if is_active == false {
+        return Ok(true);
     }
 
     revoke_token_family_with(&mut transaction, session_id).await?;
@@ -88,13 +93,20 @@ pub async fn end_other_sessions(
     .bind(kept_session_id)
     .execute(&mut *transaction)
     .await?;
-    sqlx::query(
+    let ended = sqlx::query(
         "UPDATE refresh_tokens SET revoked_at = now() WHERE user_id = $1 AND family_id <> $2 AND revoked_at IS NULL",
     )
     .bind(user_id)
     .bind(kept_session_id)
     .execute(&mut *transaction)
     .await?;
+
+    // No other session was open: nothing to report.
+    if ended.rows_affected() == 0 {
+        transaction.commit().await?;
+        return Ok(());
+    }
+
     let revoked = (user_id, RevokedSessions::Others, None);
     record_sessions_revoked(&mut transaction, webhooks, revoked).await?;
     transaction.commit().await?;

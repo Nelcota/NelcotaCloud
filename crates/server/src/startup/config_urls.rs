@@ -20,6 +20,11 @@ pub fn validate_public_base_url(raw_url: &str) -> Result<(), ConfigError> {
         return Err(invalid);
     }
 
+    // It is the issuer of every token and the OAuth callback: credentials in it would leak.
+    if url.username().is_empty() == false || url.password().is_some() {
+        return Err(invalid);
+    }
+
     Ok(())
 }
 
@@ -51,4 +56,27 @@ fn has_more_than_server(url: &Url) -> bool {
     let has_path = url.path().trim_matches('/').is_empty() == false;
 
     has_path || url.query().is_some() || url.fragment().is_some()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn public_base_url_is_a_plain_origin_or_path() {
+        assert!(validate_public_base_url("https://auth.example.com").is_ok());
+        assert!(validate_public_base_url("https://auth.example.com/api").is_ok());
+
+        for raw in [
+            "",
+            "auth.example.com",
+            "ftp://auth.example.com",
+            "https://auth.example.com/?a=1",
+            "https://auth.example.com/#x",
+            "https://user:secret@auth.example.com",
+            "https://user@auth.example.com",
+        ] {
+            assert!(validate_public_base_url(raw).is_err(), "{raw}");
+        }
+    }
 }

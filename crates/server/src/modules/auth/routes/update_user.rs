@@ -9,6 +9,7 @@ use crate::app_state::AppState;
 use crate::modules::auth::audit::audit_action::AuditAction;
 use crate::modules::auth::audit::audit_event::NewAuditEvent;
 use crate::modules::auth::audit::audit_recorder::record_audit_event;
+use crate::modules::auth::user::status_change::StatusChange;
 use crate::modules::auth::user::user_metadata::{
     MetadataObject, check_app_metadata_size, check_user_metadata_size,
 };
@@ -69,9 +70,10 @@ pub async fn update_user(
         user_metadata: body.user_metadata,
         app_metadata: body.app_metadata,
     };
-    let user = update_user_metadata(&admin.pool, change, &webhooks).await?;
-    let Some(user) = user else {
-        return Err(ApiError::NotFound("user"));
+    let user = match update_user_metadata(&admin.pool, change, &webhooks).await? {
+        None => return Err(ApiError::NotFound("user")),
+        Some(StatusChange::Unchanged(user)) => return Ok(Json(user)),
+        Some(StatusChange::Changed(user)) => user,
     };
 
     let event = NewAuditEvent::by_admin(AuditAction::UserUpdated, user_id, admin.actor);

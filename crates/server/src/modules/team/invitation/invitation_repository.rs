@@ -96,7 +96,9 @@ pub async fn delete_project_invitation(
     cancellation: InvitationCancellation,
 ) -> Result<bool, sqlx::Error> {
     let result = sqlx::query(
-        "DELETE FROM tenant_invitations WHERE tenant_id = $1 AND id = $2 AND EXISTS          (SELECT 1 FROM tenant_members WHERE tenant_id = $1 AND account_id = $3          AND role = 'owner' FOR SHARE)",
+        "DELETE FROM tenant_invitations WHERE tenant_id = $1 AND id = $2 AND EXISTS \
+         (SELECT 1 FROM tenant_members WHERE tenant_id = $1 AND account_id = $3 \
+         AND role = 'owner' FOR SHARE)",
     )
     .bind(cancellation.tenant_id)
     .bind(cancellation.invitation_id)

@@ -199,7 +199,8 @@ async fn the_sql_editor_runs_scripts_as_the_developer_role() -> TestResult {
     assert_eq!(field(&result, "/columns"), &json!(["n", "double"]));
     assert_eq!(field(&result, "/rows/0"), &json!(["1", "2"]));
     assert_eq!(field(&result, "/row_count"), 1500);
-    assert_eq!(field(&result, "/rows_affected"), 1500 + 1500);
+    // Only the INSERT changed rows; the SELECT reads them.
+    assert_eq!(field(&result, "/rows_affected"), 1500);
     assert_eq!(field(&result, "/is_truncated"), true);
     assert_eq!(field(&result, "/rows").as_array().map(Vec::len), Some(1000));
 

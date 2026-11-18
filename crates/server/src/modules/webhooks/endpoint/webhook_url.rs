@@ -42,6 +42,12 @@ impl WebhookUrl {
         }
 
         let url = Url::parse(raw).map_err(|_| WebhookUrlError::Malformed)?;
+
+        // Percent-encoding and punycode can make the stored URL longer than what was typed.
+        if url.as_str().len() > MAX_URL_LENGTH {
+            return Err(WebhookUrlError::TooLong);
+        }
+
         check_shape(&url, policy)?;
 
         Ok(Self(url))
@@ -114,6 +120,7 @@ mod tests {
                 WebhookUrlError::PrivateHost,
             ),
             ("https://api.internal/hook", WebhookUrlError::PrivateHost),
+            ("https://localhost./hook", WebhookUrlError::PrivateHost),
         ];
 
         for (raw, expected) in cases {
@@ -139,5 +146,17 @@ mod tests {
         );
 
         assert!(parsed.is_ok());
+    }
+
+    #[test]
+    fn measures_the_length_after_encoding() {
+        let spaced_path = "a ".repeat(800);
+        let raw = format!("https://hooks.example.com/{spaced_path}");
+
+        assert!(raw.len() <= MAX_URL_LENGTH);
+        assert_eq!(
+            WebhookUrl::parse(&raw, PRODUCTION),
+            Err(WebhookUrlError::TooLong)
+        );
     }
 }

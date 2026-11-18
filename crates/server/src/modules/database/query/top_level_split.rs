@@ -64,13 +64,13 @@ fn non_empty_part(text: &str, start: usize, end: usize) -> Result<&str, Database
 }
 
 /// `"a,b"` becomes `a,b` and `"say \"hi\""` becomes `say "hi"`; anything else is returned as
-/// is.
-pub fn unquote(text: &str) -> String {
+/// is. `"a\"` is refused: its closing quote is escaped, so the value never ends.
+pub fn unquote(text: &str) -> Result<String, DatabaseRejection> {
     let Some(inner) = text
         .strip_prefix(QUOTE)
         .and_then(|rest| rest.strip_suffix(QUOTE))
     else {
-        return text.to_owned();
+        return Ok(text.to_owned());
     };
     let mut unescaped = String::with_capacity(inner.len());
     let mut is_escaped = false;
@@ -85,7 +85,13 @@ pub fn unquote(text: &str) -> String {
         unescaped.push(character);
     }
 
-    unescaped
+    if is_escaped {
+        return Err(DatabaseRejection::invalid_query(
+            "a quoted value ends with an escaped quote",
+        ));
+    }
+
+    Ok(unescaped)
 }
 
 #[cfg(test)]
@@ -116,10 +122,12 @@ mod tests {
     }
 
     #[test]
-    fn unquotes_only_fully_quoted_values() {
-        assert_eq!(unquote("\"a,b\""), "a,b");
-        assert_eq!(unquote("plain"), "plain");
-        assert_eq!(unquote("\"half"), "\"half");
-        assert_eq!(unquote(r#""say \"hi\" \\ ok""#), r#"say "hi" \ ok"#);
+    fn unquotes_only_fully_quoted_values() -> Result<(), DatabaseRejection> {
+        assert_eq!(unquote("\"a,b\"")?, "a,b");
+        assert_eq!(unquote("plain")?, "plain");
+        assert_eq!(unquote("\"half")?, "\"half");
+        assert_eq!(unquote(r#""say \"hi\" \\ ok""#)?, r#"say "hi" \ ok"#);
+        assert!(unquote(r#""a\""#).is_err());
+        Ok(())
     }
 }

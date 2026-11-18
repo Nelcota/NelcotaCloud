@@ -41,17 +41,20 @@ export function queryString(params: [string, string][]): string {
   return `?${encoded.join('&')}`
 }
 
-/** The total of a `Content-Range` header (`0-24/3573`); `null` when absent or `*`. */
-export function countFromContentRange(header: string | null): number | null {
-  const total = header?.split('/')[1]
+// `0-24/3573`, or a star then `/0` for no rows: a range or a star, then the total in digits.
+const CONTENT_RANGE = /^(?:\d+-\d+|\*)\/(\d+)$/
 
-  if (total === undefined || total === '*') {
+/** The total of a `Content-Range` header (`0-24/3573`); `null` when absent, `*` or malformed. */
+export function countFromContentRange(header: string | null): number | null {
+  const total = CONTENT_RANGE.exec(header?.trim() ?? '')?.[1]
+
+  if (total === undefined) {
     return null
   }
 
   const count = Number(total)
 
-  if (Number.isInteger(count) === false || count < 0) {
+  if (Number.isSafeInteger(count) === false) {
     return null
   }
 

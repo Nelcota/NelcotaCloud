@@ -2,22 +2,10 @@ use serde::Deserialize;
 use utoipa::ToSchema;
 use validator::Validate;
 
+use crate::modules::database::admin::table_definition::column_default::default_sql;
 use crate::modules::database::admin::table_definition::column_type::ColumnType;
 use crate::modules::database::admin::table_definition::object_name::ObjectName;
 use crate::modules::database::rejection::database_rejection::DatabaseRejection;
-use crate::shared::database::sql_identifier::quote_literal;
-
-/// Defaults written as expressions; any other default is written as a quoted literal, which
-/// Postgres converts to the column's type.
-const DEFAULT_EXPRESSIONS: [&str; 7] = [
-    "now()",
-    "gen_random_uuid()",
-    "auth.uid()",
-    "current_date",
-    "current_timestamp",
-    "true",
-    "false",
-];
 
 /// A column of a table created (or added) from the console.
 #[derive(Debug, Deserialize, ToSchema, Validate)]
@@ -78,7 +66,7 @@ impl ColumnDefinition {
         }
 
         if let Some(default) = &self.default {
-            sql.push_str(&format!(" DEFAULT {}", default_sql(default)));
+            sql.push_str(&format!(" DEFAULT {}", default_sql(default, &column_type)?));
         }
 
         if self.unique {
@@ -115,16 +103,6 @@ impl ColumnReference {
             column.quoted()
         ))
     }
-}
-
-fn default_sql(default: &str) -> String {
-    let trimmed = default.trim();
-
-    if DEFAULT_EXPRESSIONS.contains(&trimmed) {
-        return trimmed.to_owned();
-    }
-
-    quote_literal(default)
 }
 
 #[cfg(test)]

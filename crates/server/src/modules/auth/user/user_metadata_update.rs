@@ -2,6 +2,7 @@ use sqlx::PgPool;
 use sqlx::types::Json;
 use uuid::Uuid;
 
+use crate::modules::auth::user::status_change::StatusChange;
 use crate::modules::auth::user::user_events::record_user_event;
 use crate::modules::auth::user::user_lookup::find_user_by_id;
 use crate::modules::auth::user::user_metadata::MetadataObject;
@@ -25,7 +26,7 @@ pub async fn update_user_metadata(
     pool: &PgPool,
     change: MetadataChange,
     webhooks: &WebhookRecorder,
-) -> Result<Option<User>, ApiError> {
+) -> Result<Option<StatusChange>, ApiError> {
     let mut transaction = pool.begin().await?;
     let user: Option<User> = sqlx::query_as(concat!(
         "UPDATE users SET user_metadata = COALESCE($2, user_metadata), app_metadata = COALESCE($3, app_metadata), updated_at = now() WHERE id = $1 AND (user_metadata IS DISTINCT FROM COALESCE($2, user_metadata) OR app_metadata IS DISTINCT FROM COALESCE($3, app_metadata)) RETURNING ",
@@ -40,11 +41,11 @@ pub async fn update_user_metadata(
         // Nothing changed, or no such user.
         let unchanged = find_user_by_id(&mut *transaction, change.user_id).await?;
         transaction.commit().await?;
-        return Ok(unchanged);
+        return Ok(unchanged.map(StatusChange::Unchanged));
     };
     let event = (WebhookEventType::UserUpdated, &user);
     record_user_event(&mut transaction, webhooks, event).await?;
     transaction.commit().await?;
 
-    Ok(Some(user))
+    Ok(Some(StatusChange::Changed(user)))
 }

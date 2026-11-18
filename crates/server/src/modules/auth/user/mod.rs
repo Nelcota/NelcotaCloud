@@ -1,6 +1,7 @@
 pub mod email_address;
 pub mod passwordless_signup;
 pub mod signup;
+pub mod status_change;
 pub mod unverified_account_takeover;
 pub mod user_account_updates;
 pub mod user_administration;

@@ -27,7 +27,7 @@ fn parse_operation(text: &str) -> Result<Operation, DatabaseRejection> {
             "filter {text} must look like operator.value"
         )));
     };
-    let value = unquote(value);
+    let value = unquote(value)?;
 
     match operator {
         "eq" => Ok(Operation::Compare(Comparison::Equal, value)),
@@ -69,7 +69,10 @@ fn parse_in_list(value: &str) -> Result<Vec<String>, DatabaseRejection> {
         return Ok(Vec::new());
     }
 
-    let values: Vec<String> = split_top_level(inner)?.into_iter().map(unquote).collect();
+    let values: Vec<String> = split_top_level(inner)?
+        .into_iter()
+        .map(unquote)
+        .collect::<Result<_, _>>()?;
 
     if values.len() > MAX_IN_VALUES {
         return Err(DatabaseRejection::invalid_query(

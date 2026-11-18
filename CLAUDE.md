@@ -51,8 +51,11 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   banned users. Access tokens carry `sid` (the session, i.e. refresh token family).
 - Magic links sign unknown emails up (passwordless account); opening one verifies the email and,
   on an unverified account, drops its password and ends its sessions (like an OAuth takeover).
-- Key rotation: API keys are created and revoked individually (the last active secret key cannot
-  be revoked); rotating the signing key keeps retired keys in the JWKS for a day.
+- Key rotation: API keys are created and revoked individually (at most 20 active per project;
+  the last active secret key cannot be revoked); rotating the signing key keeps retired keys in
+  the JWKS for a day (at most 5 at once), and they stop verifying after that day even if nobody
+  rotates again. Keys sent in URLs (avatar links, OAuth start) must be publishable
+  (`ApiKeyTenant::resolve_publishable`).
 - OAuth (Google, GitHub) uses each tenant's own OAuth app, PKCE and a one-time `state`. The callback
   returns a short-lived one-time code to the app, never tokens in the URL; the app redeems it with
   its own PKCE verifier (`code_challenge` at `/authorize`, `code_verifier` at `/oauth/token`).
@@ -111,7 +114,7 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   opens a tenant database when it has deliveries due; it claims them with
   `FOR UPDATE SKIP LOCKED` in a transaction held while sending (a dead worker releases them),
   at most 2 per endpoint per batch, one request at a time per endpoint, and retries with
-  jitter for about a day and a half. A hint always sets the schedule to `now()`. Deleting or
+  jitter for about 28 hours. A hint always sets the schedule to `now()`. Deleting or
   disabling an endpoint gives up its pending deliveries on the next run; the schedule also
   wakes for retention (7 days). A sweep every 5 minutes recovers lost wake-ups. Test events
   and resends are rate limited per project. Receivers must be https on public addresses,

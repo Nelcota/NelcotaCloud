@@ -22,7 +22,8 @@ pub fn function_call_statement(
         (false, _) => "coalesce(to_json(_r)::text, 'null')",
     };
     let mut sql = QueryBuilder::new(format!(
-        "SELECT CASE WHEN octet_length(_b.value) <= {MAX_RESPONSE_BYTES} THEN _b.value END          FROM (SELECT {result} AS value FROM public.{}(",
+        "SELECT CASE WHEN octet_length(_b.value) <= {MAX_RESPONSE_BYTES} THEN _b.value END \
+         FROM (SELECT {result} AS value FROM public.{}(",
         quote_identifier(&function.name)
     ));
 

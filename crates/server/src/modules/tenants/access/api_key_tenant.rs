@@ -54,6 +54,20 @@ impl ApiKeyTenant {
         })
     }
 
+    /// For keys sent in a URL (avatar links, OAuth start): URLs end up in logs and browser
+    /// history, so a secret key must never travel in one.
+    pub async fn resolve_publishable(state: &AppState, api_key: &str) -> Result<Self, ApiError> {
+        let tenant = Self::resolve(state, api_key).await?;
+
+        if tenant.api_key_kind != ApiKeyKind::Publishable {
+            return Err(ApiError::invalid_request(
+                "use the publishable key in URLs, never the secret key",
+            ));
+        }
+
+        Ok(tenant)
+    }
+
     /// For endpoints that change the tenant's own configuration.
     pub fn require_secret_key(&self) -> Result<(), ApiError> {
         if self.api_key_kind != ApiKeyKind::Secret {
