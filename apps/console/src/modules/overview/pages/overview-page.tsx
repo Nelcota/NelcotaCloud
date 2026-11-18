@@ -1,5 +1,6 @@
 import type { JSX } from 'react'
 
+import { ActiveUsersCard } from '@/modules/overview/components/active-users-card'
 import { IsolationPanel } from '@/modules/overview/components/isolation-panel'
 import { KeysCard } from '@/modules/overview/components/keys-card'
 import { ProjectConnectPanel } from '@/modules/overview/components/project-connect-panel'
@@ -15,8 +16,9 @@ export function OverviewPage(): JSX.Element {
   return (
     <div className="grid gap-8">
       <OverviewHeader projectId={projectId} />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <UsersCard projectId={projectId} />
+        <ActiveUsersCard projectId={projectId} />
         <KeysCard projectId={projectId} />
         <SmtpCard projectId={projectId} />
       </div>

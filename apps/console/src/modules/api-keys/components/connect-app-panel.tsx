@@ -17,6 +17,7 @@ type ConnectAppPanelProps = {
 /** The two steps that put this project's Auth into an app, with code that runs once pasted. */
 export function ConnectAppPanel({ publishableKey, projectId }: ConnectAppPanelProps): JSX.Element {
   const snippet = sdkSnippet(publishableKey)
+  const serverSnippet = verifierSnippet(publishableKey, projectId)
 
   return (
     <section className="bg-card rounded-xl border">
@@ -29,6 +30,12 @@ export function ConnectAppPanel({ publishableKey, projectId }: ConnectAppPanelPr
       <ol className="grid gap-5 p-5">
         <CodeStep step={1} label="Instale o SDK" code="npm install @nelcota/sdk" language="shell" />
         <CodeStep step={2} label="Crie o cliente" code={snippet} language="typescript" />
+        <CodeStep
+          step={3}
+          label="Valide o token no seu servidor"
+          code={serverSnippet}
+          language="typescript"
+        />
       </ol>
       <KeyHint publishableKey={publishableKey} projectId={projectId} />
     </section>
@@ -67,6 +74,23 @@ function sdkSnippet(publishableKey: string | null): string {
     '})',
     '',
     'await nelcota.auth.signInWithPassword({ email, password })',
+  ].join('\n')
+}
+
+function verifierSnippet(publishableKey: string | null, projectId: string): string {
+  const key = publishableKey ?? KEY_PLACEHOLDER
+
+  return [
+    "import { createAccessTokenVerifier } from '@nelcota/sdk'",
+    '',
+    'const verifyAccessToken = createAccessTokenVerifier({',
+    `  url: '${API_BASE_URL}',`,
+    `  publishableKey: '${key}',`,
+    `  projectId: '${projectId}',`,
+    '})',
+    '',
+    '// { sub, email, sid, app_metadata } ou AccessTokenVerificationError',
+    'const user = await verifyAccessToken(accessToken)',
   ].join('\n')
 }
 

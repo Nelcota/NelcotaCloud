@@ -12,6 +12,7 @@ use crate::modules::database::schema::schema_cache::SchemaCache;
 use crate::modules::oauth::login::oauth_login_context::OAuthLoginContext;
 use crate::modules::oauth::provider::provider_endpoints::OAuthEndpoints;
 use crate::modules::tenants::api_keys::api_key_cache::ApiKeyCache;
+use crate::modules::tenants::captcha::captcha_site_verify::SiteVerifier;
 use crate::modules::tenants::database::tenant_pool_registry::TenantPoolRegistry;
 use crate::modules::tenants::platform::platform_tenant::PlatformTenantDirectory;
 use crate::modules::tenants::provisioning::tenant_provisioner::TenantProvisioner;
@@ -71,6 +72,13 @@ impl AppState {
         }
     }
 
+    pub fn site_verifier(&self) -> SiteVerifier<'_> {
+        SiteVerifier {
+            http_client: &self.http_client,
+            verify_url: &self.settings.captcha_verify_url,
+        }
+    }
+
     pub fn token_signing(&self) -> TokenSigning<'_> {
         TokenSigning {
             signing_keys: &self.signing_keys,
@@ -127,4 +135,6 @@ pub struct AppSettings {
     pub oauth_endpoints: OAuthEndpoints,
     pub oauth_callback_url: String,
     pub client_ip_header: Option<HeaderName>,
+    /// Cloudflare Turnstile's `siteverify`; a fake server in tests.
+    pub captcha_verify_url: String,
 }

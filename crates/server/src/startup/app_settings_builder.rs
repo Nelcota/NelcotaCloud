@@ -10,6 +10,7 @@ use crate::shared::crypto::random_bytes::random_bytes;
 use crate::startup::startup_error::StartupError;
 
 const DUMMY_PASSWORD_BYTES: usize = 32;
+const TURNSTILE_VERIFY_URL: &str = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
 /// Derives the runtime settings from the validated configuration.
 pub async fn build_settings(
@@ -25,6 +26,10 @@ pub async fn build_settings(
         oauth_endpoints,
         oauth_callback_url: config.oauth_callback_url(),
         client_ip_header: parse_client_ip_header(config.client_ip_header.as_deref())?,
+        captcha_verify_url: config
+            .captcha_verify_url
+            .clone()
+            .unwrap_or_else(|| TURNSTILE_VERIFY_URL.to_owned()),
     })
 }
 

@@ -46,6 +46,12 @@ const token = await nelcota.auth.getAccessToken() // renewed before it expires
 await nelcota.auth.signOut()
 ```
 
+When the project turns on the captcha (console: Configurações), render a
+[Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/) widget with
+`await nelcota.auth.getCaptchaSiteKey()` (`null` when none is needed) and pass its token as
+`captchaToken` to `signUp`, `signInWithPassword`, `sendMagicLink`, `recoverPassword` and
+`resendVerification`. A token works once: reset the widget after each attempt.
+
 Also: `verifyEmail`, `resendVerification`, `recoverPassword`, `resetPassword`, `getUser`,
 `deleteAccount`, `auth.mfa` (TOTP enroll, verify, disable) and `auth.sessions` (list, revoke,
 revoke others). Errors are `NelcotaError` with `status`, `code` and `requestId`.
@@ -97,6 +103,39 @@ included) and `auth.role()` (`anon` or `authenticated`):
 CREATE POLICY own_posts ON posts FOR ALL TO nelcota_authenticated
   USING (author_id = auth.uid()) WITH CHECK (author_id = auth.uid());
 ```
+
+## Access tokens (on your server)
+
+Your app sends the user's access token (`await nelcota.auth.getAccessToken()`) to your own API
+as `Authorization: Bearer …`. Check it there before trusting the request:
+
+```ts
+import { AccessTokenVerificationError, createAccessTokenVerifier } from '@nelcota/sdk'
+
+// Create it once: it keeps the project's public keys and reloads them after a rotation.
+const verifyAccessToken = createAccessTokenVerifier({
+  url: 'https://api.example.com',
+  publishableKey: process.env.NELCOTA_PUBLISHABLE_KEY,
+  projectId: process.env.NELCOTA_PROJECT_ID, // shown in the console's overview
+})
+
+app.use(async (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.replace(/^Bearer /, '') ?? ''
+    req.user = await verifyAccessToken(token) // { sub, email, sid, app_metadata, … }
+    next()
+  } catch (error) {
+    if (error instanceof AccessTokenVerificationError) return res.sendStatus(401)
+    throw error
+  }
+})
+```
+
+- `app_metadata` (roles, plans) is set by the project's admins and reaches new tokens on the
+  next refresh. Authorize with it, never with `user_metadata`, which users write themselves.
+- A token stays valid until it expires (15 minutes), even after a logout or a ban. Check with
+  the API (`GET /auth/v1/user`) when a request must see that at once.
+- Needs a runtime with Ed25519 in WebCrypto: Node 22+, Deno, Bun or Cloudflare Workers.
 
 ## Webhooks (on your server)
 

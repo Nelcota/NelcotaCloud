@@ -372,6 +372,145 @@
         ]
       }
     },
+    "/auth/v1/admin/captcha": {
+      "get": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`GET /admin/captcha`: whether the project asks for a captcha; the secret is never returned.",
+        "operationId": "read_captcha_settings",
+        "responses": {
+          "200": {
+            "description": "Current captcha settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptchaSettingsView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`PUT /admin/captcha`: from now on signup, password login and emailed links need a solved\nCloudflare Turnstile widget. The secret is checked with Cloudflare before it is stored.",
+        "operationId": "configure_captcha",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaptchaSettingsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Captcha required from now on",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptchaSettingsView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid keys, or a secret Cloudflare does not know",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Cloudflare could not be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`DELETE /admin/captcha`: logins and signups no longer need a captcha.",
+        "operationId": "remove_captcha",
+        "responses": {
+          "204": {
+            "description": "Captcha no longer required"
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
     "/auth/v1/admin/email-templates": {
       "get": {
         "tags": [
@@ -1033,6 +1172,46 @@
           },
           "502": {
             "description": "The SMTP server refused or could not be reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/usage": {
+      "get": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`GET /admin/usage`: active users this month and last month.",
+        "operationId": "read_project_usage",
+        "responses": {
+          "200": {
+            "description": "Monthly active users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectUsage"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
             "content": {
               "application/json": {
                 "schema": {
@@ -2300,6 +2479,42 @@
           {
             "platform_account": [],
             "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/captcha": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "`GET /captcha`: for apps, whether to render the Turnstile widget and with which site key.",
+        "operationId": "read_public_captcha",
+        "responses": {
+          "200": {
+            "description": "The site key, or `null` when no captcha is needed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptchaSettingsView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
           }
         ]
       }
@@ -5743,6 +5958,36 @@
           "magic_link"
         ]
       },
+      "CaptchaSettingsBody": {
+        "type": "object",
+        "description": "The keys of a Turnstile widget created in the project's Cloudflare account.",
+        "required": [
+          "site_key",
+          "secret_key"
+        ],
+        "properties": {
+          "secret_key": {
+            "type": "string"
+          },
+          "site_key": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CaptchaSettingsView": {
+        "type": "object",
+        "description": "Whether logins and signups need a captcha, and the public key the app renders it with.",
+        "properties": {
+          "site_key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The Cloudflare Turnstile site key; `null` while the project asks for no captcha."
+          }
+        }
+      },
       "ChangeTableRequest": {
         "type": "object",
         "description": "What can change on an existing table from the console.",
@@ -6102,6 +6347,13 @@
           "email"
         ],
         "properties": {
+          "captcha_token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cloudflare Turnstile token; required when the project turned the captcha on."
+          },
           "email": {
             "type": "string"
           }
@@ -6300,6 +6552,13 @@
           "password"
         ],
         "properties": {
+          "captcha_token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cloudflare Turnstile token; required when the project turned the captcha on."
+          },
           "email": {
             "type": "string"
           },
@@ -6543,6 +6802,30 @@
           }
         }
       },
+      "ProjectUsage": {
+        "type": "object",
+        "description": "How many users used the project this month and the month before (calendar months, UTC).\n\nA user counts as active in a month when they logged in or renewed a session in it, by any\nmethod. Deleted users are no longer counted.",
+        "required": [
+          "month_start",
+          "active_users_this_month",
+          "active_users_last_month"
+        ],
+        "properties": {
+          "active_users_last_month": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "active_users_this_month": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "month_start": {
+            "type": "string",
+            "format": "date-time",
+            "description": "First instant of the current month (UTC)."
+          }
+        }
+      },
       "ProviderCredentialsBody": {
         "type": "object",
         "required": [
@@ -6726,6 +7009,13 @@
           "password"
         ],
         "properties": {
+          "captcha_token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cloudflare Turnstile token; required when the project turned the captcha on."
+          },
           "email": {
             "type": "string",
             "description": "Format is checked by `EmailAddress::parse`, after trimming and lowercasing."

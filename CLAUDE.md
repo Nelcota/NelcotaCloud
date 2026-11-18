@@ -93,6 +93,15 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   account). Recorded after the action; a failed insert is logged, never failing the request.
   `GET /auth/v1/admin/audit-events` pages by `before` (event id); the console shows it at
   `/projects/$projectId/activity` and on each user's page.
+- Captcha (`tenants/captcha`): a project may require Cloudflare Turnstile (`PUT/DELETE
+  /auth/v1/admin/captcha`; the secret is checked with Cloudflare, then encrypted). Signup,
+  password login and the emailed-link requests then need `captcha_token`, checked after the rate
+  limit; Cloudflare unreachable refuses with 503 (fails closed). Apps read the site key at
+  `GET /auth/v1/captcha`. The console does not render the widget, so never enable it on the
+  platform tenant. Tests point `CAPTCHA_VERIFY_URL` at a fake.
+- Usage (`auth/usage`): `GET /auth/v1/admin/usage` counts monthly active users (UTC calendar
+  months) from the refresh tokens created in the month, so logins and renewals by any method
+  count; the console overview shows this month and last month.
 - Profile photos (`auth/avatar`): `PUT/DELETE /auth/v1/user/avatar` take the raw image (PNG,
   JPEG, WebP, up to 1 MiB); the server decodes it with `image` (size limits against decompression
   bombs), crops it to a 256px square and re-encodes it as JPEG (no EXIF), stored in the tenant's
@@ -181,7 +190,9 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
 - SDK (`packages/sdk`, `@nelcota/sdk`): TypeScript client for tenant apps, no runtime
   dependencies. It keeps the session, renews it before expiry (one refresh in flight), handles
   OAuth with PKCE, magic links, MFA and sessions, and queries the database
-  (`from('t').select(...).eq(...).execute()`, `rpc`) as the logged-in user. Types are generated from `openapi.json`. Uses
+  (`from('t').select(...).eq(...).execute()`, `rpc`) as the logged-in user. On servers,
+  `createAccessTokenVerifier` verifies access tokens using cached JWKS (WebCrypto Ed25519),
+  and `verifyWebhook` verifies webhooks. Types are generated from `openapi.json`. Uses
   TypeScript 7; `api:types` runs openapi-typescript with its own TypeScript 5.9 through `npx`
   (it needs the compiler API, which TypeScript 7 does not have), like the console.
 - Console (`apps/console/`): React + TypeScript SPA built with Vite, TanStack Router and TanStack

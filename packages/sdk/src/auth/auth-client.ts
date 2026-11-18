@@ -10,6 +10,12 @@ import type {
 } from '../types'
 import { type AuthorizedContext, authorizedRequest } from './authorized-request'
 import { AvatarApi } from './avatar-api'
+import {
+  type Credentials,
+  type EmailTarget,
+  credentialsBody,
+  emailBody,
+} from './auth-request-bodies'
 import { toSession, toSignInResult, toSignUpResult } from './login-results'
 import { MfaApi } from './mfa-api'
 import { OAuthApi } from './oauth-api'
@@ -18,7 +24,6 @@ import type { SessionStore } from './session-store'
 import { SessionsApi } from './sessions-api'
 
 type Schemas = components['schemas']
-type Credentials = { email: string; password: string }
 
 export type AuthContext = {
   http: HttpClient
@@ -50,7 +55,8 @@ export class AuthClient {
   }
 
   async signUp(credentials: Credentials): Promise<SignUpResult> {
-    const response = await this.post<Schemas['SignUpResponse']>('/auth/v1/signup', credentials)
+    const body = credentialsBody(credentials)
+    const response = await this.post<Schemas['SignUpResponse']>('/auth/v1/signup', body)
     const result = toSignUpResult(response, this.now)
 
     if (result.kind === 'session') {
@@ -61,7 +67,8 @@ export class AuthClient {
   }
 
   async signInWithPassword(credentials: Credentials): Promise<SignInResult> {
-    const response = await this.post<Schemas['LoginResponse']>('/auth/v1/login', credentials)
+    const body = credentialsBody(credentials)
+    const response = await this.post<Schemas['LoginResponse']>('/auth/v1/login', body)
 
     return this.startIfSession(toSignInResult(response, this.now))
   }
@@ -77,8 +84,8 @@ export class AuthClient {
   }
 
   /** Emails a one-time login link (signing the email up when it has no account). */
-  async sendMagicLink(target: { email: string }): Promise<void> {
-    await this.post<void>('/auth/v1/magic-link', target)
+  async sendMagicLink(target: EmailTarget): Promise<void> {
+    await this.post<void>('/auth/v1/magic-link', emailBody(target))
   }
 
   /** Trades the `token` from the magic link's URL for a session (or an MFA step). */
@@ -92,12 +99,12 @@ export class AuthClient {
     return this.post<User>('/auth/v1/verify-email', link)
   }
 
-  async resendVerification(target: { email: string }): Promise<void> {
-    await this.post<void>('/auth/v1/verify-email/resend', target)
+  async resendVerification(target: EmailTarget): Promise<void> {
+    await this.post<void>('/auth/v1/verify-email/resend', emailBody(target))
   }
 
-  async recoverPassword(target: { email: string }): Promise<void> {
-    await this.post<void>('/auth/v1/recover', target)
+  async recoverPassword(target: EmailTarget): Promise<void> {
+    await this.post<void>('/auth/v1/recover', emailBody(target))
   }
 
   /** Sets a new password from the reset link; every session of the user ends. */
@@ -116,6 +123,16 @@ export class AuthClient {
 
   refreshSession(): Promise<Session | null> {
     return this.manager.refresh()
+  }
+
+  /** The Turnstile site key for the widget whose token goes in `captchaToken`; `null`: none. */
+  async getCaptchaSiteKey(): Promise<string | null> {
+    const response = await this.http.request<Schemas['CaptchaSettingsView']>({
+      method: 'GET',
+      path: '/auth/v1/captcha',
+    })
+
+    return response.site_key ?? null
   }
 
   async getUser(): Promise<User> {

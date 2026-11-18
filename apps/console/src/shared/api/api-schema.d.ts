@@ -92,6 +92,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/v1/admin/captcha": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /admin/captcha`: whether the project asks for a captcha; the secret is never returned. */
+        get: operations["read_captcha_settings"];
+        /**
+         * `PUT /admin/captcha`: from now on signup, password login and emailed links need a solved
+         *     Cloudflare Turnstile widget. The secret is checked with Cloudflare before it is stored.
+         */
+        put: operations["configure_captcha"];
+        post?: never;
+        /** `DELETE /admin/captcha`: logins and signups no longer need a captcha. */
+        delete: operations["remove_captcha"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/v1/admin/email-templates": {
         parameters: {
             query?: never;
@@ -241,6 +263,23 @@ export interface paths {
          *     away. Only for a configured server: the platform's server is not offered as a free relay.
          */
         post: operations["send_smtp_test"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /admin/usage`: active users this month and last month. */
+        get: operations["read_project_usage"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -518,6 +557,23 @@ export interface paths {
          *     answers with what the endpoint replied.
          */
         post: operations["send_test_webhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/captcha": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /captcha`: for apps, whether to render the Turnstile widget and with which site key. */
+        get: operations["read_public_captcha"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1482,6 +1538,16 @@ export interface components {
          * @enum {string}
          */
         AuthEmailKind: "verification" | "password_reset" | "magic_link";
+        /** @description The keys of a Turnstile widget created in the project's Cloudflare account. */
+        CaptchaSettingsBody: {
+            secret_key: string;
+            site_key: string;
+        };
+        /** @description Whether logins and signups need a captcha, and the public key the app renders it with. */
+        CaptchaSettingsView: {
+            /** @description The Cloudflare Turnstile site key; `null` while the project asks for no captcha. */
+            site_key?: string | null;
+        };
         /** @description What can change on an existing table from the console. */
         ChangeTableRequest: {
             rls_enabled: boolean;
@@ -1605,6 +1671,8 @@ export interface components {
         DeliveryStatus: "pending" | "delivered" | "failed";
         /** @description Body of the endpoints that email a link to an address. */
         EmailBody: {
+            /** @description Cloudflare Turnstile token; required when the project turned the captcha on. */
+            captcha_token?: string | null;
             email: string;
         };
         /**
@@ -1673,6 +1741,8 @@ export interface components {
             provider: string;
         };
         LogInBody: {
+            /** @description Cloudflare Turnstile token; required when the project turned the captcha on. */
+            captcha_token?: string | null;
             email: string;
             password: string;
         };
@@ -1756,6 +1826,23 @@ export interface components {
             site_url: string;
             slug: string;
         };
+        /**
+         * @description How many users used the project this month and the month before (calendar months, UTC).
+         *
+         *     A user counts as active in a month when they logged in or renewed a session in it, by any
+         *     method. Deleted users are no longer counted.
+         */
+        ProjectUsage: {
+            /** Format: int64 */
+            active_users_last_month: number;
+            /** Format: int64 */
+            active_users_this_month: number;
+            /**
+             * Format: date-time
+             * @description First instant of the current month (UTC).
+             */
+            month_start: string;
+        };
         ProviderCredentialsBody: {
             client_id: string;
             client_secret: string;
@@ -1818,6 +1905,8 @@ export interface components {
             user: components["schemas"]["User"];
         };
         SignUpBody: {
+            /** @description Cloudflare Turnstile token; required when the project turned the captcha on. */
+            captcha_token?: string | null;
             /** @description Format is checked by `EmailAddress::parse`, after trimming and lowercasing. */
             email: string;
             password: string;
@@ -2278,6 +2367,113 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    read_captcha_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current captcha settings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaptchaSettingsView"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    configure_captcha: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CaptchaSettingsBody"];
+            };
+        };
+        responses: {
+            /** @description Captcha required from now on */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaptchaSettingsView"];
+                };
+            };
+            /** @description Invalid keys, or a secret Cloudflare does not know */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Cloudflare could not be reached */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    remove_captcha: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Captcha no longer required */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Requires the secret API key, or membership in the project */
             403: {
@@ -2772,6 +2968,35 @@ export interface operations {
             };
             /** @description The SMTP server refused or could not be reached */
             502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    read_project_usage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Monthly active users */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectUsage"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3614,6 +3839,35 @@ export interface operations {
             };
             /** @description Too many test events and resends for this project */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    read_public_captcha: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The site key, or `null` when no captcha is needed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaptchaSettingsView"];
+                };
+            };
+            /** @description Missing or invalid API key */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

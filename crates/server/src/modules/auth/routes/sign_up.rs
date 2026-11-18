@@ -13,6 +13,7 @@ use crate::modules::auth::session::session_issuer::SessionTokens;
 use crate::modules::auth::user::email_address::EmailAddress;
 use crate::modules::auth::user::signup::{NewSignup, SignupOutcome, sign_up_user};
 use crate::modules::tenants::access::tenant_context::TenantContext;
+use crate::modules::tenants::captcha::captcha_requirement::{CaptchaAnswer, require_captcha};
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::client_ip::ClientIp;
 use crate::shared::http::validated_json::ValidatedJson;
@@ -24,6 +25,9 @@ pub struct SignUpBody {
     pub email: String,
     #[validate(length(min = 8, max = 128))]
     pub password: String,
+    /// Cloudflare Turnstile token; required when the project turned the captcha on.
+    #[validate(length(min = 1, max = 4096))]
+    pub captcha_token: Option<String>,
 }
 
 /// A session when the tenant lets unverified users in; otherwise only a note to check the inbox.
@@ -64,6 +68,11 @@ pub async fn sign_up(
     };
     // Before hashing: every signup costs an Argon2 run and may send an email.
     state.rate_limits.check_signup(&attempt)?;
+    let captcha = CaptchaAnswer {
+        token: body.captcha_token.as_deref(),
+        client_ip,
+    };
+    require_captcha(&state, tenant.tenant_id, captcha).await?;
     let email = EmailAddress::parse(&body.email).map_err(ApiError::invalid_request)?;
     check_new_password(&body.password).map_err(ApiError::invalid_request)?;
     let password_hash = hash_password(body.password)

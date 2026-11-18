@@ -33,7 +33,8 @@ pub async fn recover_password(
         raw_email: &body.email,
         client_ip,
         kind: AuthEmailKind::PasswordReset,
+        captcha_token: body.captcha_token.as_deref(),
     };
 
-    request_email_link(&state, tenant, &request)
+    request_email_link(&state, tenant, &request).await
 }
