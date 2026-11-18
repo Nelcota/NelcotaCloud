@@ -33,6 +33,11 @@ export const MESSAGES_BY_CODE: Record<string, string> = {
   query_timeout: 'A consulta passou de 15 segundos e foi cancelada.',
   table_not_found: 'Essa tabela não existe mais. Recarregue a página.',
   permission_denied: 'Os privilégios ou as políticas da tabela recusaram o acesso.',
+  invalid_captcha_secret:
+    'O Cloudflare não reconhece essa secret key. Copie de novo do widget do Turnstile.',
+  captcha_unavailable: 'Não foi possível falar com o Cloudflare. Tente de novo em instantes.',
+  captcha_required: 'Resolva o captcha antes de continuar.',
+  captcha_failed: 'O captcha não foi resolvido. Tente de novo.',
 }
 
 /** Generic codes carry the detail in their English message; the known ones read like this. */

@@ -27,6 +27,14 @@ pub enum TenantsRejection {
     ProjectAccessDenied,
     #[error("the SMTP server did not accept the email")]
     SmtpDeliveryFailed,
+    #[error("this project requires a captcha token")]
+    CaptchaRequired,
+    #[error("the captcha was not solved")]
+    CaptchaFailed,
+    #[error("the captcha could not be checked, try again")]
+    CaptchaUnavailable,
+    #[error("Cloudflare does not recognize this Turnstile secret key")]
+    InvalidCaptchaSecret,
 }
 
 impl TenantsRejection {
@@ -45,6 +53,10 @@ impl TenantsRejection {
             }
             Self::ProjectAccessDenied => (StatusCode::FORBIDDEN, "project_access_denied"),
             Self::SmtpDeliveryFailed => (StatusCode::BAD_GATEWAY, "smtp_delivery_failed"),
+            Self::CaptchaRequired => (StatusCode::BAD_REQUEST, "captcha_required"),
+            Self::CaptchaFailed => (StatusCode::BAD_REQUEST, "captcha_failed"),
+            Self::CaptchaUnavailable => (StatusCode::SERVICE_UNAVAILABLE, "captcha_unavailable"),
+            Self::InvalidCaptchaSecret => (StatusCode::BAD_REQUEST, "invalid_captcha_secret"),
         }
     }
 }
@@ -125,6 +137,26 @@ mod tests {
                 TenantsRejection::SmtpDeliveryFailed,
                 StatusCode::BAD_GATEWAY,
                 "smtp_delivery_failed",
+            ),
+            (
+                TenantsRejection::CaptchaRequired,
+                StatusCode::BAD_REQUEST,
+                "captcha_required",
+            ),
+            (
+                TenantsRejection::CaptchaFailed,
+                StatusCode::BAD_REQUEST,
+                "captcha_failed",
+            ),
+            (
+                TenantsRejection::CaptchaUnavailable,
+                StatusCode::SERVICE_UNAVAILABLE,
+                "captcha_unavailable",
+            ),
+            (
+                TenantsRejection::InvalidCaptchaSecret,
+                StatusCode::BAD_REQUEST,
+                "invalid_captcha_secret",
             ),
         ];
         let mut seen_codes = HashSet::new();

@@ -11,6 +11,7 @@ use crate::modules::auth::login::login_completion::LoginResponse;
 use crate::modules::auth::login::password_login::{PasswordLogin, log_in_with_password};
 use crate::modules::auth::rate_limiting::attempt_limiter::Attempt;
 use crate::modules::tenants::access::tenant_context::TenantContext;
+use crate::modules::tenants::captcha::captcha_requirement::{CaptchaAnswer, require_captcha};
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::client_ip::ClientIp;
 use crate::shared::http::validated_json::ValidatedJson;
@@ -21,6 +22,9 @@ pub struct LogInBody {
     pub email: String,
     #[validate(length(min = 1, max = 128))]
     pub password: String,
+    /// Cloudflare Turnstile token; required when the project turned the captcha on.
+    #[validate(length(min = 1, max = 4096))]
+    pub captcha_token: Option<String>,
 }
 
 /// `POST /login`: email and password.
@@ -50,6 +54,11 @@ pub async fn log_in(
     };
     // Checked before hashing, so rejected attempts cost no Argon2 work.
     state.rate_limits.check_login(&attempt)?;
+    let captcha = CaptchaAnswer {
+        token: body.captcha_token.as_deref(),
+        client_ip,
+    };
+    require_captcha(&state, tenant.tenant_id, captcha).await?;
     let login = PasswordLogin {
         email: &body.email,
         password: body.password,

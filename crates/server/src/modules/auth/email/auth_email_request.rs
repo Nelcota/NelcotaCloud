@@ -18,6 +18,7 @@ use crate::modules::auth::user::passwordless_signup::find_or_create_passwordless
 use crate::modules::auth::user::user_lookup::find_user_by_email;
 use crate::modules::auth::user::user_record::User;
 use crate::modules::tenants::access::tenant_context::TenantContext;
+use crate::modules::tenants::captcha::captcha_requirement::{CaptchaAnswer, require_captcha};
 use crate::modules::webhooks::runtime::webhook_runtime::WebhookRuntime;
 use crate::shared::http::api_error::ApiError;
 
@@ -26,6 +27,9 @@ use crate::shared::http::api_error::ApiError;
 pub struct EmailBody {
     #[validate(length(min = 1, max = 254))]
     pub email: String,
+    /// Cloudflare Turnstile token; required when the project turned the captcha on.
+    #[validate(length(min = 1, max = 4096))]
+    pub captcha_token: Option<String>,
 }
 
 /// A client asking for a link to be emailed to `raw_email`.
@@ -33,11 +37,12 @@ pub struct EmailLinkRequest<'a> {
     pub raw_email: &'a str,
     pub client_ip: IpAddr,
     pub kind: AuthEmailKind,
+    pub captcha_token: Option<&'a str>,
 }
 
 /// Answers 202 right after the rate limit, before looking the account up: neither the status
 /// nor the response time can reveal whether the email has an account.
-pub fn request_email_link(
+pub async fn request_email_link(
     state: &AppState,
     tenant: TenantContext,
     request: &EmailLinkRequest<'_>,
@@ -49,6 +54,11 @@ pub fn request_email_link(
     };
     // Applies to unknown emails too, so the limit itself reveals nothing about accounts.
     state.rate_limits.check_email(&attempt)?;
+    let captcha = CaptchaAnswer {
+        token: request.captcha_token,
+        client_ip: request.client_ip,
+    };
+    require_captcha(state, tenant.tenant_id, captcha).await?;
     let job = EmailLinkJob {
         mailer: state.auth_mailer(),
         webhooks: Arc::clone(&state.webhooks),

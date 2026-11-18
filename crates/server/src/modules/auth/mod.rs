@@ -9,4 +9,5 @@ pub mod rate_limiting;
 pub mod rejection;
 pub mod routes;
 pub mod session;
+pub mod usage;
 pub mod user;

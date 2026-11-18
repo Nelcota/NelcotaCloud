@@ -22,6 +22,7 @@ pub mod mfa_code_body;
 pub mod one_time_token_body;
 pub mod read_avatar;
 pub mod read_mfa_status;
+pub mod read_project_usage;
 pub mod recover_password;
 pub mod refresh_session;
 pub mod refresh_token_body;

@@ -23,6 +23,7 @@ use crate::modules::auth::routes::log_in;
 use crate::modules::auth::routes::log_out;
 use crate::modules::auth::routes::read_avatar;
 use crate::modules::auth::routes::read_mfa_status;
+use crate::modules::auth::routes::read_project_usage;
 use crate::modules::auth::routes::recover_password;
 use crate::modules::auth::routes::refresh_session;
 use crate::modules::auth::routes::remove_avatar;
@@ -121,4 +122,5 @@ fn user_admin_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(list_user_sessions::list_user_sessions))
         .routes(routes!(resend_user_verification::resend_user_verification))
         .routes(routes!(list_audit_events::list_audit_events))
+        .routes(routes!(read_project_usage::read_project_usage))
 }

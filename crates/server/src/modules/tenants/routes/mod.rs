@@ -1,4 +1,5 @@
 pub mod change_tenant_settings;
+pub mod configure_captcha;
 pub mod configure_smtp;
 pub mod create_api_key;
 pub mod create_project;
@@ -7,8 +8,11 @@ pub mod delete_project;
 pub mod delete_tenant;
 pub mod list_api_keys;
 pub mod list_projects;
+pub mod read_captcha_settings;
+pub mod read_public_captcha;
 pub mod read_smtp_settings;
 pub mod read_tenant_settings;
+pub mod remove_captcha;
 pub mod reset_smtp;
 pub mod revoke_api_key;
 pub mod rotate_signing_key;

@@ -20,6 +20,7 @@ use tokio::net::TcpListener;
 use uuid::Uuid;
 
 use crate::fake_github::FakeGitHub;
+use crate::fake_turnstile::FakeTurnstile;
 
 pub type TestResult<T = ()> = Result<T, Box<dyn Error>>;
 
@@ -66,6 +67,8 @@ pub struct ErrorBody {
 pub struct TestServer {
     pub client: Client,
     pub fake_github: FakeGitHub,
+    /// Kept alive for the whole test: the server checks captcha tokens against it.
+    _fake_turnstile: FakeTurnstile,
     /// Slug the server treats as the platform tenant; created on demand by tests.
     pub platform_slug: String,
     base_url: String,
@@ -108,6 +111,7 @@ impl TestServer {
 
         let admin_token = encode_hex(&random_bytes::<SECRET_BYTES>());
         let platform_slug = random_slug();
+        let fake_turnstile = FakeTurnstile::start().await;
         let config = AppConfig {
             control_plane_database_url: std::env::var("CONTROL_PLANE_DATABASE_URL")?,
             tenant_database_base_url: std::env::var("TENANT_DATABASE_BASE_URL")?,
@@ -121,6 +125,7 @@ impl TestServer {
             tenant_smtp_allow_any_host: Some(true),
             webhook_allow_private_hosts: Some(true),
             platform_tenant_slug: Some(platform_slug.clone()),
+            captcha_verify_url: Some(fake_turnstile.verify_url.clone()),
         };
         let fake_github = FakeGitHub::start().await;
         let endpoints = fake_endpoints(&fake_github);
@@ -143,6 +148,7 @@ impl TestServer {
         Ok(Self {
             client,
             fake_github,
+            _fake_turnstile: fake_turnstile,
             platform_slug,
             base_url,
             admin_token,

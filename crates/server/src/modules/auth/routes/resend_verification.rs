@@ -33,7 +33,8 @@ pub async fn resend_verification(
         raw_email: &body.email,
         client_ip,
         kind: AuthEmailKind::Verification,
+        captcha_token: body.captcha_token.as_deref(),
     };
 
-    request_email_link(&state, tenant, &request)
+    request_email_link(&state, tenant, &request).await
 }

@@ -1,5 +1,6 @@
 pub mod access;
 pub mod api_keys;
+pub mod captcha;
 pub mod database;
 pub mod platform;
 pub mod provisioning;

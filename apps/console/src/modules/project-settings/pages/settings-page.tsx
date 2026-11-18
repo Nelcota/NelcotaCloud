@@ -1,5 +1,6 @@
 import type { JSX } from 'react'
 
+import { CaptchaSection } from '@/modules/project-settings/components/captcha-section'
 import { DangerZone } from '@/modules/project-settings/components/danger-zone'
 import { GeneralSettingsForm } from '@/modules/project-settings/components/general-settings-form'
 import { useSettingsQuery } from '@/modules/project-settings/queries/use-project-settings'
@@ -15,7 +16,10 @@ export function SettingsPage(): JSX.Element {
 
   return (
     <div className="grid max-w-3xl gap-6">
-      <PageHeader title="Configurações" description="Nome, site do app e regras de login." />
+      <PageHeader
+        title="Configurações"
+        description="Nome, site do app, regras de login e proteção contra bots."
+      />
       <LoadError error={settings.error} onRetry={() => settings.refetch()} />
       <SettingsContent
         projectId={projectId}
@@ -48,6 +52,7 @@ function SettingsContent({
   return (
     <>
       <GeneralSettingsForm projectId={projectId} settings={settings} />
+      <CaptchaSection projectId={projectId} />
       <DangerZone projectId={projectId} projectName={settings.name} />
     </>
   )

@@ -25,6 +25,8 @@ pub struct AppConfig {
     /// Slug of the tenant whose users are the platform accounts that log into the console.
     /// Unset, the platform API answers 503.
     pub platform_tenant_slug: Option<String>,
+    /// Tests only: where captcha tokens are checked instead of Cloudflare Turnstile.
+    pub captcha_verify_url: Option<String>,
 }
 
 impl AppConfig {
@@ -55,6 +57,10 @@ impl AppConfig {
                 .platform_tenant_slug
                 .map(|slug| slug.trim().to_owned())
                 .filter(|slug| slug.is_empty() == false),
+            captcha_verify_url: self
+                .captcha_verify_url
+                .map(|url| url.trim().to_owned())
+                .filter(|url| url.is_empty() == false),
         }
     }
 
@@ -131,6 +137,7 @@ mod tests {
             tenant_smtp_allow_any_host: None,
             webhook_allow_private_hosts: None,
             platform_tenant_slug: None,
+            captcha_verify_url: None,
         }
     }
 
