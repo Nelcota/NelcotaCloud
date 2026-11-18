@@ -1,20 +1,22 @@
 use futures_util::TryStreamExt;
 use serde::Serialize;
 use sqlx::postgres::{PgQueryResult, PgRow};
-use sqlx::{AssertSqlSafe, Column, Either, Row, ValueRef};
+use sqlx::{AssertSqlSafe, Column, Either, Row};
 use utoipa::ToSchema;
 
 use crate::modules::database::admin::developer_sql::developer_session::DeveloperSession;
+use crate::modules::database::admin::developer_sql::empty_result_columns::empty_result_columns;
+use crate::modules::database::admin::developer_sql::script_statements::{
+    answers_rows, split_statements,
+};
 use crate::modules::database::admin::developer_sql::sql_error_response::sql_error_response;
+use crate::modules::database::admin::developer_sql::sql_values::row_values;
 use crate::shared::http::api_error::ApiError;
 
 /// Rows of the last result set the console shows; the rest is read and dropped, never kept.
 pub const MAX_RESULT_ROWS: usize = 1_000;
-/// Characters of one value the console shows; longer values are cut.
-const MAX_VALUE_CHARS: usize = 10_000;
 /// Bytes of values kept in all; rows beyond are read and dropped, like rows past the limit.
 const MAX_RESULT_BYTES: usize = 4 * 1024 * 1024;
-const CUT_MARK: &str = "…";
 
 /// What the SQL editor shows: the last result set of the script (values as Postgres writes
 /// them as text) and how many rows the statements changed.
@@ -32,6 +34,11 @@ pub struct SqlResult {
     /// Bytes of the values kept so far.
     #[serde(skip)]
     kept_bytes: usize,
+    #[serde(skip)]
+    completed_statements: usize,
+    /// A query that answered no rows after the last result set: its header is the last one.
+    #[serde(skip)]
+    empty_query: Option<usize>,
 }
 
 /// Runs a script (several statements allowed) in the developer session. The simple query
@@ -42,11 +49,19 @@ pub async fn run_script(
 ) -> Result<SqlResult, ApiError> {
     let transaction = &mut *session.transaction;
     let reading = async move {
+        let statements = split_statements(&script);
         let mut result = SqlResult::empty();
-        let mut stream = sqlx::raw_sql(AssertSqlSafe(script)).fetch_many(transaction);
+        let mut stream = sqlx::raw_sql(AssertSqlSafe(script.clone())).fetch_many(&mut *transaction);
 
         while let Some(item) = stream.try_next().await? {
-            result.absorb(item);
+            result.absorb(item, &statements);
+        }
+
+        drop(stream);
+
+        if let Some(statement) = result.pending_empty_query(&statements) {
+            let columns = empty_result_columns(transaction, statement).await?;
+            result.show_empty(columns);
         }
 
         Ok(result)
@@ -65,23 +80,59 @@ impl SqlResult {
             is_truncated: false,
             starts_new_set: true,
             kept_bytes: 0,
+            completed_statements: 0,
+            empty_query: None,
         }
     }
 
-    fn absorb(&mut self, item: Either<PgQueryResult, PgRow>) {
+    fn absorb(&mut self, item: Either<PgQueryResult, PgRow>, statements: &[&str]) {
         match item {
-            Either::Left(outcome) => {
-                // A statement that returned rows reports how many it read (`SELECT 10`): only
-                // statements without rows count as changes. An empty SELECT and an UPDATE of no
-                // rows look the same here, so the last result set with rows stays shown.
-                if self.starts_new_set {
-                    self.rows_affected = self.rows_affected.saturating_add(outcome.rows_affected());
-                }
-
-                self.starts_new_set = true;
-            }
+            Either::Left(outcome) => self.complete_statement(&outcome, statements),
             Either::Right(row) => self.add_row(&row),
         }
+    }
+
+    /// A statement that returned rows reports how many it read (`SELECT 10`): only statements
+    /// without rows count as changes. One without rows that is a query is remembered, so its
+    /// empty result set replaces the previous one.
+    fn complete_statement(&mut self, outcome: &PgQueryResult, statements: &[&str]) {
+        let statement_index = self.completed_statements;
+        self.completed_statements = statement_index.saturating_add(1);
+
+        if self.starts_new_set {
+            self.rows_affected = self.rows_affected.saturating_add(outcome.rows_affected());
+
+            if statements
+                .get(statement_index)
+                .is_some_and(|statement| answers_rows(statement))
+            {
+                self.empty_query = Some(statement_index);
+            }
+        }
+
+        self.starts_new_set = true;
+    }
+
+    /// Only when every statement was matched to its completion: otherwise the split and the
+    /// server disagree, and no header is guessed.
+    fn pending_empty_query<'a>(&self, statements: &[&'a str]) -> Option<&'a str> {
+        if self.completed_statements != statements.len() {
+            return None;
+        }
+
+        statements.get(self.empty_query?).copied()
+    }
+
+    fn show_empty(&mut self, columns: Vec<String>) {
+        if columns.is_empty() {
+            return;
+        }
+
+        self.columns = columns;
+        self.rows.clear();
+        self.row_count = 0;
+        self.is_truncated = false;
+        self.kept_bytes = 0;
     }
 
     fn add_row(&mut self, row: &PgRow) {
@@ -96,6 +147,7 @@ impl SqlResult {
             self.is_truncated = false;
             self.starts_new_set = false;
             self.kept_bytes = 0;
+            self.empty_query = None;
         }
 
         self.row_count = self.row_count.saturating_add(1);
@@ -117,44 +169,5 @@ impl SqlResult {
 
         self.kept_bytes = kept_bytes;
         self.rows.push(values);
-    }
-}
-
-fn row_values(row: &PgRow) -> Vec<Option<String>> {
-    (0..row.len())
-        .map(|index| {
-            let value = row.try_get_raw(index).ok()?;
-
-            if value.is_null() {
-                return None;
-            }
-
-            value.as_str().ok().map(shown_value)
-        })
-        .collect()
-}
-
-/// The value as shown: at most `MAX_VALUE_CHARS` characters, cut values marked.
-fn shown_value(text: &str) -> String {
-    let Some((cut_at, _)) = text.char_indices().nth(MAX_VALUE_CHARS) else {
-        return text.to_owned();
-    };
-    let kept = text.get(..cut_at).unwrap_or_default();
-
-    format!("{kept}{CUT_MARK}")
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn cuts_long_values_on_a_character_boundary() {
-        let long = "é".repeat(MAX_VALUE_CHARS + 5);
-        let shown = shown_value(&long);
-
-        assert_eq!(shown.chars().count(), MAX_VALUE_CHARS + 1);
-        assert!(shown.ends_with(CUT_MARK));
-        assert_eq!(shown_value("short"), "short");
     }
 }

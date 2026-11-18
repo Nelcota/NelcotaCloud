@@ -147,7 +147,8 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   after an embed missing from `select` are refused (they would be ignored); `not.or`/`not.and`
   negate groups; `in.()` matches nothing. Errors map SQLSTATE to stable codes (`permission_denied`,
   `unique_violation`, ...); the console's SQL editor (and its schema overview, which never runs
-  as the superuser) passes Postgres's message on and keeps at most 1000 rows / 4 MiB of values.
+  as the superuser) passes Postgres's message on and keeps at most 1000 rows / 4 MiB of values;
+  a last query that found no rows shows its own empty header (prepared again, never re-run).
 - Rate limits (`governor`, in memory, single instance; quotas in `rate_limit_quotas.rs`) on
   signup, login (per email from one network, per email, per client IP), the Argon2 work a client
   causes across projects, MFA codes, auth emails (per address, per recipient across projects,
