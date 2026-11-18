@@ -95,7 +95,7 @@ export class HttpClient {
  * `https://api.test///` becomes `https://api.test`. A loop instead of `/\/+$/`, whose
  * backtracking grows with the number of slashes in a URL the app passes in.
  */
-function withoutTrailingSlashes(url: string): string {
+export function withoutTrailingSlashes(url: string): string {
   let end = url.length
 
   while (end > 0 && url.charAt(end - 1) === '/') {

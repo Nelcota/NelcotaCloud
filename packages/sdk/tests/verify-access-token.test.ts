@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { createAccessTokenVerifier } from '../src/index'
 import type { AccessTokenVerifier } from '../src/index'
 
-const API_URL = 'https://api.test/'
+const API_URL = 'https://api.test///'
 const ISSUER = 'https://api.test/auth/v1'
 const PROJECT_ID = '9c2791c2-6e42-45dd-aafd-729da8a48e78'
 const NOW_SECONDS = 1_800_000_000

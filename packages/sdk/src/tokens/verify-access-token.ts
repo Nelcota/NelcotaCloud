@@ -1,3 +1,4 @@
+import { withoutTrailingSlashes } from '../http/http-client'
 import { AccessTokenVerificationError } from './access-token-verification-error'
 import { JwksCache } from './jwks-cache'
 import { type JwtParts, splitJwt } from './jwt-parts'
@@ -45,7 +46,7 @@ export type AccessTokenVerifier = (accessToken: string) => Promise<AccessTokenCl
 export function createAccessTokenVerifier(
   options: AccessTokenVerifierOptions,
 ): AccessTokenVerifier {
-  const issuer = `${options.url.replace(/\/+$/, '')}/auth/v1`
+  const issuer = `${withoutTrailingSlashes(options.url)}/auth/v1`
   const now = options.now ?? Date.now
   const keys = new JwksCache({
     jwksUrl: `${issuer}/jwks`,
