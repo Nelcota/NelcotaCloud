@@ -7,14 +7,17 @@
 
 ## Project
 
-NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multitenant Auth.
+NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth and Database
+(each project's Postgres as a REST API under row level security).
 
 - Control plane database: tenants, API key hashes (with a hint of their last characters;
   publishable keys, which are public, are also kept in full so the console shows them again), JWT
   signing keys, OAuth configs, pending OAuth authorizations, tenant SMTP settings, and
   `tenant_members` (which console accounts manage which tenant, as owner or member).
-- One Postgres database per tenant (`tenant_<slug>`): users, identities, refresh and one-time tokens,
-  TOTP factors and MFA challenges.
+- One Postgres database per tenant (`tenant_<slug>`): the platform's tables (users, identities,
+  refresh and one-time tokens, TOTP factors, MFA challenges, audit, webhook outbox) live in the
+  `auth` schema (the platform's pool searches only `auth`); the project's own tables live in
+  `public`, served by the Data API.
   Its URL is derived from the slug and the current `TENANT_DATABASE_BASE_URL`, never stored.
 - Provisioning holds a per-slug advisory lock in the registration transaction; a database without a
   tenant row is an orphan that the next provisioning of the slug recreates.
@@ -36,7 +39,12 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
   re-checked when a sender is built); the sender is pinned to the first checked address that
   accepts a connection, and is built inside the background task so requests never reveal
   whether an email was sent. `TENANT_SMTP_ALLOW_ANY_HOST=true` lifts the guard for local
-  development only.
+  development only. Each project may reword the three link emails (`tenant_email_templates`,
+  `/auth/v1/admin/email-templates/{kind}`): plain-text subject, heading, message, button and
+  note, `{app_name}` replaced by the project name; the layout and the link stay the platform's,
+  one-line fields refuse control characters (header injection), and every field refuses links
+  and domain names (the emails go out with the platform's reputation, so custom words must not
+  point readers anywhere but the button).
 - Every way to obtain tokens ends in `complete_login` (password, magic link, OAuth): users with a
   verified TOTP factor get `{mfa_required, mfa_token}` instead, redeemed at `/auth/v1/mfa/challenge`
   (5 wrong codes per challenge, each TOTP time step accepted once). `issue_session_with` refuses
@@ -69,6 +77,19 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
   identities (provider and date only); `POST .../users/{id}/verification-email` resends the
   verification link to an unverified, unbanned user under the public per-address email limit.
   The console shows them at `/projects/$projectId/users/$userId`.
+- User metadata (`auth/user/user_metadata*`): two JSON objects on `users`. `user_metadata`
+  (up to 16 KiB, no NUL characters) is replaced by the user (`PATCH /auth/v1/user`, which refuses `app_metadata`)
+  or an admin; `app_metadata` (up to 4 KiB) only by admins (`PATCH /auth/v1/admin/users/{id}`)
+  and is copied into access tokens as the `app_metadata` claim, so it reaches apps on the next
+  login or refresh. Both changes report `user.updated`. The console edits them on the user page.
+- Activity log (`auth/audit`): the tenant's `audit_events` (90 days, pruned when read and, a
+  hundred oldest rows at a time, on each insert) records logins (with method and client IP),
+  wrong-password attempts (with the typed email only when it is a valid address: anything else
+  may be a mistyped password; linked to the account it names, for the log only), password
+  resets and admin actions on users with who did them (`AdminActor`: secret key or console
+  account). Recorded after the action; a failed insert is logged, never failing the request.
+  `GET /auth/v1/admin/audit-events` pages by `before` (event id); the console shows it at
+  `/projects/$projectId/activity` and on each user's page.
 - Profile photos (`auth/avatar`): `PUT/DELETE /auth/v1/user/avatar` take the raw image (PNG,
   JPEG, WebP, up to 1 MiB); the server decodes it with `image` (size limits against decompression
   bombs), crops it to a 256px square and re-encodes it as JPEG (no EXIF), stored in the tenant's
@@ -96,8 +117,34 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
   and resends are rate limited per project. Receivers must be https on public addresses,
   checked at save and again by the client's DNS resolver on every request (no redirects, no
   proxy); `WEBHOOK_ALLOW_PRIVATE_HOSTS=true` lifts it for local development only.
-- Rate limits (`governor`, in memory, single instance) on signup, login, MFA codes, auth emails and
-  OAuth start,
+- Database (`modules/database`, Data API at `/rest/v1`, PostgREST-style): the request roles
+  `nelcota_anon` (publishable key), `nelcota_authenticated` (plus a user's access token; claims
+  in `request.jwt.claims`, read by `auth.uid()`, `auth.jwt()`, `auth.role()`), `nelcota_service`
+  (secret key, or a console member with `x-nelcota-project`; BYPASSRLS) and `nelcota_developer`
+  (owner of `public`, BYPASSRLS, never superuser) are server-wide NOLOGIN roles created at
+  startup. Each project's Data API pool logs in as its own role `nelcota_t_<slug>` (NOINHERIT,
+  password derived from the server password, created or repaired when the pool opens, dropped
+  with the database, the only role allowed to connect), so SQL that falls back to the login role
+  (`RESET ROLE`, `COMMIT`) never reaches another project. Each request is one transaction
+  switched with `set_config(..., true)`; GETs are read-only; statement timeouts per role
+  (5/8/30 s, 15 s for the console's SQL) and a `QueryGuard` that terminates the backend (matched
+  by pid and start time) through the platform's pool if a function lifts the timeout. At most
+  40 sessions run at once per instance (`SessionSlots`). Every table created in `public` gets
+  row level security on, views get `security_invoker` and materialized views lose the request
+  roles' access (event trigger); every DDL bumps `auth.schema_version`
+  (`auth.current_schema_version()`), which keys the per-project `SchemaCache`. Client names are
+  only looked up in that cache and quoted; values are bound and cast by Postgres to the column
+  type; responses are JSON built by Postgres (`json_agg`, at most 16 MiB, measured there),
+  embeds are `LATERAL` subqueries over foreign keys or a linking table, at most 1000 rows per
+  response, writes need a filter for update/delete and refuse `limit`/`offset`, and inserts are
+  grouped by the columns each row sets (one statement per group, in order) so left-out columns
+  take their defaults. Publishable-key requests are rate limited per project and client IP
+  (`auth/rate_limiting`). Errors map SQLSTATE to stable codes (`permission_denied`,
+  `unique_violation`, ...); the console's SQL editor (and its schema overview, which never runs
+  as the superuser) passes Postgres's message on and keeps at most 1000 rows / 4 MiB of values.
+- Rate limits (`governor`, in memory, single instance) on signup, login, MFA codes, auth emails,
+  OAuth start, profile changes (`PATCH /user`, per account; each one sends a webhook) and Data API
+  requests with the publishable key,
   per tenant + email and per tenant + client IP (IPv6 per /64). Behind Cloudflare set
   `CLIENT_IP_HEADER=cf-connecting-ip`.
 - Signing keys are cached per tenant for 5 minutes and tenant pools while in use, with `moka`
@@ -114,8 +161,10 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. The first product is multi
   utoipa; tests use wiremock for OAuth providers and webhook receivers.
 - SDK (`packages/sdk`, `@nelcota/sdk`): TypeScript client for tenant apps, no runtime
   dependencies. It keeps the session, renews it before expiry (one refresh in flight), handles
-  OAuth with PKCE, magic links, MFA and sessions. Types are generated from `openapi.json`. Uses
-  TypeScript 5.9 (tsdown and openapi-typescript need its compiler API).
+  OAuth with PKCE, magic links, MFA and sessions, and queries the database
+  (`from('t').select(...).eq(...).execute()`, `rpc`) as the logged-in user. Types are generated from `openapi.json`. Uses
+  TypeScript 7; `api:types` runs openapi-typescript with its own TypeScript 5.9 through `npx`
+  (it needs the compiler API, which TypeScript 7 does not have), like the console.
 - Console (`apps/console/`): React + TypeScript SPA built with Vite, TanStack Router and TanStack
   Query, Tailwind CSS and shadcn/ui; see "Console structure". It talks to the API only; the API
   address is fixed at build time by `VITE_API_URL`. It logs in with the SDK (compiled from
@@ -174,10 +223,11 @@ Modular monolith in `crates/server/src/`: one folder per business context under 
   enum with the HTTP status and stable error code of each, converted into `ApiError`).
   - `tenants/`: `access` (TenantContext, AdminAccess, TenantAdmin), `api_keys` (issuance,
     revocation), `signing_keys` (keys, cache, rotation, access token JWTs), `database` (tenant
-    pools, create/migrate/drop), `provisioning` (creation, deletion), `settings` (site URL, tenant
+    pools for Auth and for the Data API, create/migrate/drop, server-wide roles), `provisioning` (creation, deletion), `settings` (site URL, tenant
     settings), `smtp` (tenant SMTP settings, host policy, senders), `platform` (console accounts,
     memberships, roles).
-  - `auth/`: `user` (record, lookup, registration, account updates, listing, administration),
+  - `auth/`: `user` (record, lookup, registration, account updates, listing, administration,
+    metadata), `audit` (activity log events, recording, listing),
     `password`, `avatar` (profile photo processing and storage), `session` (refresh tokens,
     issuing, session listing), `login` (completion with the
     MFA step), `mfa` (TOTP codes, factors, challenges), `one_time_token`, `email` (auth emails and
@@ -191,6 +241,11 @@ Modular monolith in `crates/server/src/`: one folder per business context under 
     cases), `signing` (secrets, signatures), `outbox` (subscriptions cache, recorder, wake-up
     hints), `delivery` (transport and DNS guard, queue, schedule, retries, worker, delivery log,
     test send), `runtime` (what `AppState` holds).
+  - `database/`: `access` (the caller's role and claims), `execution` (request transaction,
+    query guard, error mapping), `schema` (introspection, cache, relationships, function
+    resolution), `query` (URL and `Prefer` parsing into a `ReadQuery`), `sql` (statement
+    writers), `rows` (read, write and function-call use cases), `admin` (developer session, SQL
+    runner, table and policy DDL, schema overview).
 - `shared/`: infrastructure with no business rules (`crypto`, `http` (generic `ApiError`, client
   IP, bearer token), JSON validation, request id and span, `database` migrators, `email` SMTP
   sender, `net` public host checks). `shared` never imports from `modules`.
@@ -200,11 +255,14 @@ Modular monolith in `crates/server/src/`: one folder per business context under 
 - Split a file when it has more than one reason to change: a type and its storage, two providers,
   two endpoints, a rule and its HTTP mapping.
 - Dependencies point one way: `tenants → shared`, `webhooks → tenants`,
-  `auth → webhooks, tenants`, `oauth → auth, webhooks, tenants`, `team → auth, tenants`.
+  `auth → webhooks, tenants`, `oauth → auth, webhooks, tenants`, `team → auth, tenants`,
+  `database → auth (rate limits), tenants`.
   Never create a cycle; if two modules need each other, the shared piece belongs in the lower one.
-- A new product of the BaaS (storage, database, functions) starts as a new module; split modules
+- A new product of the BaaS (storage, functions) starts as a new module; split modules
   into workspace crates only when the compiler-enforced boundary is worth the extra setup.
-- Migrations live in `crates/server/migrations/` (`control_plane/` and `tenant/`).
+- Migrations live in `crates/server/migrations/` (`control_plane/` and `tenant/`). Tenant
+  migrations run with `search_path=auth`; `tenant_migration` first moves an old database's
+  `_sqlx_migrations` from `public` to `auth`.
 
 ## Console structure
 
@@ -220,7 +278,7 @@ dependencies. In `apps/console/src/`:
   (theme tokens: graphite neutrals, one blue accent; dark by default, light via the account menu;
   font Manrope).
 - `modules/<module>/`: everything one context owns (`account`, `projects`, `overview`, `api-keys`,
-  `users`, `project-settings`, `system-status`, `team`, `webhooks`):
+  `users`, `project-settings`, `system-status`, `team`, `webhooks`, `activity`, `database`):
   - `pages/`: one file per route; composes components, no fetching or business logic.
   - `components/`: UI of the module, one component per file.
   - `queries/`: TanStack Query hooks (`use-*-query.ts`, `use-*-mutation.ts`); the only place that

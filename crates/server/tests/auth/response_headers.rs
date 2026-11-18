@@ -8,7 +8,7 @@ use crate::support::{TEST_PASSWORD, TestResult, TestServer, unique_email};
 async fn token_responses_forbid_caching() -> TestResult {
     let server = TestServer::start().await?;
     let tenant = server.create_tenant().await?;
-    let body = json!({ "email": unique_email("no-store"), "password": TEST_PASSWORD });
+    let body = json!({ "email": unique_email("no-store"), "password": TEST_PASSWORD.as_str() });
 
     let response = server
         .post_auth("/auth/v1/signup", &tenant.publishable_key, body)

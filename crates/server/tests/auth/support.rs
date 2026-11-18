@@ -1,6 +1,8 @@
 use std::error::Error;
 use std::future::IntoFuture;
 use std::net::SocketAddr;
+use std::str::FromStr;
+use std::sync::LazyLock;
 use std::time::Duration;
 
 use reqwest::{Client, Response};
@@ -12,6 +14,7 @@ use server::router::build_router;
 use server::shared::crypto::hex_encoding::encode_hex;
 use server::shared::crypto::random_bytes::random_bytes;
 use server::startup::app_state_builder::build_app_state_with_endpoints;
+use sqlx::postgres::PgConnectOptions;
 use sqlx::{AssertSqlSafe, Connection, PgConnection};
 use tokio::net::TcpListener;
 use uuid::Uuid;
@@ -25,7 +28,10 @@ const SLUG_SUFFIX_BYTES: usize = 6;
 const EMAIL_SUFFIX_BYTES: usize = 6;
 const MAIL_POLL_ATTEMPTS: u32 = 50;
 const MAIL_POLL_INTERVAL: Duration = Duration::from_millis(100);
-pub const TEST_PASSWORD: &str = "correct horse battery";
+/// Random per test run: a fixed string in code reads as a hard-coded credential.
+pub static TEST_PASSWORD: LazyLock<String> =
+    LazyLock::new(|| encode_hex(&random_bytes::<TEST_PASSWORD_BYTES>()));
+const TEST_PASSWORD_BYTES: usize = 16;
 pub const TEST_SITE_URL: &str = "http://app.test";
 
 #[derive(Debug, Deserialize)]
@@ -205,7 +211,7 @@ impl TestServer {
         self.post_auth("/auth/v1/verify-email", api_key, json!({ "token": token }))
             .await?
             .error_for_status()?;
-        let credentials = json!({ "email": email, "password": TEST_PASSWORD });
+        let credentials = json!({ "email": email, "password": TEST_PASSWORD.as_str() });
         let login = self
             .post_auth("/auth/v1/login", api_key, credentials)
             .await?;
@@ -280,7 +286,7 @@ impl TestServer {
     }
 
     pub async fn sign_up(&self, tenant: &CreatedTenant, email: &str) -> TestResult<Session> {
-        let body = json!({ "email": email, "password": TEST_PASSWORD });
+        let body = json!({ "email": email, "password": TEST_PASSWORD.as_str() });
         let response = self
             .post_auth("/auth/v1/signup", &tenant.publishable_key, body)
             .await?;
@@ -324,6 +330,19 @@ impl TestServer {
         Err(format!("no email arrived for {recipient}").into())
     }
 
+    /// Waits for the email sent to `recipient` and returns its plain-text body.
+    pub async fn wait_for_email_text(&self, recipient: &str) -> TestResult<String> {
+        for _ in 0..MAIL_POLL_ATTEMPTS {
+            if let Some(text) = self.latest_email_text(recipient).await? {
+                return Ok(text);
+            }
+
+            tokio::time::sleep(MAIL_POLL_INTERVAL).await;
+        }
+
+        Err(format!("no email arrived for {recipient}").into())
+    }
+
     async fn latest_email_text(&self, recipient: &str) -> TestResult<Option<String>> {
         let search_url = format!("{}/api/v1/search", self.mailpit_api_url);
         let query = format!("to:\"{recipient}\"");
@@ -353,9 +372,7 @@ impl TestServer {
         tenant: &CreatedTenant,
         user_id: Uuid,
     ) -> TestResult {
-        let base_url = self.config.tenant_database_base_url.trim_end_matches('/');
-        let database_url = format!("{base_url}/tenant_{}", tenant.slug);
-        let mut connection = PgConnection::connect(&database_url).await?;
+        let mut connection = self.tenant_database(tenant).await?;
         sqlx::query("UPDATE users SET banned_at = now() WHERE id = $1")
             .bind(user_id)
             .execute(&mut connection)
@@ -379,11 +396,13 @@ impl TestServer {
     }
 
     /// A direct connection to a tenant's database, for state no endpoint can create quickly.
+    /// It searches `auth`, like the server's own pool, so tests name Auth tables unqualified.
     pub async fn tenant_database(&self, tenant: &CreatedTenant) -> TestResult<PgConnection> {
         let base_url = self.config.tenant_database_base_url.trim_end_matches('/');
         let database_url = format!("{base_url}/tenant_{}", tenant.slug);
+        let options = PgConnectOptions::from_str(&database_url)?.options([("search_path", "auth")]);
 
-        Ok(PgConnection::connect(&database_url).await?)
+        Ok(PgConnection::connect_with(&options).await?)
     }
 
     /// A direct connection to the control plane, for state no endpoint can create quickly.
@@ -409,6 +428,11 @@ impl TestServer {
             tenant.slug
         );
         sqlx::raw_sql(AssertSqlSafe(statement))
+            .execute(&mut maintenance)
+            .await?;
+        // The project's own Data API login role goes with its database.
+        let drop_role = format!("DROP ROLE IF EXISTS \"nelcota_t_{}\"", tenant.slug);
+        sqlx::raw_sql(AssertSqlSafe(drop_role))
             .execute(&mut maintenance)
             .await?;
         maintenance.close().await?;

@@ -70,13 +70,13 @@ impl SecretBox {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::shared::crypto::random_bytes::random_bytes;
 
-    const TEST_KEY: [u8; 32] = [7u8; 32];
     const CONTEXT: &str = "signing_key:tenant-a";
 
     #[test]
     fn round_trips_plaintext() -> Result<(), SecretBoxError> {
-        let secret_box = SecretBox::new(&TEST_KEY)?;
+        let secret_box = SecretBox::new(&random_bytes::<32>())?;
         let sealed = secret_box.seal(b"secret", CONTEXT)?;
 
         assert_eq!(secret_box.open(&sealed, CONTEXT)?, b"secret");
@@ -85,7 +85,7 @@ mod tests {
 
     #[test]
     fn rejects_a_ciphertext_moved_to_another_context() -> Result<(), SecretBoxError> {
-        let secret_box = SecretBox::new(&TEST_KEY)?;
+        let secret_box = SecretBox::new(&random_bytes::<32>())?;
         let sealed = secret_box.seal(b"secret", CONTEXT)?;
 
         assert!(secret_box.open(&sealed, "signing_key:tenant-b").is_err());
@@ -94,7 +94,7 @@ mod tests {
 
     #[test]
     fn rejects_tampered_ciphertext() -> Result<(), SecretBoxError> {
-        let secret_box = SecretBox::new(&TEST_KEY)?;
+        let secret_box = SecretBox::new(&random_bytes::<32>())?;
         let mut sealed = secret_box.seal(b"secret", CONTEXT)?;
         let Some(last_byte) = sealed.last_mut() else {
             return Err(SecretBoxError::EncryptionFailed);
@@ -107,7 +107,7 @@ mod tests {
 
     #[test]
     fn rejects_short_input() -> Result<(), SecretBoxError> {
-        let secret_box = SecretBox::new(&TEST_KEY)?;
+        let secret_box = SecretBox::new(&random_bytes::<32>())?;
 
         assert!(secret_box.open(&[1, 2, 3], CONTEXT).is_err());
         Ok(())
@@ -115,6 +115,6 @@ mod tests {
 
     #[test]
     fn rejects_wrong_key_length() {
-        assert!(SecretBox::new(&[1u8; 16]).is_err());
+        assert!(SecretBox::new(&random_bytes::<16>()).is_err());
     }
 }

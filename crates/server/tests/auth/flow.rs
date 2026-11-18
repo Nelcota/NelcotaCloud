@@ -26,7 +26,7 @@ async fn signs_up_reads_user_and_logs_in() -> TestResult {
     let user: crate::support::SessionUser = user_response.json().await?;
     assert_eq!(user.id, session.user.id);
 
-    let login_body = json!({ "email": "ana@example.com", "password": TEST_PASSWORD });
+    let login_body = json!({ "email": "ana@example.com", "password": TEST_PASSWORD.as_str() });
     let login = server
         .post_auth("/auth/v1/login", &tenant.publishable_key, login_body)
         .await?;

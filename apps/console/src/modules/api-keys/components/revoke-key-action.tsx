@@ -2,6 +2,7 @@ import Key from '~icons/solar/key-linear'
 import TrashBin from '~icons/solar/trash-bin-trash-linear'
 import type { JSX } from 'react'
 
+import { KeyRevokeIllustration } from '@/modules/api-keys/components/key-illustrations'
 import type { components } from '@/shared/api/api-schema'
 import { ConfirmButton } from '@/shared/ui/confirm-button'
 
@@ -12,7 +13,7 @@ type RevokeKeyActionProps = {
   /** Active keys of the same kind, this one included. */
   activeOfKind: number
   isPending: boolean
-  onRevoke: () => void
+  onRevoke: () => Promise<void>
 }
 
 /**
@@ -34,6 +35,7 @@ export function RevokeKeyAction(props: RevokeKeyActionProps): JSX.Element | null
       description={revokeConsequence(apiKey.kind, activeOfKind)}
       confirmLabel="Revogar"
       change={{ subject: keyLabel(apiKey), icon: Key, from: 'Ativa', to: 'Revogada' }}
+      illustration={<KeyRevokeIllustration kind={apiKey.kind} />}
       isDestructive
       isPending={props.isPending}
       triggerLabel={`Revogar ${keyLabel(apiKey)}`}

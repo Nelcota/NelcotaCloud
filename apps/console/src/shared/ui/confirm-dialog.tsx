@@ -1,4 +1,4 @@
-import type { JSX, ReactNode } from 'react'
+import type { FormEvent, JSX, ReactNode } from 'react'
 import { useState } from 'react'
 
 import { Button } from '@/shared/ui/button'
@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from '@/shared/ui/dialog'
 import { ErrorAlert } from '@/shared/ui/error-alert'
-import { isConfirmationMissing } from '@/shared/lib/confirmation-text'
+import { changesOf, confirmVariant, dialogRole, isBlocked } from '@/shared/ui/confirm-dialog-rules'
 import { TypedConfirmation } from '@/shared/ui/typed-confirmation'
 
 export type ConfirmDialogProps = {
@@ -40,6 +40,10 @@ export type ConfirmDialogProps = {
   confirmationText?: string
   /** What the action changes, each shown going from its current state to the new one. */
   change?: ConfirmChange | ConfirmChange[]
+  /** What will happen, as a picture (an `Illustration`), shown above the change. */
+  illustration?: ReactNode
+  /** False while something the action needs is missing (a code to type): the button waits. */
+  canConfirm?: boolean
   /** Extra choices that shape the action, shown under the change. */
   children?: ReactNode
 }
@@ -61,6 +65,16 @@ export function ConfirmDialog(props: ConfirmDialogProps): JSX.Element {
     setTypedText('')
     setError(null)
     notifyOpen(props, isOpen)
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault()
+
+    if (isBlocked(props, typedText) || isWorking) {
+      return
+    }
+
+    await confirm()
   }
 
   async function confirm(): Promise<void> {
@@ -86,41 +100,49 @@ export function ConfirmDialog(props: ConfirmDialogProps): JSX.Element {
 
   return (
     <Dialog open={props.isOpen} onOpenChange={changeOpen}>
-      <DialogContent showCloseButton={false}>
-        <DialogHeader>
-          <DialogTitle>{props.title}</DialogTitle>
-          <DialogDescription>{props.description}</DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-2">
-          {changesOf(props.change).map((change) => (
-            <ConfirmChangePreview
-              key={change.subject}
-              change={change}
-              isDestructive={props.isDestructive === true}
-            />
-          ))}
-        </div>
-        {props.children}
-        <TypedConfirmation
-          expected={props.confirmationText}
-          value={typedText}
-          onChange={setTypedText}
-        />
-        <ErrorAlert error={error} />
-        <DialogFooter>
-          <Button variant="outline" disabled={isWorking} onClick={() => changeOpen(false)}>
-            {props.cancelLabel ?? 'Cancelar'}
-          </Button>
-          <Button
-            variant={confirmVariant(props)}
-            disabled={isWorking || isConfirmationMissing(props.confirmationText, typedText)}
-            aria-busy={isWorking}
-            className="aria-busy:cursor-progress"
-            onClick={confirm}
-          >
-            {props.confirmLabel}
-          </Button>
-        </DialogFooter>
+      <DialogContent showCloseButton={false} role={dialogRole(props)}>
+        <form onSubmit={submit} className="grid gap-5">
+          <DialogHeader>
+            <DialogTitle>{props.title}</DialogTitle>
+            <DialogDescription>{props.description}</DialogDescription>
+          </DialogHeader>
+          {props.illustration}
+          <div className="grid gap-2">
+            {changesOf(props.change).map((change) => (
+              <ConfirmChangePreview
+                key={change.subject}
+                change={change}
+                isDestructive={props.isDestructive === true}
+              />
+            ))}
+          </div>
+          {props.children}
+          <TypedConfirmation
+            expected={props.confirmationText}
+            value={typedText}
+            onChange={setTypedText}
+          />
+          <ErrorAlert error={error} />
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isWorking}
+              onClick={() => changeOpen(false)}
+            >
+              {props.cancelLabel ?? 'Cancelar'}
+            </Button>
+            <Button
+              type="submit"
+              variant={confirmVariant(props)}
+              disabled={isWorking || isBlocked(props, typedText)}
+              aria-busy={isWorking}
+              className="aria-busy:cursor-progress"
+            >
+              {props.confirmLabel}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )
@@ -134,28 +156,4 @@ function notifyOpen(props: ConfirmDialogProps, isOpen: boolean): void {
   }
 
   props.onClose?.()
-}
-
-function changesOf(change: ConfirmDialogProps['change']): ConfirmChange[] {
-  if (change === undefined) {
-    return []
-  }
-
-  if (Array.isArray(change)) {
-    return change
-  }
-
-  return [change]
-}
-
-function confirmVariant(props: ConfirmDialogProps): 'destructive' | 'secondary' | 'default' {
-  if (props.isDestructive === true) {
-    return 'destructive'
-  }
-
-  if (props.isWeighty === true) {
-    return 'secondary'
-  }
-
-  return 'default'
 }

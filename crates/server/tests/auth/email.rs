@@ -63,7 +63,7 @@ async fn password_reset_changes_the_password_and_ends_sessions() -> TestResult {
     let old_session = server.refresh(&tenant, &session.refresh_token).await?;
     assert_eq!(old_session.status(), StatusCode::UNAUTHORIZED);
 
-    let old_login = json!({ "email": email, "password": TEST_PASSWORD });
+    let old_login = json!({ "email": email, "password": TEST_PASSWORD.as_str() });
     let old_password = server
         .post_auth("/auth/v1/login", api_key, old_login)
         .await?;

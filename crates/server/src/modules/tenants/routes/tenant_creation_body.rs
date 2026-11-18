@@ -12,12 +12,13 @@ use crate::modules::tenants::provisioning::tenant_slug::TenantSlug;
 use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::modules::tenants::settings::site_url::SiteUrl;
 use crate::shared::http::api_error::ApiError;
+use crate::shared::text::single_line::check_single_line;
 
 #[derive(Deserialize, Validate, ToSchema)]
 pub struct CreateTenantBody {
     #[validate(length(min = 3, max = 40))]
     pub slug: String,
-    #[validate(length(min = 1, max = 100))]
+    #[validate(length(min = 1, max = 100), custom(function = check_single_line))]
     pub name: String,
     #[validate(length(min = 1, max = 2048))]
     pub site_url: String,

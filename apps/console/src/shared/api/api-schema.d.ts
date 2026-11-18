@@ -75,6 +75,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/v1/admin/audit-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /admin/audit-events`: the project's activity log, newest first, kept for 90 days. */
+        get: operations["list_audit_events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/email-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /admin/email-templates`: the wording of each auth email, the project's or the default. */
+        get: operations["list_email_templates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/email-templates/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * `PUT /admin/email-templates/{kind}`: the project's own wording for one email. Plain text;
+         *     `{app_name}` is replaced by the project's name.
+         */
+        put: operations["update_email_template"];
+        post?: never;
+        /** `DELETE /admin/email-templates/{kind}`: back to the platform's wording for one email. */
+        delete: operations["reset_email_template"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/v1/admin/oauth": {
         parameters: {
             query?: never;
@@ -227,7 +282,8 @@ export interface paths {
         delete: operations["delete_user"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** `PATCH /admin/users/{user_id}`: an admin replaces a user's metadata. */
+        patch: operations["update_user"];
         trace?: never;
     };
     "/auth/v1/admin/users/{user_id}/ban": {
@@ -823,7 +879,11 @@ export interface paths {
         delete: operations["delete_own_account"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * `PATCH /user`: the logged-in user replaces their own `user_metadata`. `app_metadata` is
+         *     refused here (unknown field): only the project's admins write it.
+         */
+        patch: operations["update_current_user"];
         trace?: never;
     };
     "/auth/v1/user/avatar": {
@@ -893,6 +953,159 @@ export interface paths {
         /** `POST /verify-email/resend`: emails a new verification link to an unverified account. */
         post: operations["resend_verification"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/database/v1/schema": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * `GET /database/v1/schema`: tables (columns, keys, row level security, policies) and
+         *     functions of the project's `public` schema.
+         */
+        get: operations["read_schema"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/database/v1/sql": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `POST /database/v1/sql`: runs SQL on the project's database as its developer role.
+         * @description The developer role owns `public` and is never a superuser; scripts get 15 seconds. Answers the last result set, up to
+         *     1000 rows, with values as Postgres prints them.
+         */
+        post: operations["run_sql"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/database/v1/tables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `POST /database/v1/tables`: creates a table in the project's `public` schema, with row
+         *     level security on.
+         */
+        post: operations["create_table"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/database/v1/tables/{table}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * `DELETE /database/v1/tables/{table}`: drops a table and its rows (refused while other
+         *     tables reference it).
+         */
+        delete: operations["drop_table"];
+        options?: never;
+        head?: never;
+        /**
+         * `PATCH /database/v1/tables/{table}`: turns row level security on or off. Off, every
+         *     request role reaches every row its privileges allow.
+         */
+        patch: operations["change_table"];
+        trace?: never;
+    };
+    "/database/v1/tables/{table}/columns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** `POST /database/v1/tables/{table}/columns`: adds a column. */
+        post: operations["add_column"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/database/v1/tables/{table}/columns/{column}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** `DELETE /database/v1/tables/{table}/columns/{column}`: drops a column and its values. */
+        delete: operations["drop_column"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/database/v1/tables/{table}/policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** `POST /database/v1/tables/{table}/policies`: adds a row level security policy. */
+        post: operations["create_policy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/database/v1/tables/{table}/policies/{policy}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** `DELETE /database/v1/tables/{table}/policies/{policy}`: removes a policy. */
+        delete: operations["drop_policy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1133,6 +1346,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/rest/v1/rpc/{function}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `POST /rest/v1/rpc/{function}`: calls a function of the project's `public` schema with
+         *     the body's keys as named arguments, as the caller's role.
+         */
+        post: operations["call_function"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rest/v1/{table}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * `GET /rest/v1/{table}`: rows of a table of the project's `public` schema.
+         * @description Query: `select=id,title,author(name)`, filters (`age=gte.18`, `or=(a.eq.1,b.eq.2)`),
+         *     `order=created_at.desc`, `limit` (at most 1000) and `offset`; embeds take the same with
+         *     their name as prefix (`comments.order=id.desc`). `Prefer: count=exact|planned` adds the
+         *     total to `Content-Range`.
+         */
+        get: operations["read_rows"];
+        put?: never;
+        /**
+         * `POST /rest/v1/{table}`: inserts one object or an array of up to 1000 objects.
+         * @description `Prefer: resolution=merge-duplicates` (or `ignore-duplicates`) makes it an upsert on the
+         *     primary key or the `on_conflict` columns.
+         */
+        post: operations["insert_rows"];
+        /**
+         * `DELETE /rest/v1/{table}?<filters>`: deletes every matching row. At least one filter is
+         *     required.
+         */
+        delete: operations["delete_rows"];
+        options?: never;
+        head?: never;
+        /**
+         * `PATCH /rest/v1/{table}?<filters>`: sets the body's columns on every matching row. At
+         *     least one filter is required.
+         */
+        patch: operations["update_rows"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1166,6 +1435,96 @@ export interface components {
             /** Format: date-time */
             revoked_at?: string | null;
         };
+        /**
+         * @description What an audit event records. Stored as text; renaming one is a breaking change.
+         * @enum {string}
+         */
+        AuditAction: "logged_in" | "login_failed" | "password_reset" | "user_updated" | "user_banned" | "user_unbanned" | "user_deleted" | "sessions_revoked" | "mfa_reset";
+        /**
+         * @description Who did what an audit event records.
+         * @enum {string}
+         */
+        AuditActorKind: "user" | "secret_key" | "console_account";
+        /** @description A recorded event, as the activity log shows it. */
+        AuditEvent: {
+            action: components["schemas"]["AuditAction"];
+            actor: components["schemas"]["AuditActorKind"];
+            /** Format: uuid */
+            actor_account_id?: string | null;
+            /**
+             * @description The user's current email; on a failed login, the address that was typed. `null` once
+             *     the user is deleted.
+             */
+            email?: string | null;
+            /**
+             * Format: int64
+             * @description Increases with every event; pass the last one as `before` for the next page.
+             */
+            id: number;
+            ip_address?: string | null;
+            login_method?: components["schemas"]["LoginMethod"] | null;
+            /** Format: date-time */
+            occurred_at: string;
+            /** Format: uuid */
+            user_id?: string | null;
+        };
+        /** @description One page of events, newest first. */
+        AuditPage: {
+            events: components["schemas"]["AuditEvent"][];
+            /**
+             * Format: int64
+             * @description Pass as `before` to read older events; `null` on the last page.
+             */
+            next_before?: number | null;
+        };
+        /**
+         * @description The emails that carry a one-time link; each has its own wording per project.
+         * @enum {string}
+         */
+        AuthEmailKind: "verification" | "password_reset" | "magic_link";
+        /** @description What can change on an existing table from the console. */
+        ChangeTableRequest: {
+            rls_enabled: boolean;
+        };
+        /** @description A column of a table created (or added) from the console. */
+        ColumnDefinition: {
+            /**
+             * @description `now()`, `gen_random_uuid()`, `auth.uid()`, `current_date`, `current_timestamp`,
+             *     `true`, `false`, or a literal value.
+             */
+            default?: string | null;
+            /** @description Numbered automatically (integer types only). */
+            identity?: boolean;
+            name: string;
+            nullable?: boolean;
+            primary_key?: boolean;
+            references?: components["schemas"]["ColumnReference"] | null;
+            /**
+             * @description `text`, `varchar`, `smallint`, `integer`, `bigint`, `numeric`, `real`, `double`,
+             *     `boolean`, `uuid`, `date`, `time`, `timestamp`, `timestamptz`, `json`, `jsonb`,
+             *     `bytea`; append `[]` for an array.
+             */
+            type: string;
+            unique?: boolean;
+        };
+        ColumnOverview: {
+            /** @description The default expression (`now()`), or `null`. */
+            default?: string | null;
+            is_identity: boolean;
+            is_primary_key: boolean;
+            is_unique: boolean;
+            name: string;
+            nullable: boolean;
+            /** @description As Postgres writes it, with modifiers (`character varying(20)`, `integer[]`). */
+            type: string;
+        };
+        /** @description A foreign key to a column of another table of the project. */
+        ColumnReference: {
+            column: string;
+            /** @description `cascade`, `set_null` or `restrict`; `no action` when absent. */
+            on_delete?: string | null;
+            table: string;
+        };
         /** @description What an owner sees about a configured provider: its public client ID, never the secret. */
         ConfiguredProvider: {
             client_id: string;
@@ -1181,6 +1540,26 @@ export interface components {
             kind: components["schemas"]["ApiKeyKind"];
             /** @description A label to tell the key apart ("App iOS"); optional, up to 64 characters. */
             name?: string;
+        };
+        /** @description A row level security policy: which requests (`roles`) may run `command` on which rows. */
+        CreatePolicyRequest: {
+            /** @description `all`, `select`, `insert`, `update` or `delete`. */
+            command: string;
+            name: string;
+            /** @description `anon` and/or `authenticated`. */
+            roles: string[];
+            /** @description SQL condition on existing rows, such as `user_id = auth.uid()`. */
+            using?: string | null;
+            /** @description SQL condition on written rows. */
+            with_check?: string | null;
+        };
+        /**
+         * @description A table to create in the project's `public` schema. It starts with row level security on
+         *     (the database does it for every new table): add policies to open it.
+         */
+        CreateTableRequest: {
+            columns: components["schemas"]["ColumnDefinition"][];
+            name: string;
         };
         CreateTenantBody: {
             name: string;
@@ -1228,9 +1607,44 @@ export interface components {
         EmailBody: {
             email: string;
         };
+        /**
+         * @description The words of one auth email, plain text only: the HTML layout escapes them, and the link,
+         *     its button and the address it goes to stay the platform's.
+         */
+        EmailTemplateText: {
+            action_label: string;
+            heading: string;
+            /** @description May span several lines. */
+            message: string;
+            /** @description Shown under the button, smaller; may span several lines or be empty. */
+            note: string;
+            subject: string;
+        };
+        /** @description What one email says now, and whether the project wrote it. */
+        EmailTemplateView: {
+            /** @description The platform's wording, to compare with or go back to. */
+            default_text: components["schemas"]["EmailTemplateText"];
+            /** @description `false` while the platform's default wording is used. */
+            is_customized: boolean;
+            kind: components["schemas"]["AuthEmailKind"];
+            text: components["schemas"]["EmailTemplateText"];
+        };
         ErrorBody: {
             error: string;
             message: string;
+        };
+        ForeignKeyOverview: {
+            columns: string[];
+            foreign_columns: string[];
+            foreign_table: string;
+            name: string;
+        };
+        FunctionOverview: {
+            /** @description `a integer, b integer DEFAULT 10`. */
+            arguments: string;
+            name: string;
+            /** @description `integer`, `SETOF posts`, `TABLE(n integer)`. */
+            returns: string;
         };
         /**
          * Format: binary
@@ -1262,6 +1676,11 @@ export interface components {
             email: string;
             password: string;
         };
+        /**
+         * @description How a login proved who the user is. `totp` is the code step that ends a login with MFA on.
+         * @enum {string}
+         */
+        LoginMethod: "password" | "magic_link" | "oauth" | "totp";
         /** @description A session, or the MFA step that must come first. */
         LoginResponse: components["schemas"]["SessionTokens"] | components["schemas"]["MfaRequired"];
         MemberRoleBody: {
@@ -1310,6 +1729,17 @@ export interface components {
             /** Format: uuid */
             id: string;
         };
+        PolicyOverview: {
+            /** @description `all`, `select`, `insert`, `update` or `delete`. */
+            command: string;
+            name: string;
+            /** @description `anon`, `authenticated`, or other role names; `public` is every role. */
+            roles: string[];
+            /** @description Rows the policy lets through (`USING`). */
+            using?: string | null;
+            /** @description Rows the policy lets be written (`WITH CHECK`). */
+            with_check?: string | null;
+        };
         /**
          * @description What a platform account may do in a project: owners can also delete it.
          * @enum {string}
@@ -1353,6 +1783,18 @@ export interface components {
              * @description The `kid` of the key that now signs access tokens.
              */
             key_id: string;
+        };
+        RunSqlRequest: {
+            /** @description One or more statements, run in one transaction. */
+            query: string;
+        };
+        /**
+         * @description The project's `public` schema as the console shows it: tables with their columns, keys,
+         *     row level security and policies, plus callable functions.
+         */
+        SchemaOverview: {
+            functions: components["schemas"]["FunctionOverview"][];
+            tables: components["schemas"]["TableOverview"][];
         };
         /** @description One logged-in device or browser: a refresh token family that can still be used. */
         SessionSummary: {
@@ -1403,6 +1845,36 @@ export interface components {
             /** @description Where the test email goes. */
             to: string;
         };
+        /**
+         * @description What the SQL editor shows: the last result set of the script (values as Postgres writes
+         *     them as text) and how many rows the statements changed.
+         */
+        SqlResult: {
+            columns: string[];
+            is_truncated: boolean;
+            /**
+             * Format: int64
+             * @description Rows of the last result set, including those beyond the shown ones.
+             */
+            row_count: number;
+            rows: (string | null)[][];
+            /** Format: int64 */
+            rows_affected: number;
+        };
+        TableOverview: {
+            columns: components["schemas"]["ColumnOverview"][];
+            /**
+             * Format: int64
+             * @description The planner's estimate; `null` before the table was ever analyzed.
+             */
+            estimated_rows?: number | null;
+            foreign_keys: components["schemas"]["ForeignKeyOverview"][];
+            /** @description `table`, `view`, `materialized_view` or `foreign_table`. */
+            kind: string;
+            name: string;
+            policies: components["schemas"]["PolicyOverview"][];
+            rls_enabled: boolean;
+        };
         /** @description A console account with access to the project. */
         TeamMember: {
             /** Format: uuid */
@@ -1449,7 +1921,33 @@ export interface components {
             /** @description Base32 secret, for typing into an authenticator app by hand. */
             secret: string;
         };
+        UpdateCurrentUserBody: {
+            /** @description Replaces the whole document (up to 16 KiB as JSON). */
+            user_metadata: {
+                [key: string]: unknown;
+            };
+        };
+        UpdateUserBody: {
+            /**
+             * @description Replaces the admin-only data (up to 4 KiB as JSON), sent in access tokens from the next
+             *     login or refresh; left as it is when absent.
+             */
+            app_metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** @description Replaces the user's profile data (up to 16 KiB as JSON); left as it is when absent. */
+            user_metadata?: {
+                [key: string]: unknown;
+            } | null;
+        };
         User: {
+            /**
+             * @description Data only the project's admins write (roles, plans); also sent in access tokens as the
+             *     `app_metadata` claim.
+             */
+            app_metadata: {
+                [key: string]: unknown;
+            };
             /**
              * Format: date-time
              * @description When the profile photo last changed; `null` without one. Served at
@@ -1470,6 +1968,10 @@ export interface components {
             id: string;
             /** @description A verified TOTP authenticator is required at login. */
             mfa_enabled: boolean;
+            /** @description Profile data the user writes themself (`PATCH /auth/v1/user`). */
+            user_metadata: {
+                [key: string]: unknown;
+            };
         };
         UserIdentities: {
             identities: components["schemas"]["LinkedIdentity"][];
@@ -1726,6 +2228,156 @@ export interface operations {
             };
             /** @description It is the last active secret key */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_audit_events: {
+        parameters: {
+            query?: {
+                /** @description Only events about this user. */
+                user_id?: string;
+                /** @description Only events older than this id (the previous page's `next_before`). */
+                before?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditPage"];
+                };
+            };
+            /** @description Invalid user, cursor or limit */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_email_templates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every auth email */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplateView"][];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    update_email_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Which email */
+                kind: components["schemas"]["AuthEmailKind"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailTemplateText"];
+            };
+        };
+        responses: {
+            /** @description The saved wording */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplateView"];
+                };
+            };
+            /** @description Blank, too long, or a line break in a one-line field */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    reset_email_template: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Which email */
+                kind: components["schemas"]["AuthEmailKind"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The default wording, now in use */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplateView"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2215,6 +2867,60 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such user */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    update_user: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the user */
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUserBody"];
+            };
+        };
+        responses: {
+            /** @description The updated user */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            /** @description Nothing to update, not a JSON object, or too large */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
             };
             /** @description Requires the secret API key, or membership in the project */
             403: {
@@ -3723,6 +4429,66 @@ export interface operations {
             };
         };
     };
+    update_current_user: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCurrentUserBody"];
+            };
+        };
+        responses: {
+            /** @description The updated user */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            /** @description Not a JSON object, or too large */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing or invalid access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The user is banned */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many changes in a short time */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     upload_avatar: {
         parameters: {
             query?: never;
@@ -3921,6 +4687,376 @@ export interface operations {
             };
             /** @description Too many emails requested */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    read_schema: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The schema */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchemaOverview"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    run_sql: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunSqlRequest"];
+            };
+        };
+        responses: {
+            /** @description The result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SqlResult"];
+                };
+            };
+            /** @description Refused by Postgres (its message) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Took longer than 15 seconds */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_table: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTableRequest"];
+            };
+        };
+        responses: {
+            /** @description Table created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request, or refused by Postgres (its message) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    drop_table: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Table of the public schema */
+                table: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Table dropped */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request, or refused by Postgres (its message) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    change_table: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Table of the public schema */
+                table: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeTableRequest"];
+            };
+        };
+        responses: {
+            /** @description Table changed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request, or refused by Postgres (its message) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    add_column: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Table of the public schema */
+                table: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ColumnDefinition"];
+            };
+        };
+        responses: {
+            /** @description Column added */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request, or refused by Postgres (its message) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    drop_column: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Table of the public schema */
+                table: string;
+                /** @description Column of the table */
+                column: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Column dropped */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request, or refused by Postgres (its message) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Table of the public schema */
+                table: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description Policy created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request, or refused by Postgres (its message) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    drop_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Table of the public schema */
+                table: string;
+                /** @description Policy of the table */
+                policy: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Policy removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request, or refused by Postgres (its message) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4509,6 +5645,320 @@ export interface operations {
             };
             /** @description Not a member of this project */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    call_function: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Function of the public schema */
+                function: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": unknown;
+            };
+        };
+        responses: {
+            /** @description The function's result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Invalid arguments, or the function raised an error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Refused by privileges */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No function with that name takes these arguments */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    read_rows: {
+        parameters: {
+            query?: {
+                /** @description Columns and embeds to return */
+                select?: string;
+                /** @description column.asc|desc[.nullsfirst|nullslast],... */
+                order?: string;
+                /** @description Rows per page (at most 1000) */
+                limit?: number;
+                /** @description Rows to skip */
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Table or view of the public schema */
+                table: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown[];
+                };
+            };
+            /** @description Invalid query */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Refused by privileges or row level security */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such table */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    insert_rows: {
+        parameters: {
+            query?: {
+                /** @description Shape of the returned rows (with Prefer: return=representation) */
+                select?: string;
+                /** @description Unique columns an upsert matches on */
+                on_conflict?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Table of the public schema */
+                table: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": unknown;
+            };
+        };
+        responses: {
+            /** @description Rows inserted (the rows with Prefer: return=representation) */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown[];
+                };
+            };
+            /** @description Invalid rows or a broken constraint */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Refused by privileges or row level security */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such table */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Duplicate or missing referenced row */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_rows: {
+        parameters: {
+            query?: {
+                /** @description Shape of the returned rows (with Prefer: return=representation) */
+                select?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Table of the public schema */
+                table: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The deleted rows (Prefer: return=representation) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown[];
+                };
+            };
+            /** @description Rows deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No filter */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Refused by privileges or row level security */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such table */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Rows still referenced by other rows */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    update_rows: {
+        parameters: {
+            query?: {
+                /** @description Shape of the returned rows (with Prefer: return=representation) */
+                select?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Table of the public schema */
+                table: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": unknown;
+            };
+        };
+        responses: {
+            /** @description The updated rows (Prefer: return=representation) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown[];
+                };
+            };
+            /** @description Rows updated */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid values, no filter, or a broken constraint */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Refused by privileges or row level security */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such table */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

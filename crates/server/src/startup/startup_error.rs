@@ -21,6 +21,8 @@ pub enum StartupError {
     SecretBox(#[from] SecretBoxError),
     #[error("failed to connect to the control plane database: {0}")]
     Database(#[from] sqlx::Error),
+    #[error("failed to create the Data API roles on the tenant database server: {0}")]
+    DatabaseRoles(sqlx::Error),
     #[error("failed to migrate the control plane database: {0}")]
     Migration(#[from] sqlx::migrate::MigrateError),
     #[error(transparent)]

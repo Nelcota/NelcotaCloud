@@ -8,6 +8,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 
+import { auditEventsKey } from '@/modules/activity/queries/use-audit-events-query'
 import { banUser } from '@/modules/users/api/ban-user'
 import { deleteUser } from '@/modules/users/api/delete-user'
 import { endUserSessions } from '@/modules/users/api/end-user-sessions'
@@ -68,11 +69,13 @@ export function useUserActionMutation(
 
   return useMutation({
     mutationFn: ({ action, userId }) => ACTIONS[action](projectId, userId),
-    onSuccess: (_result, { action, userId }) =>
-      queryClient.invalidateQueries({
+    onSuccess: async (_result, { action, userId }) => {
+      await queryClient.invalidateQueries({ queryKey: auditEventsKey(projectId) })
+      await queryClient.invalidateQueries({
         queryKey: usersQueryKey(projectId),
         predicate: (query) => isStillThere(query, { action, userId }),
-      }),
+      })
+    },
   })
 }
 

@@ -61,6 +61,9 @@ export function useResetSmtpMutation(projectId: string): UseMutationResult<void,
 
   return useMutation({
     mutationFn: () => resetSmtp(projectId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: smtpKey(projectId) }),
+    // Not awaited: the confirmation closes first, then the page swaps its button for the new state.
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: smtpKey(projectId) })
+    },
   })
 }

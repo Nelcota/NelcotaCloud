@@ -22,7 +22,7 @@ async fn admin_request(
 }
 
 async fn log_in(server: &TestServer, tenant: &CreatedTenant, email: &str) -> TestResult<Response> {
-    let body = json!({ "email": email, "password": TEST_PASSWORD });
+    let body = json!({ "email": email, "password": TEST_PASSWORD.as_str() });
 
     server
         .post_auth("/auth/v1/login", &tenant.publishable_key, body)
@@ -172,7 +172,7 @@ async fn platform_admins_delete_tenants() -> TestResult {
         .await?;
 
     assert_eq!(deleted.status(), StatusCode::NO_CONTENT);
-    let body = json!({ "email": unique_email("after"), "password": TEST_PASSWORD });
+    let body = json!({ "email": unique_email("after"), "password": TEST_PASSWORD.as_str() });
     let signup = server
         .post_auth("/auth/v1/signup", &tenant.publishable_key, body)
         .await?;

@@ -54,6 +54,7 @@ mod tests {
 
     use super::*;
     use crate::modules::auth::password::password_hashing::hash_password;
+    use crate::shared::crypto::random_bytes::random_test_password;
 
     type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -67,6 +68,8 @@ mod tests {
                 created_at: OffsetDateTime::now_utc(),
                 mfa_enabled: false,
                 avatar_updated_at: None,
+                user_metadata: sqlx::types::Json(serde_json::Map::new()),
+                app_metadata: sqlx::types::Json(serde_json::Map::new()),
             },
             password_hash,
         }
@@ -74,11 +77,12 @@ mod tests {
 
     #[tokio::test]
     async fn the_right_password_returns_the_hash_it_matched() -> TestResult {
-        let stored = hash_password("correct horse".to_owned()).await?;
+        let password = random_test_password();
+        let stored = hash_password(password.clone()).await?;
         let verified = authenticate_with_password(
             Some(credentials(Some(stored.clone()))),
-            "correct horse".to_owned(),
-            &hash_password("dummy".to_owned()).await?,
+            password,
+            &hash_password(random_test_password()).await?,
         )
         .await?;
 
@@ -88,11 +92,11 @@ mod tests {
 
     #[tokio::test]
     async fn a_wrong_password_is_refused() -> TestResult {
-        let stored = hash_password("correct horse".to_owned()).await?;
-        let dummy = hash_password("dummy".to_owned()).await?;
+        let stored = hash_password(random_test_password()).await?;
+        let dummy = hash_password(random_test_password()).await?;
+        let wrong = random_test_password();
         let refused =
-            authenticate_with_password(Some(credentials(Some(stored))), "wrong".to_owned(), &dummy)
-                .await;
+            authenticate_with_password(Some(credentials(Some(stored))), wrong, &dummy).await;
 
         assert!(matches!(
             refused,
@@ -105,10 +109,11 @@ mod tests {
     /// (OAuth or magic link) account.
     #[tokio::test]
     async fn the_dummy_password_never_logs_anyone_in() -> TestResult {
-        let dummy = hash_password("dummy".to_owned()).await?;
-        let unknown = authenticate_with_password(None, "dummy".to_owned(), &dummy).await;
+        let dummy_password = random_test_password();
+        let dummy = hash_password(dummy_password.clone()).await?;
+        let unknown = authenticate_with_password(None, dummy_password.clone(), &dummy).await;
         let passwordless =
-            authenticate_with_password(Some(credentials(None)), "dummy".to_owned(), &dummy).await;
+            authenticate_with_password(Some(credentials(None)), dummy_password, &dummy).await;
 
         assert!(matches!(
             unknown,

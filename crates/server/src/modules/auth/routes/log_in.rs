@@ -5,6 +5,8 @@ use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::app_state::AppState;
+use crate::modules::auth::audit::login_audit::{record_failed_password_login, record_login};
+use crate::modules::auth::audit::login_method::LoginMethod;
 use crate::modules::auth::login::login_completion::LoginResponse;
 use crate::modules::auth::login::password_login::{PasswordLogin, log_in_with_password};
 use crate::modules::auth::rate_limiting::attempt_limiter::Attempt;
@@ -53,5 +55,16 @@ pub async fn log_in(
         password: body.password,
     };
 
-    Ok(Json(log_in_with_password(&state, &tenant, login).await?))
+    let result = log_in_with_password(&state, &tenant, login).await;
+
+    if let Err(error) = &result {
+        let attempt = (body.email.as_str(), client_ip);
+        record_failed_password_login(&tenant.pool, error, attempt).await;
+    }
+
+    let response = result?;
+    let login = (LoginMethod::Password, client_ip);
+    record_login(&tenant.pool, &response, login).await;
+
+    Ok(Json(response))
 }

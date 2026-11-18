@@ -6,6 +6,7 @@ import {
   useCurrentProject,
   useDeleteProjectMutation,
 } from '@/modules/projects/queries/use-projects'
+import { ProjectDeletionIllustration } from '@/modules/project-settings/components/project-deletion-illustration'
 import { ConfirmButton } from '@/shared/ui/confirm-button'
 import { SettingsSection } from '@/shared/ui/settings-section'
 
@@ -46,6 +47,7 @@ export function DangerZone({ projectId, projectName }: DangerZoneProps): JSX.Ele
             description="O banco de dados do projeto, seus usuários e suas chaves são apagados e não há como recuperar. Apps que usam este projeto param de funcionar na hora."
             confirmLabel="Excluir projeto"
             change={{ subject: projectName, icon: Database, from: 'Ativo', to: 'Excluído' }}
+            illustration={<ProjectDeletionIllustration />}
             confirmationText={confirmationText}
             isDestructive
             isPending={deletion.isPending}

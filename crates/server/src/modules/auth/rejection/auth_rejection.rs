@@ -20,6 +20,10 @@ pub enum AuthRejection {
 }
 
 impl AuthRejection {
+    pub fn code(&self) -> &'static str {
+        self.status_and_code().1
+    }
+
     fn status_and_code(&self) -> (StatusCode, &'static str) {
         match self {
             Self::InvalidCredentials => (StatusCode::UNAUTHORIZED, "invalid_credentials"),

@@ -24,6 +24,8 @@ pub const OPENAPI_FILE: &str = "openapi.json";
         (name = "sessions", description = "Devices where a user is logged in"),
         (name = "oauth", description = "Login with Google or GitHub through the tenant's own OAuth app"),
         (name = "tenant-admin", description = "A tenant's own configuration (secret API key)"),
+        (name = "database", description = "Tables of the project's Postgres database as a REST API, under row level security"),
+        (name = "database-admin", description = "Tables, policies and SQL of the project's database (console and secret key)"),
         (name = "webhooks", description = "Signed HTTP calls to the tenant's servers when its users change (Standard Webhooks)"),
         (name = "platform", description = "Projects of a console account (platform access token)"),
         (name = "platform-admin", description = "Operations of the platform operator (admin token)"),

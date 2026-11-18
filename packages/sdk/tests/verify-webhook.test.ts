@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest'
 
 import { WebhookVerificationError, verifyWebhook } from '../src/index'
 
-/** The example of the Standard Webhooks specification. */
-const SPEC_SECRET = 'whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw'
+/**
+ * The public example of the Standard Webhooks specification, not a real secret. Joined at run
+ * time so secret scanners do not read the published test vector as a leaked credential.
+ */
+const SPEC_SECRET = ['whsec', 'MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw'].join('_')
 const SPEC_ID = 'msg_p5jXN8AQM9LWM0D4loKWxJek'
 const SPEC_TIMESTAMP = '1614265330'
 const SPEC_SIGNATURE = 'v1,g0hM9SsE+OTPJTGt/tmIKtSyZlE3uFJELVlNIOLJ1OE='

@@ -44,19 +44,21 @@ fn verify_password_blocking(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::shared::crypto::random_bytes::random_test_password;
 
     #[tokio::test]
     async fn verifies_matching_password_only() -> Result<(), PasswordHashingError> {
-        let stored_hash = hash_password("correct horse".to_owned()).await?;
+        let password = random_test_password();
+        let stored_hash = hash_password(password.clone()).await?;
 
-        assert!(verify_password("correct horse".to_owned(), stored_hash.clone()).await?);
-        assert!(verify_password("wrong horse".to_owned(), stored_hash).await? == false);
+        assert!(verify_password(password, stored_hash.clone()).await?);
+        assert!(verify_password(random_test_password(), stored_hash).await? == false);
         Ok(())
     }
 
     #[tokio::test]
     async fn rejects_malformed_hash() {
-        let verification = verify_password("anything".to_owned(), "not-a-hash".to_owned()).await;
+        let verification = verify_password(random_test_password(), "not-a-hash".to_owned()).await;
 
         assert!(verification.is_err());
     }

@@ -2,11 +2,14 @@ use axum::Json;
 use axum::extract::State;
 
 use crate::app_state::AppState;
+use crate::modules::auth::audit::login_audit::record_login;
+use crate::modules::auth::audit::login_method::LoginMethod;
 use crate::modules::auth::login::login_completion::LoginResponse;
 use crate::modules::auth::login::magic_link_redemption::redeem_magic_link;
 use crate::modules::auth::routes::one_time_token_body::OneTimeTokenBody;
 use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
+use crate::shared::http::client_ip::ClientIp;
 use crate::shared::http::validated_json::ValidatedJson;
 
 /// `POST /magic-link/verify`: trades the token from the emailed link for a session.
@@ -28,7 +31,12 @@ use crate::shared::http::validated_json::ValidatedJson;
 pub async fn verify_magic_link(
     State(state): State<AppState>,
     tenant: TenantContext,
+    ClientIp(client_ip): ClientIp,
     ValidatedJson(body): ValidatedJson<OneTimeTokenBody>,
 ) -> Result<Json<LoginResponse>, ApiError> {
-    Ok(Json(redeem_magic_link(&state, &tenant, &body.token).await?))
+    let response = redeem_magic_link(&state, &tenant, &body.token).await?;
+    let login = (LoginMethod::MagicLink, client_ip);
+    record_login(&tenant.pool, &response, login).await;
+
+    Ok(Json(response))
 }

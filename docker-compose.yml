@@ -17,7 +17,7 @@ services:
 
   # Local SMTP server that captures every email; web UI and API on http://localhost:8026.
   mailpit:
-    image: axllent/mailpit:v1.27
+    image: axllent/mailpit:v1.34.0
     environment:
       # Accept any (or no) SMTP credentials over plain connections, like a tenant's own server.
       MP_SMTP_AUTH_ACCEPT_ANY: "1"

@@ -7,6 +7,8 @@ use sqlx::PgPool;
 use crate::modules::auth::email::auth_mailer::AuthMailer;
 use crate::modules::auth::rate_limiting::auth_rate_limits::RateLimits;
 use crate::modules::auth::session::session_grant::TokenSigning;
+use crate::modules::database::execution::session_slots::SessionSlots;
+use crate::modules::database::schema::schema_cache::SchemaCache;
 use crate::modules::oauth::login::oauth_login_context::OAuthLoginContext;
 use crate::modules::oauth::provider::provider_endpoints::OAuthEndpoints;
 use crate::modules::tenants::database::tenant_pool_registry::TenantPoolRegistry;
@@ -26,6 +28,10 @@ use crate::shared::http::client_ip::ClientIpSource;
 pub struct AppState {
     pub control_plane_pool: PgPool,
     pub tenant_pools: Arc<TenantPoolRegistry>,
+    /// What the Data API knows of each project's schema, per schema version.
+    pub schema_cache: Arc<SchemaCache>,
+    /// Bounds the Data API sessions running at once, across projects.
+    pub data_api_slots: Arc<SessionSlots>,
     pub secret_box: Arc<SecretBox>,
     pub signing_keys: Arc<SigningKeyCache>,
     pub platform_tenant: Arc<PlatformTenantDirectory>,

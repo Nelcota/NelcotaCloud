@@ -4,6 +4,7 @@ import {
   CONFIRMATIONS,
   type ConfirmedAction,
 } from '@/modules/users/components/user-action-confirmations'
+import { UserActionIllustration } from '@/modules/users/components/user-action-illustration'
 import { ConfirmButton } from '@/shared/ui/confirm-button'
 
 type ConfirmedActionButtonProps = {
@@ -24,6 +25,7 @@ export function ConfirmedActionButton(props: ConfirmedActionButtonProps): JSX.El
       confirmLabel={confirmation.confirmLabel}
       isDestructive={confirmation.isDestructive}
       change={confirmation.change(props.email)}
+      illustration={<UserActionIllustration action={props.action} />}
       isPending={props.isPending}
       onConfirm={props.onConfirm}
     >

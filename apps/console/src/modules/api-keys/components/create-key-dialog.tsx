@@ -1,99 +1,140 @@
 import Plus from '~icons/solar/add-linear'
-import type { FormEvent, JSX } from 'react'
+import Globe from '~icons/solar/global-linear'
+import LockKeyhole from '~icons/solar/lock-keyhole-minimalistic-linear'
+import type { JSX } from 'react'
 import { useState } from 'react'
 
+import { KeyUseIllustration } from '@/modules/api-keys/components/key-illustrations'
 import type { components } from '@/shared/api/api-schema'
 import { Button } from '@/shared/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/ui/dialog'
+import { type Choice, ChoiceCards } from '@/shared/ui/choice-cards'
 import { FormField } from '@/shared/ui/form-field'
+import { missingUnless } from '@/shared/ui/step-dialog/missing-unless'
+import { StepDialog } from '@/shared/ui/step-dialog/step-dialog'
 
 type ApiKeyKind = components['schemas']['ApiKeyKind']
 
 const MAX_NAME_LENGTH = 64
 
-const KIND_HINTS: Record<ApiKeyKind, string> = {
-  publishable: 'Vai no app (web ou mobile). Dê o nome do app que vai usá-la.',
-  secret: 'Fica só no seu servidor. Dê o nome do serviço que vai usá-la.',
+const KIND_CHOICES: Choice<ApiKeyKind>[] = [
+  {
+    value: 'publishable',
+    icon: Globe,
+    title: 'Publishable key',
+    description: 'Vai dentro do app, web ou mobile. Pode ficar visível no código.',
+  },
+  {
+    value: 'secret',
+    icon: LockKeyhole,
+    title: 'Secret key',
+    description: 'Fica só no seu servidor. Administra usuários; nunca vai para o app.',
+  },
+]
+
+const NAME_HINTS: Record<ApiKeyKind, string> = {
+  publishable: 'Por exemplo, o app que vai usá-la.',
+  secret: 'Por exemplo, o serviço que vai usá-la.',
+}
+
+const KIND_NAMES: Record<ApiKeyKind, string> = {
+  publishable: 'Publishable key',
+  secret: 'Secret key',
 }
 
 type CreateKeyDialogProps = {
-  kind: ApiKeyKind
-  isPrimary: boolean
   isPending: boolean
-  onCreate: (body: { kind: ApiKeyKind; name: string }) => void
+  /** Resolves once created; the dialog stays open, with the error, when it fails. */
+  onCreate: (body: { kind: ApiKeyKind; name: string }) => Promise<void>
 }
 
-/** Asks for a name before creating a key, so the list can tell keys apart later. */
-export function CreateKeyDialog(props: CreateKeyDialogProps): JSX.Element {
+/** Creates a key in two steps: what it is for, then a name to tell it apart later. */
+export function CreateKeyDialog({ isPending, onCreate }: CreateKeyDialogProps): JSX.Element {
   const [isOpen, setIsOpen] = useState(false)
+  const [kind, setKind] = useState<ApiKeyKind | null>(null)
   const [name, setName] = useState('')
 
-  function submit(event: FormEvent<HTMLFormElement>): void {
-    event.preventDefault()
-    props.onCreate({ kind: props.kind, name: name.trim() })
-    setIsOpen(false)
+  function open(): void {
+    setKind(null)
     setName('')
+    setIsOpen(true)
+  }
+
+  async function create(): Promise<void> {
+    if (kind === null) {
+      return
+    }
+
+    await onCreate({ kind, name: name.trim() })
   }
 
   return (
     <>
-      <Button
-        variant={buttonVariant(props.isPrimary)}
-        disabled={props.isPending}
-        aria-busy={props.isPending}
-        onClick={() => setIsOpen(true)}
-      >
+      <Button disabled={isPending} aria-busy={isPending} onClick={open}>
         <Plus />
-        {kindLabel(props.kind)}
+        Nova chave
       </Button>
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
-          <form onSubmit={submit} className="grid gap-5">
-            <DialogHeader>
-              <DialogTitle>Nova {kindLabel(props.kind)}</DialogTitle>
-              <DialogDescription>{KIND_HINTS[props.kind]}</DialogDescription>
-            </DialogHeader>
-            <FormField
-              label="Nome (opcional)"
-              placeholder="App iOS, Servidor de produção…"
-              maxLength={MAX_NAME_LENGTH}
-              autoComplete="off"
-              autoFocus
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit">Criar chave</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <StepDialog
+        isOpen={isOpen}
+        onOpenChange={setIsOpen}
+        title="Nova chave de API"
+        description="Cada app ou servidor usa uma chave para falar com a NelcotaCloud. Você pode revogar uma sem afetar as outras."
+        finishLabel="Criar chave"
+        workingLabel="Criando chave…"
+        onFinish={create}
+        summary={[
+          { label: 'Tipo', value: kindName(kind) },
+          { label: 'Nome', value: name.trim() },
+        ]}
+        steps={[
+          {
+            label: 'Tipo',
+            description: 'Escolha onde a chave vai ser usada.',
+            missing: missingUnless(kind !== null, 'Escolha o tipo da chave'),
+            illustration: <KeyUseIllustration kind={kind} />,
+            content: (
+              <ChoiceCards
+                legend="Onde a chave vai ser usada"
+                choices={KIND_CHOICES}
+                selected={kind}
+                onSelect={setKind}
+              />
+            ),
+          },
+          {
+            label: 'Nome',
+            description: 'Dê um nome para reconhecê-la na lista depois.',
+            missing: null,
+            content: (
+              <FormField
+                label="Nome (opcional)"
+                placeholder="App iOS, Servidor de produção…"
+                hint={nameHint(kind)}
+                maxLength={MAX_NAME_LENGTH}
+                autoComplete="off"
+                autoFocus
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+            ),
+          },
+        ]}
+      />
     </>
   )
 }
 
-function kindLabel(kind: ApiKeyKind): string {
-  if (kind === 'secret') {
-    return 'Secret key'
+function kindName(kind: ApiKeyKind | null): string {
+  if (kind === null) {
+    return ''
   }
 
-  return 'Publishable key'
+  return KIND_NAMES[kind]
 }
 
-function buttonVariant(isPrimary: boolean): 'default' | 'outline' {
-  if (isPrimary) {
-    return 'default'
+function nameHint(kind: ApiKeyKind | null): string | undefined {
+  if (kind === null) {
+    return undefined
   }
 
-  return 'outline'
+  return NAME_HINTS[kind]
 }

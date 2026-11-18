@@ -1,6 +1,6 @@
 # @nelcota/sdk
 
-TypeScript client for NelcotaCloud Auth. No runtime dependencies: it uses `fetch` and WebCrypto.
+TypeScript client for NelcotaCloud Auth and Database. No runtime dependencies: it uses `fetch` and WebCrypto.
 
 ```ts
 import { createClient } from '@nelcota/sdk'
@@ -35,6 +35,11 @@ await nelcota.auth.avatar.upload(croppedBlob) // emits USER_UPDATED with the new
 const photoUrl = nelcota.auth.avatar.url(user) // public URL for <img src>, null without a photo
 await nelcota.auth.avatar.remove()
 
+// Metadata: the user replaces their own user_metadata (a JSON object, up to 16 KiB).
+// app_metadata (roles, plans) is set by the project's admins and arrives in the access token's
+// `app_metadata` claim from the next refresh.
+await nelcota.auth.updateUser({ name: 'Ana', theme: 'dark' }) // emits USER_UPDATED
+
 // Session
 nelcota.auth.onAuthStateChange((event, session) => {}) // also hears other tabs
 const token = await nelcota.auth.getAccessToken() // renewed before it expires
@@ -48,6 +53,50 @@ revoke others). Errors are `NelcotaError` with `status`, `code` and `requestId`.
 In browsers, the default storage is `localStorage` so sessions survive reloads. JavaScript on the
 same origin can read these tokens; prevent XSS and use a server-managed `HttpOnly` cookie session
 when the application requires tokens to be inaccessible to browser scripts.
+
+## Database
+
+Each project has its own Postgres database. Tables of its `public` schema are reachable through
+the Data API, as the logged-in user (or anonymously without a session): the tables' row level
+security policies decide which rows each request sees and writes. New tables start with row level
+security on and no policies, so they are closed until a policy opens them.
+
+```ts
+type Post = { id: number; title: string; published: boolean }
+
+const { data: posts, count } = await nelcota
+  .from<Post>('posts')
+  .select('id, title, author:authors(name), comments(body)', { count: 'exact' })
+  .eq('published', true)
+  .order('created_at', { ascending: false })
+  .order('id', { referencedTable: 'comments' })
+  .range(0, 19) // at most 1000 rows per request
+  .execute()
+
+const { data: post } = await nelcota.from<Post>('posts').select().eq('id', 7).single().execute()
+
+await nelcota.from<Post>('posts').insert({ title: 'Hello' }).execute()
+const { data: saved } = await nelcota
+  .from<Post>('posts')
+  .upsert([{ id: 7, title: 'Edited' }], { onConflict: 'id' })
+  .select('id, title')
+  .execute()
+await nelcota.from<Post>('posts').update({ published: true }).eq('id', 7).execute()
+await nelcota.from<Post>('posts').delete().eq('id', 7).execute() // updates and deletes need a filter
+
+const { data: total } = await nelcota.rpc<number>('add_numbers', { a: 1, b: 2 })
+```
+
+Filters: `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `like`/`ilike` (`*` is the wildcard), `is`,
+`in`, `contains`, `containedBy`, `overlaps`, `not`, `or` (`'age.lt.18,and(a.eq.1,b.eq.2)'`) and
+`match`. A filter on an embed names it: `.eq('comments.approved', true)`. Policies use
+`auth.uid()` (the user's id), `auth.jwt()` (the access token's claims, `app_metadata`
+included) and `auth.role()` (`anon` or `authenticated`):
+
+```sql
+CREATE POLICY own_posts ON posts FOR ALL TO nelcota_authenticated
+  USING (author_id = auth.uid()) WITH CHECK (author_id = auth.uid());
+```
 
 ## Webhooks (on your server)
 

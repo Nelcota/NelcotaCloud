@@ -4,6 +4,7 @@ import PlugCircle from '~icons/solar/plug-circle-linear'
 import type { JSX } from 'react'
 
 import { EndpointFormDialog } from '@/modules/webhooks/components/endpoint-form-dialog'
+import { WebhookDeleteIllustration } from '@/modules/webhooks/components/webhook-illustrations'
 import {
   useDeleteWebhookEndpointMutation,
   useUpdateWebhookEndpointMutation,
@@ -34,7 +35,6 @@ export function EndpointActions(props: EndpointActionsProps): JSX.Element {
           submitLabel="Salvar"
           initial={{ url: endpoint.url, event_types: endpoint.event_types }}
           onSubmit={(body) => update.mutateAsync({ endpointId: endpoint.id, body })}
-          isPending={update.isPending}
           trigger={{
             label: 'Editar',
             icon: Pen,
@@ -44,20 +44,26 @@ export function EndpointActions(props: EndpointActionsProps): JSX.Element {
           }}
         />
         <ConfirmButton
-          title={`Gerar um novo segredo para ${endpoint.url}?`}
+          title={`Gerar um novo segredo para ${hostOf(endpoint.url)}?`}
           description="O segredo atual continua assinando por 24 horas, junto com o novo. Troque no seu servidor dentro desse prazo."
           confirmLabel="Gerar segredo"
-          change={{ subject: 'Segredo atual', icon: Key, from: 'Assinando', to: 'Válido por 24 h' }}
+          change={{
+            subject: 'Segredo atual',
+            icon: Key,
+            from: 'Assinando',
+            to: 'Válido por 24 horas',
+          }}
           isPending={props.isRotating}
           onConfirm={props.onRotate}
         >
           Novo segredo
         </ConfirmButton>
         <ConfirmButton
-          title={`Excluir o endpoint ${endpoint.url}?`}
+          title={`Excluir o endpoint de ${hostOf(endpoint.url)}?`}
           description="Ele para de receber eventos na hora, e as entregas pendentes são canceladas."
           confirmLabel="Excluir endpoint"
           change={{ subject: endpoint.url, icon: PlugCircle, from: 'Recebendo', to: 'Excluído' }}
+          illustration={<WebhookDeleteIllustration />}
           isDestructive
           isPending={remove.isPending}
           onConfirm={() => remove.mutateAsync(endpoint.id)}
@@ -67,4 +73,13 @@ export function EndpointActions(props: EndpointActionsProps): JSX.Element {
       </div>
     </div>
   )
+}
+
+/** Titles name the endpoint by its host; the full URL, which can be long, is in the change row. */
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host
+  } catch {
+    return url
+  }
 }

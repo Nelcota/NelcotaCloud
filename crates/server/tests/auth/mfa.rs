@@ -79,7 +79,7 @@ pub async fn user_with_totp(
 }
 
 pub async fn log_in(server: &TestServer, tenant: &CreatedTenant, email: &str) -> TestResult<Value> {
-    let body = json!({ "email": email, "password": TEST_PASSWORD });
+    let body = json!({ "email": email, "password": TEST_PASSWORD.as_str() });
     let response = server
         .post_auth("/auth/v1/login", &tenant.publishable_key, body)
         .await?;

@@ -3,10 +3,12 @@ import SearchX from '~icons/solar/magnifier-close-linear'
 import { Link, useNavigate } from '@tanstack/react-router'
 import type { JSX } from 'react'
 
+import { ActivityFeed } from '@/modules/activity/components/activity-feed'
 import { UserAccountSection } from '@/modules/users/components/user-account-section'
 import { UserDangerZone } from '@/modules/users/components/user-danger-zone'
 import { DONE_MESSAGES } from '@/modules/users/components/user-done-messages'
 import { UserIdentitiesSection } from '@/modules/users/components/user-identities-section'
+import { UserMetadataSection } from '@/modules/users/components/user-metadata-section'
 import { UserSessionsSection } from '@/modules/users/components/user-sessions-section'
 import { useUserQuery } from '@/modules/users/queries/use-user-detail'
 import { type UserAction, useUserActionMutation } from '@/modules/users/queries/use-users'
@@ -64,6 +66,11 @@ function LoadedUser({ projectId, user }: { projectId: string; user: User }): JSX
       <UserAccountSection {...actionProps} />
       <UserSessionsSection projectId={projectId} {...actionProps} />
       <UserIdentitiesSection projectId={projectId} userId={user.id} />
+      <UserMetadataSection key={user.id} projectId={projectId} user={user} />
+      <section className="grid gap-3">
+        <h2>Atividade</h2>
+        <ActivityFeed projectId={projectId} userId={user.id} />
+      </section>
       <UserDangerZone {...actionProps} />
     </div>
   )

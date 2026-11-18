@@ -27,7 +27,7 @@ async fn rejects_tokens_from_another_tenant() -> TestResult {
 #[tokio::test]
 async fn rejects_missing_or_unknown_api_keys() -> TestResult {
     let server = TestServer::start().await?;
-    let body = json!({ "email": "a@example.com", "password": TEST_PASSWORD });
+    let body = json!({ "email": "a@example.com", "password": TEST_PASSWORD.as_str() });
 
     let missing = server
         .client
@@ -59,14 +59,14 @@ async fn rejects_invalid_signups() -> TestResult {
         .await?;
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
-    let bad_email = json!({ "email": "not-an-email", "password": TEST_PASSWORD });
+    let bad_email = json!({ "email": "not-an-email", "password": TEST_PASSWORD.as_str() });
     let response = server
         .post_auth("/auth/v1/signup", api_key, bad_email)
         .await?;
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
     server.sign_up(&tenant, "taken@example.com").await?;
-    let duplicate = json!({ "email": "TAKEN@example.com", "password": TEST_PASSWORD });
+    let duplicate = json!({ "email": "TAKEN@example.com", "password": TEST_PASSWORD.as_str() });
     let response = server
         .post_auth("/auth/v1/signup", api_key, duplicate)
         .await?;

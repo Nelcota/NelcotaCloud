@@ -1,12 +1,14 @@
 use std::sync::Arc;
 
+use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::modules::auth::email::auth_email::{
-    AuthEmailContext, magic_link_email, password_reset_email, verification_email,
-};
+use crate::modules::auth::email::auth_email::{AuthEmailContext, auth_link_email};
 use crate::modules::auth::email::auth_email_template::render_auth_email;
 use crate::modules::auth::email::auth_mailer::AuthMailer;
+use crate::modules::auth::email::email_template_repository::TemplateKey;
+use crate::modules::auth::email::email_template_view::effective_template_text;
 use crate::modules::auth::one_time_token::one_time_token_purpose::OneTimeTokenPurpose;
 use crate::modules::auth::one_time_token::one_time_token_repository::{
     OneTimeTokenRequest, issue_one_time_token,
@@ -17,7 +19,10 @@ use crate::modules::tenants::settings::loaded_tenant_settings::load_tenant_setti
 use crate::modules::tenants::smtp::tenant_email_delivery::send_tenant_email_in_background;
 use crate::shared::http::api_error::ApiError;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// The emails that carry a one-time link; each has its own wording per project.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema, sqlx::Type)]
+#[serde(rename_all = "snake_case")]
+#[sqlx(type_name = "text", rename_all = "snake_case")]
 pub enum AuthEmailKind {
     Verification,
     PasswordReset,
@@ -82,16 +87,18 @@ pub async fn email_auth_link(
 ) -> Result<(), ApiError> {
     let user = link.user;
     let token = link.token;
-    let settings = load_tenant_settings(&mailer.control_plane_pool, tenant_id).await?;
+    let pool = &mailer.control_plane_pool;
+    let settings = load_tenant_settings(pool, tenant_id).await?;
+    let key = TemplateKey {
+        tenant_id,
+        kind: link.kind,
+    };
+    let text = effective_template_text(pool, key).await?;
     let context = AuthEmailContext {
         tenant_name: &settings.name,
         site_url: &settings.site_url,
     };
-    let content = match link.kind {
-        AuthEmailKind::Verification => verification_email(&context, token),
-        AuthEmailKind::PasswordReset => password_reset_email(&context, token),
-        AuthEmailKind::MagicLink => magic_link_email(&context, token),
-    };
+    let content = auth_link_email(&context, &text, (link.kind, token));
     let email = render_auth_email(content, &user.email).map_err(ApiError::internal)?;
     send_tenant_email_in_background(Arc::clone(&mailer.email_senders), tenant_id, email);
 

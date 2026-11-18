@@ -8,7 +8,7 @@ async fn signup_does_not_reveal_registered_emails() -> TestResult {
     let server = TestServer::start().await?;
     let tenant = server.create_tenant_with_defaults().await?;
     let api_key = &tenant.publishable_key;
-    let body = json!({ "email": unique_email("pending"), "password": TEST_PASSWORD });
+    let body = json!({ "email": unique_email("pending"), "password": TEST_PASSWORD.as_str() });
 
     let first = server
         .post_auth("/auth/v1/signup", api_key, body.clone())
@@ -31,7 +31,7 @@ async fn login_waits_for_email_verification() -> TestResult {
     let tenant = server.create_tenant_with_defaults().await?;
     let api_key = &tenant.publishable_key;
     let email = unique_email("gated");
-    let credentials = json!({ "email": email, "password": TEST_PASSWORD });
+    let credentials = json!({ "email": email, "password": TEST_PASSWORD.as_str() });
     server
         .post_auth("/auth/v1/signup", api_key, credentials.clone())
         .await?;

@@ -24,10 +24,11 @@ pub fn validate_public_base_url(raw_url: &str) -> Result<(), ConfigError> {
 }
 
 /// Each tenant database name is appended to it, so it must not carry a database path or query.
+/// Its password is required: the Data API role's password is derived from it.
 pub fn validate_tenant_database_base_url(raw_url: &str) -> Result<(), ConfigError> {
     let invalid = ConfigError::InvalidUrl(
         "TENANT_DATABASE_BASE_URL",
-        "a postgres:// server URL without database name, query or fragment",
+        "a postgres:// server URL with a password, without database name, query or fragment",
     );
     let Ok(url) = Url::parse(raw_url.trim()) else {
         return Err(invalid);
@@ -37,7 +38,7 @@ pub fn validate_tenant_database_base_url(raw_url: &str) -> Result<(), ConfigErro
         return Err(invalid);
     }
 
-    if has_more_than_server(&url) {
+    if has_more_than_server(&url) || url.password().unwrap_or_default().is_empty() {
         return Err(invalid);
     }
 

@@ -15,7 +15,6 @@ import { ColumnLabel } from '@/shared/ui/column-label'
 import { CopyButton } from '@/shared/ui/copy-button'
 import { formatDateTime } from '@/shared/lib/format-date'
 import { EmptyState } from '@/shared/ui/empty-state'
-import { ErrorAlert } from '@/shared/ui/error-alert'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/ui/table'
 
@@ -61,7 +60,6 @@ export function ApiKeysTable({
 
   return (
     <div className="grid gap-3">
-      <ErrorAlert error={revocation.error} />
       <div className="bg-card overflow-hidden rounded-xl border">
         <Table>
           <TableHeader>
@@ -110,7 +108,9 @@ export function ApiKeysTable({
                       apiKey={key}
                       activeOfKind={countActive(keys, key.kind)}
                       isPending={revocation.isPending && revocation.variables === key.id}
-                      onRevoke={() => revocation.mutate(key.id)}
+                      onRevoke={async () => {
+                        await revocation.mutateAsync(key.id)
+                      }}
                     />
                   </div>
                 </TableCell>
@@ -127,7 +127,7 @@ type RowActionProps = {
   apiKey: ApiKeySummary
   activeOfKind: number
   isPending: boolean
-  onRevoke: () => void
+  onRevoke: () => Promise<void>
 }
 
 function RowAction(props: RowActionProps): JSX.Element | null {

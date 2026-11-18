@@ -37,17 +37,17 @@ export function SessionsSection(): JSX.Element {
           }}
           isDestructive
           isPending={othersRevocation.isPending}
-          onConfirm={() => othersRevocation.mutate()}
+          onConfirm={() => othersRevocation.mutateAsync()}
         >
           Sair dos outros dispositivos
         </ConfirmButton>
       }
     >
-      <ErrorAlert error={sessions.error ?? revocation.error ?? othersRevocation.error} />
+      <ErrorAlert error={sessions.error} />
       <SessionList
         sessions={sessions.data}
         pendingId={runningId(revocation.isPending, revocation.variables)}
-        onRevoke={(sessionId) => revocation.mutate(sessionId)}
+        onRevoke={(sessionId) => revocation.mutateAsync(sessionId)}
       />
     </SettingsSection>
   )
@@ -64,7 +64,7 @@ function runningId(isPending: boolean, sessionId: string | undefined): string | 
 type SessionListProps = {
   sessions: SessionSummary[] | undefined
   pendingId: string | null
-  onRevoke: (sessionId: string) => void
+  onRevoke: (sessionId: string) => Promise<void>
 }
 
 function SessionList({ sessions, pendingId, onRevoke }: SessionListProps): JSX.Element {
@@ -96,7 +96,7 @@ function SessionList({ sessions, pendingId, onRevoke }: SessionListProps): JSX.E
 type SessionActionProps = {
   session: SessionSummary
   isPending: boolean
-  onRevoke: () => void
+  onRevoke: () => Promise<void>
 }
 
 function SessionAction({ session, isPending, onRevoke }: SessionActionProps): JSX.Element {

@@ -5,10 +5,12 @@ import { useUpdateSettingsMutation } from '@/modules/project-settings/queries/us
 import type { components } from '@/shared/api/api-schema'
 import { Button } from '@/shared/ui/button'
 import { ErrorAlert } from '@/shared/ui/error-alert'
+import { withHttps, withoutHttps } from '@/shared/lib/web-address'
 import { FormField } from '@/shared/ui/form-field'
 import { SavedNote } from '@/shared/ui/saved-note'
 import { SettingsSection } from '@/shared/ui/settings-section'
 import { SwitchField } from '@/shared/ui/switch-field'
+import { UrlField } from '@/shared/ui/url-field'
 
 type TenantSettings = components['schemas']['TenantSettings']
 
@@ -24,21 +26,24 @@ export function GeneralSettingsForm({
 }: GeneralSettingsFormProps): JSX.Element {
   const update = useUpdateSettingsMutation(projectId)
   const [name, setName] = useState(settings.name)
-  const [siteUrl, setSiteUrl] = useState(settings.site_url)
+  const [siteUrl, setSiteUrl] = useState(withoutHttps(settings.site_url))
   const [requiresVerification, setRequiresVerification] = useState(
     settings.require_email_verification,
   )
 
   function submit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault()
-    update.mutate({ name, site_url: siteUrl, require_email_verification: requiresVerification })
+    update.mutate({
+      name,
+      site_url: withHttps(siteUrl),
+      require_email_verification: requiresVerification,
+    })
   }
 
   return (
     <form onSubmit={submit}>
       <SettingsSection
         title="Geral"
-        description="Como o projeto se chama e para onde os links de email e o OAuth levam."
         footer={
           <>
             <SavedNote isSaved={update.isSuccess} message="Configurações salvas" />
@@ -55,13 +60,13 @@ export function GeneralSettingsForm({
           value={name}
           onChange={(event) => setName(event.target.value)}
         />
-        <FormField
-          label="URL do seu app"
-          type="url"
+        <UrlField
+          label="Site do app"
           required
-          hint="Links de email abrem aqui; o OAuth só redireciona para endereços abaixo dela."
+          placeholder="app.exemplo.com"
+          hint="Os links dos emails abrem aqui, e o login social volta para cá."
           value={siteUrl}
-          onChange={(event) => setSiteUrl(event.target.value)}
+          onChange={setSiteUrl}
         />
         <SwitchField
           label="Exigir email confirmado"

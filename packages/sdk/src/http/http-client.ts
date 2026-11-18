@@ -14,6 +14,14 @@ export type HttpRequest = {
   /** Sent as is (`application/octet-stream`) instead of a JSON `body`. */
   file?: Blob
   accessToken?: string
+  /** Extra headers (`prefer`, `accept`); never the API key or the authorization. */
+  headers?: Record<string, string>
+}
+
+/** A response body with the headers it came with. */
+export type HttpResponse<T> = {
+  data: T
+  headers: Headers
 }
 
 export type HttpClientOptions = {
@@ -29,12 +37,18 @@ export class HttpClient {
   private readonly fetchFunction: typeof fetch
 
   constructor(options: HttpClientOptions) {
-    this.baseUrl = options.url.replace(/\/+$/, '')
+    this.baseUrl = withoutTrailingSlashes(options.url)
     this.publishableKey = options.publishableKey
     this.fetchFunction = options.fetch
   }
 
   async request<T>(request: HttpRequest): Promise<T> {
+    const response = await this.send<T>(request)
+
+    return response.data
+  }
+
+  async send<T>(request: HttpRequest): Promise<HttpResponse<T>> {
     const response = await this.fetchFunction(`${this.baseUrl}${request.path}`, {
       method: request.method,
       headers: this.headersFor(request),
@@ -49,14 +63,17 @@ export class HttpClient {
     const text = await response.text()
 
     if (text === '') {
-      return undefined as T
+      return { data: undefined as T, headers: response.headers }
     }
 
-    return JSON.parse(text) as T
+    return { data: JSON.parse(text) as T, headers: response.headers }
   }
 
   private headersFor(request: HttpRequest): Record<string, string> {
-    const headers: Record<string, string> = { [API_KEY_HEADER]: this.publishableKey }
+    const headers: Record<string, string> = {
+      ...request.headers,
+      [API_KEY_HEADER]: this.publishableKey,
+    }
 
     if (request.file !== undefined) {
       headers['content-type'] = FILE_CONTENT_TYPE
@@ -72,6 +89,20 @@ export class HttpClient {
 
     return headers
   }
+}
+
+/**
+ * `https://api.test///` becomes `https://api.test`. A loop instead of `/\/+$/`, whose
+ * backtracking grows with the number of slashes in a URL the app passes in.
+ */
+function withoutTrailingSlashes(url: string): string {
+  let end = url.length
+
+  while (end > 0 && url.charAt(end - 1) === '/') {
+    end -= 1
+  }
+
+  return url.slice(0, end)
 }
 
 function bodyOf(request: HttpRequest): Blob | string | undefined {

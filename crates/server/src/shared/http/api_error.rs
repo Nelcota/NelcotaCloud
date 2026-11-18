@@ -55,6 +55,15 @@ impl ApiError {
         Self::InvalidRequest(error.to_string())
     }
 
+    /// The stable code of a module's refusal; `None` for every other error.
+    pub fn rejection_code(&self) -> Option<&'static str> {
+        let Self::Rejected(rejection) = self else {
+            return None;
+        };
+
+        Some(rejection.code)
+    }
+
     fn status_and_code(&self) -> (StatusCode, &'static str) {
         match self {
             Self::InvalidRequest(_) => (StatusCode::BAD_REQUEST, "invalid_request"),

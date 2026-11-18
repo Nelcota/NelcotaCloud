@@ -4,7 +4,6 @@ import type { JSX } from 'react'
 
 import { useRotateSigningKeyMutation } from '@/modules/api-keys/queries/use-api-keys'
 import { ConfirmButton } from '@/shared/ui/confirm-button'
-import { ErrorAlert } from '@/shared/ui/error-alert'
 
 export function SigningKeyCard({ projectId }: { projectId: string }): JSX.Element {
   const rotation = useRotateSigningKeyMutation(projectId)
@@ -12,10 +11,8 @@ export function SigningKeyCard({ projectId }: { projectId: string }): JSX.Elemen
   return (
     <section className="bg-card grid gap-4 rounded-xl border p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex gap-4">
-          <span className="bg-secondary flex size-12 shrink-0 items-center justify-center rounded-lg">
-            <RefreshCw className="text-muted-foreground size-6" />
-          </span>
+        <div className="flex gap-3">
+          <RefreshCw aria-hidden="true" className="text-muted-foreground mt-0.5 size-5 shrink-0" />
           <div>
             <h2 className="text-base">Chave de assinatura dos tokens</h2>
             <p className="text-muted-foreground mt-1 max-w-xl text-sm text-pretty">
@@ -27,22 +24,23 @@ export function SigningKeyCard({ projectId }: { projectId: string }): JSX.Elemen
         <div className="shrink-0">
           <ConfirmButton
             title="Rotacionar a chave de assinatura?"
-            description="Os próximos tokens serão assinados por uma chave nova. A antiga continua no JWKS por um dia."
+            description="Os próximos tokens serão assinados por uma chave nova. A antiga continua no JWKS por 24 horas."
             confirmLabel="Rotacionar"
             change={{
               subject: 'Chave de assinatura atual',
               icon: Key,
               from: 'Assina tokens',
-              to: 'Só no JWKS por 1 dia',
+              to: 'Só no JWKS por 24 horas',
             }}
             isPending={rotation.isPending}
-            onConfirm={() => rotation.mutate()}
+            onConfirm={async () => {
+              await rotation.mutateAsync()
+            }}
           >
             Rotacionar chave
           </ConfirmButton>
         </div>
       </div>
-      <ErrorAlert error={rotation.error} />
       <RotatedKey keyId={rotation.data?.key_id} />
     </section>
   )

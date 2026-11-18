@@ -98,3 +98,19 @@ async fn patch_settings(server: &TestServer, api_key: &str, body: Value) -> Test
 
     Ok(response)
 }
+
+#[tokio::test]
+async fn refuses_project_names_with_line_breaks() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+
+    let response = patch_settings(
+        &server,
+        &tenant.secret_key,
+        json!({ "name": "Shop\r\nBcc: victim@example.com" }),
+    )
+    .await?;
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+    server.drop_tenant(&tenant).await
+}

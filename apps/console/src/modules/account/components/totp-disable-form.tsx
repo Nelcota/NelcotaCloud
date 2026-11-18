@@ -1,10 +1,13 @@
-import type { FormEvent, JSX } from 'react'
+import type { JSX } from 'react'
 import { useState } from 'react'
 
+import { MfaDisableIllustration } from '@/modules/account/components/mfa-illustrations'
 import { TotpCodeField } from '@/modules/account/components/totp-code-field'
 import { useDisableTotpMutation } from '@/modules/account/queries/use-mfa'
 import { Button } from '@/shared/ui/button'
-import { ErrorAlert } from '@/shared/ui/error-alert'
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
+
+const TOTP_CODE_DIGITS = 6
 
 /** Turning MFA off asks for a current code, so a stolen session alone cannot do it. */
 export function TotpDisableForm(): JSX.Element {
@@ -12,41 +15,38 @@ export function TotpDisableForm(): JSX.Element {
   const [code, setCode] = useState('')
   const disabling = useDisableTotpMutation()
 
-  function submit(event: FormEvent<HTMLFormElement>): void {
-    event.preventDefault()
-    disabling.mutate(code, { onSuccess: () => setIsOpen(false) })
+  function open(): void {
+    setCode('')
+    setIsOpen(true)
   }
 
-  if (isOpen === false) {
-    return (
-      <div>
-        <Button variant="destructive" size="sm" onClick={() => setIsOpen(true)}>
-          Desativar MFA
-        </Button>
-      </div>
-    )
+  async function disable(): Promise<void> {
+    await disabling.mutateAsync(code)
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-4 border-t pt-4">
-      <p className="text-sm text-pretty">
-        Sem MFA, quem descobrir sua senha entra no console e em todos os seus projetos.
-      </p>
-      <TotpCodeField value={code} onChange={setCode} autoFocus />
-      <ErrorAlert error={disabling.error} />
-      <div className="flex gap-2">
-        <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>
-          Cancelar
-        </Button>
-        <Button
-          type="submit"
-          variant="destructive"
-          disabled={disabling.isPending}
-          aria-busy={disabling.isPending}
-        >
-          Desativar MFA
-        </Button>
-      </div>
-    </form>
+    <div>
+      <Button variant="destructive" size="sm" onClick={open}>
+        Desativar MFA
+      </Button>
+      <ConfirmDialog
+        isOpen={isOpen}
+        onOpenChange={setIsOpen}
+        title="Desativar o MFA?"
+        description="Sem MFA, quem descobrir sua senha entra no console e em todos os seus projetos."
+        confirmLabel="Desativar MFA"
+        illustration={<MfaDisableIllustration />}
+        isDestructive
+        canConfirm={digitsOf(code).length === TOTP_CODE_DIGITS}
+        onConfirm={disable}
+      >
+        <TotpCodeField value={code} onChange={setCode} autoFocus />
+      </ConfirmDialog>
+    </div>
   )
+}
+
+/** The field accepts "123 456"; only the digits count. */
+function digitsOf(code: string): string {
+  return code.replace(/\D/g, '')
 }
