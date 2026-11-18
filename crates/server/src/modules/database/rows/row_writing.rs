@@ -8,6 +8,7 @@ use crate::modules::database::execution::data_api_session::{DataApiSession, Tran
 use crate::modules::database::query::preferences::Preferences;
 use crate::modules::database::query::read_query::ReadQuery;
 use crate::modules::database::rejection::database_rejection::DatabaseRejection;
+use crate::modules::database::rows::returning_rows::ReturningRows;
 use crate::modules::database::rows::rows_result::{RowsResult, StatementRow};
 use crate::modules::database::rows::write_body::{conflict_action, insert_batches, update_values};
 use crate::modules::database::schema::schema_model::TableModel;
@@ -52,7 +53,7 @@ pub async fn write_rows(
     let change = write_change(table, &write)?;
 
     if returns_rows {
-        let mut rows = Vec::new();
+        let mut rows = ReturningRows::new();
 
         for mut statement in write_returning_statements(&schema, table, query, &change)? {
             let row: StatementRow = session
@@ -63,10 +64,10 @@ pub async fn write_rows(
                         .fetch_one(&mut *session.transaction),
                 )
                 .await?;
-            rows.push(row);
+            rows.push(row)?;
         }
 
-        let result = RowsResult::merge(rows, write.preferences.is_single_object)?;
+        let result = rows.finish(write.preferences.is_single_object)?;
         session.commit().await?;
         return Ok(result);
     }

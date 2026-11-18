@@ -49,7 +49,10 @@ impl DeveloperSession {
             .pool_for(tenant_id)
             .await
             .map_err(ApiError::internal)?;
-        let mut transaction = data_pool.begin().await?;
+        let mut connection = data_pool.acquire().await?;
+        // Closing the connection discards settings and temporary objects that survive commit.
+        connection.close_on_drop();
+        let mut transaction = Transaction::begin(connection, None).await?;
         let (pid, started_at, ..): PreparedRow = sqlx::query_as(AssertSqlSafe(prepare_developer()))
             .bind(DEVELOPER_ROLE)
             .bind(DEVELOPER_STATEMENT_TIMEOUT.as_millis().to_string())
