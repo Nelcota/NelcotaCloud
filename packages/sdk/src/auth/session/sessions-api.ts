@@ -1,8 +1,8 @@
-import type { HttpMethod } from '../http/http-client'
-import type { SessionSummary } from '../types'
-import { type AuthorizedContext, authorizedRequest } from './authorized-request'
+import type { HttpMethod } from '../../http/http-client'
+import type { SessionSummary } from '../auth-types'
+import { type AuthorizedContext, authorizedRequest } from '../authorized-request'
 
-/** The devices where the logged-in user is logged in. */
+/** Lists and revokes the current user’s sessions. */
 export class SessionsApi {
   private readonly context: AuthorizedContext
 

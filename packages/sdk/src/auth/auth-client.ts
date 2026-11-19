@@ -7,7 +7,7 @@ import type {
   SignUpResult,
   User,
   UserMetadata,
-} from '../types'
+} from './auth-types'
 import { type AuthorizedContext, authorizedRequest } from './authorized-request'
 import { AvatarApi } from './avatar-api'
 import {
@@ -18,10 +18,11 @@ import {
 } from './auth-request-bodies'
 import { toSession, toSignInResult, toSignUpResult } from './login-results'
 import { MfaApi } from './mfa-api'
-import { OAuthApi } from './oauth-api'
-import type { SessionManager } from './session-manager'
-import type { SessionStore } from './session-store'
-import { SessionsApi } from './sessions-api'
+import { OAuthApi } from './oauth/oauth-api'
+import { PkceVerifierStore } from './oauth/pkce-verifier-store'
+import type { SessionManager } from './session/session-manager'
+import type { SessionStore } from './session/session-store'
+import { SessionsApi } from './session/sessions-api'
 
 type Schemas = components['schemas']
 
@@ -50,7 +51,8 @@ export class AuthClient {
     this.now = context.now
     this.avatar = new AvatarApi(context)
     this.mfa = new MfaApi(context)
-    this.oauth = new OAuthApi(context)
+    const verifiers = new PkceVerifierStore(context.store.storage, context.store.key)
+    this.oauth = new OAuthApi({ ...context, store: verifiers })
     this.sessions = new SessionsApi(context)
   }
 

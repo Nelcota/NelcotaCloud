@@ -1,5 +1,5 @@
 import type { HttpClient, HttpRequest } from '../http/http-client'
-import type { SessionManager } from './session-manager'
+import type { SessionManager } from './session/session-manager'
 
 export type AuthorizedContext = { http: HttpClient; manager: SessionManager }
 

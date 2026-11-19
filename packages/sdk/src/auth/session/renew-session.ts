@@ -1,7 +1,7 @@
-import type { components } from '../generated/api-schema'
-import type { HttpClient } from '../http/http-client'
-import type { Session } from '../types'
-import { toSession } from './login-results'
+import type { components } from '../../generated/api-schema'
+import type { HttpClient } from '../../http/http-client'
+import type { Session } from '../auth-types'
+import { toSession } from '../login-results'
 
 type SessionTokens = components['schemas']['SessionTokens']
 
