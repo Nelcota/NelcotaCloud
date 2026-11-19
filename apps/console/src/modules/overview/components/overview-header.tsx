@@ -1,17 +1,18 @@
 import type { JSX } from 'react'
 
 import { SiteUrl } from '@/modules/overview/components/site-url'
-import { useSettingsQuery } from '@/modules/project-settings/queries/use-project-settings'
+import { useCurrentProject, useProjectsQuery } from '@/modules/projects/queries/use-projects'
 import { ErrorAlert } from '@/shared/ui/error-alert'
 import { PageHeader } from '@/shared/ui/page-header'
 
 export function OverviewHeader({ projectId }: { projectId: string }): JSX.Element {
-  const settings = useSettingsQuery(projectId)
+  const project = useCurrentProject(projectId)
+  const projects = useProjectsQuery()
 
   return (
     <>
-      <PageHeader title="Visão geral" description={<SiteUrl url={settings.data?.site_url} />} />
-      <ErrorAlert error={settings.error} />
+      <PageHeader title="Visão geral" description={<SiteUrl url={project?.site_url} />} />
+      <ErrorAlert error={projects.error} />
     </>
   )
 }

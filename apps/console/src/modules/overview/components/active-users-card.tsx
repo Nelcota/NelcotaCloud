@@ -13,13 +13,11 @@ export function ActiveUsersCard({ projectId }: { projectId: string }): JSX.Eleme
   return (
     <OverviewCard
       icon={UserCheck}
-      title="Uso"
-      metricLabel="Usuários ativos este mês"
+      label="Ativos este mês"
       value={countOrNull(usage.data?.active_users_this_month)}
       error={usage.error}
       onRetry={() => usage.refetch()}
       detail={lastMonthDetail(lastMonth)}
-      links={[{ label: 'Atividade', to: `/projects/${projectId}/activity` }]}
     />
   )
 }

@@ -3,27 +3,22 @@ import type { JSX } from 'react'
 
 import { OverviewCard } from '@/modules/overview/components/overview-card'
 import { countOrNull } from '@/modules/overview/components/overview-metrics'
-import { useSettingsQuery } from '@/modules/project-settings/queries/use-project-settings'
-import { useUsersQuery } from '@/modules/users/queries/use-users'
-
-/** One user is enough to read the total; the list itself stays on the users page. */
-const TOTAL_ONLY = { email: '', status: 'all', offset: 0, limit: 1 } as const
+import { useCurrentProject } from '@/modules/projects/queries/use-projects'
+import { useUserCountQuery } from '@/modules/users/queries/use-users'
 
 export function UsersCard({ projectId }: { projectId: string }): JSX.Element {
-  const settings = useSettingsQuery(projectId)
-  const users = useUsersQuery(projectId, TOTAL_ONLY)
-  const base = `/projects/${projectId}`
+  const project = useCurrentProject(projectId)
+  const users = useUserCountQuery(projectId)
 
   return (
     <OverviewCard
       icon={Users}
-      title="Usuários"
-      metricLabel="Contas"
-      value={countOrNull(users.data?.total)}
+      label="Usuários"
+      value={countOrNull(users.data)}
       error={users.error}
       onRetry={() => users.refetch()}
-      detail={verificationDetail(settings.data?.require_email_verification)}
-      links={[{ label: 'Usuários', to: `${base}/users` }]}
+      detail={verificationDetail(project?.require_email_verification)}
+      to={`/projects/${projectId}/users`}
     />
   )
 }
