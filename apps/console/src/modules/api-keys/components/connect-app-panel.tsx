@@ -20,7 +20,7 @@ export function ConnectAppPanel({ publishableKey, projectId }: ConnectAppPanelPr
   const serverSnippet = verifierSnippet(publishableKey, projectId)
 
   return (
-    <section className="bg-card rounded-xl border">
+    <section className="surface">
       <header className="border-b px-5 py-4">
         <h2>Conectar seu app</h2>
         <p className="text-muted-foreground mt-1 text-sm text-pretty">
