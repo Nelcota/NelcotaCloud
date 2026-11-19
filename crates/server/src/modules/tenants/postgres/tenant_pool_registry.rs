@@ -12,11 +12,10 @@ use crate::modules::tenants::postgres::tenant_database_server::{
 use crate::modules::tenants::postgres::tenant_migration::{
     TenantMigrationError, migrate_tenant_database,
 };
+use crate::modules::tenants::postgres::tenant_pool_limits::TenantPoolLimits;
 use crate::modules::tenants::provisioning::tenant_repository::find_tenant_slug;
 use crate::modules::tenants::provisioning::tenant_slug::{InvalidTenantSlug, TenantSlug};
 
-/// Small per-tenant pools: with one database per tenant, connections multiply by tenant count.
-const MAX_CONNECTIONS_PER_TENANT: u32 = 5;
 /// Idle tenants give their connections back quickly: the sum of every tenant's pool must stay
 /// under the Postgres server's `max_connections`.
 const TENANT_POOL_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
@@ -26,8 +25,6 @@ const DATA_API_POOL_IDLE_TIMEOUT: Duration = Duration::from_secs(5);
 const TENANT_POOL_ACQUIRE_TIMEOUT: Duration = Duration::from_secs(5);
 /// Pools of tenants without requests for this long are dropped, closing their connections.
 const POOL_TIME_TO_IDLE: Duration = Duration::from_secs(30 * 60);
-/// Bounds how many tenant pools (and so connections) one instance keeps open.
-const MAX_OPEN_POOLS: u64 = 1_000;
 
 #[derive(Debug, thiserror::Error)]
 pub enum TenantPoolError {
@@ -57,6 +54,7 @@ pub struct TenantPoolRegistry {
     pools: Cache<Uuid, PgPool>,
     data_api_pools: Cache<Uuid, PgPool>,
     mode: TenantPoolMode,
+    limits: TenantPoolLimits,
 }
 
 enum TenantPoolMode {
@@ -70,10 +68,19 @@ impl TenantPoolRegistry {
         Self {
             control_plane_pool,
             tenant_database_base_url,
-            pools: pool_cache(),
-            data_api_pools: pool_cache(),
+            pools: pool_cache(TenantPoolLimits::API),
+            data_api_pools: pool_cache(TenantPoolLimits::API),
             mode: TenantPoolMode::Legacy,
+            limits: TenantPoolLimits::API,
         }
+    }
+
+    /// Replaces the default API limits; call before the first pool opens.
+    pub fn with_limits(mut self, limits: TenantPoolLimits) -> Self {
+        self.pools = pool_cache(limits);
+        self.data_api_pools = pool_cache(limits);
+        self.limits = limits;
+        self
     }
 
     pub fn with_runtime_password(mut self, runtime_password: String) -> Self {
@@ -87,9 +94,18 @@ impl TenantPoolRegistry {
     }
 
     pub async fn pool_for(&self, tenant_id: Uuid) -> Result<PgPool, Arc<TenantPoolError>> {
-        self.pools
-            .try_get_with(tenant_id, self.open_pool(tenant_id))
-            .await
+        let entry = self
+            .pools
+            .entry(tenant_id)
+            .or_try_insert_with(self.open_pool(tenant_id))
+            .await?;
+        if entry.is_fresh() {
+            // The cache evicts lazily; evicting now keeps a new pool from pushing the process
+            // past its limit. An evicted pool closes once the last run using it lets go.
+            self.pools.run_pending_tasks().await;
+        }
+
+        Ok(entry.into_value())
     }
 
     pub async fn audit_maintenance_pool(
@@ -122,7 +138,7 @@ impl TenantPoolRegistry {
             }
             _ => server.auth_options(&slug)?,
         };
-        let pool = tenant_pool_options().connect_lazy_with(options);
+        let pool = tenant_pool_options(self.limits).connect_lazy_with(options);
         if matches!(self.mode, TenantPoolMode::Legacy) {
             migrate_tenant_database(&pool).await?;
         }
@@ -138,7 +154,7 @@ impl TenantPoolRegistry {
         }
         let options = database_server.data_api_options(&slug)?;
 
-        Ok(tenant_pool_options()
+        Ok(tenant_pool_options(self.limits)
             .idle_timeout(DATA_API_POOL_IDLE_TIMEOUT)
             .connect_lazy_with(options))
     }
@@ -172,16 +188,16 @@ impl TenantPoolRegistry {
     }
 }
 
-fn pool_cache() -> Cache<Uuid, PgPool> {
+fn pool_cache(limits: TenantPoolLimits) -> Cache<Uuid, PgPool> {
     Cache::builder()
-        .max_capacity(MAX_OPEN_POOLS)
+        .max_capacity(limits.open_pools)
         .time_to_idle(POOL_TIME_TO_IDLE)
         .build()
 }
 
-fn tenant_pool_options() -> PgPoolOptions {
+fn tenant_pool_options(limits: TenantPoolLimits) -> PgPoolOptions {
     PgPoolOptions::new()
-        .max_connections(MAX_CONNECTIONS_PER_TENANT)
+        .max_connections(limits.connections_per_tenant)
         .idle_timeout(TENANT_POOL_IDLE_TIMEOUT)
         .acquire_timeout(TENANT_POOL_ACQUIRE_TIMEOUT)
         .acquire_slow_threshold(Duration::from_millis(100))

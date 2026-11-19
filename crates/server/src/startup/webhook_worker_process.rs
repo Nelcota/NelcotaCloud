@@ -4,6 +4,7 @@ use std::time::Duration;
 use tokio::sync::watch;
 use tokio::time::timeout;
 
+use crate::modules::tenants::postgres::tenant_pool_limits::TenantPoolLimits;
 use crate::modules::tenants::postgres::tenant_pool_registry::TenantPoolRegistry;
 use crate::modules::webhooks::delivery::tenant_delivery_run::DeliveryContext;
 use crate::modules::webhooks::delivery::webhook_worker::WebhookWorker;
@@ -31,7 +32,8 @@ pub async fn build_webhook_worker(
     let registry = TenantPoolRegistry::new(
         control_plane_pool.clone(),
         config.tenant_database_base_url.trim().to_owned(),
-    );
+    )
+    .with_limits(TenantPoolLimits::WEBHOOK_WORKER);
     let tenant_pools = Arc::new(match managed_schema {
         true => registry.with_managed_schema(),
         false => registry,

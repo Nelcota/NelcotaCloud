@@ -22,7 +22,8 @@ use crate::modules::webhooks::scheduling::webhook_schedule_repository::mark_due_
 
 /// Events handed out per tenant and round; a busier log catches up over the next rounds.
 const RELAY_BATCH: i64 = 200;
-const PARALLEL_SUBSCRIBERS: usize = 4;
+/// Subscribed tenants relayed at once; each holds one of its database connections.
+pub const PARALLEL_SUBSCRIBERS: usize = 4;
 const SUBSCRIBER_TIMEOUT: Duration = Duration::from_secs(8);
 
 #[derive(Debug, thiserror::Error)]

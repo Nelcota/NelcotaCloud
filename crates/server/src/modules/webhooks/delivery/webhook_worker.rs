@@ -178,3 +178,25 @@ async fn deliver_with_slot(
         tracing::error!(%tenant_id, %error, "failed to postpone webhook deliveries");
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::num::TryFromIntError;
+
+    use super::*;
+    use crate::modules::tenants::postgres::tenant_pool_limits::TenantPoolLimits;
+    use crate::modules::webhooks::audit_relay::activity_relay::PARALLEL_SUBSCRIBERS;
+
+    /// Tenant connections one worker process may hold, so its replicas fit beside the API under
+    /// the Postgres server's default `max_connections` of 100.
+    const TENANT_CONNECTION_BUDGET: u64 = 32;
+
+    #[test]
+    fn tenant_connections_stay_within_the_budget() -> Result<(), TryFromIntError> {
+        let in_flight = u64::try_from(PARALLEL_TENANTS + PARALLEL_SUBSCRIBERS)?;
+        let limits = TenantPoolLimits::WEBHOOK_WORKER;
+
+        assert!(limits.max_connections(in_flight) <= TENANT_CONNECTION_BUDGET);
+        Ok(())
+    }
+}
