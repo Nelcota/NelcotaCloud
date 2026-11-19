@@ -7,6 +7,7 @@ import UserId from '~icons/solar/user-id-linear'
 import type { JSX } from 'react'
 
 import type { ProjectSort, SortKey } from '@/modules/projects/components/project-query'
+import { ProjectAvatar } from '@/modules/projects/components/project-avatar'
 import { siteLabel } from '@/modules/projects/components/site-label'
 import { RoleBadge } from '@/modules/projects/components/role-badge'
 import { SortableColumn } from '@/modules/projects/components/sortable-column'
@@ -17,7 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 type ProjectSummary = components['schemas']['ProjectSummary']
 
-const CELL = 'px-4 py-4'
+const CELL = 'px-2 py-3 sm:px-4'
 
 type ProjectsTableProps = {
   projects: ProjectSummary[]
@@ -28,7 +29,7 @@ type ProjectsTableProps = {
 /** One row per project; the name links to it and the whole row is its click target. */
 export function ProjectsTable({ projects, sort, onSort }: ProjectsTableProps): JSX.Element {
   return (
-    <div className="bg-card overflow-hidden rounded-xl border">
+    <div className="surface overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow>
@@ -37,11 +38,17 @@ export function ProjectsTable({ projects, sort, onSort }: ProjectsTableProps): J
               sort={sort}
               icon={Folder}
               onSort={onSort}
-              className="sm:px-5"
+              className="px-2 sm:px-5"
             >
               Projeto
             </SortableColumn>
-            <SortableColumn sortKey="role" sort={sort} icon={UserId} onSort={onSort}>
+            <SortableColumn
+              sortKey="role"
+              sort={sort}
+              icon={UserId}
+              onSort={onSort}
+              className="px-2 sm:px-4 max-sm:[&_span>svg]:hidden"
+            >
               Papel
             </SortableColumn>
             <TableHead className="hidden h-11 px-4 md:table-cell">
@@ -56,7 +63,7 @@ export function ProjectsTable({ projects, sort, onSort }: ProjectsTableProps): J
             >
               Criado em
             </SortableColumn>
-            <TableHead className="h-11 w-12 px-4 sm:px-5">
+            <TableHead className="hidden h-11 w-12 px-5 sm:table-cell">
               <span className="sr-only">Abrir</span>
             </TableHead>
           </TableRow>
@@ -76,14 +83,23 @@ function ProjectRow({ project }: { project: ProjectSummary }): JSX.Element {
     <TableRow className="group relative">
       {/* `w-full max-w-0` lets the name take the free width and truncate inside it. */}
       <TableCell className={`${CELL} w-full max-w-0 sm:px-5`}>
-        <Link
-          to="/projects/$projectId"
-          params={{ projectId: project.id }}
-          className="block truncate font-medium after:absolute after:inset-0 after:content-['']"
-        >
-          {project.name}
-        </Link>
-        <p className="text-muted-foreground truncate font-mono text-xs">{project.slug}</p>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <ProjectAvatar
+            projectId={project.id}
+            mascotId={project.mascot_id}
+            className="sm:size-10 motion-safe:transition-transform motion-safe:group-active:scale-95"
+          />
+          <div className="min-w-0">
+            <Link
+              to="/projects/$projectId"
+              params={{ projectId: project.id }}
+              className="block truncate font-semibold after:absolute after:inset-0 after:content-['']"
+            >
+              {project.name}
+            </Link>
+            <p className="text-muted-foreground truncate font-mono text-xs">{project.slug}</p>
+          </div>
+        </div>
       </TableCell>
       <TableCell className={CELL}>
         <RoleBadge role={project.role} />
@@ -94,7 +110,7 @@ function ProjectRow({ project }: { project: ProjectSummary }): JSX.Element {
       <TableCell className={`${CELL} text-muted-foreground hidden sm:table-cell`}>
         {formatDate(project.created_at)}
       </TableCell>
-      <TableCell className={`${CELL} text-right sm:px-5`}>
+      <TableCell className={`${CELL} hidden text-right sm:table-cell sm:px-5`}>
         <ArrowRight
           aria-hidden="true"
           className="text-muted-foreground group-hover:text-foreground inline size-5 transition-[color,transform] group-hover:translate-x-0.5 motion-reduce:transition-none"

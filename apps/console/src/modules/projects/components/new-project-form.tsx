@@ -1,4 +1,4 @@
-import type { FormEvent, JSX } from 'react'
+import type { JSX, SubmitEvent } from 'react'
 import { useState } from 'react'
 
 import {
@@ -30,7 +30,7 @@ export function NewProjectForm({
   const step = steps[index]
   const lastIndex = steps.length - 1
 
-  function advance(event: FormEvent<HTMLFormElement>): void {
+  function advance(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault()
 
     if (step === undefined || step.missing !== null) {
@@ -52,7 +52,7 @@ export function NewProjectForm({
   }
 
   return (
-    <form onSubmit={advance} className="bg-card grid gap-5 rounded-xl border p-5">
+    <form onSubmit={advance} className="surface grid gap-5 p-5">
       <p className="sr-only" aria-live="polite">
         Passo {index + 1} de {steps.length}: {step?.label}
       </p>

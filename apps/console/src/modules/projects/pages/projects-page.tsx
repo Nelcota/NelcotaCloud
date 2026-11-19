@@ -48,10 +48,10 @@ function ProjectsContent({ isPending, projects }: ProjectsContentProps): JSX.Ele
       <div
         aria-busy="true"
         aria-label="Carregando projetos"
-        className="grid gap-px overflow-hidden rounded-xl border"
+        className="surface grid gap-px overflow-hidden"
       >
         {SKELETON_ROWS.map((row) => (
-          <div key={row} className="bg-card flex items-center gap-4 px-5 py-5">
+          <div key={row} className="flex items-center gap-4 px-5 py-5">
             <Skeleton className="h-5 w-40" />
             <Skeleton className="h-5 w-16 rounded-full" />
             <Skeleton className="h-4 flex-1" />
