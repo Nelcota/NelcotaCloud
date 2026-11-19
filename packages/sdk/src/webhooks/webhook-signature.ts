@@ -2,6 +2,7 @@ import { WebhookVerificationError } from './webhook-verification-error'
 
 const SECRET_PREFIX = 'whsec_'
 const SIGNATURE_VERSION = 'v1,'
+const SHA256_SIGNATURE_BYTES = 32
 
 /** The secret's key bytes (`whsec_<base64>`, as the console shows it). */
 export function secretKey(secret: string): Uint8Array<ArrayBuffer> {
@@ -31,44 +32,46 @@ function withoutPrefix(secret: string): string {
   return secret
 }
 
-/** `v1,<base64 HMAC-SHA256 of "id.timestamp.body">`, as Standard Webhooks defines it. */
-export async function expectedSignature(
+/** Verifies raw signatures for callers that set their own clock or tolerance. */
+export async function matchesRawSignature(
   key: Uint8Array<ArrayBuffer>,
   signedContent: string,
-): Promise<string> {
+  header: string,
+): Promise<boolean> {
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
     key,
     { name: 'HMAC', hash: 'SHA-256' },
     false,
-    ['sign'],
+    ['verify'],
   )
-  const digest = await crypto.subtle.sign(
-    'HMAC',
-    cryptoKey,
-    new TextEncoder().encode(signedContent),
-  )
-  const binary = String.fromCharCode(...new Uint8Array(digest))
+  const content = new TextEncoder().encode(signedContent)
+  for (const encoded of header.split(' ')) {
+    const signature = signatureBytes(encoded)
 
-  return `${SIGNATURE_VERSION}${btoa(binary)}`
-}
-
-/** The header lists one signature per active secret (two during a rotation). */
-export function hasMatchingSignature(header: string, expected: string): boolean {
-  return header.split(' ').some((signature) => constantTimeEquals(signature, expected))
-}
-
-/** Compares without stopping at the first difference, so timing does not leak the signature. */
-function constantTimeEquals(left: string, right: string): boolean {
-  if (left.length !== right.length) {
-    return false
+    if (signature !== null && (await crypto.subtle.verify('HMAC', cryptoKey, signature, content))) {
+      return true
+    }
   }
 
-  let difference = 0
+  return false
+}
 
-  for (let index = 0; index < left.length; index += 1) {
-    difference |= left.charCodeAt(index) ^ right.charCodeAt(index)
+function signatureBytes(value: string): Uint8Array<ArrayBuffer> | null {
+  if (value.startsWith(SIGNATURE_VERSION) === false) {
+    return null
   }
 
-  return difference === 0
+  const encoded = value.slice(SIGNATURE_VERSION.length)
+  try {
+    const binary = atob(encoded)
+
+    if (binary.length !== SHA256_SIGNATURE_BYTES || btoa(binary) !== encoded) {
+      return null
+    }
+
+    return Uint8Array.from(binary, (character) => character.charCodeAt(0))
+  } catch {
+    return null
+  }
 }

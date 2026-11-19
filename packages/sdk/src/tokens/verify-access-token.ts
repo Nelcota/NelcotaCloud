@@ -1,7 +1,8 @@
+import { compactVerify, decodeJwt, decodeProtectedHeader, errors } from 'jose'
+
 import { withoutTrailingSlashes } from '../http/http-client'
 import { AccessTokenVerificationError } from './access-token-verification-error'
 import { JwksCache } from './jwks-cache'
-import { type JwtParts, splitJwt } from './jwt-parts'
 
 /** Tolerated clock difference with the API, the same the API itself allows. */
 const LEEWAY_SECONDS = 30
@@ -56,33 +57,47 @@ export function createAccessTokenVerifier(
   })
 
   return async (accessToken) => {
-    const parts = splitJwt(accessToken)
-    await checkSignature(parts, keys)
+    const payload = await verifiedPayload(accessToken, keys)
 
-    return checkClaims(parts.payload, { issuer, projectId: options.projectId, now })
+    return checkClaims(payload, { issuer, projectId: options.projectId, now })
   }
 }
 
-async function checkSignature(parts: JwtParts, keys: JwksCache): Promise<void> {
-  const { alg, kid } = parts.header
+async function verifiedPayload(token: string, keys: JwksCache): Promise<Record<string, unknown>> {
+  try {
+    const { alg, kid } = decodeProtectedHeader(token)
+    const payload = decodeJwt(token)
 
-  if (alg !== 'EdDSA' || typeof kid !== 'string') {
-    throw new AccessTokenVerificationError(
-      'malformed',
-      'The token is not an EdDSA JWT with a key id.',
-    )
+    if (alg !== 'EdDSA' || typeof kid !== 'string') {
+      throw new AccessTokenVerificationError(
+        'malformed',
+        'The token is not an EdDSA JWT with a key id.',
+      )
+    }
+
+    await compactVerify(token, (header, signature) => keys.key(header, signature), {
+      algorithms: ['EdDSA'],
+    })
+
+    return payload
+  } catch (error) {
+    throw verificationError(error)
+  }
+}
+
+function verificationError(error: unknown): AccessTokenVerificationError {
+  if (error instanceof AccessTokenVerificationError) {
+    return error
   }
 
-  const key = await keys.key(kid)
-
-  if (
-    (await crypto.subtle.verify('Ed25519', key, parts.signature, parts.signedContent)) === false
-  ) {
-    throw new AccessTokenVerificationError(
+  if (error instanceof errors.JWSSignatureVerificationFailed) {
+    return new AccessTokenVerificationError(
       'invalid_signature',
       'The token signature does not match.',
     )
   }
+
+  return new AccessTokenVerificationError('malformed', 'The access token is not a JWT.')
 }
 
 type ClaimRules = { issuer: string; projectId: string; now: () => number }
