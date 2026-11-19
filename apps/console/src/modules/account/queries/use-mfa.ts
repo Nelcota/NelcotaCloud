@@ -11,11 +11,18 @@ import { disableTotp } from '@/modules/account/api/disable-totp'
 import { enrollTotp } from '@/modules/account/api/enroll-totp'
 import { readMfaStatus } from '@/modules/account/api/read-mfa-status'
 import { verifyTotp } from '@/modules/account/api/verify-totp'
+import { useSession } from '@/shared/auth/use-session'
 
 const MFA_QUERY_KEY = ['account', 'mfa'] as const
 
-export function useMfaStatusQuery(): UseQueryResult<MfaStatus> {
-  return useQuery({ queryKey: MFA_QUERY_KEY, queryFn: readMfaStatus })
+export function useMfaStatusQuery(isEnabled = true): UseQueryResult<MfaStatus> {
+  const accountId = useSession()?.user.id
+
+  return useQuery({
+    queryKey: [...MFA_QUERY_KEY, accountId],
+    queryFn: readMfaStatus,
+    enabled: isEnabled && accountId !== undefined,
+  })
 }
 
 export function useEnrollTotpMutation(): UseMutationResult<TotpEnrollment, Error, void> {

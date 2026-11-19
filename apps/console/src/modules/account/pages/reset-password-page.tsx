@@ -1,53 +1,74 @@
 import { Link } from '@tanstack/react-router'
-import CircleCheck from '~icons/solar/check-circle-linear'
 import type { JSX } from 'react'
 import { useEffect, useState } from 'react'
 
 import { AuthCard } from '@/modules/account/components/auth-card'
+import { BackToLoginLink } from '@/modules/account/components/back-to-login-link'
 import { ResetPasswordForm } from '@/modules/account/components/reset-password-form'
+import { AUTH_MARKS } from '@/modules/account/model/auth-marks'
+import { BROKEN_LINK } from '@/modules/account/model/broken-link'
+import { forgetResetToken, resetTokenOnLoad } from '@/modules/account/model/reset-token-store'
 import { buttonVariants } from '@/shared/ui/button-variants'
-import { clearTokenFromLocation, tokenFromLocation } from '@/shared/routing/token-search'
+import { clearTokenFromLocation } from '@/shared/routing/token-search'
 
 /** Opened from the reset email with its one-time token in the URL fragment. */
 export function ResetPasswordPage(): JSX.Element {
-  const [token] = useState(tokenFromLocation)
+  const [token] = useState(resetTokenOnLoad)
   const [isDone, setIsDone] = useState(false)
 
   useEffect(() => {
     clearTokenFromLocation()
   }, [])
 
+  function finish(): void {
+    forgetResetToken()
+    setIsDone(true)
+  }
+
   if (isDone) {
     return (
       <AuthCard
-        title="Senha alterada"
-        description="Por segurança, todas as sessões abertas foram encerradas."
-        icon={<CircleCheck aria-hidden="true" className="mb-4 size-10 text-emerald-500" />}
+        title="Senha trocada"
+        tabTitle="Senha trocada"
+        description="Entre de novo com a senha nova."
+        mark={AUTH_MARKS.done}
       >
         <Link to="/login" className={buttonVariants({ size: 'lg' })}>
-          Entrar com a nova senha
+          Entrar
         </Link>
       </AuthCard>
     )
   }
 
-  // The link was cut, or the page reloaded after the token left the URL: nothing to redeem.
+  // The link was cut, or opened in a tab that never had the token: nothing to redeem.
   if (token === '') {
     return (
       <AuthCard
-        title="Link inválido"
-        description="Abra o link do email de novo ou peça outro na tela de login."
+        title={BROKEN_LINK.title}
+        tabTitle="Nova senha"
+        description={BROKEN_LINK.description}
+        mark={BROKEN_LINK.mark}
+        footer={<BackToLoginLink />}
       >
-        <Link to="/login" className={buttonVariants({ size: 'lg' })}>
-          Ir para o login
+        <Link
+          to="/login"
+          search={{ etapa: 'recuperar' }}
+          className={buttonVariants({ size: 'lg' })}
+        >
+          Pedir novo link
         </Link>
       </AuthCard>
     )
   }
 
   return (
-    <AuthCard title="Nova senha" description="Escolha uma senha com pelo menos 8 caracteres.">
-      <ResetPasswordForm token={token} onDone={() => setIsDone(true)} />
+    <AuthCard
+      title="Crie uma senha nova"
+      tabTitle="Nova senha"
+      mark={AUTH_MARKS.newPassword}
+      footer={<BackToLoginLink />}
+    >
+      <ResetPasswordForm token={token} onDone={finish} />
     </AuthCard>
   )
 }
