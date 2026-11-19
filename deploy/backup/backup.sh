@@ -7,6 +7,10 @@ set -euo pipefail
 . /usr/local/bin/backup-env.sh
 # shellcheck source=snapshot-manifest.sh
 . /usr/local/bin/snapshot-manifest.sh
+# shellcheck source=storage-snapshot.sh
+. /usr/local/bin/storage-snapshot.sh
+# shellcheck source=snapshot-retention.sh
+. /usr/local/bin/snapshot-retention.sh
 
 BACKUP_INTERVAL_SECONDS="${BACKUP_INTERVAL_SECONDS:-86400}"
 BACKUP_RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-30}"
@@ -28,6 +32,12 @@ run_backup() (
     tar --create --gzip --file="${work_dir}/${CLUSTER_ARCHIVE}" \
         --directory="${work_dir}/cluster" . || return
 
+    if [[ -n "${STORAGE_BACKUP_SOURCE_BUCKET:-}" ]]; then
+        archive_storage "${work_dir}" "${snapshot}" || return
+        rclone copyto --immutable "${work_dir}/storage.keys" "backup:${snapshot}/storage.keys" || return
+        rclone copyto --immutable "${work_dir}/storage.location" "backup:${snapshot}/storage.location" || return
+    fi
+
     write_snapshot_manifest "${work_dir}" || return
     rclone copyto --immutable "${work_dir}/${CLUSTER_ARCHIVE}" \
         "backup:${snapshot}/${CLUSTER_ARCHIVE}" || return
@@ -35,8 +45,7 @@ run_backup() (
         "${work_dir}/${SNAPSHOT_MANIFEST}" "backup:${snapshot}/${SNAPSHOT_MANIFEST}" || return
     log "uploaded verified cluster snapshot ${snapshot}" || return
 
-    rclone delete --min-age "${BACKUP_RETENTION_DAYS}d" backup: || return
-    rclone rmdirs --leave-root backup:
+    prune_snapshots "${BACKUP_RETENTION_DAYS}"
 )
 
 run_scheduled_backup() {

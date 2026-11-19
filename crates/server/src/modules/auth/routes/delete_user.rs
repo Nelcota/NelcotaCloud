@@ -35,6 +35,9 @@ pub async fn delete_user(
         return Err(ApiError::NotFound("user"));
     }
 
+    state
+        .erase_user_storage(admin.tenant_id, (&admin.pool, user_id))
+        .await;
     let event = NewAuditEvent::by_admin(AuditAction::UserDeleted, user_id, admin.author());
     record_audit_event(&admin.pool, event).await;
 

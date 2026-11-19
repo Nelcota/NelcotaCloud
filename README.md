@@ -1,6 +1,6 @@
 # NelcotaCloud
 
-NelcotaCloud is a Rust backend for multitenant Auth, Database, and project Cache. Teams manage projects in
+NelcotaCloud is a Rust backend for multitenant Auth, Database, Cache, and Storage. Teams manage projects in
 the React console. Applications use the HTTP API or the TypeScript SDK.
 
 ## Local development
@@ -40,4 +40,4 @@ CI uses Rust 1.100.0, Node.js 26.13.1, and npm 12.2.3.
 
 See the [architecture map](docs/architecture.md), [SDK usage](packages/sdk/README.md),
 [project database migrations](docs/database-migrations.md), [project cache](docs/project-cache.md),
-and [deployment guide](docs/deploy.md).
+[project storage](docs/project-storage.md), and [deployment guide](docs/deploy.md).

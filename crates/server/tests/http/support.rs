@@ -155,16 +155,21 @@ impl TestServer {
     }
 
     pub async fn start_with_google(google: Option<ProviderEndpoints>) -> TestResult<Self> {
-        Self::start_with_options(google, None).await
+        Self::start_with_options(google, None, None).await
     }
 
     pub async fn start_with_cache(cache_url: String) -> TestResult<Self> {
-        Self::start_with_options(None, Some(cache_url)).await
+        Self::start_with_options(None, Some(cache_url), None).await
+    }
+
+    pub async fn start_with_storage(endpoint: String) -> TestResult<Self> {
+        Self::start_with_options(None, None, Some(endpoint)).await
     }
 
     async fn start_with_options(
         google: Option<ProviderEndpoints>,
         cache_url: Option<String>,
+        storage_endpoint: Option<String>,
     ) -> TestResult<Self> {
         LazyLock::force(&TEST_TRACING);
         let live_slot = Arc::clone(&LIVE_SERVERS).acquire_owned().await?;
@@ -197,6 +202,13 @@ impl TestServer {
                     .ok()
                     .filter(|url| url.trim().is_empty() == false)
             }),
+            storage_r2_bucket: storage_endpoint.as_ref().map(|_| "test-files".to_owned()),
+            storage_r2_access_key_id: storage_endpoint.as_ref().map(|_| "test-key".to_owned()),
+            storage_r2_secret_access_key: storage_endpoint
+                .as_ref()
+                .map(|_| "test-secret".to_owned()),
+            storage_r2_adopt_legacy: None,
+            storage_r2_endpoint: storage_endpoint,
             platform_tenant_slug: Some(platform_slug.clone()),
             captcha_verify_url: Some(fake_turnstile.verify_url.clone()),
         };

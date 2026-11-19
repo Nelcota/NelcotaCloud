@@ -279,7 +279,8 @@ The backup service takes a PostgreSQL base backup with streamed WAL for the enti
 verifies it with `pg_verifybackup`, encrypts the archive and uploads it to R2. The completion
 marker is uploaded last. All tenant databases and the control plane recover together to the
 end of that backup. Snapshots are daily by default and expire after `BACKUP_RETENTION_DAYS`
-(30 days). The archive includes PostgreSQL roles and stored password verifiers. Keep the backup
+(30 days). Retention uses the snapshot timestamp so all contents expire together, including
+objects with an older modification time. The archive includes PostgreSQL roles and stored password verifiers. Keep the backup
 encryption password, the application master key, and the applicable database credentials
 available outside the VPS.
 
@@ -288,6 +289,7 @@ verifies the archive, boots the recovered PostgreSQL on a private Unix socket, a
 every active tenant in the control plane has its database. It also supports logical snapshots
 with a completion marker and rejects a logical snapshot with missing tenant databases.
 Use the credentials from the physical snapshot when staging it.
+When Project Storage is configured, see [the file backup and restore settings](project-storage.md#backup-and-recovery).
 
 ```bash
 compose=(docker compose -f docker-compose.prod.yml --env-file .env.production)
@@ -318,7 +320,11 @@ Compose project and other host ports behind a shared proxy:
 docker compose -p nelcota-staging -f docker-compose.prod.yml --env-file .env.staging up -d --build
 ```
 
-After first boot, use the [deployment workflow](#4-updates) for staging and production.
+After first boot, use **Deploy NelcotaCloud staging** in GitHub Actions for a staging-only release.
+Configure the `staging` environment with its own Compose project, SSH target, known host key and
+API credentials. Keep the bucket and its scoped runtime and backup credentials in the staging VPS
+environment file. The deployment checks the internal Storage readiness endpoint when a bucket is
+configured. The [deployment workflow](#4-updates) runs both environments.
 
 ## 7. Logs
 

@@ -1,11 +1,11 @@
 # @nelcota/sdk
 
-TypeScript client for NelcotaCloud Auth and Database. The package uses `fetch` and WebCrypto
+TypeScript client for NelcotaCloud Auth, Database, and Storage. The package uses `fetch` and WebCrypto
 and bundles its verification libraries, so consumers install no runtime dependencies.
 
 ## Package exports
 
-Use `createClient` to get the configured `auth` and `database` clients. The package also
+Use `createClient` to get the configured `auth`, `database`, and `storage` clients. The package also
 exports their classes, query builders, types, and errors for consumers that reference them
 directly. Server applications can use `createAccessTokenVerifier` and `verifyWebhook`
 independently of the client.
@@ -73,6 +73,12 @@ revoke others). Errors are `NelcotaError` with `status`, `code` and `requestId`.
 In browsers, the default storage is `localStorage` so sessions survive reloads. JavaScript on the
 same origin can read these tokens; prevent XSS and use a server-managed `HttpOnly` cookie session
 when the application requires tokens to be inaccessible to browser scripts.
+
+## Storage
+
+Use `client.storage` while signed in to list private buckets, upload files, page through the user's
+files, get short-lived download URLs, and delete files. See the [Project Storage guide](../../docs/project-storage.md)
+for the SDK example and the R2 setup.
 
 ## Database
 

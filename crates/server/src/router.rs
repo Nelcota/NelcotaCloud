@@ -26,6 +26,7 @@ use crate::modules::cache::routes::cache_routes::cache_routes;
 use crate::modules::database::query::preferences::PREFER_HEADER;
 use crate::modules::database::routes::database_routes::database_routes;
 use crate::modules::oauth::routes::oauth_routes::oauth_routes;
+use crate::modules::storage::routes::storage_routes::storage_routes;
 use crate::modules::team::routes::team_routes::team_routes;
 use crate::modules::tenants::access::api_key_tenant::API_KEY_HEADER;
 use crate::modules::tenants::access::tenant_admin::PROJECT_HEADER;
@@ -56,6 +57,7 @@ pub fn build_router(state: AppState) -> Router {
             get(move || ready(Json(Arc::clone(&document)))),
         )
         .route("/ready", get(health::readiness))
+        .route("/ops/storage/health", get(health::storage_readiness))
         .route(
             "/ops/webhooks/worker-health",
             get(crate::modules::webhooks::health::worker_health::worker_health),
@@ -108,6 +110,7 @@ pub fn api_routes() -> OpenApiRouter<AppState> {
         .merge(oauth_routes())
         .merge(database_routes())
         .merge(cache_routes())
+        .merge(storage_routes())
 }
 
 /// Browser apps of any origin call the API with the publishable key; no cookies are used,

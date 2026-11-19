@@ -15,6 +15,9 @@ use crate::modules::database::execution::session_slots::SessionSlots;
 use crate::modules::database::schema::schema_cache::SchemaCache;
 use crate::modules::oauth::login::oauth_login_context::OAuthLoginContext;
 use crate::modules::oauth::provider::provider_endpoints::OAuthEndpoints;
+use crate::modules::storage::object_store::r2_store::R2Store;
+use crate::modules::storage::storage_error::StorageError;
+use crate::modules::storage::transfer::upload::StorageTransfer;
 use crate::modules::tenants::api_keys::api_key_usage::ApiKeyUsage;
 use crate::modules::tenants::captcha::captcha_requirement::CaptchaRequirement;
 use crate::modules::tenants::captcha::captcha_site_verify::SiteVerifier;
@@ -30,12 +33,14 @@ use crate::modules::webhooks::runtime::webhook_runtime::WebhookRuntime;
 use crate::rate_limits::RateLimits;
 use crate::shared::crypto::opaque_token::TokenHash;
 use crate::shared::crypto::secret_box::SecretBox;
+use crate::shared::http::api_error::ApiError;
 use crate::shared::http::client_ip::ClientIpSource;
 
 #[derive(Clone)]
 pub struct AppState {
     pub control_plane_pool: PgPool,
     pub cache_store: Option<CacheStore>,
+    pub storage_store: Option<R2Store>,
     pub cache_authentication_pool: PgPool,
     pub project_usage: ProjectUsageCache,
     pub tenant_pools: Arc<TenantPoolRegistry>,
@@ -66,6 +71,34 @@ impl FromRef<AppState> for ClientIpSource {
 }
 
 impl AppState {
+    pub async fn erase_user_storage(&self, tenant: uuid::Uuid, account: (&PgPool, uuid::Uuid)) {
+        let (tenant_pool, user) = account;
+        let pools = (&self.control_plane_pool, tenant_pool);
+
+        if crate::modules::storage::catalog::user_erasure::apply_user_erasure(
+            pools,
+            tenant,
+            &[user],
+        )
+        .await
+        .is_err()
+        {
+            tracing::warn!("user storage erasure deferred to durable outbox");
+        }
+    }
+
+    pub fn storage_transfer(&self) -> Result<StorageTransfer<'_>, ApiError> {
+        let store = self
+            .storage_store
+            .as_ref()
+            .ok_or(StorageError::Unavailable)?;
+
+        Ok(StorageTransfer {
+            pool: &self.control_plane_pool,
+            store,
+        })
+    }
+
     pub fn database_sessions(&self) -> DatabaseSessions<'_> {
         DatabaseSessions {
             tenant_pools: &self.tenant_pools,

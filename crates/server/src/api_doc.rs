@@ -27,6 +27,7 @@ pub const OPENAPI_FILE: &str = "openapi.json";
         (name = "database", description = "Tables of the project's Postgres database as a REST API, under row level security"),
         (name = "database-admin", description = "Tables, policies and SQL of the project's database (console and secret key)"),
         (name = "cache", description = "Optional project cache for application backends"),
+        (name = "storage", description = "Private project buckets and signed file transfers"),
         (name = "webhooks", description = "Signed HTTP calls to the tenant's servers when its users change (Standard Webhooks)"),
         (name = "platform", description = "Projects of a console account (platform access token)"),
         (name = "platform-admin", description = "Operations of the platform operator (admin token)"),

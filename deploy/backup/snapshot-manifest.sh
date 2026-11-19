@@ -8,6 +8,11 @@ valid_snapshot_name() {
 write_snapshot_manifest() (
     cd -- "${1}" || return
     if [[ -f "${CLUSTER_ARCHIVE}" ]]; then
+        if [[ -f storage.keys && -f storage.location ]]; then
+            sha256sum -- "${CLUSTER_ARCHIVE}" storage.keys storage.location >"${SNAPSHOT_MANIFEST}"
+            return
+        fi
+
         sha256sum -- "${CLUSTER_ARCHIVE}" >"${SNAPSHOT_MANIFEST}"
         return
     fi
@@ -24,13 +29,17 @@ verify_snapshot_manifest() (
     [[ -f "${SNAPSHOT_MANIFEST}" ]] || return 1
     while IFS=' ' read -r checksum filename; do
         [[ "${checksum}" =~ ^[0-9a-f]{64}$ ]] || return 1
-        [[ "${filename}" =~ ^(cluster\.tar\.gz|globals\.sql|nelcota_control\.dump|tenant_[a-z][a-z0-9_]{2,39}\.dump)$ ]] || return 1
+        [[ "${filename}" =~ ^(cluster\.tar\.gz|globals\.sql|storage\.keys|storage\.location|nelcota_control\.dump|tenant_[a-z][a-z0-9_]{2,39}\.dump)$ ]] || return 1
         [[ -z "${entries[${filename}]:-}" ]] || return 1
         entries["${filename}"]=1
     done <"${SNAPSHOT_MANIFEST}"
 
     if [[ -n "${entries[${CLUSTER_ARCHIVE}]:-}" ]]; then
-        [[ "${#entries[@]}" -eq 1 ]] || return 1
+        if [[ -e storage.keys || -e storage.location ]]; then
+            [[ "${#entries[@]}" -eq 3 && -n "${entries[storage.keys]:-}" && -n "${entries[storage.location]:-}" ]] || return 1
+        else
+            [[ "${#entries[@]}" -eq 1 ]] || return 1
+        fi
         sha256sum --check --strict --status -- "${SNAPSHOT_MANIFEST}"
         return
     fi

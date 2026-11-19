@@ -247,6 +247,9 @@ through a REST API governed by row-level security.
   then stores expiring JSON in private Valkey under the verified project ID and generation.
   Cache settings and credentials are removed when tenant deletion retires access.
   See [project cache](project-cache.md).
+- Project Storage (`/storage/v1`) stores a scoped catalog in the control plane and uploads file
+  bytes directly to a private R2 bucket using short-lived signatures. The catalog queues cleanup
+  in the same transaction as object, bucket, or project deletion. See [project storage](project-storage.md).
 - Every response carries a server-generated `x-request-id` (never the client's), also logged in
   the request span; responses default to `Cache-Control: no-store` (tower-http layers).
 - The API supervises the schedule publisher and maintenance tasks. The dedicated worker stops
@@ -331,6 +334,8 @@ Modular monolith in `crates/server/src/`: one folder per business context under 
     cases), `signing` (secrets, signatures), `outbox` (subscriptions cache, recorder, wake-up
     hints), `scheduling` (durable wake-up times), `delivery` (transport and DNS guard, queue, retries, worker, delivery log,
     test send), `runtime` (what `AppState` holds).
+  - `storage/`: private buckets, object catalog and quota, project and user access, R2 signatures,
+    and durable cleanup for expired uploads and deleted objects.
   - `cache/`: scoped credential access and quota, JSON entry validation and the Valkey connection,
     project settings and credentials, and HTTP routes.
   - `database/`: `access` (the caller's role and claims), `execution` (request transaction,
@@ -349,10 +354,11 @@ Modular monolith in `crates/server/src/`: one folder per business context under 
 - Split a file when it has more than one reason to change: a type and its storage, two providers,
   two endpoints, a rule and its HTTP mapping.
 - Dependencies point one way: `tenants → shared`, `cache → tenants`, `webhooks → tenants`,
+  `storage → auth, tenants`,
   `auth → webhooks, tenants`, `oauth → auth, webhooks, tenants`, `team → auth, tenants`,
   `database → tenants`.
   Never create a cycle; if two modules need each other, the shared piece belongs in the lower one.
-- A new product of the BaaS (storage, functions) starts as a new module; split modules
+- A new product of the BaaS starts as a new module; split modules
   into workspace crates only when the compiler-enforced boundary is worth the extra setup.
 - Migrations live in `crates/server/migrations/` (`control_plane/` and `tenant/`). Tenant
   migrations run with `search_path=auth`; `tenant_migration` first moves an old database's
