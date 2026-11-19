@@ -20,6 +20,7 @@ pub async fn build_settings(
     let unguessable_password = encode_hex(&random_bytes::<DUMMY_PASSWORD_BYTES>());
 
     Ok(AppSettings {
+        webhook_worker_replicas: config.expected_webhook_workers(),
         token_issuer: config.token_issuer(),
         admin_token_hash: hash_opaque_token(config.admin_token.trim()),
         dummy_password_hash: hash_password(unguessable_password).await?,

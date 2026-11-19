@@ -7,6 +7,7 @@ use crate::startup::config_urls::{validate_public_base_url, validate_tenant_data
 pub struct AppConfig {
     pub control_plane_database_url: String,
     pub tenant_database_base_url: String,
+    pub database_runtime_password: Option<String>,
     pub master_key_hex: String,
     pub admin_token: String,
     pub public_base_url: String,
@@ -22,6 +23,8 @@ pub struct AppConfig {
     /// Development only: lets webhook endpoints use plain http and local or private hosts.
     /// Never enable it in production (it would allow SSRF into the network).
     pub webhook_allow_private_hosts: Option<bool>,
+    pub webhook_worker_replicas: Option<u16>,
+    pub cache_valkey_url: Option<String>,
     /// Slug of the tenant whose users are the platform accounts that log into the console.
     /// Unset, the platform API answers 503.
     pub platform_tenant_slug: Option<String>,
@@ -44,6 +47,7 @@ impl AppConfig {
         Self {
             control_plane_database_url: self.control_plane_database_url.trim().to_owned(),
             tenant_database_base_url: self.tenant_database_base_url.trim().to_owned(),
+            database_runtime_password: self.database_runtime_password,
             master_key_hex: self.master_key_hex.trim().to_owned(),
             admin_token: self.admin_token.trim().to_owned(),
             public_base_url: self.public_base_url.trim().to_owned(),
@@ -53,6 +57,11 @@ impl AppConfig {
             client_ip_header: self.client_ip_header.map(|header| header.trim().to_owned()),
             tenant_smtp_allow_any_host: self.tenant_smtp_allow_any_host,
             webhook_allow_private_hosts: self.webhook_allow_private_hosts,
+            webhook_worker_replicas: self.webhook_worker_replicas,
+            cache_valkey_url: self
+                .cache_valkey_url
+                .map(|url| url.trim().to_owned())
+                .filter(|url| url.is_empty() == false),
             platform_tenant_slug: self
                 .platform_tenant_slug
                 .map(|slug| slug.trim().to_owned())
@@ -67,8 +76,16 @@ impl AppConfig {
     pub fn validate(&self) -> Result<(), ConfigError> {
         self.validate_required_values()?;
         self.validate_secrets()?;
+        if (1..=8).contains(&self.expected_webhook_workers()) == false {
+            return Err(ConfigError::InvalidWebhookWorkerReplicas);
+        }
+
         validate_public_base_url(&self.public_base_url)?;
         validate_tenant_database_base_url(&self.tenant_database_base_url)
+    }
+
+    pub fn expected_webhook_workers(&self) -> u16 {
+        self.webhook_worker_replicas.unwrap_or(1)
     }
 
     fn validate_required_values(&self) -> Result<(), ConfigError> {
@@ -102,6 +119,17 @@ impl AppConfig {
             return Err(ConfigError::AdminTokenTooShort);
         }
 
+        if self
+            .database_runtime_password
+            .as_ref()
+            .is_some_and(|password| {
+                password.len() != MASTER_KEY_HEX_LENGTH
+                    || password.bytes().all(|byte| byte.is_ascii_hexdigit()) == false
+            })
+        {
+            return Err(ConfigError::InvalidDatabaseRuntimePassword);
+        }
+
         Ok(())
     }
 
@@ -127,6 +155,7 @@ mod tests {
         AppConfig {
             control_plane_database_url: "postgres://user:pass@localhost:5434/control".to_owned(),
             tenant_database_base_url: "postgres://user:pass@localhost:5434".to_owned(),
+            database_runtime_password: None,
             master_key_hex: "a".repeat(MASTER_KEY_HEX_LENGTH),
             admin_token: "b".repeat(MIN_ADMIN_TOKEN_LENGTH),
             public_base_url: "https://auth.example.com".to_owned(),
@@ -136,6 +165,8 @@ mod tests {
             client_ip_header: None,
             tenant_smtp_allow_any_host: None,
             webhook_allow_private_hosts: None,
+            webhook_worker_replicas: None,
+            cache_valkey_url: None,
             platform_tenant_slug: None,
             captcha_verify_url: None,
         }
@@ -144,6 +175,20 @@ mod tests {
     #[test]
     fn accepts_a_valid_config() {
         assert_eq!(valid_config().validate(), Ok(()));
+    }
+
+    #[test]
+    fn validates_the_expected_webhook_worker_count() {
+        for count in [0, 9] {
+            let config = AppConfig {
+                webhook_worker_replicas: Some(count),
+                ..valid_config()
+            };
+            assert_eq!(
+                config.validate(),
+                Err(ConfigError::InvalidWebhookWorkerReplicas)
+            );
+        }
     }
 
     #[test]

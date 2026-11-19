@@ -297,6 +297,7 @@
           "tenant-admin"
         ],
         "summary": "`GET /admin/audit-events`: the project's activity log, newest first, kept for 90 days.",
+        "description": "Optionally narrowed to one kind of event and searched by email or IP address.",
         "operationId": "list_audit_events",
         "parameters": [
           {
@@ -307,6 +308,63 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "description": "Only events of this kind.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Narrows the activity log to one kind of event.",
+              "enum": [
+                "logins",
+                "failures",
+                "changes",
+                "security",
+                "account",
+                "project"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Part of the email or IP address to search for.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "description": "Only events of the last this many days. The log keeps 90.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Only events at or after this instant (RFC 3339). Pass with `to`, instead of `days`.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Only events before this instant (RFC 3339), at most 92 days after `from`.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
             }
           },
           {
@@ -341,7 +399,7 @@
             }
           },
           "400": {
-            "description": "Invalid user, cursor or limit",
+            "description": "Invalid user, kind, search, period, cursor or limit",
             "content": {
               "application/json": {
                 "schema": {
@@ -352,6 +410,374 @@
           },
           "403": {
             "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/audit-events/export": {
+      "get": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`GET /admin/audit-events/export`: the matching events as a CSV file, newest first, up to\n100,000 rows.",
+        "description": "Takes the same filters as the activity log, so the file holds what the console shows.",
+        "operationId": "export_audit_events",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "description": "Only events about this user.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "description": "Only events of this kind.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Narrows the activity log to one kind of event.",
+              "enum": [
+                "logins",
+                "failures",
+                "changes",
+                "security",
+                "account",
+                "project"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Part of the email or IP address to search for.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "description": "Only events of the last this many days. The log keeps 90.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Only events at or after this instant (RFC 3339). Pass with `to`, instead of `days`.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Only events before this instant (RFC 3339), at most 92 days after `from`.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The events as CSV",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid user, kind, search or period",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/audit-events/summary": {
+      "get": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`GET /admin/audit-events/summary`: counts and the most refused IP addresses over a period.",
+        "operationId": "read_audit_summary",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "description": "How many days back from now. The activity log keeps 90 days. Without a period, the\nlast 7 days.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Only events at or after this instant (RFC 3339). Pass with `to`, instead of `days`.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Only events before this instant (RFC 3339), at most 92 days after `from`.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The period's summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Days outside 1 to 90, or an invalid range",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/blocked-addresses": {
+      "get": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`GET /admin/blocked-addresses`: the addresses and ranges refused by the public auth routes,\nnewest first. Expired blocks are left out.",
+        "operationId": "list_blocked_addresses",
+        "responses": {
+          "200": {
+            "description": "Blocks in force",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BlockedAddress"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`POST /admin/blocked-addresses`: refuses logins, signups and emailed links from the address.\nBlocking a listed range again replaces its note and expiry.",
+        "operationId": "block_address",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlockAddressBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Address blocked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockedAddress"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not an address, or a range wider than /16 (/48 for IPv6)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The project already blocks 500 addresses",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/blocked-addresses/{block_id}": {
+      "delete": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`DELETE /admin/blocked-addresses/{block_id}`: the address may log in again at once.",
+        "operationId": "unblock_address",
+        "parameters": [
+          {
+            "name": "block_id",
+            "in": "path",
+            "description": "Id of the block",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Block removed"
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No block with this id",
             "content": {
               "application/json": {
                 "schema": {
@@ -873,7 +1299,7 @@
         "tags": [
           "tenant-admin"
         ],
-        "summary": "`PATCH /admin/settings` (secret key only): changes only the fields that are sent.",
+        "summary": "Changes only the fields that are sent for the resolved project.",
         "operationId": "change_tenant_settings",
         "requestBody": {
           "content": {
@@ -897,7 +1323,7 @@
             }
           },
           "400": {
-            "description": "Invalid name or site URL",
+            "description": "Invalid project settings",
             "content": {
               "application/json": {
                 "schema": {
@@ -1199,6 +1625,17 @@
         ],
         "summary": "`GET /admin/usage`: active users this month and last month.",
         "operationId": "read_project_usage",
+        "parameters": [
+          {
+            "name": "cached",
+            "in": "query",
+            "description": "Allow a cached snapshot up to 30 seconds old.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Monthly active users",
@@ -1206,6 +1643,68 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProjectUsage"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/usage/daily": {
+      "get": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`GET /admin/usage/daily`: logins and sign-ups per UTC day, for the console's chart.",
+        "operationId": "read_daily_usage",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "description": "How many days, ending today (UTC). The activity log keeps logins for 90 days.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One entry per day, oldest first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyUsage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Days outside 1 to 90",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             }
@@ -1266,10 +1765,13 @@
           {
             "name": "limit",
             "in": "query",
+            "description": "Set to zero to return only the total.",
             "required": false,
             "schema": {
               "type": "integer",
-              "format": "int64"
+              "format": "int64",
+              "maximum": 100,
+              "minimum": 0
             }
           },
           {
@@ -1295,6 +1797,205 @@
           },
           "400": {
             "description": "Invalid search, status, limit or offset",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/users/export": {
+      "get": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`GET /admin/users/export`: the matching users as a CSV file, up to 100,000 rows.",
+        "description": "Takes the same filters and order as the user list, so the file holds what the console shows.",
+        "operationId": "export_users",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "query",
+            "description": "Part of the email to search for.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Only users in this state; every user without it.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Narrows the user list to the accounts that need an admin's attention.",
+              "enum": [
+                "unverified",
+                "banned"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "description": "The order of the rows, as in the list.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "The order of the admin user list.",
+              "enum": [
+                "created_at",
+                "last_sign_in"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The users as CSV",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid search, status or order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/users/page": {
+      "get": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "Lists users newest first, or by most recent login, using a continuation cursor.",
+        "operationId": "list_users_page",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "query",
+            "description": "Part of the email to search for.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Only users in this state; every user without it.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Narrows the user list to the accounts that need an admin's attention.",
+              "enum": [
+                "unverified",
+                "banned"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 100,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "description": "The previous response's `next_cursor`. Omit for the first page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "description": "The order of the list; a `before` cursor only continues the order it came from.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "The order of the admin user list.",
+              "enum": [
+                "created_at",
+                "last_sign_in"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of users without a total count",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserCursorPageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid search, status, order, limit or cursor",
             "content": {
               "application/json": {
                 "schema": {
@@ -2044,6 +2745,75 @@
           },
           "409": {
             "description": "The project already has 5 endpoints",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/webhooks/queue-health": {
+      "get": {
+        "tags": [
+          "webhooks"
+        ],
+        "operationId": "read_webhook_queue_health",
+        "responses": {
+          "200": {
+            "description": "Delivery queue health for the authorized project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueHealth"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Project access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many queue reads for this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Queue health is unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -3933,6 +4703,492 @@
         ]
       }
     },
+    "/cache/v1/delete": {
+      "post": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Removes a cache entry, including when it is already absent.",
+        "operationId": "delete_cache_entry",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CacheKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Cache entry removed"
+          },
+          "400": {
+            "description": "Invalid cache request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid cache credential",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Project cache is disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Cache payload is too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project quota reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Cache is unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cache_credential": []
+          }
+        ]
+      }
+    },
+    "/cache/v1/get": {
+      "post": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Reads a cached JSON value.",
+        "operationId": "get_cache_entry",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CacheKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Cache hit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CacheEntry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid cache request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid cache credential",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Cache miss",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Project cache is disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Cache payload is too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project quota reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Cache is unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cache_credential": []
+          }
+        ]
+      }
+    },
+    "/cache/v1/set": {
+      "post": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Writes a JSON value with mandatory expiration.",
+        "operationId": "set_cache_entry",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CacheWriteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Cache entry written"
+          },
+          "400": {
+            "description": "Invalid cache request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid cache credential",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Project cache is disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Cache payload is too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Project quota reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Cache is unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cache_credential": []
+          }
+        ]
+      }
+    },
+    "/database/v1/migrations": {
+      "get": {
+        "tags": [
+          "database-admin"
+        ],
+        "summary": "Lists applied SQL migrations, newest version first.",
+        "operationId": "list",
+        "parameters": [
+          {
+            "name": "before",
+            "in": "query",
+            "description": "Pass the previous page's `next_before` to fetch older versions.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "maximum": 9007199254740991,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Applied migrations for the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MigrationHistory"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid history cursor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires a secret API key or project membership",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "database-admin"
+        ],
+        "summary": "Applies one versioned SQL file atomically, or returns its existing history entry on replay.",
+        "operationId": "apply",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MigrationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The same migration was already applied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MigrationRecord"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Migration applied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MigrationRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or SQL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires a secret API key or project membership",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Applied version differs or a newer version exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request body is too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Expected a JSON body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database is busy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Migration timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
     "/database/v1/schema": {
       "get": {
         "tags": [
@@ -4773,6 +6029,373 @@
           },
           "403": {
             "description": "Not an owner of this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platform_account": []
+          }
+        ]
+      }
+    },
+    "/platform/v1/projects/{project_id}/cache": {
+      "get": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Reads the project's cache configuration and credential metadata.",
+        "operationId": "read_cache_settings",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "description": "Project ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project cache settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectCacheSettings"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid platform token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Project ownership required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platform_account": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Enables or disables cache for the project.",
+        "operationId": "change_cache_settings",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "description": "Project ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeCacheSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Cache settings updated"
+          },
+          "400": {
+            "description": "Invalid cache settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid platform token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Project ownership required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Cache is unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platform_account": []
+          }
+        ]
+      }
+    },
+    "/platform/v1/projects/{project_id}/cache/clear": {
+      "post": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Invalidates the active cache entries of this project.",
+        "operationId": "clear_cache",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "description": "Project ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Project cache cleared"
+          },
+          "401": {
+            "description": "Invalid platform token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Project ownership required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Project cache is disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platform_account": []
+          }
+        ]
+      }
+    },
+    "/platform/v1/projects/{project_id}/cache/credentials": {
+      "post": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Issues a cache-only credential and returns its token once.",
+        "operationId": "create_cache_credential",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "description": "Project ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCacheCredential"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Issued cache credential",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedCacheCredential"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid credential name",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid platform token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Project ownership required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Project cache is disabled or credential limit reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Cache is unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platform_account": []
+          }
+        ]
+      }
+    },
+    "/platform/v1/projects/{project_id}/cache/credentials/{credential_id}": {
+      "delete": {
+        "tags": [
+          "cache"
+        ],
+        "summary": "Revokes a credential belonging to the project.",
+        "operationId": "revoke_cache_credential",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "description": "Project ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "credential_id",
+            "in": "path",
+            "description": "Credential ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Cache credential revoked"
+          },
+          "401": {
+            "description": "Invalid platform token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Project ownership required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Credential not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -5825,6 +7448,14 @@
             "type": "string",
             "description": "`publishable` or `secret`."
           },
+          "last_used_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "The last request made with the key, to within a few minutes; empty when it has not been\nused since use started being recorded."
+          },
           "name": {
             "type": "string",
             "description": "The owner's label for the key; empty for keys created without one."
@@ -5850,7 +7481,28 @@
           "user_unbanned",
           "user_deleted",
           "sessions_revoked",
-          "mfa_reset"
+          "mfa_reset",
+          "login_rate_limited",
+          "mfa_code_failed",
+          "refresh_token_reused",
+          "signed_up",
+          "email_verified",
+          "logged_out",
+          "magic_link_sent",
+          "password_reset_requested",
+          "mfa_enabled",
+          "mfa_disabled",
+          "api_key_created",
+          "api_key_revoked",
+          "settings_changed",
+          "member_invited",
+          "member_removed",
+          "member_role_changed",
+          "ownership_transferred",
+          "migration_applied",
+          "schema_changed",
+          "address_blocked",
+          "address_unblocked"
         ]
       },
       "AuditActorKind": {
@@ -5885,6 +7537,13 @@
             ],
             "format": "uuid"
           },
+          "details": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "A few facts about the change: `section`, `operation`, `table`, `name` or `role`."
+          },
           "email": {
             "type": [
               "string",
@@ -5916,6 +7575,20 @@
           "occurred_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "request_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The id the server gave the request, also sent back in `x-request-id`."
+          },
+          "user_agent": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "As the client sent it; a description, never proof."
           },
           "user_id": {
             "type": [
@@ -5949,6 +7622,46 @@
           }
         }
       },
+      "AuditSummary": {
+        "type": "object",
+        "description": "What happened in the project over a period, so the log answers \"anything unusual?\" first.",
+        "required": [
+          "logins",
+          "active_users",
+          "failures",
+          "changes",
+          "failing_addresses"
+        ],
+        "properties": {
+          "active_users": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Distinct accounts that logged in."
+          },
+          "changes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Changes to users: password, data, ban, deletion, sessions, authenticator."
+          },
+          "failing_addresses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FailingAddress"
+            },
+            "description": "The IP addresses with the most refused logins, most first."
+          },
+          "failures": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Refused logins (wrong email or password)."
+          },
+          "logins": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Successful logins."
+          }
+        }
+      },
       "AuthEmailKind": {
         "type": "string",
         "description": "The emails that carry a one-time link; each has its own wording per project.",
@@ -5957,6 +7670,140 @@
           "password_reset",
           "magic_link"
         ]
+      },
+      "BlockAddressBody": {
+        "type": "object",
+        "required": [
+          "address"
+        ],
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "An address (`203.0.113.7`) or a range (`203.0.113.0/24`, at most /16, or /48 for IPv6)."
+          },
+          "expires_in_hours": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Lifts the block after this many hours; without it, the block lasts until removed."
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why it was blocked, for the team."
+          }
+        }
+      },
+      "BlockedAddress": {
+        "type": "object",
+        "description": "One blocked address or range.",
+        "required": [
+          "id",
+          "network",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When the block lapses; `null` blocks until removed."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "network": {
+            "type": "string",
+            "description": "The address or range, such as `203.0.113.7/32` or `203.0.113.0/24`."
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CacheCredential": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "CacheEntry": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {}
+        }
+      },
+      "CacheKeyRequest": {
+        "type": "object",
+        "required": [
+          "key"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Nonblank key of up to 256 UTF-8 bytes."
+          }
+        },
+        "additionalProperties": false
+      },
+      "CacheWriteRequest": {
+        "type": "object",
+        "required": [
+          "key",
+          "value"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Nonblank key of up to 256 UTF-8 bytes."
+          },
+          "ttl_seconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "default": 300,
+            "maximum": 3600,
+            "minimum": 1
+          },
+          "value": {
+            "description": "JSON value. Its serialized representation can be up to 64 KiB."
+          }
+        },
+        "additionalProperties": false
       },
       "CaptchaSettingsBody": {
         "type": "object",
@@ -5987,6 +7834,18 @@
             "description": "The Cloudflare Turnstile site key; `null` while the project asks for no captcha."
           }
         }
+      },
+      "ChangeCacheSettings": {
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
       },
       "ChangeTableRequest": {
         "type": "object",
@@ -6160,6 +8019,18 @@
           }
         }
       },
+      "CreateCacheCredential": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "CreatePolicyRequest": {
         "type": "object",
         "description": "A row level security policy: which requests (`roles`) may run `command` on which rows.",
@@ -6265,6 +8136,47 @@
           "tenant_id": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "DailyActivity": {
+        "type": "object",
+        "description": "Logins and sign-ups in one UTC calendar day.",
+        "required": [
+          "date",
+          "logins",
+          "sign_ups"
+        ],
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "The UTC day, as `YYYY-MM-DD`."
+          },
+          "logins": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Successful logins by any method (several by one user count apart); renewals are not logins."
+          },
+          "sign_ups": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Accounts created that day and not deleted since."
+          }
+        }
+      },
+      "DailyUsage": {
+        "type": "object",
+        "description": "The last days up to today (UTC), oldest first, with every day present even when empty.",
+        "required": [
+          "days"
+        ],
+        "properties": {
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DailyActivity"
+            }
           }
         }
       },
@@ -6431,6 +8343,34 @@
           }
         }
       },
+      "FailingAddress": {
+        "type": "object",
+        "description": "One IP address and the refused logins that came from it.",
+        "required": [
+          "ip_address",
+          "failures",
+          "accounts",
+          "last_seen_at"
+        ],
+        "properties": {
+          "accounts": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Distinct emails it tried; many means one source guessing across accounts."
+          },
+          "failures": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "ip_address": {
+            "type": "string"
+          },
+          "last_seen_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "ForeignKeyOverview": {
         "type": "object",
         "required": [
@@ -6526,6 +8466,24 @@
             "type": "string"
           }
         }
+      },
+      "IssuedCacheCredential": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CacheCredential"
+          },
+          {
+            "type": "object",
+            "required": [
+              "token"
+            ],
+            "properties": {
+              "token": {
+                "type": "string"
+              }
+            }
+          }
+        ]
       },
       "LinkedIdentity": {
         "type": "object",
@@ -6661,6 +8619,88 @@
           }
         }
       },
+      "MigrationHistory": {
+        "type": "object",
+        "required": [
+          "migrations"
+        ],
+        "properties": {
+          "migrations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MigrationRecord"
+            }
+          },
+          "next_before": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Use as before to read the next page, or null when there are no older entries."
+          }
+        }
+      },
+      "MigrationRecord": {
+        "type": "object",
+        "required": [
+          "version",
+          "name",
+          "applied_at"
+        ],
+        "properties": {
+          "actor_account_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Console account that applied the migration, or null for a secret API key."
+          },
+          "applied_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "MigrationRequest": {
+        "type": "object",
+        "required": [
+          "version",
+          "name",
+          "sql"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "File name without its version prefix or extension.",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-z0-9_-]+$"
+          },
+          "sql": {
+            "type": "string",
+            "description": "Exact file contents. The checksum includes whitespace and line endings.",
+            "maxLength": 100000,
+            "minLength": 1
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Positive integer prefix of the SQL file, unique in the project.",
+            "maximum": 9007199254740991,
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false
+      },
       "OAuthCodeBody": {
         "type": "object",
         "required": [
@@ -6760,6 +8800,28 @@
           }
         }
       },
+      "ProjectCacheSettings": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "configured",
+          "credentials"
+        ],
+        "properties": {
+          "configured": {
+            "type": "boolean"
+          },
+          "credentials": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CacheCredential"
+            }
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
       "ProjectRole": {
         "type": "string",
         "description": "What a platform account may do in a project: owners can also delete it.",
@@ -6776,6 +8838,8 @@
           "slug",
           "name",
           "site_url",
+          "require_email_verification",
+          "mascot_id",
           "role",
           "created_at"
         ],
@@ -6788,8 +8852,18 @@
             "type": "string",
             "format": "uuid"
           },
+          "mascot_id": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Zero selects the automatic mascot. Values 1 through 32 select a catalog entry.",
+            "maximum": 32,
+            "minimum": 0
+          },
           "name": {
             "type": "string"
+          },
+          "require_email_verification": {
+            "type": "boolean"
           },
           "role": {
             "$ref": "#/components/schemas/ProjectRole"
@@ -6838,6 +8912,59 @@
           },
           "client_secret": {
             "type": "string"
+          }
+        }
+      },
+      "QueueCount": {
+        "type": "object",
+        "required": [
+          "value",
+          "is_capped"
+        ],
+        "properties": {
+          "is_capped": {
+            "type": "boolean",
+            "description": "When true, the actual count exceeds `value`."
+          },
+          "value": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "QueueHealth": {
+        "type": "object",
+        "required": [
+          "observed_at",
+          "active_endpoints",
+          "pending",
+          "overdue",
+          "failed_last_day"
+        ],
+        "properties": {
+          "active_endpoints": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "failed_last_day": {
+            "$ref": "#/components/schemas/QueueCount"
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "oldest_overdue_seconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "overdue": {
+            "$ref": "#/components/schemas/QueueCount"
+          },
+          "pending": {
+            "$ref": "#/components/schemas/QueueCount"
           }
         }
       },
@@ -7258,9 +9385,17 @@
         "required": [
           "name",
           "site_url",
-          "require_email_verification"
+          "require_email_verification",
+          "mascot_id"
         ],
         "properties": {
+          "mascot_id": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Zero selects the automatic mascot. Values 1 through 32 select a catalog entry.",
+            "maximum": 32,
+            "minimum": 0
+          },
           "name": {
             "type": "string"
           },
@@ -7275,6 +9410,16 @@
       "TenantSettingsBody": {
         "type": "object",
         "properties": {
+          "mascot_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Zero selects the automatic mascot. Omit the field to keep the current setting.",
+            "maximum": 32,
+            "minimum": 0
+          },
           "name": {
             "type": [
               "string",
@@ -7398,7 +9543,9 @@
           "created_at",
           "mfa_enabled",
           "user_metadata",
-          "app_metadata"
+          "app_metadata",
+          "has_password",
+          "providers"
         ],
         "properties": {
           "app_metadata": {
@@ -7439,13 +9586,32 @@
             ],
             "format": "date-time"
           },
+          "has_password": {
+            "type": "boolean",
+            "description": "The user can log in with email and password; passwordless accounts cannot."
+          },
           "id": {
             "type": "string",
             "format": "uuid"
           },
+          "last_sign_in_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When the user last logged in, by any method, even if that session has ended; `null` if\nthey never did."
+          },
           "mfa_enabled": {
             "type": "boolean",
             "description": "A verified TOTP authenticator is required at login."
+          },
+          "providers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The social providers linked to the account (`google`, `github`), in name order."
           },
           "user_metadata": {
             "type": "object",
@@ -7453,6 +9619,26 @@
             "additionalProperties": {},
             "propertyNames": {
               "type": "string"
+            }
+          }
+        }
+      },
+      "UserCursorPageResponse": {
+        "type": "object",
+        "required": [
+          "users"
+        ],
+        "properties": {
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "users": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/User"
             }
           }
         }
@@ -7623,7 +9809,8 @@
           "user.deleted",
           "user.banned",
           "user.unbanned",
-          "session.revoked"
+          "session.revoked",
+          "audit.event"
         ]
       }
     },
@@ -7643,6 +9830,11 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT"
+      },
+      "cache_credential": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "A project cache credential for server-side requests"
       },
       "platform_account": {
         "type": "http",
@@ -7686,6 +9878,10 @@
     {
       "name": "database-admin",
       "description": "Tables, policies and SQL of the project's database (console and secret key)"
+    },
+    {
+      "name": "cache",
+      "description": "Optional project cache for application backends"
     },
     {
       "name": "webhooks",

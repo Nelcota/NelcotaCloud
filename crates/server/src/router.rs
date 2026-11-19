@@ -21,8 +21,8 @@ use utoipa_axum::routes;
 use crate::api_doc::ApiDoc;
 use crate::app_state::AppState;
 use crate::health;
-use crate::modules::auth::rate_limiting::request_limit::limit_client_requests;
 use crate::modules::auth::routes::auth_routes::auth_routes;
+use crate::modules::cache::routes::cache_routes::cache_routes;
 use crate::modules::database::query::preferences::PREFER_HEADER;
 use crate::modules::database::routes::database_routes::database_routes;
 use crate::modules::oauth::routes::oauth_routes::oauth_routes;
@@ -33,6 +33,7 @@ use crate::modules::tenants::routes::tenants_routes::tenants_routes;
 use crate::modules::webhooks::routes::webhooks_routes::webhooks_routes;
 use crate::shared::http::request_id::{REQUEST_ID_HEADER, generate_request_id};
 use crate::shared::http::request_span::request_span;
+use crate::startup::request_limit::limit_client_requests;
 
 /// Browsers keep a preflight answer this long (Chrome caps it at two hours), so cross-origin
 /// calls with the `apikey` header skip the extra OPTIONS round trip.
@@ -49,10 +50,16 @@ pub fn build_router(state: AppState) -> Router {
     // Built once and shared by every request; only the pointer is cloned.
     let document = Arc::new(document);
 
-    let router = router.route(
-        OPENAPI_PATH,
-        get(move || ready(Json(Arc::clone(&document)))),
-    );
+    let router = router
+        .route(
+            OPENAPI_PATH,
+            get(move || ready(Json(Arc::clone(&document)))),
+        )
+        .route("/ready", get(health::readiness))
+        .route(
+            "/ops/webhooks/worker-health",
+            get(crate::modules::webhooks::health::worker_health::worker_health),
+        );
 
     with_http_layers(router, state.clone()).with_state(state)
 }
@@ -100,6 +107,7 @@ pub fn api_routes() -> OpenApiRouter<AppState> {
         .merge(webhooks_routes())
         .merge(oauth_routes())
         .merge(database_routes())
+        .merge(cache_routes())
 }
 
 /// Browser apps of any origin call the API with the publishable key; no cookies are used,
