@@ -1,0 +1,25 @@
+name: Apply NelcotaCloud project migrations
+description: Apply versioned SQL files before publishing an application.
+
+inputs:
+  api-url:
+    description: HTTPS origin of the NelcotaCloud API for this environment.
+    required: true
+  secret-key:
+    description: Secret API key of the target NelcotaCloud project.
+    required: true
+  directory:
+    description: Directory of versioned SQL files, relative to the checkout.
+    required: false
+    default: migrations
+
+runs:
+  using: composite
+  steps:
+    - name: Apply migrations
+      shell: bash
+      env:
+        NELCOTA_API_URL: ${{ inputs.api-url }}
+        NELCOTA_SECRET_KEY: ${{ inputs.secret-key }}
+        MIGRATIONS_DIRECTORY: ${{ inputs.directory }}
+      run: python3 "$GITHUB_ACTION_PATH/apply.py" "$MIGRATIONS_DIRECTORY"

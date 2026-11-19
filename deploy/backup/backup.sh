@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# Dumps every NelcotaCloud database, encrypts and uploads them, then waits for the next run.
+# Backs up the whole PostgreSQL cluster at a single recoverable point.
 # A failed run is logged and retried at the next interval; the loop never stops on its own.
 set -euo pipefail
 
 # shellcheck source=backup-env.sh
 . /usr/local/bin/backup-env.sh
+# shellcheck source=snapshot-manifest.sh
+. /usr/local/bin/snapshot-manifest.sh
 
 BACKUP_INTERVAL_SECONDS="${BACKUP_INTERVAL_SECONDS:-86400}"
 BACKUP_RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-30}"
@@ -13,24 +15,37 @@ log() {
     echo "$(date --utc +%Y-%m-%dT%H:%M:%SZ) backup: $*"
 }
 
-run_backup() {
-    local snapshot work_dir database
-    snapshot="$(date --utc +%Y%m%dT%H%M%SZ)"
-    work_dir="$(mktemp --directory)"
-    trap 'rm -rf "${work_dir}"' RETURN
+run_backup() (
+    snapshot="$(date --utc +%Y%m%dT%H%M%S%NZ)" || return
+    work_dir="$(mktemp --directory)" || return
+    trap 'rm -rf "${work_dir}"' EXIT
 
-    # Roles and their password hashes, needed to restore onto a fresh server.
-    pg_dumpall --globals-only --no-role-passwords >"${work_dir}/globals.sql"
+    # Bash ignores errexit when the caller tests this function's status.
+    mkdir "${work_dir}/cluster" || return
+    pg_basebackup --pgdata="${work_dir}/cluster" --checkpoint=spread --wal-method=stream \
+        --manifest-checksums=SHA256 --no-password || return
+    pg_verifybackup --quiet "${work_dir}/cluster" || return
+    tar --create --gzip --file="${work_dir}/${CLUSTER_ARCHIVE}" \
+        --directory="${work_dir}/cluster" . || return
 
-    for database in $(list_databases); do
-        pg_dump --format=custom --dbname="${database}" --file="${work_dir}/${database}.dump"
-    done
+    write_snapshot_manifest "${work_dir}" || return
+    rclone copyto --immutable "${work_dir}/${CLUSTER_ARCHIVE}" \
+        "backup:${snapshot}/${CLUSTER_ARCHIVE}" || return
+    rclone copyto --immutable \
+        "${work_dir}/${SNAPSHOT_MANIFEST}" "backup:${snapshot}/${SNAPSHOT_MANIFEST}" || return
+    log "uploaded verified cluster snapshot ${snapshot}" || return
 
-    rclone copy --quiet "${work_dir}" "backup:${snapshot}"
-    log "uploaded snapshot ${snapshot} ($(find "${work_dir}" -name '*.dump' | wc -l) databases)"
+    rclone delete --min-age "${BACKUP_RETENTION_DAYS}d" backup: || return
+    rclone rmdirs --leave-root backup:
+)
 
-    rclone delete --quiet --min-age "${BACKUP_RETENTION_DAYS}d" backup:
-    rclone rmdirs --quiet --leave-root backup:
+run_scheduled_backup() {
+    if run_backup; then
+        log "next run in ${BACKUP_INTERVAL_SECONDS}s"
+        return
+    fi
+
+    log "FAILED; retrying in ${BACKUP_INTERVAL_SECONDS}s"
 }
 
 if [ "${1:-}" = "--once" ]; then
@@ -39,11 +54,6 @@ if [ "${1:-}" = "--once" ]; then
 fi
 
 while true; do
-    if run_backup; then
-        log "next run in ${BACKUP_INTERVAL_SECONDS}s"
-    else
-        log "FAILED; retrying in ${BACKUP_INTERVAL_SECONDS}s"
-    fi
-
+    run_scheduled_backup
     sleep "${BACKUP_INTERVAL_SECONDS}"
 done

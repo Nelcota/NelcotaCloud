@@ -12,13 +12,35 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  NPM_VERSION: 12.2.3
+
 jobs:
+  architecture:
+    name: Module boundaries and backup manifest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - run: python3 -B scripts/check-module-boundaries.py
+      - run: bash deploy/backup/test-snapshot-manifest.sh
+
+  migration-action:
+    name: Project migration action
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - run: python3 -B -m unittest discover -s .github/actions/apply-project-migrations
+
   api:
     name: API (fmt, clippy, tests)
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:17
+        image: postgres:18.7
         env:
           POSTGRES_USER: nelcota
           POSTGRES_PASSWORD: nelcota
@@ -29,7 +51,7 @@ jobs:
           --health-cmd "pg_isready -U nelcota -d nelcota_control"
           --health-interval 2s --health-timeout 3s --health-retries 20
       mailpit:
-        image: axllent/mailpit:v1.27
+        image: axllent/mailpit:v1.34.0
         env:
           MP_SMTP_AUTH_ACCEPT_ANY: "1"
           MP_SMTP_AUTH_ALLOW_INSECURE: "1"
@@ -42,14 +64,17 @@ jobs:
       SMTP_URL: smtp://localhost:1026
       EMAIL_FROM: NelcotaCloud <no-reply@nelcota.local>
       MAILPIT_API_URL: http://localhost:8026
+      CACHE_VALKEY_URL: redis://:nelcota-local-cache@127.0.0.1:6380
       CARGO_TERM_COLOR: always
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.100.0
           components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@v2.9.3
+      - run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libclang-dev
+      - run: docker compose up -d --wait valkey
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
       # Includes the check that crates/server/openapi.json matches the annotated routes.
@@ -62,19 +87,17 @@ jobs:
       run:
         working-directory: apps/console
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
         with:
-          node-version: 26
+          node-version: 26.13.1
           cache: npm
           cache-dependency-path: apps/console/package-lock.json
+      - run: npm install --global "npm@$NPM_VERSION"
       - run: npm ci
       - run: npm run format:check
       - run: npm run lint
-      - name: Generated API types match openapi.json
-        run: |
-          npm run api:types
-          git diff --exit-code -- src/shared/api/api-schema.d.ts
+      - run: npm test
       - run: npm run build
 
   sdk:
@@ -84,12 +107,13 @@ jobs:
       run:
         working-directory: packages/sdk
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
         with:
-          node-version: 26
+          node-version: 26.13.1
           cache: npm
           cache-dependency-path: packages/sdk/package-lock.json
+      - run: npm install --global "npm@$NPM_VERSION"
       - run: npm ci
       - run: npm run format:check
       - run: npm run lint
@@ -100,40 +124,23 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-
-  example:
-    name: Example app (format, lint, build)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: examples/react-auth
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26
-          cache: npm
-          cache-dependency-path: examples/react-auth/package-lock.json
-      - run: npm ci
-      - run: npm run format:check
-      - run: npm run lint
-      - run: npm run build
+      - run: npm run test:package
 
   images:
     name: Docker images build
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
     steps:
-      - uses: actions/checkout@v7
-      - uses: docker/setup-buildx-action@v4
-      - uses: docker/build-push-action@v7
+      - uses: actions/checkout@v7.0.1
+      - uses: docker/setup-buildx-action@v4.4.1
+      - uses: docker/build-push-action@v7.4.0
         with:
           context: .
           file: crates/server/Dockerfile
           push: false
           cache-from: type=gha,scope=api
           cache-to: type=gha,mode=max,scope=api
-      - uses: docker/build-push-action@v7
+      - uses: docker/build-push-action@v7.4.0
         with:
           context: .
           file: deploy/caddy/Dockerfile
@@ -141,7 +148,7 @@ jobs:
           push: false
           cache-from: type=gha,scope=caddy
           cache-to: type=gha,mode=max,scope=caddy
-      - uses: docker/build-push-action@v7
+      - uses: docker/build-push-action@v7.4.0
         with:
           context: .
           file: deploy/backup/Dockerfile

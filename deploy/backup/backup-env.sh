@@ -19,9 +19,3 @@ export RCLONE_CONFIG_BACKUP_TYPE=crypt
 export RCLONE_CONFIG_BACKUP_REMOTE="store:${BACKUP_BUCKET}/postgres"
 RCLONE_CONFIG_BACKUP_PASSWORD="$(rclone obscure "${BACKUP_ENCRYPTION_PASSWORD}")"
 export RCLONE_CONFIG_BACKUP_PASSWORD
-
-# The control plane plus every tenant database (tenant_<slug>).
-list_databases() {
-    psql --no-psqlrc --tuples-only --no-align --dbname=postgres --command \
-        "SELECT datname FROM pg_database WHERE datname = 'nelcota_control' OR datname LIKE 'tenant\_%' ORDER BY datname"
-}

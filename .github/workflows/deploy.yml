@@ -1,0 +1,26 @@
+name: Deploy NelcotaCloud
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nelcotacloud-deploy
+  cancel-in-progress: false
+
+jobs:
+  staging:
+    name: Staging
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/deploy-compose.yml
+    with:
+      target: staging
+
+  production:
+    name: Production
+    needs: staging
+    uses: ./.github/workflows/deploy-compose.yml
+    with:
+      target: production
