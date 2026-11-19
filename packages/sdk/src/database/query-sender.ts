@@ -1,4 +1,4 @@
-import type { SessionManager } from '../auth/session-manager'
+import type { Session } from '../auth/auth-types'
 import type { HttpClient } from '../http/http-client'
 import {
   type QueryRequest,
@@ -10,14 +10,19 @@ import {
 
 const REST_PATH = '/rest/v1'
 
+export type QuerySession = {
+  current(): Session | null
+  accessToken(): Promise<string>
+}
+
 /** Sends Data API requests as the logged-in user (anonymous without a session). */
 export class QuerySender {
   private readonly http: HttpClient
-  private readonly manager: SessionManager
+  private readonly session: QuerySession
 
-  constructor(http: HttpClient, manager: SessionManager) {
+  constructor(http: HttpClient, session: QuerySession) {
     this.http = http
-    this.manager = manager
+    this.session = session
   }
 
   async send<T>(request: QueryRequest): Promise<QueryResult<T>> {
@@ -38,11 +43,11 @@ export class QuerySender {
 
   /** Row level security sees the user when there is a session, `anon` otherwise. */
   private async accessToken(): Promise<string | undefined> {
-    if (this.manager.current() === null) {
+    if (this.session.current() === null) {
       return undefined
     }
 
-    return this.manager.accessToken()
+    return this.session.accessToken()
   }
 }
 

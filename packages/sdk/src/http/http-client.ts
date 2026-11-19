@@ -117,7 +117,7 @@ function bodyOf(request: HttpRequest): Blob | string | undefined {
   return JSON.stringify(request.body)
 }
 
-async function toNelcotaError(response: Response): Promise<NelcotaError> {
+export async function toNelcotaError(response: Response): Promise<NelcotaError> {
   const requestId = response.headers.get(REQUEST_ID_HEADER)
   const payload: unknown = await response.json().catch(() => null)
   const fallback = {

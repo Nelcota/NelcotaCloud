@@ -1,8 +1,7 @@
-import type { SessionManager } from '../auth/session-manager'
 import type { HttpClient } from '../http/http-client'
 import { newRequest } from './query-request'
 import type { QueryResult } from './query-request'
-import { QuerySender } from './query-sender'
+import { type QuerySession, QuerySender } from './query-sender'
 import { TableQuery } from './table-query'
 
 /**
@@ -12,8 +11,8 @@ import { TableQuery } from './table-query'
 export class DatabaseClient {
   private readonly sender: QuerySender
 
-  constructor(http: HttpClient, manager: SessionManager) {
-    this.sender = new QuerySender(http, manager)
+  constructor(http: HttpClient, session: QuerySession) {
+    this.sender = new QuerySender(http, session)
   }
 
   from<Row extends Record<string, unknown> = Record<string, unknown>>(
