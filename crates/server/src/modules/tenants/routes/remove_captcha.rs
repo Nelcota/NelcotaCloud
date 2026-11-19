@@ -1,8 +1,11 @@
 use axum::extract::State;
 use axum::http::StatusCode;
+use serde_json::json;
 
 use crate::app_state::AppState;
 use crate::modules::tenants::access::tenant_admin::TenantAdmin;
+use crate::modules::tenants::audit::audit_action::AuditAction;
+use crate::modules::tenants::audit::project_change::{ProjectChange, record_project_change};
 use crate::modules::tenants::captcha::captcha_settings_repository::delete_captcha_settings;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
@@ -22,6 +25,13 @@ pub async fn remove_captcha(
     admin: TenantAdmin,
 ) -> Result<StatusCode, ApiError> {
     delete_captcha_settings(&state.control_plane_pool, admin.tenant_id).await?;
+    let change = ProjectChange {
+        tenant_id: admin.tenant_id,
+        author: admin.author(),
+        action: AuditAction::SettingsChanged,
+        details: json!({ "section": "captcha", "operation": "remove" }),
+    };
+    record_project_change(&state.tenant_pools, change).await;
 
     Ok(StatusCode::NO_CONTENT)
 }

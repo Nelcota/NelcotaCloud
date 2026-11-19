@@ -2,43 +2,42 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use sqlx::PgPool;
-use sqlx::postgres::PgPoolOptions;
 
 use crate::app_config::AppConfig;
 use crate::app_state::AppState;
-use crate::modules::auth::rate_limiting::auth_rate_limits::RateLimits;
+use crate::modules::cache::entries::cache_store::CacheStore;
 use crate::modules::database::execution::session_slots::SessionSlots;
 use crate::modules::database::schema::schema_cache::SchemaCache;
-use crate::modules::oauth::login::oauth_state_repository::delete_expired_authorizations;
 use crate::modules::oauth::provider::provider_endpoints::OAuthEndpoints;
-use crate::modules::tenants::api_keys::api_key_cache::ApiKeyCache;
-use crate::modules::tenants::database::tenant_pool_registry::TenantPoolRegistry;
+use crate::modules::tenants::api_keys::api_key_usage::ApiKeyUsage;
 use crate::modules::tenants::platform::platform_tenant::PlatformTenantDirectory;
+use crate::modules::tenants::postgres::tenant_pool_registry::TenantPoolRegistry;
+use crate::modules::tenants::provisioning::tenant_provisioner::MAX_CONCURRENT_PROVISIONING;
 use crate::modules::tenants::provisioning::tenant_slug::TenantSlug;
 use crate::modules::tenants::signing_keys::signing_key_cache::SigningKeyCache;
 use crate::modules::tenants::smtp::tenant_email_senders::{
     TenantEmailSenders, TenantEmailSendersConfig,
 };
 use crate::modules::webhooks::delivery::manual_send_limiter::ManualSendLimiter;
-use crate::modules::webhooks::delivery::tenant_delivery_run::DeliveryContext;
-use crate::modules::webhooks::delivery::webhook_transport::WebhookTransport;
-use crate::modules::webhooks::delivery::webhook_worker::WebhookWorker;
-use crate::modules::webhooks::endpoint::webhook_url::WebhookHostPolicy;
-use crate::modules::webhooks::outbox::webhook_hints::WebhookHints;
+use crate::modules::webhooks::outbox::webhook_hints::{WebhookHintReceiver, WebhookHints};
 use crate::modules::webhooks::outbox::webhook_subscriptions::WebhookSubscriptions;
 use crate::modules::webhooks::runtime::webhook_runtime::WebhookRuntime;
-use crate::shared::crypto::hex_encoding::decode_hex;
+use crate::rate_limits::RateLimits;
 use crate::shared::crypto::secret_box::SecretBox;
-use crate::shared::database::migrators::CONTROL_PLANE_MIGRATOR;
 use crate::shared::email::email_sender::EmailSender;
 use crate::startup::app_settings_builder::build_settings;
+use crate::startup::background_tasks::BackgroundTasks;
+use crate::startup::service_dependencies::{
+    cache_authentication_pool, master_secret_box, prepare_control_plane, webhook_transport,
+};
 use crate::startup::startup_error::StartupError;
+use crate::startup::tenant_database_preparation::prepare_existing_tenants;
 
-const CONTROL_PLANE_MAX_CONNECTIONS: u32 = 10;
 const OUTBOUND_HTTP_TIMEOUT: Duration = Duration::from_secs(10);
-const MAINTENANCE_INTERVAL: Duration = Duration::from_secs(60);
 
-pub async fn build_app_state(config: &AppConfig) -> Result<AppState, StartupError> {
+pub async fn build_app_state(
+    config: &AppConfig,
+) -> Result<(AppState, BackgroundTasks), StartupError> {
     build_app_state_with_endpoints(config, OAuthEndpoints::production()).await
 }
 
@@ -46,33 +45,54 @@ pub async fn build_app_state(config: &AppConfig) -> Result<AppState, StartupErro
 pub async fn build_app_state_with_endpoints(
     config: &AppConfig,
     oauth_endpoints: OAuthEndpoints,
-) -> Result<AppState, StartupError> {
-    let secret_box = Arc::new(secret_box(config)?);
-    let control_plane_pool = connect_control_plane(config).await?;
+) -> Result<(AppState, BackgroundTasks), StartupError> {
+    let secret_box = Arc::new(master_secret_box(&config.master_key_hex)?);
+    let runtime_password = config.database_runtime_password.as_deref();
+    let control_plane_pool =
+        prepare_control_plane(&config.control_plane_database_url, runtime_password).await?;
     let settings = build_settings(config, oauth_endpoints).await?;
     let rate_limits = Arc::new(RateLimits::new()?);
     let email_senders = email_senders(config, &control_plane_pool, &secret_box)?;
-    spawn_maintenance(control_plane_pool.clone(), Arc::clone(&rate_limits));
 
-    let tenant_pools = Arc::new(tenant_pool_registry(config, &control_plane_pool));
+    let registry = TenantPoolRegistry::new(
+        control_plane_pool.clone(),
+        config.tenant_database_base_url.clone(),
+    );
+    let registry = match runtime_password {
+        Some(password) => registry.with_runtime_password(password.to_owned()),
+        None => registry,
+    };
+    let tenant_pools = Arc::new(registry);
     let database_server = tenant_pools.database_server();
     database_server
         .ensure_roles()
         .await
         .map_err(StartupError::DatabaseRoles)?;
-    let webhook_dependencies = WebhookDependencies {
-        control_plane_pool: &control_plane_pool,
-        tenant_pools: &tenant_pools,
-        secret_box: &secret_box,
-    };
-    let webhooks = start_webhooks(config, &webhook_dependencies)?;
+    if let Some(password) = runtime_password {
+        database_server
+            .prepare_runtime_role(password)
+            .await
+            .map_err(StartupError::DatabaseRoles)?;
+        prepare_existing_tenants(&control_plane_pool, &database_server).await?;
+    }
+    let (webhooks, webhook_hints) = build_webhooks(config, &control_plane_pool)?;
 
-    Ok(AppState {
+    let state = AppState {
+        project_usage: Default::default(),
+        cache_authentication_pool: cache_authentication_pool(&control_plane_pool),
+        cache_store: config
+            .cache_valkey_url
+            .as_deref()
+            .map(CacheStore::connect_lazily)
+            .transpose()?,
         tenant_pools,
         schema_cache: Arc::new(SchemaCache::new()),
-        data_api_slots: Arc::new(SessionSlots::new()),
+        database_session_slots: Arc::new(SessionSlots::new()),
         signing_keys: Arc::new(signing_key_cache(&control_plane_pool, &secret_box)),
-        api_keys: Arc::new(ApiKeyCache::new(control_plane_pool.clone())),
+        tenant_provisioning_slots: Arc::new(tokio::sync::Semaphore::new(
+            MAX_CONCURRENT_PROVISIONING,
+        )),
+        api_key_usage: Arc::new(ApiKeyUsage::new(control_plane_pool.clone())),
         platform_tenant: Arc::new(platform_tenant_directory(config, &control_plane_pool)?),
         rate_limits,
         email_senders: Arc::new(email_senders),
@@ -81,19 +101,10 @@ pub async fn build_app_state_with_endpoints(
         settings: Arc::new(settings),
         control_plane_pool,
         secret_box,
-    })
-}
+    };
+    let tasks = BackgroundTasks::start(state.clone(), webhook_hints);
 
-fn secret_box(config: &AppConfig) -> Result<SecretBox, StartupError> {
-    let master_key = decode_hex(config.master_key_hex.trim())?;
-
-    Ok(SecretBox::new(&master_key)?)
-}
-
-fn tenant_pool_registry(config: &AppConfig, control_plane_pool: &PgPool) -> TenantPoolRegistry {
-    let base_url = config.tenant_database_base_url.clone();
-
-    TenantPoolRegistry::new(control_plane_pool.clone(), base_url)
+    Ok((state, tasks))
 }
 
 fn email_senders(
@@ -111,43 +122,20 @@ fn email_senders(
     }))
 }
 
-struct WebhookDependencies<'a> {
-    control_plane_pool: &'a PgPool,
-    tenant_pools: &'a Arc<TenantPoolRegistry>,
-    secret_box: &'a Arc<SecretBox>,
-}
-
-/// Builds the webhook services and spawns the delivery worker they wake.
-fn start_webhooks(
+fn build_webhooks(
     config: &AppConfig,
-    dependencies: &WebhookDependencies,
-) -> Result<WebhookRuntime, StartupError> {
-    let control_plane_pool = dependencies.control_plane_pool;
-    let policy = webhook_host_policy(config);
-    let transport = WebhookTransport::new(policy)?;
+    control_plane_pool: &PgPool,
+) -> Result<(WebhookRuntime, WebhookHintReceiver), StartupError> {
+    let transport = webhook_transport(config.webhook_allow_private_hosts)?;
     let (hints, hint_receiver) = WebhookHints::channel();
-    let context = DeliveryContext {
-        control_plane_pool: control_plane_pool.clone(),
-        tenant_pools: Arc::clone(dependencies.tenant_pools),
-        secret_box: Arc::clone(dependencies.secret_box),
-        transport: transport.clone(),
-    };
-    WebhookWorker::new(context, hint_receiver).spawn();
-
-    Ok(WebhookRuntime {
+    let runtime = WebhookRuntime {
         subscriptions: WebhookSubscriptions::new(control_plane_pool.clone()),
         hints,
         transport,
         manual_sends: ManualSendLimiter::new()?,
-    })
-}
+    };
 
-fn webhook_host_policy(config: &AppConfig) -> WebhookHostPolicy {
-    if config.webhook_allow_private_hosts == Some(true) {
-        return WebhookHostPolicy::AllowPrivate;
-    }
-
-    WebhookHostPolicy::PublicHttpsOnly
+    Ok((runtime, hint_receiver))
 }
 
 fn platform_tenant_directory(
@@ -163,17 +151,6 @@ fn platform_tenant_directory(
     ))
 }
 
-/// Connects and brings the control plane schema up to date.
-async fn connect_control_plane(config: &AppConfig) -> Result<PgPool, StartupError> {
-    let control_plane_pool = PgPoolOptions::new()
-        .max_connections(CONTROL_PLANE_MAX_CONNECTIONS)
-        .connect(&config.control_plane_database_url)
-        .await?;
-    CONTROL_PLANE_MIGRATOR.run(&control_plane_pool).await?;
-
-    Ok(control_plane_pool)
-}
-
 fn signing_key_cache(control_plane_pool: &PgPool, secret_box: &Arc<SecretBox>) -> SigningKeyCache {
     SigningKeyCache::new(control_plane_pool.clone(), Arc::clone(secret_box))
 }
@@ -183,21 +160,4 @@ fn build_http_client() -> Result<reqwest::Client, reqwest::Error> {
         .redirect(reqwest::redirect::Policy::none())
         .timeout(OUTBOUND_HTTP_TIMEOUT)
         .build()
-}
-
-/// Periodic housekeeping for the lifetime of the process (or of the test runtime): forgets idle
-/// rate limit keys and deletes abandoned OAuth authorizations.
-fn spawn_maintenance(control_plane_pool: PgPool, rate_limits: Arc<RateLimits>) {
-    tokio::spawn(async move {
-        let mut interval = tokio::time::interval(MAINTENANCE_INTERVAL);
-
-        loop {
-            interval.tick().await;
-            rate_limits.forget_idle_keys();
-
-            if let Err(error) = delete_expired_authorizations(&control_plane_pool).await {
-                tracing::error!(%error, "failed to delete expired OAuth authorizations");
-            }
-        }
-    });
 }

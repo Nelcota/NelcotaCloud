@@ -79,20 +79,19 @@ fn push_filters(
     target: AliasedTable,
     query: &ReadQuery,
 ) -> Result<(), DatabaseRejection> {
-    let Some(root) = query
+    let root = query
         .root()
         .filter(|root| root.conditions.is_empty() == false)
-    else {
-        return Err(DatabaseRejection::FilterRequired);
-    };
+        .ok_or(DatabaseRejection::FilterRequired)?;
 
     sql.push(" WHERE ");
     push_conditions(sql, target, &root.conditions)
 }
 
 fn push_conflict(sql: &mut QueryBuilder<Postgres>, conflict: Option<&ConflictAction>) {
-    let Some(conflict) = conflict else {
-        return;
+    let conflict = match conflict {
+        Some(conflict) => conflict,
+        None => return,
     };
     let targets = quoted_list(&conflict.target_columns);
     let assignments = conflict

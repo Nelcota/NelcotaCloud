@@ -3,11 +3,15 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
-use crate::modules::auth::email::auth_email::AuthEmailContent;
-use crate::modules::auth::email::auth_email_template::render_auth_email;
+use crate::modules::auth::integration::team_notifications::{AuthEmailContent, render_auth_email};
 use crate::modules::tenants::settings::loaded_tenant_settings::load_tenant_settings;
 use crate::modules::tenants::smtp::tenant_email_delivery::send_tenant_email_in_background;
 use crate::shared::http::api_error::ApiError;
+
+/// The console login, opened for an invitation: it names the project and asks for the invited address.
+const INVITATION_LOGIN_PATH: &str = "login";
+const INVITATION_FLAG: (&str, &str) = ("convite", "1");
+const PROJECT_PARAMETER: &str = "projeto";
 
 /// Who is invited where, by whom.
 pub struct InvitationNotice<'a> {
@@ -16,8 +20,10 @@ pub struct InvitationNotice<'a> {
     pub inviter_email: &'a str,
 }
 
-/// Tells the invited person, in the background, to open the console and accept. The email
-/// goes through the platform's own sender and links to the console (the platform tenant's site).
+/// Tells the invited person, in the background, to open the console and accept.
+///
+/// The email goes through the platform's own sender and links to the console login (the
+/// platform tenant's site), opened for this invitation.
 pub async fn send_invitation_email(
     state: &AppState,
     notice: InvitationNotice<'_>,
@@ -25,11 +31,15 @@ pub async fn send_invitation_email(
     let platform_tenant_id = state.platform_tenant.find_id().await?;
     let console = load_tenant_settings(&state.control_plane_pool, platform_tenant_id).await?;
     let project = load_tenant_settings(&state.control_plane_pool, notice.project_id).await?;
+    let login_link = console.site_url.link_with_query(
+        INVITATION_LOGIN_PATH,
+        &[INVITATION_FLAG, (PROJECT_PARAMETER, &project.name)],
+    );
     let content = invitation_content(InvitationWords {
         platform_name: &console.name,
         project_name: &project.name,
         inviter_email: notice.inviter_email,
-        console_url: console.site_url.as_str(),
+        login_link: &login_link,
     });
     let email = render_auth_email(content, notice.recipient).map_err(ApiError::internal)?;
     send_tenant_email_in_background(Arc::clone(&state.email_senders), platform_tenant_id, email);
@@ -42,7 +52,7 @@ struct InvitationWords<'a> {
     platform_name: &'a str,
     project_name: &'a str,
     inviter_email: &'a str,
-    console_url: &'a str,
+    login_link: &'a str,
 }
 
 fn invitation_content(words: InvitationWords) -> AuthEmailContent {
@@ -50,15 +60,15 @@ fn invitation_content(words: InvitationWords) -> AuthEmailContent {
 
     AuthEmailContent {
         tenant_name: words.platform_name.to_owned(),
-        subject: format!("You are invited to {project_name}"),
-        heading: format!("Join {project_name}"),
+        subject: format!("Você foi convidado para o projeto {project_name}"),
+        heading: format!("Entre no projeto {project_name}"),
         message: format!(
-            "{inviter} invited you to manage the project {project_name}. Sign in to the console with this email address, or create an account with it, to accept.",
+            "{inviter} convidou você para o projeto {project_name}. Entre ou crie sua conta com este mesmo email para aceitar.",
             inviter = words.inviter_email,
         ),
-        action_label: "Open the console".to_owned(),
-        link: words.console_url.to_owned(),
-        note: "The invitation stays open until you accept or decline it.\nIf you do not know this project, ignore this email.".to_owned(),
+        action_label: "Aceitar convite".to_owned(),
+        link: words.login_link.to_owned(),
+        note: "O convite fica aberto até você aceitar ou recusar.\nSe você não conhece este projeto, ignore este email.".to_owned(),
     }
 }
 
@@ -72,11 +82,12 @@ mod tests {
             platform_name: "NelcotaCloud",
             project_name: "Loja",
             inviter_email: "ana@example.com",
-            console_url: "https://console.example.com",
+            login_link: "https://console.example.com/login?convite=1",
         });
 
-        assert_eq!(content.subject, "You are invited to Loja");
+        assert_eq!(content.subject, "Você foi convidado para o projeto Loja");
         assert!(content.message.contains("ana@example.com"));
-        assert_eq!(content.link, "https://console.example.com");
+        assert!(content.message.contains("mesmo email"));
+        assert_eq!(content.link, "https://console.example.com/login?convite=1");
     }
 }

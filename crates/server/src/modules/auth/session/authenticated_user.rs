@@ -20,9 +20,7 @@ impl FromRequestParts<AppState> for AuthenticatedUser {
 
     async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, ApiError> {
         let tenant = TenantContext::from_request_parts(parts, state).await?;
-        let Some(access_token) = bearer_token(parts) else {
-            return Err(ApiError::from(TenantsRejection::InvalidAccessToken));
-        };
+        let access_token = bearer_token(parts).ok_or(TenantsRejection::InvalidAccessToken)?;
         let audience = TokenAudience {
             issuer: &state.settings.token_issuer,
             tenant_id: tenant.tenant_id,

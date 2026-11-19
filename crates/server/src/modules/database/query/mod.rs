@@ -10,3 +10,4 @@ pub mod read_query;
 pub mod select_item;
 pub mod select_parser;
 pub mod top_level_split;
+pub mod write_query;

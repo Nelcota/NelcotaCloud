@@ -8,15 +8,16 @@ use validator::Validate;
 use crate::app_state::AppState;
 use crate::modules::auth::password::password_hashing::hash_password;
 use crate::modules::auth::password::password_policy::check_new_password;
-use crate::modules::auth::rate_limiting::attempt_limiter::Attempt;
 use crate::modules::auth::session::session_issuer::SessionTokens;
 use crate::modules::auth::user::email_address::EmailAddress;
-use crate::modules::auth::user::signup::{NewSignup, SignupOutcome, sign_up_user};
+use crate::modules::auth::user::signup::{NewSignup, SignupOutcome, SignupServices, sign_up_user};
 use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::modules::tenants::captcha::captcha_requirement::{CaptchaAnswer, require_captcha};
+use crate::modules::tenants::ip_blocks::address_guard::ensure_address_allowed;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
-use crate::shared::http::client_ip::ClientIp;
+use crate::shared::http::request_origin::RequestOrigin;
 use crate::shared::http::validated_json::ValidatedJson;
+use crate::shared::rate_limiting::attempt_limiter::Attempt;
 
 #[derive(Deserialize, Validate, ToSchema)]
 pub struct SignUpBody {
@@ -58,9 +59,11 @@ type SignUpResult = Result<(StatusCode, Json<SignUpResponse>), ApiError>;
 pub async fn sign_up(
     State(state): State<AppState>,
     tenant: TenantContext,
-    ClientIp(client_ip): ClientIp,
+    origin: RequestOrigin,
     ValidatedJson(body): ValidatedJson<SignUpBody>,
 ) -> SignUpResult {
+    ensure_address_allowed(&tenant.pool, origin.client_ip).await?;
+    let client_ip = origin.client_ip;
     let attempt = Attempt {
         tenant_id: tenant.tenant_id,
         email: &body.email,
@@ -72,7 +75,7 @@ pub async fn sign_up(
         token: body.captcha_token.as_deref(),
         client_ip,
     };
-    require_captcha(&state, tenant.tenant_id, captcha).await?;
+    require_captcha(&state.captcha_requirement(), tenant.tenant_id, captcha).await?;
     let email = EmailAddress::parse(&body.email).map_err(ApiError::invalid_request)?;
     check_new_password(&body.password).map_err(ApiError::invalid_request)?;
     let password_hash = hash_password(body.password)
@@ -81,9 +84,16 @@ pub async fn sign_up(
     let signup = NewSignup {
         email,
         password_hash,
+        origin,
     };
 
-    let outcome = sign_up_user(&state, &tenant, &signup).await?;
+    let services = SignupServices {
+        control_plane_pool: &state.control_plane_pool,
+        mailer: state.auth_mailer(),
+        signing: state.token_signing(),
+        webhooks: &state.webhooks,
+    };
+    let outcome = sign_up_user(&services, &tenant, &signup).await?;
 
     Ok(signup_response(outcome))
 }

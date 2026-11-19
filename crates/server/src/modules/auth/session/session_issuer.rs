@@ -9,6 +9,7 @@ use crate::modules::auth::session::refresh_token_repository::{
 };
 use crate::modules::auth::session::session_family::SessionFamily;
 use crate::modules::auth::user::user_record::User;
+use crate::modules::auth::user::user_response::UserResponse;
 use crate::modules::tenants::signing_keys::access_token::{
     AccessTokenClaims, AccessTokenError, sign_access_token,
 };
@@ -37,7 +38,7 @@ pub struct SessionTokens {
     pub token_type: &'static str,
     pub expires_in: i64,
     pub refresh_token: String,
-    pub user: User,
+    pub user: UserResponse,
 }
 
 /// Everything needed to issue tokens on behalf of one tenant.
@@ -87,7 +88,7 @@ impl SessionIssuer<'_> {
             token_type: TOKEN_TYPE,
             expires_in: ACCESS_TOKEN_LIFETIME.whole_seconds(),
             refresh_token: refresh_token.plaintext,
-            user,
+            user: user.into(),
         })
     }
 }

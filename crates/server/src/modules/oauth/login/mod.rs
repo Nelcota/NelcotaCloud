@@ -6,3 +6,4 @@ pub mod code_exchange;
 pub mod oauth_login_context;
 pub mod oauth_login_error;
 pub mod oauth_state_repository;
+pub mod rate_limit_quotas;

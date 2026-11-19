@@ -7,7 +7,7 @@ use utoipa::ToSchema;
 use crate::modules::database::admin::developer_sql::developer_session::DeveloperSession;
 use crate::modules::database::admin::developer_sql::empty_result_columns::empty_result_columns;
 use crate::modules::database::admin::developer_sql::script_statements::{
-    answers_rows, split_statements,
+    ScriptStatement, describe_script,
 };
 use crate::modules::database::admin::developer_sql::sql_error_response::sql_error_response;
 use crate::modules::database::admin::developer_sql::sql_values::row_values;
@@ -47,11 +47,18 @@ pub async fn run_script(
     session: &mut DeveloperSession,
     script: String,
 ) -> Result<SqlResult, ApiError> {
+    let (script, statements) = tokio::task::spawn_blocking(move || {
+        let statements = describe_script(&script);
+
+        (script, statements)
+    })
+    .await
+    .map_err(ApiError::internal)?;
     let transaction = &mut *session.transaction;
     let reading = async move {
-        let statements = split_statements(&script);
         let mut result = SqlResult::empty();
-        let mut stream = sqlx::raw_sql(AssertSqlSafe(script.clone())).fetch_many(&mut *transaction);
+        let mut stream =
+            sqlx::raw_sql(AssertSqlSafe(script.as_str())).fetch_many(&mut *transaction);
 
         while let Some(item) = stream.try_next().await? {
             result.absorb(item, &statements);
@@ -59,7 +66,7 @@ pub async fn run_script(
 
         drop(stream);
 
-        if let Some(statement) = result.pending_empty_query(&statements) {
+        if let Some(statement) = result.pending_empty_query(&statements, &script) {
             let columns = empty_result_columns(transaction, statement).await?;
             result.show_empty(columns);
         }
@@ -85,7 +92,7 @@ impl SqlResult {
         }
     }
 
-    fn absorb(&mut self, item: Either<PgQueryResult, PgRow>, statements: &[&str]) {
+    fn absorb(&mut self, item: Either<PgQueryResult, PgRow>, statements: &[ScriptStatement]) {
         match item {
             Either::Left(outcome) => self.complete_statement(&outcome, statements),
             Either::Right(row) => self.add_row(&row),
@@ -95,7 +102,7 @@ impl SqlResult {
     /// A statement that returned rows reports how many it read (`SELECT 10`): only statements
     /// without rows count as changes. One without rows that is a query is remembered, so its
     /// empty result set replaces the previous one.
-    fn complete_statement(&mut self, outcome: &PgQueryResult, statements: &[&str]) {
+    fn complete_statement(&mut self, outcome: &PgQueryResult, statements: &[ScriptStatement]) {
         let statement_index = self.completed_statements;
         self.completed_statements = statement_index.saturating_add(1);
 
@@ -104,7 +111,7 @@ impl SqlResult {
 
             if statements
                 .get(statement_index)
-                .is_some_and(|statement| answers_rows(statement))
+                .is_some_and(|statement| statement.returns_rows)
             {
                 self.empty_query = Some(statement_index);
             }
@@ -115,12 +122,16 @@ impl SqlResult {
 
     /// Only when every statement was matched to its completion: otherwise the split and the
     /// server disagree, and no header is guessed.
-    fn pending_empty_query<'a>(&self, statements: &[&'a str]) -> Option<&'a str> {
+    fn pending_empty_query<'a>(
+        &self,
+        statements: &[ScriptStatement],
+        script: &'a str,
+    ) -> Option<&'a str> {
         if self.completed_statements != statements.len() {
             return None;
         }
 
-        statements.get(self.empty_query?).copied()
+        statements.get(self.empty_query?)?.source(script)
     }
 
     fn show_empty(&mut self, columns: Vec<String>) {

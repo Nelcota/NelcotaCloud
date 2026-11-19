@@ -4,7 +4,7 @@ use validator::Validate;
 
 use crate::modules::database::admin::table_definition::table_ddl::parse_name;
 use crate::modules::database::rejection::database_rejection::DatabaseRejection;
-use crate::modules::tenants::database::database_roles::{ANON_ROLE, AUTHENTICATED_ROLE};
+use crate::modules::tenants::postgres::database_roles::{ANON_ROLE, AUTHENTICATED_ROLE};
 
 /// Bounds the expressions a policy carries.
 const MAX_EXPRESSION_LENGTH: usize = 4_000;
@@ -96,11 +96,12 @@ fn policy_roles(roles: &[String]) -> Result<String, DatabaseRejection> {
 }
 
 fn condition(expression: Option<&str>) -> Result<Option<&str>, DatabaseRejection> {
-    let Some(expression) = expression
+    let expression = match expression
         .map(str::trim)
         .filter(|text| text.is_empty() == false)
-    else {
-        return Ok(None);
+    {
+        Some(expression) => expression,
+        None => return Ok(None),
     };
 
     // Characters, like every other length the admin API checks.

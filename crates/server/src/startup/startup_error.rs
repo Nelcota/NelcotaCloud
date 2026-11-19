@@ -1,20 +1,26 @@
 use axum::http::header::InvalidHeaderName;
 
 use crate::modules::auth::password::password_hashing::PasswordHashingError;
-use crate::modules::auth::rate_limiting::quota_spec::InvalidQuota;
+use crate::modules::cache::entries::cache_store::InvalidCacheUrl;
+use crate::modules::tenants::postgres::tenant_database_server::TenantDatabaseError;
 use crate::modules::tenants::provisioning::tenant_slug::InvalidTenantSlug;
 use crate::modules::webhooks::delivery::manual_send_limiter::InvalidSendQuota;
 use crate::shared::crypto::hex_encoding::HexDecodeError;
 use crate::shared::crypto::secret_box::SecretBoxError;
 use crate::shared::email::email_sender::EmailError;
+use crate::shared::rate_limiting::quota_spec::InvalidQuota;
 use crate::startup::config_error::ConfigError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum StartupError {
+    #[error("usage: server [--webhook-worker]")]
+    InvalidArguments,
     #[error("failed to load .env file: {0}")]
     EnvironmentFile(#[from] dotenvy::Error),
     #[error(transparent)]
     Config(#[from] ConfigError),
+    #[error(transparent)]
+    CacheUrl(#[from] InvalidCacheUrl),
     #[error("MASTER_KEY_HEX is not valid hex: {0}")]
     MasterKey(#[from] HexDecodeError),
     #[error(transparent)]
@@ -25,6 +31,11 @@ pub enum StartupError {
     DatabaseRoles(sqlx::Error),
     #[error("failed to migrate the control plane database: {0}")]
     Migration(#[from] sqlx::migrate::MigrateError),
+    #[error("failed to prepare tenant database {slug}: {source}")]
+    TenantMigration {
+        slug: String,
+        source: TenantDatabaseError,
+    },
     #[error(transparent)]
     PasswordHashing(#[from] PasswordHashingError),
     #[error(transparent)]
@@ -41,4 +52,6 @@ pub enum StartupError {
     PlatformTenantSlug(#[from] InvalidTenantSlug),
     #[error("server I/O error: {0}")]
     Io(#[from] std::io::Error),
+    #[error("a background task stopped unexpectedly")]
+    BackgroundTaskStopped,
 }

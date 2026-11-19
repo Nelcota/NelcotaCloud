@@ -5,13 +5,12 @@ use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::app_state::AppState;
-use crate::modules::auth::audit::login_audit::record_login;
-use crate::modules::auth::audit::login_method::LoginMethod;
-use crate::modules::auth::login::login_completion::LoginResponse;
+use crate::modules::auth::integration::oauth_identity::{LoginMethod, LoginResponse, record_login};
 use crate::modules::oauth::login::code_exchange::{LoginCodeExchange, exchange_login_code};
 use crate::modules::tenants::access::tenant_context::TenantContext;
+use crate::modules::tenants::ip_blocks::address_guard::ensure_address_allowed;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
-use crate::shared::http::client_ip::ClientIp;
+use crate::shared::http::request_origin::RequestOrigin;
 use crate::shared::http::validated_json::ValidatedJson;
 
 #[derive(Deserialize, Validate, ToSchema)]
@@ -38,9 +37,11 @@ pub struct OAuthCodeBody {
 pub async fn exchange_oauth_code(
     State(state): State<AppState>,
     tenant: TenantContext,
-    ClientIp(client_ip): ClientIp,
+    origin: RequestOrigin,
     ValidatedJson(body): ValidatedJson<OAuthCodeBody>,
 ) -> Result<Json<LoginResponse>, ApiError> {
+    ensure_address_allowed(&tenant.pool, origin.client_ip).await?;
+    let client_ip = origin.client_ip;
     state
         .rate_limits
         .token_redemption
@@ -50,8 +51,8 @@ pub async fn exchange_oauth_code(
         code_verifier: &body.code_verifier,
     };
 
-    let response = exchange_login_code(&state, &tenant, exchange).await?;
-    let login = (LoginMethod::Oauth, client_ip);
+    let response = exchange_login_code(&state.token_signing(), &tenant, exchange).await?;
+    let login = (LoginMethod::Oauth, origin);
     record_login(&tenant.pool, &response, login).await;
 
     Ok(Json(response))

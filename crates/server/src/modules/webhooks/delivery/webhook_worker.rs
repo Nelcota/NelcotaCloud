@@ -1,23 +1,23 @@
-use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 
-use tokio::sync::Semaphore;
+use tokio::sync::{Semaphore, watch};
 use tokio::task::JoinSet;
-use uuid::Uuid;
 
+use crate::modules::webhooks::audit_relay::activity_relay::relay_audit_events;
 use crate::modules::webhooks::delivery::tenant_delivery_run::{DeliveryContext, deliver_tenant};
-use crate::modules::webhooks::delivery::webhook_schedule_repository::{
-    DueTenant, due_tenants, mark_due_now, mark_tenants_with_endpoints_due, reschedule,
-    time_until_next_due,
+use crate::modules::webhooks::health::worker_heartbeat::{WorkerProgress, publish_heartbeats};
+use crate::modules::webhooks::scheduling::webhook_schedule_repository::{
+    DueTenant, due_tenants, mark_tenants_with_endpoints_due, reschedule, time_until_next_due,
 };
-use crate::modules::webhooks::outbox::webhook_hints::WebhookHintReceiver;
 
 /// Recovers events whose wake-up hint was lost; the only cost is one look at each tenant
 /// with an enabled endpoint.
 const SWEEP_INTERVAL: Duration = Duration::from_secs(5 * 60);
-/// Upper bound on sleeping, in case a due time was set by another instance.
-const MAX_IDLE: Duration = Duration::from_secs(30);
+/// How often new activity log entries reach `audit.event` receivers.
+const AUDIT_RELAY_INTERVAL: Duration = Duration::from_secs(5);
+/// The API publishes schedule changes from a different process.
+const MAX_IDLE: Duration = Duration::from_secs(1);
 /// Lower bound between rounds, so a tenant that keeps failing cannot make the worker spin.
 const MIN_IDLE: Duration = Duration::from_millis(250);
 const DUE_TENANTS_PER_ROUND: i64 = 32;
@@ -26,45 +26,42 @@ const PARALLEL_TENANTS: usize = 4;
 /// A tenant whose run failed (database down, undecryptable secret) is tried again later.
 const FAILED_RUN_DELAY: time::Duration = time::Duration::seconds(60);
 
-/// The background task that delivers webhooks: woken by hints from requests, by due retries
-/// and by a periodic sweep. Many instances can run at once (deliveries are claimed with
-/// `SKIP LOCKED`).
+/// Polls the durable schedule for new work and periodically recovers lost wake-ups.
 pub struct WebhookWorker {
     context: Arc<DeliveryContext>,
-    hints: WebhookHintReceiver,
 }
 
 impl WebhookWorker {
-    pub fn new(context: DeliveryContext, hints: WebhookHintReceiver) -> Self {
+    pub fn new(context: DeliveryContext) -> Self {
         Self {
             context: Arc::new(context),
-            hints,
         }
     }
 
-    /// Runs for the lifetime of the process (or of the test runtime).
-    pub fn spawn(self) {
-        tokio::spawn(self.run());
+    pub async fn run(self, stopped: watch::Receiver<bool>) {
+        let pool = &self.context.control_plane_pool;
+        let progress = self.context.progress.subscribe();
+        tokio::join!(
+            self.run_queue(stopped.clone()),
+            self.run_audit_relay(stopped.clone()),
+            publish_heartbeats(pool, progress, stopped)
+        );
     }
 
-    async fn run(mut self) {
+    async fn run_queue(&self, mut stopped: watch::Receiver<bool>) {
         let mut sweep = tokio::time::interval(SWEEP_INTERVAL);
 
         loop {
             let idle = self.idle_time().await;
 
             tokio::select! {
-                received = self.hints.recv() => {
-                    let Some(tenant_id) = received else {
-                        return;
-                    };
-                    self.mark_hinted(tenant_id).await;
-                }
-                _ = tokio::time::sleep(idle) => {}
+                biased;
+                _ = stopped.changed() => return,
                 _ = sweep.tick() => self.sweep().await,
+                _ = tokio::time::sleep(idle) => {}
             }
 
-            self.deliver_due().await;
+            self.deliver_due(&stopped).await;
         }
     }
 
@@ -83,18 +80,21 @@ impl WebhookWorker {
         until_next.clamp(MIN_IDLE, MAX_IDLE)
     }
 
-    /// Drains every hint already waiting, so a burst of requests costs one schedule write.
-    async fn mark_hinted(&mut self, first: Uuid) {
-        let mut tenant_ids = HashSet::from([first]);
+    async fn run_audit_relay(&self, mut stopped: watch::Receiver<bool>) {
+        let context = &self.context;
+        let mut ticks = tokio::time::interval(AUDIT_RELAY_INTERVAL);
+        ticks.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
-        while let Ok(tenant_id) = self.hints.try_recv() {
-            tenant_ids.insert(tenant_id);
-        }
+        loop {
+            tokio::select! {
+                _ = stopped.changed() => return,
+                _ = ticks.tick() => {}
+            }
 
-        let tenant_ids: Vec<Uuid> = tenant_ids.into_iter().collect();
-
-        if let Err(error) = mark_due_now(&self.context.control_plane_pool, &tenant_ids).await {
-            tracing::error!(%error, "failed to schedule hinted webhook deliveries");
+            tokio::select! {
+                _ = stopped.changed() => return,
+                () = relay_audit_events(&context.control_plane_pool, &context.tenant_pools) => {}
+            }
         }
     }
 
@@ -105,7 +105,7 @@ impl WebhookWorker {
         }
     }
 
-    async fn deliver_due(&self) {
+    async fn deliver_due(&self, stopped: &watch::Receiver<bool>) {
         let due = match due_tenants(&self.context.control_plane_pool, DUE_TENANTS_PER_ROUND).await {
             Ok(due) => due,
             Err(error) => {
@@ -114,13 +114,31 @@ impl WebhookWorker {
             }
         };
         let slots = Arc::new(Semaphore::new(PARALLEL_TENANTS));
+        self.context
+            .progress
+            .send_modify(WorkerProgress::record_poll);
         let mut runs = JoinSet::new();
+        let oldest_due_seconds = due.first().map(|tenant| {
+            tenant
+                .checked_at
+                .unix_timestamp()
+                .saturating_sub(tenant.next_due_at.unix_timestamp())
+        });
+        tracing::debug!(
+            due_tenants = due.len(),
+            ?oldest_due_seconds,
+            "loaded webhook schedule"
+        );
 
         for tenant in due {
+            if *stopped.borrow() {
+                break;
+            }
+
             runs.spawn(deliver_with_slot(
                 Arc::clone(&self.context),
                 Arc::clone(&slots),
-                tenant,
+                (tenant, stopped.clone()),
             ));
         }
 
@@ -132,20 +150,53 @@ impl WebhookWorker {
     }
 }
 
-async fn deliver_with_slot(context: Arc<DeliveryContext>, slots: Arc<Semaphore>, due: DueTenant) {
-    let Ok(_slot) = slots.acquire_owned().await else {
-        return;
+async fn deliver_with_slot(
+    context: Arc<DeliveryContext>,
+    slots: Arc<Semaphore>,
+    (due, stopped): (DueTenant, watch::Receiver<bool>),
+) {
+    let _slot = match slots.acquire_owned().await {
+        Ok(_slot) => _slot,
+        Err(_) => return,
     };
-    let tenant_id = due.tenant_id;
-    let Err(error) = deliver_tenant(&context, &due).await else {
+    if *stopped.borrow() {
         return;
+    }
+
+    let tenant_id = due.tenant_id;
+    let error = match deliver_tenant(&context, &due, &stopped).await {
+        Err(error) => error,
+        _ => return,
     };
     tracing::error!(%tenant_id, %error, "failed to deliver webhooks");
-    let Some(retry_at) = due.checked_at.checked_add(FAILED_RUN_DELAY) else {
-        return;
+    let retry_at = match due.checked_at.checked_add(FAILED_RUN_DELAY) {
+        Some(retry_at) => retry_at,
+        None => return,
     };
 
     if let Err(error) = reschedule(&context.control_plane_pool, &due, Some(retry_at)).await {
         tracing::error!(%tenant_id, %error, "failed to postpone webhook deliveries");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::num::TryFromIntError;
+
+    use super::*;
+    use crate::modules::tenants::postgres::tenant_pool_limits::TenantPoolLimits;
+    use crate::modules::webhooks::audit_relay::activity_relay::PARALLEL_SUBSCRIBERS;
+
+    /// Tenant connections one worker process may hold, so its replicas fit beside the API under
+    /// the Postgres server's default `max_connections` of 100.
+    const TENANT_CONNECTION_BUDGET: u64 = 32;
+
+    #[test]
+    fn tenant_connections_stay_within_the_budget() -> Result<(), TryFromIntError> {
+        let in_flight = u64::try_from(PARALLEL_TENANTS + PARALLEL_SUBSCRIBERS)?;
+        let limits = TenantPoolLimits::WEBHOOK_WORKER;
+
+        assert!(limits.max_connections(in_flight) <= TENANT_CONNECTION_BUDGET);
+        Ok(())
     }
 }

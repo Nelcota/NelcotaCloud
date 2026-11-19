@@ -1,0 +1,11 @@
+pub mod add_column;
+pub mod apply_migration;
+pub mod change_table;
+pub mod create_policy;
+pub mod create_table;
+pub mod drop_column;
+pub mod drop_policy;
+pub mod drop_table;
+pub mod list_migrations;
+pub mod read_schema;
+pub mod run_sql;

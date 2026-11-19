@@ -1,4 +1,4 @@
-use crate::modules::auth::user::email_address::EmailAddress;
+use crate::modules::auth::integration::team_notifications::EmailAddress;
 use crate::modules::tenants::platform::platform_account::PlatformAccount;
 use crate::shared::http::api_error::ApiError;
 

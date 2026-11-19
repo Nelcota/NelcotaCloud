@@ -18,9 +18,7 @@ impl ReturningRows {
 
     pub(crate) fn push(&mut self, row: StatementRow) -> Result<(), DatabaseRejection> {
         let (body, count, _) = row;
-        let Some(body) = body else {
-            return Err(DatabaseRejection::ResponseTooLarge);
-        };
+        let body = body.ok_or(DatabaseRejection::ResponseTooLarge)?;
         let elements = array_elements(&body)?;
 
         if elements.is_empty() {

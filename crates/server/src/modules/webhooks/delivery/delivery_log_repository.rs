@@ -68,7 +68,7 @@ pub enum Requeue {
 }
 
 /// Queues the delivery again right away, whatever its state (e.g. after fixing the receiver).
-/// A delivery the worker is sending is locked: it is reported, never waited for.
+/// A delivery with a live lease is reported as in progress without waiting for the send.
 pub async fn requeue_delivery(
     pool: &PgPool,
     endpoint_id: Uuid,
@@ -89,7 +89,9 @@ pub async fn requeue_delivery(
 
     let updated = sqlx::query(
         "UPDATE webhook_deliveries SET delivered_at = NULL, failed_at = NULL, next_attempt_at = now(), \
-         attempts = 0 WHERE id = (SELECT id FROM webhook_deliveries WHERE id = $1 AND endpoint_id = $2 \
+         attempts = 0, lease_token = NULL, lease_expires_at = NULL \
+         WHERE id = (SELECT id FROM webhook_deliveries WHERE id = $1 AND endpoint_id = $2 \
+         AND (lease_expires_at IS NULL OR lease_expires_at <= clock_timestamp()) \
          FOR UPDATE SKIP LOCKED)",
     )
     .bind(delivery_id)

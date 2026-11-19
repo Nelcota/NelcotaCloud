@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
-use crate::app_state::AppState;
 use crate::modules::database::access::data_api_caller::DataApiCaller;
 use crate::modules::database::execution::data_api_session::{DataApiSession, TransactionAccess};
+use crate::modules::database::execution::database_sessions::DatabaseSessions;
 use crate::modules::database::query::preferences::{CountMode, Preferences};
 use crate::modules::database::query::read_query::ReadQuery;
 use crate::modules::database::rejection::database_rejection::DatabaseRejection;
@@ -25,17 +25,15 @@ pub struct RowRead<'a> {
 }
 
 pub async fn read_rows(
-    state: &AppState,
+    sessions: &DatabaseSessions<'_>,
     caller: &DataApiCaller,
     read: RowRead<'_>,
 ) -> Result<RowsResult, ApiError> {
-    let mut session = DataApiSession::open(state, caller, TransactionAccess::ReadOnly).await?;
+    let mut session = DataApiSession::open(sessions, caller, TransactionAccess::ReadOnly).await?;
     let schema = Arc::clone(&session.schema);
-    let Some(table) = schema.table(read.table_name) else {
-        return Err(ApiError::from(DatabaseRejection::TableNotFound(
-            read.table_name.to_owned(),
-        )));
-    };
+    let table = schema
+        .table(read.table_name)
+        .ok_or_else(|| DatabaseRejection::TableNotFound(read.table_name.to_owned()))?;
     let preferences = read.preferences;
     let shape = ReadShape {
         counts_exactly: preferences.count == Some(CountMode::Exact),

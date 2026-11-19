@@ -1,6 +1,7 @@
 use sqlx::PgConnection;
 use uuid::Uuid;
 
+use crate::modules::auth::user::user_event_snapshot::UserEventSnapshot;
 use crate::modules::auth::user::user_lookup::find_user_by_id;
 use crate::modules::auth::user::user_record::User;
 use crate::modules::webhooks::event::webhook_event::{
@@ -44,8 +45,9 @@ pub async fn record_user_change(
     }
 
     let user = find_user_by_id(&mut *connection, change.user_id).await?;
-    let Some(user) = user else {
-        return Ok(());
+    let user = match user {
+        Some(user) => user,
+        None => return Ok(()),
     };
 
     record_user_event(connection, webhooks, (change.event_type, &user)).await
@@ -57,7 +59,8 @@ pub async fn record_user_event(
     webhooks: &WebhookRecorder,
     (event_type, user): (WebhookEventType, &User),
 ) -> Result<(), UserEventError> {
-    let event = WebhookEvent::about_user(event_type, user)?;
+    let snapshot = UserEventSnapshot::from(user);
+    let event = WebhookEvent::about_user(event_type, &snapshot)?;
 
     Ok(webhooks.record(connection, event).await?)
 }

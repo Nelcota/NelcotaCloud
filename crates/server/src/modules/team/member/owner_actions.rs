@@ -1,10 +1,14 @@
-use sqlx::{PgConnection, PgPool};
+use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::modules::team::member::ownership_changes::{
-    MembershipTarget, ensure_another_owner, ensure_below_owner_limit, lock_membership, set_role,
+    MembershipTarget, delete_membership, ensure_below_owner_limit, require_another_owner,
+    require_member_role, set_role,
 };
 use crate::modules::team::member::ownership_error::OwnershipError;
+use crate::modules::tenants::platform::membership_repository::{
+    LockedProjectMemberships, lock_project_memberships,
+};
 use crate::modules::tenants::platform::project_role::ProjectRole;
 
 /// An owner acting on another membership of the same project.
@@ -12,15 +16,6 @@ use crate::modules::tenants::platform::project_role::ProjectRole;
 pub struct OwnerAction {
     pub actor_account_id: Uuid,
     pub target: MembershipTarget,
-}
-
-impl OwnerAction {
-    fn actor(&self) -> MembershipTarget {
-        MembershipTarget {
-            tenant_id: self.target.tenant_id,
-            account_id: self.actor_account_id,
-        }
-    }
 }
 
 /// Gives a member another role. Demoting keeps at least one owner; promoting respects the
@@ -32,14 +27,15 @@ pub async fn change_member_role(
 ) -> Result<(), OwnershipError> {
     let target = action.target;
     let mut transaction = pool.begin().await?;
-    let current = lock_as_owner(&mut transaction, action).await?;
+    let memberships = lock_project_memberships(&mut transaction, target.tenant_id).await?;
+    let current = role_for_owner_action(&memberships, action)?;
 
     if current == role {
         return Ok(());
     }
 
     if role == ProjectRole::Member {
-        ensure_another_owner(&mut transaction, target).await?;
+        require_another_owner(&memberships, target.account_id)?;
     }
 
     if role == ProjectRole::Owner {
@@ -56,29 +52,24 @@ pub async fn change_member_role(
 pub async fn remove_member(pool: &PgPool, action: OwnerAction) -> Result<(), OwnershipError> {
     let target = action.target;
     let mut transaction = pool.begin().await?;
+    let memberships = lock_project_memberships(&mut transaction, target.tenant_id).await?;
 
-    if lock_as_owner(&mut transaction, action).await? != ProjectRole::Member {
+    if role_for_owner_action(&memberships, action)? != ProjectRole::Member {
         return Err(OwnershipError::NotMember);
     }
 
-    sqlx::query("DELETE FROM tenant_members WHERE tenant_id = $1 AND account_id = $2")
-        .bind(target.tenant_id)
-        .bind(target.account_id)
-        .execute(&mut *transaction)
-        .await?;
+    delete_membership(&mut transaction, target).await?;
     transaction.commit().await?;
 
     Ok(())
 }
 
-/// Locks the project's memberships, then checks the actor is still an owner: a demotion or
-/// removal committed meanwhile is seen here, never acted on by a former owner. Returns the
-/// target's role.
-async fn lock_as_owner(
-    connection: &mut PgConnection,
+/// Reads both roles from the locked snapshot so a former owner cannot change a membership.
+fn role_for_owner_action(
+    memberships: &LockedProjectMemberships,
     action: OwnerAction,
 ) -> Result<ProjectRole, OwnershipError> {
-    match lock_membership(connection, action.actor()).await {
+    match require_member_role(memberships, action.actor_account_id) {
         Ok(ProjectRole::Owner) => {}
         Ok(ProjectRole::Member) | Err(OwnershipError::NotMember) => {
             return Err(OwnershipError::NotOwner);
@@ -86,5 +77,5 @@ async fn lock_as_owner(
         Err(error) => return Err(error),
     }
 
-    lock_membership(connection, action.target).await
+    require_member_role(memberships, action.target.account_id)
 }

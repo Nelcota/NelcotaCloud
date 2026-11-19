@@ -1,5 +1,6 @@
 use serde_json::Value;
 use sqlx::PgConnection;
+use sqlx::types::Json;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -12,30 +13,47 @@ pub async fn database_now(connection: &mut PgConnection) -> Result<OffsetDateTim
         .await
 }
 
-pub struct OutboxEntry<'a> {
-    pub event_id: Uuid,
+pub struct OutboxEvent {
+    pub id: Uuid,
+    pub payload: Value,
+}
+
+pub struct OutboxBatch<'a> {
+    pub events: &'a [OutboxEvent],
     pub event_type: WebhookEventType,
-    pub payload: &'a Value,
     pub endpoint_ids: &'a [Uuid],
 }
 
-/// Writes the event and one pending delivery per endpoint, inside the caller's transaction.
-pub async fn insert_outbox_entry(
+/// Writes events and their pending deliveries inside the caller's transaction.
+pub async fn insert_outbox_batch(
     connection: &mut PgConnection,
-    entry: OutboxEntry<'_>,
+    batch: OutboxBatch<'_>,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query("INSERT INTO webhook_events (id, event_type, payload) VALUES ($1, $2, $3)")
-        .bind(entry.event_id)
-        .bind(entry.event_type.as_str())
-        .bind(entry.payload)
-        .execute(&mut *connection)
-        .await?;
+    if batch.events.is_empty() {
+        return Ok(());
+    }
+
+    let (event_ids, payloads): (Vec<_>, Vec<_>) = batch
+        .events
+        .iter()
+        .map(|event| (event.id, Json(&event.payload)))
+        .unzip();
+    sqlx::query(
+        "INSERT INTO webhook_events (id, event_type, payload) \
+         SELECT id, $2, payload FROM unnest($1::uuid[], $3::jsonb[]) AS event(id, payload)",
+    )
+    .bind(&event_ids)
+    .bind(batch.event_type.as_str())
+    .bind(&payloads)
+    .execute(&mut *connection)
+    .await?;
     sqlx::query(
         "INSERT INTO webhook_deliveries (id, event_id, endpoint_id) \
-         SELECT gen_random_uuid(), $1, endpoint_id FROM UNNEST($2::uuid[]) AS endpoint_id",
+         SELECT gen_random_uuid(), event_id, endpoint_id \
+         FROM unnest($1::uuid[]) AS event_id CROSS JOIN unnest($2::uuid[]) AS endpoint_id",
     )
-    .bind(entry.event_id)
-    .bind(entry.endpoint_ids)
+    .bind(&event_ids)
+    .bind(batch.endpoint_ids)
     .execute(connection)
     .await?;
 

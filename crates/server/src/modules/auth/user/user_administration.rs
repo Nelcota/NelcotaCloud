@@ -19,8 +19,9 @@ pub async fn ban_user(
     webhooks: &WebhookRecorder,
 ) -> Result<Option<StatusChange>, ApiError> {
     let mut transaction = pool.begin().await?;
-    let Some(current) = lock_user_by_id(&mut transaction, user_id).await? else {
-        return Ok(None);
+    let current = match lock_user_by_id(&mut transaction, user_id).await? {
+        Some(current) => current,
+        None => return Ok(None),
     };
 
     if current.banned_at.is_some() {
@@ -48,8 +49,9 @@ pub async fn unban_user(
     webhooks: &WebhookRecorder,
 ) -> Result<Option<StatusChange>, ApiError> {
     let mut transaction = pool.begin().await?;
-    let Some(current) = lock_user_by_id(&mut transaction, user_id).await? else {
-        return Ok(None);
+    let current = match lock_user_by_id(&mut transaction, user_id).await? {
+        Some(current) => current,
+        None => return Ok(None),
     };
 
     if current.banned_at.is_none() {
@@ -110,8 +112,9 @@ pub async fn delete_user(
     .bind(user_id)
     .fetch_optional(&mut *transaction)
     .await?;
-    let Some(user) = user else {
-        return Ok(false);
+    let user = match user {
+        Some(user) => user,
+        None => return Ok(false),
     };
     sqlx::query("DELETE FROM users WHERE id = $1")
         .bind(user_id)

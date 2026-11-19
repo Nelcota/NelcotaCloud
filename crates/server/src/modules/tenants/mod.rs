@@ -1,8 +1,10 @@
 pub mod access;
 pub mod api_keys;
+pub mod audit;
 pub mod captcha;
-pub mod database;
+pub mod ip_blocks;
 pub mod platform;
+pub mod postgres;
 pub mod provisioning;
 pub mod rejection;
 pub mod routes;

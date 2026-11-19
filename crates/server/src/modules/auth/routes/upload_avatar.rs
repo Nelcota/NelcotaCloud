@@ -5,16 +5,14 @@ use axum::extract::rejection::BytesRejection;
 use axum::http::StatusCode;
 
 use crate::app_state::AppState;
+use crate::modules::auth::avatar::avatar_changes::save_avatar;
 use crate::modules::auth::avatar::avatar_image::AvatarImageError;
 use crate::modules::auth::avatar::avatar_processing::{AvatarProcessingError, process_avatar};
-use crate::modules::auth::avatar::avatar_repository::store_avatar;
 use crate::modules::auth::avatar::image_file::ImageFile;
 use crate::modules::auth::session::authenticated_user::AuthenticatedUser;
-use crate::modules::auth::user::user_events::{UserChange, record_user_change};
 use crate::modules::auth::user::user_lookup::find_user_by_id;
-use crate::modules::auth::user::user_record::User;
+use crate::modules::auth::user::user_response::UserResponse;
 use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
-use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
 /// `PUT /user/avatar`: the body is the image itself (PNG, JPEG or WebP, up to 1 MiB). The
@@ -30,7 +28,7 @@ use crate::shared::http::api_error::{ApiError, ErrorBody};
         description = "The image file: PNG, JPEG or WebP, up to 1 MiB"
     ),
     responses(
-        (status = 200, description = "The user with the new photo", body = User),
+        (status = 200, description = "The user with the new photo", body = UserResponse),
         (status = 400, description = "Empty, unreadable or unsupported image", body = ErrorBody),
         (status = 401, description = "Missing or invalid access token", body = ErrorBody),
         (status = 403, description = "The user is banned", body = ErrorBody),
@@ -41,7 +39,7 @@ pub async fn upload_avatar(
     State(state): State<AppState>,
     authenticated: AuthenticatedUser,
     upload: Result<Bytes, BytesRejection>,
-) -> Result<Json<User>, ApiError> {
+) -> Result<Json<UserResponse>, ApiError> {
     let tenant = &authenticated.tenant;
     state
         .rate_limits
@@ -49,9 +47,7 @@ pub async fn upload_avatar(
         .check(tenant.tenant_id, authenticated.claims.sub)?;
     let user_id = authenticated.claims.sub;
     let user = find_user_by_id(&tenant.pool, user_id).await?;
-    let Some(mut user) = user else {
-        return Err(ApiError::from(TenantsRejection::InvalidAccessToken));
-    };
+    let mut user = user.ok_or(TenantsRejection::InvalidAccessToken)?;
 
     if user.banned_at.is_some() {
         return Err(ApiError::from(TenantsRejection::UserBanned));
@@ -60,20 +56,10 @@ pub async fn upload_avatar(
     let upload = upload.map_err(|rejection| map_body_rejection(&rejection))?;
     let avatar = process_avatar(upload).await.map_err(map_processing_error)?;
     let webhooks = state.webhooks.recorder(tenant.tenant_id).await?;
-    let mut transaction = tenant.pool.begin().await?;
-    let updated_at = store_avatar(&mut *transaction, user_id, &avatar).await?;
-    let Some(updated_at) = updated_at else {
-        return Err(ApiError::from(TenantsRejection::InvalidAccessToken));
-    };
-    let change = UserChange {
-        event_type: WebhookEventType::UserUpdated,
-        user_id,
-    };
-    record_user_change(&mut transaction, &webhooks, change).await?;
-    transaction.commit().await?;
+    let updated_at = save_avatar(&tenant.pool, &webhooks, (user_id, &avatar)).await?;
     user.avatar_updated_at = Some(updated_at);
 
-    Ok(Json(user))
+    Ok(Json(user.into()))
 }
 
 fn map_body_rejection(rejection: &BytesRejection) -> ApiError {

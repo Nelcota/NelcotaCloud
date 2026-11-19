@@ -91,9 +91,7 @@ impl SmtpSettingsStore<'_> {
         tenant_id: Uuid,
     ) -> Result<SmtpSettingsView, SmtpSettingsChangeError> {
         let stored = find_smtp_settings(self.control_plane_pool, tenant_id).await?;
-        let Some(stored) = stored else {
-            return Err(SmtpSettingsChangeError::MissingAfterSave);
-        };
+        let stored = stored.ok_or(SmtpSettingsChangeError::MissingAfterSave)?;
 
         Ok(SmtpSettingsView::from(stored))
     }

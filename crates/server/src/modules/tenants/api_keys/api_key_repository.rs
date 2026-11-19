@@ -19,6 +19,13 @@ pub struct ApiKeyOwner {
     pub kind: ApiKeyKind,
 }
 
+/// An active key found by its hash: which key it is, and whom it belongs to.
+#[derive(Debug, Clone, Copy)]
+pub struct ActiveApiKey {
+    pub id: Uuid,
+    pub owner: ApiKeyOwner,
+}
+
 /// A key ready to store: its hash and last characters, plus the key itself when it is public.
 pub struct StoredApiKey<'a> {
     pub id: Uuid,
@@ -50,24 +57,43 @@ pub async fn insert_api_key(
     Ok(())
 }
 
-pub async fn find_active_api_key_owner(
+pub async fn find_active_api_key(
     pool: &PgPool,
     key_hash: &[u8],
-) -> Result<Option<ApiKeyOwner>, ApiKeyLookupError> {
-    let row: Option<(Uuid, String)> = sqlx::query_as(
-        "SELECT tenant_id, kind FROM tenant_api_keys WHERE key_hash = $1 AND revoked_at IS NULL",
+) -> Result<Option<ActiveApiKey>, ApiKeyLookupError> {
+    let row: Option<(Uuid, Uuid, String)> = sqlx::query_as(
+        "SELECT id, tenant_id, kind FROM tenant_api_keys WHERE key_hash = $1 AND revoked_at IS NULL",
     )
     .bind(key_hash)
     .fetch_optional(pool)
     .await?;
-    let Some((tenant_id, raw_kind)) = row else {
+    let Some((id, tenant_id, raw_kind)) = row else {
         return Ok(None);
     };
-    let Some(kind) = ApiKeyKind::parse(&raw_kind) else {
-        return Err(ApiKeyLookupError::UnknownKind);
-    };
+    let kind = ApiKeyKind::parse(&raw_kind).ok_or(ApiKeyLookupError::UnknownKind)?;
 
-    Ok(Some(ApiKeyOwner { tenant_id, kind }))
+    Ok(Some(ActiveApiKey {
+        id,
+        owner: ApiKeyOwner { tenant_id, kind },
+    }))
+}
+
+/// Stamps the key as used now, unless it was already stamped within `interval_seconds` (by this
+/// or another instance) or has been revoked meanwhile.
+pub async fn record_api_key_use(
+    pool: &PgPool,
+    key_id: Uuid,
+    interval_seconds: i32,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "UPDATE tenant_api_keys SET last_used_at = now() WHERE id = $1 AND revoked_at IS NULL AND (last_used_at IS NULL OR last_used_at < now() - make_interval(secs => $2))",
+    )
+    .bind(key_id)
+    .bind(interval_seconds)
+    .execute(pool)
+    .await?;
+
+    Ok(())
 }
 
 /// Every key of the tenant, newest first, revoked ones included.
@@ -76,7 +102,7 @@ pub async fn list_api_keys(
     tenant_id: Uuid,
 ) -> Result<Vec<ApiKeySummary>, sqlx::Error> {
     sqlx::query_as(
-        "SELECT id, kind, name, COALESCE(key_hint, '') AS hint, publishable_key AS key, created_at, revoked_at FROM tenant_api_keys WHERE tenant_id = $1 ORDER BY created_at DESC",
+        "SELECT id, kind, name, COALESCE(key_hint, '') AS hint, publishable_key AS key, created_at, revoked_at, last_used_at FROM tenant_api_keys WHERE tenant_id = $1 ORDER BY created_at DESC",
     )
     .bind(tenant_id)
     .fetch_all(pool)

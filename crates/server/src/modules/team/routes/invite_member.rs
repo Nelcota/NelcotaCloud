@@ -2,25 +2,29 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use serde::Deserialize;
+use serde_json::json;
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
 
 use crate::app_state::AppState;
-use crate::modules::auth::rate_limiting::attempt_limiter::Attempt;
-use crate::modules::auth::user::email_address::EmailAddress;
+use crate::modules::auth::integration::team_notifications::EmailAddress;
 use crate::modules::team::invitation::invitation_email::{InvitationNotice, send_invitation_email};
 use crate::modules::team::invitation::invitation_repository::{
     InvitationError, NewInvitation, PendingInvitation, insert_invitation,
 };
 use crate::modules::team::member::team_member_repository::is_member_email;
 use crate::modules::team::rejection::team_rejection::TeamRejection;
+use crate::modules::tenants::access::admin_actor::AdminActor;
+use crate::modules::tenants::audit::audit_action::AuditAction;
+use crate::modules::tenants::audit::project_change::{ProjectChange, record_project_change};
 use crate::modules::tenants::platform::platform_account::PlatformAccount;
 use crate::modules::tenants::platform::project_access::require_owner;
 use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
-use crate::shared::http::client_ip::ClientIp;
+use crate::shared::http::request_origin::RequestOrigin;
 use crate::shared::http::validated_json::ValidatedJson;
+use crate::shared::rate_limiting::attempt_limiter::Attempt;
 
 #[derive(Deserialize, Validate, ToSchema)]
 pub struct InvitationBody {
@@ -48,20 +52,20 @@ pub struct InvitationBody {
 pub async fn invite_member(
     State(state): State<AppState>,
     account: PlatformAccount,
-    ClientIp(client_ip): ClientIp,
+    origin: RequestOrigin,
     Path(project_id): Path<Uuid>,
     ValidatedJson(body): ValidatedJson<InvitationBody>,
 ) -> Result<(StatusCode, Json<PendingInvitation>), ApiError> {
+    let client_ip = origin.client_ip;
     require_owner(&state.control_plane_pool, project_id, &account).await?;
-    let Ok(email) = EmailAddress::parse(&body.email) else {
-        return Err(ApiError::InvalidRequest("invalid email address".to_owned()));
-    };
+    let email = EmailAddress::parse(&body.email)
+        .map_err(|_| ApiError::InvalidRequest("invalid email address".to_owned()))?;
     let attempt = Attempt {
         tenant_id: project_id,
         email: email.as_str(),
         client_ip,
     };
-    state.rate_limits.check_email(&attempt)?;
+    state.rate_limits.email.check(&attempt)?;
     state
         .rate_limits
         .invitations
@@ -73,6 +77,13 @@ pub async fn invite_member(
         inviter_email: &account.email,
     };
     send_invitation_email(&state, notice).await?;
+    let change = ProjectChange {
+        tenant_id: project_id,
+        author: (AdminActor::ConsoleAccount(account.account_id), &origin),
+        action: AuditAction::MemberInvited,
+        details: json!({ "email": email.as_str() }),
+    };
+    record_project_change(&state.tenant_pools, change).await;
 
     Ok((StatusCode::CREATED, Json(invitation)))
 }

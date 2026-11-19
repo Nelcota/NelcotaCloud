@@ -127,13 +127,8 @@ impl<'a> SelectWriter<'a> {
         let node = self.query.node(&level.path).unwrap_or(&default_node);
         push_order(sql, target, &node.order)?;
 
-        // Written rows are all answered; the requested table is always paged; embeds only when
-        // asked.
+        // Give every read, including nested collections, the same default row budget.
         if level.applies_filters == false {
-            return Ok(());
-        }
-
-        if level.link.is_empty() == false && node.limit.is_none() && node.offset.is_none() {
             return Ok(());
         }
 

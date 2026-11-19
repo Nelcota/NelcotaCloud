@@ -26,6 +26,7 @@ pub const OPENAPI_FILE: &str = "openapi.json";
         (name = "tenant-admin", description = "A tenant's own configuration (secret API key)"),
         (name = "database", description = "Tables of the project's Postgres database as a REST API, under row level security"),
         (name = "database-admin", description = "Tables, policies and SQL of the project's database (console and secret key)"),
+        (name = "cache", description = "Optional project cache for application backends"),
         (name = "webhooks", description = "Signed HTTP calls to the tenant's servers when its users change (Standard Webhooks)"),
         (name = "platform", description = "Projects of a console account (platform access token)"),
         (name = "platform-admin", description = "Operations of the platform operator (admin token)"),
@@ -80,8 +81,13 @@ fn add_bearer_schemes(components: &mut Components) {
             "Access token of a console account (a user of the platform tenant)",
         ))
         .build();
+    let cache_credential = HttpBuilder::new()
+        .scheme(HttpAuthScheme::Bearer)
+        .description(Some("A project cache credential for server-side requests"))
+        .build();
     components.add_security_scheme("bearer", SecurityScheme::Http(bearer));
     components.add_security_scheme("platform_account", SecurityScheme::Http(platform_account));
+    components.add_security_scheme("cache_credential", SecurityScheme::Http(cache_credential));
 }
 
 #[cfg(test)]

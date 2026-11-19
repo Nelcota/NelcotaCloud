@@ -6,16 +6,16 @@ use uuid::Uuid;
 use validator::{Validate, ValidationError};
 
 use crate::app_state::AppState;
-use crate::modules::auth::audit::audit_action::AuditAction;
-use crate::modules::auth::audit::audit_event::NewAuditEvent;
-use crate::modules::auth::audit::audit_recorder::record_audit_event;
 use crate::modules::auth::user::status_change::StatusChange;
 use crate::modules::auth::user::user_metadata::{
     MetadataObject, check_app_metadata_size, check_user_metadata_size,
 };
 use crate::modules::auth::user::user_metadata_update::{MetadataChange, update_user_metadata};
-use crate::modules::auth::user::user_record::User;
+use crate::modules::auth::user::user_response::UserResponse;
 use crate::modules::tenants::access::tenant_admin_context::TenantAdminContext;
+use crate::modules::tenants::audit::audit_action::AuditAction;
+use crate::modules::tenants::audit::audit_entry::NewAuditEvent;
+use crate::modules::tenants::audit::audit_recorder::record_audit_event;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::validated_json::ValidatedJson;
 
@@ -52,7 +52,7 @@ fn require_a_document(body: &UpdateUserBody) -> Result<(), ValidationError> {
     params(("user_id" = Uuid, Path, description = "Id of the user")),
     request_body = UpdateUserBody,
     responses(
-        (status = 200, description = "The updated user", body = User),
+        (status = 200, description = "The updated user", body = UserResponse),
         (status = 400, description = "Nothing to update, not a JSON object, or too large", body = ErrorBody),
         (status = 403, description = "Requires the secret API key, or membership in the project", body = ErrorBody),
         (status = 404, description = "No such user", body = ErrorBody),
@@ -63,21 +63,24 @@ pub async fn update_user(
     admin: TenantAdminContext,
     Path(user_id): Path<Uuid>,
     ValidatedJson(body): ValidatedJson<UpdateUserBody>,
-) -> Result<Json<User>, ApiError> {
+) -> Result<Json<UserResponse>, ApiError> {
     let webhooks = state.webhooks.recorder(admin.tenant_id).await?;
     let change = MetadataChange {
         user_id,
         user_metadata: body.user_metadata,
         app_metadata: body.app_metadata,
     };
-    let user = match update_user_metadata(&admin.pool, change, &webhooks).await? {
+    let updated = update_user_metadata(&admin.pool, change, &webhooks)
+        .await
+        .map_err(ApiError::internal)?;
+    let user = match updated {
         None => return Err(ApiError::NotFound("user")),
-        Some(StatusChange::Unchanged(user)) => return Ok(Json(user)),
+        Some(StatusChange::Unchanged(user)) => return Ok(Json(user.into())),
         Some(StatusChange::Changed(user)) => user,
     };
 
-    let event = NewAuditEvent::by_admin(AuditAction::UserUpdated, user_id, admin.actor);
+    let event = NewAuditEvent::by_admin(AuditAction::UserUpdated, user_id, admin.author());
     record_audit_event(&admin.pool, event).await;
 
-    Ok(Json(user))
+    Ok(Json(user.into()))
 }

@@ -3,6 +3,9 @@ use uuid::Uuid;
 
 use crate::modules::tenants::platform::project_role::ProjectRole;
 
+/// Each project is a database, so ownership is capped per account.
+pub const MAX_OWNED_PROJECTS: i64 = 10;
+
 #[derive(Debug, thiserror::Error)]
 pub enum MembershipError {
     #[error("database error while reading memberships: {0}")]
@@ -68,59 +71,66 @@ pub async fn find_project_role(
     .fetch_optional(pool)
     .await?;
 
-    parse_role(raw_role)
+    parse_role(raw_role.as_deref())
 }
 
-/// Like `find_project_role`, after locking every membership of the project.
-///
-/// Locked `FOR UPDATE` in account order, the way role changes and ownership transfers do: they
-/// wait for each other, and deleting the project (which deletes its memberships) cannot
-/// deadlock with them.
-pub async fn lock_project_role(
+/// The roles read under the project's membership locks.
+pub struct LockedProjectMemberships(Vec<(Uuid, String)>);
+
+impl LockedProjectMemberships {
+    pub fn role_of(&self, account_id: Uuid) -> Result<Option<ProjectRole>, MembershipError> {
+        let role = self.0.iter().find(|(id, _)| *id == account_id);
+        parse_role(role.map(|(_, role)| role.as_str()))
+    }
+
+    pub fn has_other_owner(&self, account_id: Uuid) -> bool {
+        self.0
+            .iter()
+            .any(|(id, role)| *id != account_id && role == ProjectRole::Owner.as_str())
+    }
+}
+
+/// Role changes, ownership transfers and project deletion take these locks in account order.
+pub async fn lock_project_memberships(
     connection: &mut PgConnection,
     tenant_id: Uuid,
-    account_id: Uuid,
-) -> Result<Option<ProjectRole>, MembershipError> {
-    let memberships: Vec<(Uuid, String)> = sqlx::query_as(
+) -> Result<LockedProjectMemberships, MembershipError> {
+    let roles = sqlx::query_as(
         "SELECT account_id, role FROM tenant_members WHERE tenant_id = $1 ORDER BY account_id FOR UPDATE",
     )
     .bind(tenant_id)
     .fetch_all(connection)
     .await?;
-    let raw_role = memberships
-        .into_iter()
-        .find(|(member_id, _)| *member_id == account_id)
-        .map(|(_, role)| role);
 
-    parse_role(raw_role)
+    Ok(LockedProjectMemberships(roles))
 }
 
-fn parse_role(raw_role: Option<String>) -> Result<Option<ProjectRole>, MembershipError> {
-    let Some(raw_role) = raw_role else {
-        return Ok(None);
+fn parse_role(raw_role: Option<&str>) -> Result<Option<ProjectRole>, MembershipError> {
+    let raw_role = match raw_role {
+        Some(raw_role) => raw_role,
+        None => return Ok(None),
     };
-    let Some(role) = ProjectRole::parse(&raw_role) else {
-        return Err(MembershipError::UnknownRole);
-    };
+    let role = ProjectRole::parse(raw_role).ok_or(MembershipError::UnknownRole)?;
 
     Ok(Some(role))
 }
 
-/// Projects owned by the account, counted under a lock on its memberships so two concurrent
-/// creations cannot both pass the limit.
-pub async fn count_owned_projects(
+/// Provisioning and promotions share the account lock so concurrent changes respect the cap.
+pub async fn can_own_another_project(
     connection: &mut PgConnection,
     account_id: Uuid,
-) -> Result<i64, sqlx::Error> {
+) -> Result<bool, sqlx::Error> {
     sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))")
         .bind(account_id)
         .execute(&mut *connection)
         .await?;
 
-    sqlx::query_scalar(
+    let total: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM tenant_members WHERE account_id = $1 AND role = 'owner'",
     )
     .bind(account_id)
     .fetch_one(connection)
-    .await
+    .await?;
+
+    Ok(total < MAX_OWNED_PROJECTS)
 }

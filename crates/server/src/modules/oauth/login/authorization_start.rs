@@ -1,5 +1,5 @@
-use oauth2::url::Url;
-use oauth2::{CsrfToken, PkceCodeChallenge, PkceCodeVerifier, Scope};
+use oauth_providers::{generate_code_verifier, generate_state};
+use url::Url;
 use uuid::Uuid;
 
 use crate::modules::oauth::login::oauth_login_context::OAuthLoginContext;
@@ -28,14 +28,11 @@ impl OAuthLoginContext<'_> {
             provider,
         };
         let client = self.client_for(key).await?;
-        let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
-        let (authorize_url, csrf_token) = client
-            .authorize_url(CsrfToken::new_random)
-            .add_scopes(provider_scopes(provider))
-            .set_pkce_challenge(pkce_challenge)
-            .url();
+        let state = generate_state();
+        let pkce_verifier = generate_code_verifier();
+        let authorize_url = client.authorization_url(&state, &pkce_verifier);
         let pending = self.pending_authorization(start, &pkce_verifier)?;
-        let state_hash = hash_opaque_token(csrf_token.secret());
+        let state_hash = hash_opaque_token(&state);
         insert_pending_authorization(self.control_plane_pool, &state_hash, &pending).await?;
 
         Ok(authorize_url)
@@ -45,10 +42,10 @@ impl OAuthLoginContext<'_> {
     fn pending_authorization(
         &self,
         start: AuthorizationStart,
-        pkce_verifier: &PkceCodeVerifier,
+        pkce_verifier: &str,
     ) -> Result<PendingAuthorization, OAuthLoginError> {
         let verifier_context = pkce_verifier_context(start.tenant_id, start.provider);
-        let verifier_bytes = pkce_verifier.secret().as_bytes();
+        let verifier_bytes = pkce_verifier.as_bytes();
         let pkce_verifier_ciphertext = self.secret_box.seal(verifier_bytes, &verifier_context)?;
 
         Ok(PendingAuthorization {
@@ -59,12 +56,4 @@ impl OAuthLoginContext<'_> {
             app_code_challenge: start.app_code_challenge,
         })
     }
-}
-
-fn provider_scopes(provider: OAuthProvider) -> Vec<Scope> {
-    let scopes = provider.scopes().iter();
-
-    scopes
-        .map(|scope| Scope::new((*scope).to_owned()))
-        .collect()
 }

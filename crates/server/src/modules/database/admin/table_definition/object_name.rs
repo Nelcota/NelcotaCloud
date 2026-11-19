@@ -19,9 +19,7 @@ impl ObjectName {
     pub fn parse(text: &str) -> Result<Self, InvalidObjectName> {
         let name = text.trim();
         let invalid = || InvalidObjectName(name.to_owned());
-        let Some(first) = name.chars().next() else {
-            return Err(invalid());
-        };
+        let first = name.chars().next().ok_or_else(invalid)?;
 
         if name.len() > MAX_NAME_BYTES || (first.is_ascii_lowercase() || first == '_') == false {
             return Err(invalid());

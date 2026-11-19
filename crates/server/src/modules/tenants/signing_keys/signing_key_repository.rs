@@ -81,9 +81,7 @@ pub async fn load_signing_keys(
     .fetch_all(pool)
     .await?;
     let (active, retired) = prepare_keys(secret_box, tenant_id, rows)?;
-    let Some(active) = active else {
-        return Err(SigningKeyStoreError::NoActiveKey(tenant_id));
-    };
+    let active = active.ok_or(SigningKeyStoreError::NoActiveKey(tenant_id))?;
 
     Ok(TenantSigningKeys::new(active, retired)?)
 }

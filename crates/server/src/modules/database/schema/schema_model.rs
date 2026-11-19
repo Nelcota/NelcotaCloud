@@ -8,9 +8,12 @@ use serde::Deserialize;
 /// reaches SQL is one the catalog listed.
 pub struct SchemaModel {
     tables: HashMap<String, TableModel>,
-    pub foreign_keys: Vec<ForeignKeyModel>,
+    foreign_keys: HashMap<String, ReferencingTables>,
     functions: Vec<FunctionModel>,
 }
+
+pub(super) type ForeignKeyConstraints = HashMap<String, ForeignKeyModel>;
+pub(super) type ReferencingTables = HashMap<String, ForeignKeyConstraints>;
 
 /// The catalog's answer, exactly as the introspection query shapes it.
 #[derive(Deserialize)]
@@ -68,16 +71,37 @@ impl SchemaModel {
             .into_iter()
             .map(|table| (table.name.clone(), table))
             .collect();
+        let mut foreign_keys = HashMap::<String, ReferencingTables>::new();
+        for key in snapshot.foreign_keys {
+            foreign_keys
+                .entry(key.foreign_table.clone())
+                .or_default()
+                .entry(key.table.clone())
+                .or_default()
+                .insert(key.name.clone(), key);
+        }
 
         Self {
             tables,
-            foreign_keys: snapshot.foreign_keys,
+            foreign_keys,
             functions: snapshot.functions,
         }
     }
 
     pub fn table(&self, name: &str) -> Option<&TableModel> {
         self.tables.get(name)
+    }
+
+    pub(super) fn referencing_tables(&self, target: &str) -> Option<&ReferencingTables> {
+        self.foreign_keys.get(target)
+    }
+
+    pub(super) fn foreign_keys_between(
+        &self,
+        source: &str,
+        target: &str,
+    ) -> Option<&ForeignKeyConstraints> {
+        self.referencing_tables(target)?.get(source)
     }
 
     pub fn functions_named(&self, name: &str) -> Vec<&FunctionModel> {

@@ -41,9 +41,9 @@ mod tests {
     fn encodes_with_the_standard_prefix() -> Result<(), base64::DecodeError> {
         let secret = WebhookSecret::generate();
         let encoded = secret.encode();
-        let Some(base64_key) = encoded.strip_prefix(SECRET_PREFIX) else {
-            return Err(base64::DecodeError::InvalidLength(0));
-        };
+        let base64_key = encoded
+            .strip_prefix(SECRET_PREFIX)
+            .ok_or(base64::DecodeError::InvalidLength(0))?;
 
         assert_eq!(STANDARD.decode(base64_key)?, secret.key());
         Ok(())

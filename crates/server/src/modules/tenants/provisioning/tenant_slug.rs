@@ -19,9 +19,7 @@ impl TenantSlug {
             return Err(InvalidTenantSlug);
         }
 
-        let Some(first_character) = slug.chars().next() else {
-            return Err(InvalidTenantSlug);
-        };
+        let first_character = slug.chars().next().ok_or(InvalidTenantSlug)?;
 
         if first_character.is_ascii_lowercase() == false {
             return Err(InvalidTenantSlug);

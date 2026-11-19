@@ -1,9 +1,11 @@
-use crate::modules::tenants::database::tenant_database_server::TenantDatabaseError;
+use crate::modules::tenants::postgres::tenant_database_server::TenantDatabaseError;
 use crate::modules::tenants::signing_keys::signing_key::SigningKeyError;
 use crate::shared::crypto::secret_box::SecretBoxError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProvisioningError {
+    #[error("tenant provisioning is at capacity")]
+    Busy,
     #[error("tenant slug is already taken")]
     SlugTaken,
     #[error("an account can own at most {0} projects")]

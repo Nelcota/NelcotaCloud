@@ -4,8 +4,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::modules::webhooks::endpoint::webhook_endpoint_repository::StoredWebhookEndpoint;
-use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
-use crate::modules::webhooks::outbox::webhook_subscriptions::known_event_types;
+use crate::modules::webhooks::event::webhook_event_type::{WebhookEventType, known_event_types};
 
 /// An endpoint as its owner sees it; the secret is never shown again after creation.
 #[derive(Debug, Serialize, ToSchema)]

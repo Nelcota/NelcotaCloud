@@ -1,6 +1,9 @@
 # Build context: the repository root (the workspace Cargo.toml and Cargo.lock live there).
 
-FROM rust:1.100-slim-trixie AS builder
+FROM rust:1.100.0-slim-trixie AS builder
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends libclang-dev \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates

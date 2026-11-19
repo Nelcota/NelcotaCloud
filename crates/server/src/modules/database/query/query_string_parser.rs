@@ -1,4 +1,4 @@
-use oauth2::url::form_urlencoded;
+use url::form_urlencoded;
 
 use crate::modules::database::query::condition::{Condition, GroupKind};
 use crate::modules::database::query::embed_paths::ensure_known_paths;
@@ -8,6 +8,7 @@ use crate::modules::database::query::order_parser::parse_order;
 use crate::modules::database::query::query_names::parse_name;
 use crate::modules::database::query::read_query::{EmbedPath, ReadQuery};
 use crate::modules::database::query::select_parser::parse_select;
+use crate::modules::database::query::write_query::WriteQuery;
 use crate::modules::database::rejection::database_rejection::DatabaseRejection;
 
 const ON_CONFLICT_PARAMETER: &str = "on_conflict";
@@ -19,7 +20,25 @@ const NEGATION_SEGMENT: &str = "not";
 
 /// Parses the query string of a Data API request into a `ReadQuery`.
 pub fn parse_query_string(query_string: &str) -> Result<ReadQuery, DatabaseRejection> {
-    let mut query = ReadQuery::default();
+    let (selection, _) = parse_wire_query(query_string)?;
+
+    Ok(selection)
+}
+
+pub fn parse_write_query(query_string: &str) -> Result<WriteQuery, DatabaseRejection> {
+    let (selection, on_conflict) = parse_wire_query(query_string)?;
+
+    Ok(WriteQuery {
+        selection,
+        on_conflict,
+    })
+}
+
+fn parse_wire_query(
+    query_string: &str,
+) -> Result<(ReadQuery, Option<Vec<String>>), DatabaseRejection> {
+    let mut selection = ReadQuery::default();
+    let mut on_conflict = None;
     // One more than allowed is enough to refuse: a huge query string is never collected.
     let parameters: Vec<(String, String)> = form_urlencoded::parse(query_string.as_bytes())
         .take(MAX_PARAMETERS + 1)
@@ -33,12 +52,16 @@ pub fn parse_query_string(query_string: &str) -> Result<ReadQuery, DatabaseRejec
     }
 
     for (key, value) in &parameters {
-        apply_parameter(&mut query, key, value)?;
+        match key.as_str() {
+            // Reads still validate this option, as before, but only writes use it.
+            ON_CONFLICT_PARAMETER => on_conflict = Some(parse_name_list(value)?),
+            _ => apply_parameter(&mut selection, key, value)?,
+        }
     }
 
-    ensure_known_paths(&query)?;
+    ensure_known_paths(&selection)?;
 
-    Ok(query)
+    Ok((selection, on_conflict))
 }
 
 /// `select`, then `[path.]order|limit|offset|or|and`, then `[path.]column` filters.
@@ -48,18 +71,13 @@ fn apply_parameter(query: &mut ReadQuery, key: &str, value: &str) -> Result<(), 
         return Ok(());
     }
 
-    if key == ON_CONFLICT_PARAMETER {
-        query.on_conflict = Some(parse_name_list(value)?);
-        return Ok(());
-    }
-
     let mut segments = key
         .split('.')
         .map(parse_name)
         .collect::<Result<Vec<_>, _>>()?;
-    let Some(last) = segments.pop() else {
-        return Err(DatabaseRejection::invalid_query("empty parameter name"));
-    };
+    let last = segments
+        .pop()
+        .ok_or_else(|| DatabaseRejection::invalid_query("empty parameter name"))?;
 
     let negated_group = take_negated_group(&mut segments, &last);
 
@@ -165,11 +183,23 @@ mod tests {
     }
 
     #[test]
+    fn keeps_the_conflict_target_with_the_write_query() -> Result<(), DatabaseRejection> {
+        let query = parse_write_query("select=id&on_conflict=project_id,id")?;
+
+        assert_eq!(
+            query.on_conflict,
+            Some(vec!["project_id".into(), "id".into()])
+        );
+        Ok(())
+    }
+
+    #[test]
     fn negates_logic_groups() -> Result<(), DatabaseRejection> {
         let query = parse_query_string("not.or=(a.eq.1,b.eq.2)")?;
         let root = query.root().ok_or(DatabaseRejection::FilterRequired)?;
-        let Some(Condition::Group(group)) = root.conditions.first() else {
-            return Err(DatabaseRejection::FilterRequired);
+        let group = match root.conditions.first() {
+            Some(Condition::Group(group)) => group,
+            _ => return Err(DatabaseRejection::FilterRequired),
         };
 
         assert!(group.is_negated);

@@ -1,5 +1,3 @@
-use crate::modules::oauth::provider::oauth_provider::OAuthProvider;
-
 #[derive(Debug, Clone)]
 pub struct ProviderEndpoints {
     pub authorize_url: String,
@@ -28,13 +26,6 @@ impl OAuthEndpoints {
                 token_url: "https://github.com/login/oauth/access_token".to_owned(),
                 api_base_url: "https://api.github.com".to_owned(),
             },
-        }
-    }
-
-    pub fn for_provider(&self, provider: OAuthProvider) -> &ProviderEndpoints {
-        match provider {
-            OAuthProvider::Google => &self.google,
-            OAuthProvider::GitHub => &self.github,
         }
     }
 }

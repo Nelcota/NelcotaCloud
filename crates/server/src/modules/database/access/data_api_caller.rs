@@ -56,12 +56,13 @@ impl FromRequestParts<AppState> for DataApiCaller {
         let ClientIp(client_ip) = ClientIp::from_request_parts(parts, state).await?;
         state
             .rate_limits
-            .data_api
+            .data_api_per_client_ip
             .check(tenant_id, client_ip)
             .map_err(ApiError::from)?;
 
-        let Some(access_token) = bearer_token(parts) else {
-            return Ok(Self::anonymous(tenant_id));
+        let access_token = match bearer_token(parts) {
+            Some(access_token) => access_token,
+            None => return Ok(Self::anonymous(tenant_id)),
         };
 
         Self::user(state, tenant_id, access_token).await

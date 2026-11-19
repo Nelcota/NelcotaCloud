@@ -16,20 +16,27 @@ pub fn function_call_statement(
     function: &FunctionModel,
     arguments: &Map<String, Value>,
 ) -> QueryBuilder<Postgres> {
-    let result = match (function.returns_set, function.return_type.as_str()) {
-        (true, _) => "coalesce(json_agg(_r), '[]')::text",
-        (false, VOID_TYPE) => "'null'::text",
-        (false, _) => "coalesce(to_json(_r)::text, 'null')",
+    let result = match function.return_type.as_str() {
+        VOID_TYPE => "'null'::text",
+        _ => "coalesce(to_json(_r)::text, 'null')",
     };
-    let mut sql = QueryBuilder::new(format!(
-        "SELECT CASE WHEN octet_length(_b.value) <= {MAX_RESPONSE_BYTES} THEN _b.value END \
-         FROM (SELECT {result} AS value FROM public.{}(",
-        quote_identifier(&function.name)
-    ));
+    let function_name = quote_identifier(&function.name);
+    let prefix = match function.returns_set {
+        true => format!(
+            "WITH _encoded_rpc_rows AS MATERIALIZED \
+             (SELECT to_json(_r) AS value FROM public.{function_name}("
+        ),
+        false => format!(
+            "SELECT CASE WHEN octet_length(_b.value) <= {MAX_RESPONSE_BYTES} THEN _b.value END \
+             FROM (SELECT {result} AS value FROM public.{function_name}("
+        ),
+    };
+    let mut sql = QueryBuilder::new(prefix);
 
     for (index, (name, value)) in arguments.iter().enumerate() {
-        let Some(argument) = function.argument(name) else {
-            continue;
+        let argument = match function.argument(name) {
+            Some(argument) => argument,
+            None => continue,
         };
 
         if index > 0 {
@@ -37,6 +44,16 @@ pub fn function_call_statement(
         }
 
         push_argument(&mut sql, argument, value);
+    }
+
+    if function.returns_set {
+        sql.push(format!(
+            ") _r) SELECT CASE WHEN coalesce(sum(coalesce(octet_length(value::text), 4)::bigint + 2), 0)::bigint \
+             <= {MAX_RESPONSE_BYTES} THEN \
+             (SELECT coalesce(json_agg(value), '[]')::text FROM _encoded_rpc_rows) END \
+             FROM _encoded_rpc_rows"
+        ));
+        return sql;
     }
 
     sql.push(") _r) _b");

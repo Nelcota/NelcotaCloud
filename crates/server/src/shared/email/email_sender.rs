@@ -70,9 +70,12 @@ pub async fn deliver_and_log(sender: &EmailSender, email: OutgoingEmail) {
 /// The SMTP server's reply text can quote the recipient, so a rejection is logged by its
 /// status code only; connection, TLS and timeout errors carry no address and are logged whole.
 fn log_failed_delivery(error: &EmailError) {
-    let EmailError::Delivery(smtp_error) = error else {
-        tracing::error!(%error, "failed to send email");
-        return;
+    let smtp_error = match error {
+        EmailError::Delivery(smtp_error) => smtp_error,
+        _ => {
+            tracing::error!(%error, "failed to send email");
+            return;
+        }
     };
 
     if let Some(status) = smtp_error.status() {

@@ -1,14 +1,12 @@
 use sqlx::error::DatabaseError;
 use sqlx::{PgConnection, PgPool};
 
-use crate::modules::auth::user::email_address::{EmailAddress, InvalidEmailAddress};
-use crate::modules::auth::user::user_events::{UserEventError, record_user_event};
-use crate::modules::auth::user::user_locks::lock_user_by_email;
-use crate::modules::auth::user::user_record::User;
-use crate::modules::auth::user::user_registration::{InsertUserError, insert_oauth_user};
-use crate::modules::auth::user::verified_inbox_claim::claim_verified_inbox;
+use crate::modules::auth::integration::oauth_identity::{
+    EmailAddress, InsertUserError, InvalidEmailAddress, User, UserEventError, claim_verified_inbox,
+    find_user_by_id, insert_oauth_user, lock_user_by_email, record_user_event,
+};
 use crate::modules::oauth::identity::identity_repository::{
-    IdentityKey, find_identity_user, has_provider_identity, insert_identity,
+    IdentityKey, find_identity_user_id, has_provider_identity, insert_identity,
 };
 use crate::modules::oauth::profile::provider_profile::ProviderProfile;
 use crate::modules::oauth::provider::oauth_provider::OAuthProvider;
@@ -39,9 +37,10 @@ pub async fn resolve_oauth_user(
     webhooks: &WebhookRecorder,
 ) -> Result<User, AccountLinkError> {
     let first_attempt = link_identity(pool, (provider, profile), webhooks).await;
-    let Err(AccountLinkError::Conflict) = first_attempt else {
+
+    if matches!(first_attempt, Err(AccountLinkError::Conflict)) == false {
         return first_attempt;
-    };
+    }
 
     // The concurrent login committed the account or identity; this attempt now finds it.
     link_identity(pool, (provider, profile), webhooks).await
@@ -58,7 +57,11 @@ async fn link_identity(
     };
     let mut transaction = pool.begin().await?;
 
-    if let Some(user) = find_identity_user(&mut transaction, &key).await? {
+    let identity_user = find_identity_user_id(&mut transaction, &key).await?;
+
+    if let Some(user_id) = identity_user
+        && let Some(user) = find_user_by_id(&mut *transaction, user_id).await?
+    {
         transaction.commit().await?;
         return Ok(user);
     }
@@ -79,13 +82,12 @@ async fn account_for_email(
     (profile, key): (&ProviderProfile, &IdentityKey<'_>),
     webhooks: &WebhookRecorder,
 ) -> Result<User, AccountLinkError> {
-    let Some(raw_email) = &profile.verified_email else {
-        return Err(AccountLinkError::NoVerifiedEmail);
-    };
+    let raw_email = profile
+        .verified_email
+        .as_ref()
+        .ok_or(AccountLinkError::NoVerifiedEmail)?;
     // A malformed address from the provider vouches for nothing: like no verified email.
-    let Ok(email) = EmailAddress::parse(raw_email) else {
-        return Err(AccountLinkError::NoVerifiedEmail);
-    };
+    let email = EmailAddress::parse(raw_email).map_err(|_| AccountLinkError::NoVerifiedEmail)?;
 
     if let Some(existing_user) = lock_user_by_email(&mut *transaction, &email).await? {
         return claim_existing_account(transaction, (existing_user, key), webhooks).await;

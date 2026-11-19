@@ -51,9 +51,9 @@ fn close_parenthesis(depth: usize) -> Result<usize, DatabaseRejection> {
 }
 
 fn non_empty_part(text: &str, start: usize, end: usize) -> Result<&str, DatabaseRejection> {
-    let Some(part) = text.get(start..end) else {
-        return Err(DatabaseRejection::invalid_query("invalid list"));
-    };
+    let part = text
+        .get(start..end)
+        .ok_or_else(|| DatabaseRejection::invalid_query("invalid list"))?;
     let part = part.trim();
 
     if part.is_empty() {
@@ -66,11 +66,12 @@ fn non_empty_part(text: &str, start: usize, end: usize) -> Result<&str, Database
 /// `"a,b"` becomes `a,b` and `"say \"hi\""` becomes `say "hi"`; anything else is returned as
 /// is. `"a\"` is refused: its closing quote is escaped, so the value never ends.
 pub fn unquote(text: &str) -> Result<String, DatabaseRejection> {
-    let Some(inner) = text
+    let inner = match text
         .strip_prefix(QUOTE)
         .and_then(|rest| rest.strip_suffix(QUOTE))
-    else {
-        return Ok(text.to_owned());
+    {
+        Some(inner) => inner,
+        None => return Ok(text.to_owned()),
     };
     let mut unescaped = String::with_capacity(inner.len());
     let mut is_escaped = false;

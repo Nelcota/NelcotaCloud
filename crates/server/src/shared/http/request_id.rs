@@ -14,14 +14,10 @@ pub fn generate_request_id<B>(_request: &Request<B>) -> Option<HeaderValue> {
 
 /// The id set by `generate_request_id`, or an empty string if the layer did not run.
 pub fn request_id_of<B>(request: &Request<B>) -> &str {
-    let Some(header_value) = request.headers().get(REQUEST_ID_HEADER) else {
-        return "";
-    };
-    let Ok(request_id) = header_value.to_str() else {
-        return "";
-    };
-
-    request_id
+    match request.headers().get(REQUEST_ID_HEADER) {
+        Some(header_value) => header_value.to_str().unwrap_or_default(),
+        None => "",
+    }
 }
 
 #[cfg(test)]

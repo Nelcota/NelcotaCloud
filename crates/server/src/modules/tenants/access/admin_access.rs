@@ -2,6 +2,8 @@ use std::future::{Future, ready};
 
 use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
+use hmac::digest::CtOutput;
+use sha2::Sha256;
 
 use crate::app_state::AppState;
 use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
@@ -27,15 +29,16 @@ impl FromRequestParts<AppState> for AdminAccess {
 
 fn check_admin_token(parts: &Parts, state: &AppState) -> Result<AdminAccess, ApiError> {
     let headers = &parts.headers;
-    let Some(header_value) = headers.get(ADMIN_TOKEN_HEADER) else {
-        return Err(ApiError::from(TenantsRejection::AdminAccessDenied));
-    };
+    let header_value = headers
+        .get(ADMIN_TOKEN_HEADER)
+        .ok_or(TenantsRejection::AdminAccessDenied)?;
     let admin_token = header_value
         .to_str()
         .map_err(|_| ApiError::from(TenantsRejection::AdminAccessDenied))?;
 
-    // Comparing digests instead of raw tokens keeps timing differences meaningless to attackers.
-    if hash_opaque_token(admin_token.trim()) != state.settings.admin_token_hash {
+    let presented = CtOutput::<Sha256>::new(hash_opaque_token(admin_token.trim()).into());
+    let expected = CtOutput::<Sha256>::new(state.settings.admin_token_hash.into());
+    if presented != expected {
         return Err(ApiError::from(TenantsRejection::AdminAccessDenied));
     }
 

@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
-use crate::app_state::AppState;
 use crate::modules::database::access::data_api_caller::DataApiCaller;
 use crate::modules::database::execution::data_api_session::{DataApiSession, TransactionAccess};
+use crate::modules::database::execution::database_sessions::DatabaseSessions;
 use crate::modules::database::query::preferences::Preferences;
-use crate::modules::database::query::read_query::ReadQuery;
+use crate::modules::database::query::write_query::WriteQuery;
 use crate::modules::database::rejection::database_rejection::DatabaseRejection;
 use crate::modules::database::rows::returning_rows::ReturningRows;
 use crate::modules::database::rows::rows_result::{RowsResult, StatementRow};
@@ -29,7 +29,7 @@ pub enum WriteKind {
 pub struct RowWrite<'a> {
     pub kind: WriteKind,
     pub table_name: &'a str,
-    pub query: &'a ReadQuery,
+    pub query: &'a WriteQuery,
     pub preferences: &'a Preferences,
     pub body: Value,
 }
@@ -37,18 +37,16 @@ pub struct RowWrite<'a> {
 /// Inserts, updates or deletes rows as the caller's role: the table's privileges and row level
 /// security policies decide what is allowed.
 pub async fn write_rows(
-    state: &AppState,
+    sessions: &DatabaseSessions<'_>,
     caller: &DataApiCaller,
     mut write: RowWrite<'_>,
 ) -> Result<RowsResult, ApiError> {
-    let mut session = DataApiSession::open(state, caller, TransactionAccess::ReadWrite).await?;
+    let mut session = DataApiSession::open(sessions, caller, TransactionAccess::ReadWrite).await?;
     let schema = Arc::clone(&session.schema);
-    let Some(table) = schema.table(write.table_name) else {
-        return Err(ApiError::from(DatabaseRejection::TableNotFound(
-            write.table_name.to_owned(),
-        )));
-    };
-    let query = write.query;
+    let table = schema
+        .table(write.table_name)
+        .ok_or_else(|| DatabaseRejection::TableNotFound(write.table_name.to_owned()))?;
+    let query = &write.query.selection;
     let returns_rows = write.preferences.returns_rows;
     let change = write_change(table, &mut write)?;
 
@@ -99,13 +97,13 @@ fn write_change(
     table: &TableModel,
     write: &mut RowWrite,
 ) -> Result<WriteChange, DatabaseRejection> {
-    let query = write.query;
+    let selection = &write.query.selection;
 
-    if write.kind != WriteKind::Insert && query.has_root_conditions() == false {
+    if write.kind != WriteKind::Insert && selection.has_root_conditions() == false {
         return Err(DatabaseRejection::FilterRequired);
     }
 
-    if query
+    if selection
         .root()
         .is_some_and(|root| root.limit.is_some() || root.offset.is_some())
     {
@@ -118,7 +116,7 @@ fn write_change(
         WriteKind::Insert => {
             let mut batches = insert_batches(table, std::mem::take(&mut write.body))?;
             if let Some(resolution) = write.preferences.resolution {
-                let on_conflict = query.on_conflict.as_deref();
+                let on_conflict = write.query.on_conflict.as_deref();
                 for batch in &mut batches {
                     let action = conflict_action(table, on_conflict, resolution, &batch.columns)?;
                     batch.conflict = Some(action);

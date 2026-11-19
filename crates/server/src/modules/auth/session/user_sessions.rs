@@ -31,8 +31,9 @@ pub async fn load_user_sessions(
     .bind(user_id)
     .fetch_optional(pool)
     .await?;
-    let Some(last_sign_in_at) = last_sign_in else {
-        return Ok(None);
+    let last_sign_in_at = match last_sign_in {
+        Some(last_sign_in_at) => last_sign_in_at,
+        None => return Ok(None),
     };
     let sessions = list_active_sessions(pool, user_id).await?;
 

@@ -33,7 +33,8 @@ pub async fn resend_user_verification(
     Path(user_id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
     let resend = VerificationResend { user_id, client_ip };
-    resend_verification_email(&state, admin, &resend).await?;
+    let mailer = state.auth_mailer();
+    resend_verification_email((&mailer, &state.rate_limits.email), admin, &resend).await?;
 
     Ok(StatusCode::ACCEPTED)
 }

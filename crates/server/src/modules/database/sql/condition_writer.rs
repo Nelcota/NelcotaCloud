@@ -16,9 +16,10 @@ pub struct AliasedTable<'a> {
 impl AliasedTable<'_> {
     /// `t0."column"` for a column the table has.
     pub fn column_sql(&self, name: &str) -> Result<(String, &ColumnModel), DatabaseRejection> {
-        let Some(column) = self.table.column(name) else {
-            return Err(DatabaseRejection::ColumnNotFound(name.to_owned()));
-        };
+        let column = self
+            .table
+            .column(name)
+            .ok_or_else(|| DatabaseRejection::ColumnNotFound(name.to_owned()))?;
 
         Ok((format!("{}.{}", self.alias, quote_identifier(name)), column))
     }

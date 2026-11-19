@@ -23,12 +23,8 @@ pub async fn read_tenant_settings(
     admin: TenantAdmin,
 ) -> Result<Json<TenantSettings>, ApiError> {
     let settings = find_tenant_settings(&state.control_plane_pool, admin.tenant_id).await?;
-    let Some(settings) = settings else {
-        return Err(ApiError::internal(format!(
-            "tenant {} not found",
-            admin.tenant_id
-        )));
-    };
+    let settings = settings
+        .ok_or_else(|| ApiError::internal(format!("tenant {} not found", admin.tenant_id)))?;
 
     Ok(Json(settings))
 }

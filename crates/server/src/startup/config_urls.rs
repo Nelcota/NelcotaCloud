@@ -1,4 +1,4 @@
-use oauth2::url::Url;
+use url::Url;
 
 use crate::startup::config_error::ConfigError;
 
@@ -8,8 +8,9 @@ const POSTGRES_URL_SCHEMES: [&str; 2] = ["postgres", "postgresql"];
 /// Becomes the JWT issuer and the OAuth callback, so it must be a plain http(s) origin or path.
 pub fn validate_public_base_url(raw_url: &str) -> Result<(), ConfigError> {
     let invalid = ConfigError::InvalidUrl("PUBLIC_BASE_URL", "an http(s) URL without query");
-    let Ok(url) = Url::parse(raw_url.trim()) else {
-        return Err(invalid);
+    let url = match Url::parse(raw_url.trim()) {
+        Ok(url) => url,
+        Err(_) => return Err(invalid),
     };
 
     if PUBLIC_URL_SCHEMES.contains(&url.scheme()) == false || url.host_str().is_none() {
@@ -35,8 +36,9 @@ pub fn validate_tenant_database_base_url(raw_url: &str) -> Result<(), ConfigErro
         "TENANT_DATABASE_BASE_URL",
         "a postgres:// server URL with a password, without database name, query or fragment",
     );
-    let Ok(url) = Url::parse(raw_url.trim()) else {
-        return Err(invalid);
+    let url = match Url::parse(raw_url.trim()) {
+        Ok(url) => url,
+        Err(_) => return Err(invalid),
     };
 
     if POSTGRES_URL_SCHEMES.contains(&url.scheme()) == false || url.host_str().is_none() {

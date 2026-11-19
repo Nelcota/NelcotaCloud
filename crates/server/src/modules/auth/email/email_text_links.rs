@@ -36,8 +36,9 @@ fn contains_link(text: &str) -> bool {
 /// `name.tld` or deeper: every label made of letters, digits or `-`, the last letters only.
 fn is_domain(word: &str) -> bool {
     let labels: Vec<&str> = word.split('.').collect();
-    let Some(top_level) = labels.last() else {
-        return false;
+    let top_level = match labels.last() {
+        Some(top_level) => top_level,
+        None => return false,
     };
 
     if labels.len() < 2 || TOP_LEVEL_DOMAIN_LENGTHS.contains(&top_level.len()) == false {

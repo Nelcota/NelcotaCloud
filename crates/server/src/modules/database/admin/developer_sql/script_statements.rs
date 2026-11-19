@@ -1,75 +1,61 @@
-use crate::modules::database::admin::developer_sql::sql_token_scanner::{
-    is_identifier_byte, skip_token,
-};
+use std::ops::Range;
 
-/// Statements whose first word means they answer rows (even none).
-const QUERY_WORDS: [&str; 4] = ["select", "with", "values", "table"];
-const RETURNING_WORD: &str = "returning";
+use pg_query::{NodeEnum, protobuf::RawStmt};
 
-/// The statements of a script as Postgres runs them: split on `;` outside quotes, quoted
-/// identifiers, dollar quotes and comments, without the empty ones (Postgres skips those too).
-pub fn split_statements(script: &str) -> Vec<&str> {
-    let bytes = script.as_bytes();
-    let mut statements = Vec::new();
-    let mut start = 0;
-    let mut has_content = false;
-    let mut index = 0;
-
-    while let Some(&byte) = bytes.get(index) {
-        if byte == b';' {
-            push_statement(&mut statements, script.get(start..index), has_content);
-            start = index.saturating_add(1);
-            has_content = false;
-            index = start;
-            continue;
-        }
-
-        let (next, is_content) = skip_token(script, index);
-        has_content = has_content || is_content;
-        index = next;
-    }
-
-    push_statement(&mut statements, script.get(start..), has_content);
-    statements
+pub struct ScriptStatement {
+    range: Range<usize>,
+    pub returns_rows: bool,
 }
 
-/// Whether the statement answers rows: a query, or a write with `RETURNING`.
-pub fn answers_rows(statement: &str) -> bool {
-    let lowercase = statement.to_ascii_lowercase();
-    let first_word = leading_word(&lowercase);
-
-    QUERY_WORDS.contains(&first_word)
-        || lowercase
-            .split(|character: char| character.is_ascii_alphanumeric() == false && character != '_')
-            .any(|word| word == RETURNING_WORD)
-}
-
-fn push_statement<'a>(statements: &mut Vec<&'a str>, text: Option<&'a str>, has_content: bool) {
-    if let Some(text) = text.filter(|_| has_content) {
-        statements.push(text.trim());
+impl ScriptStatement {
+    pub fn source<'a>(&self, script: &'a str) -> Option<&'a str> {
+        script.get(self.range.clone()).map(str::trim)
     }
 }
 
-/// The first word after leading spaces and comments.
-fn leading_word(lowercase: &str) -> &str {
-    let mut index = 0;
-    let bytes = lowercase.as_bytes();
+/// Local parsing is only for result metadata. If it fails, the server still executes the
+/// script and supplies the authoritative syntax error or result.
+pub fn describe_script(script: &str) -> Vec<ScriptStatement> {
+    let parsed = match pg_query::parse(script, 0) {
+        Ok(parsed) => parsed,
+        Err(_) => return Vec::new(),
+    };
 
-    while let (next, false) = skip_token(lowercase, index) {
-        if next > bytes.len() {
-            return "";
-        }
+    parsed
+        .protobuf
+        .stmts
+        .iter()
+        .filter_map(|statement| describe_statement(script, statement))
+        .collect()
+}
 
-        index = next;
+fn describe_statement(script: &str, statement: &RawStmt) -> Option<ScriptStatement> {
+    let start = usize::try_from(statement.stmt_location).ok()?;
+    let length = usize::try_from(statement.stmt_len).ok()?;
+    let end = match length {
+        0 => script.len(),
+        _ => start.checked_add(length)?,
+    };
+    let range = start..end;
+    let node = statement.stmt.as_ref()?.node.as_ref()?;
+
+    script.get(range.clone())?;
+
+    Some(ScriptStatement {
+        range,
+        returns_rows: returns_rows(node),
+    })
+}
+
+fn returns_rows(node: &NodeEnum) -> bool {
+    match node {
+        NodeEnum::SelectStmt(statement) => statement.into_clause.is_none(),
+        NodeEnum::InsertStmt(statement) => statement.returning_clause.is_some(),
+        NodeEnum::UpdateStmt(statement) => statement.returning_clause.is_some(),
+        NodeEnum::DeleteStmt(statement) => statement.returning_clause.is_some(),
+        NodeEnum::MergeStmt(statement) => statement.returning_clause.is_some(),
+        _ => false,
     }
-
-    let rest = lowercase.get(index..).unwrap_or_default();
-    let length = rest
-        .bytes()
-        .take_while(|&byte| is_identifier_byte(byte))
-        .count();
-
-    rest.get(..length).unwrap_or_default()
 }
 
 #[cfg(test)]
@@ -77,42 +63,43 @@ mod tests {
     use super::*;
 
     #[test]
-    fn splits_outside_quotes_comments_and_dollar_quotes() {
-        let script = "select ';' as a; -- one; two\n\
+    fn splits_postgres_scripts_using_byte_offsets() {
+        let script = "select ';' as aé; -- one; two\n\
                       select \"x;y\" from t; /* a; /* nested; */ b; */ select 1;;\n\
                       create function f() returns int as $body$ select 1; $body$ language sql;\n\
                       select E'it\\'s; fine', $1";
+        let statements = describe_script(script);
+        let sources: Vec<_> = statements
+            .iter()
+            .filter_map(|statement| statement.source(script))
+            .collect();
 
-        assert_eq!(
-            split_statements(script),
-            vec![
-                "select ';' as a",
-                "-- one; two\nselect \"x;y\" from t",
-                "/* a; /* nested; */ b; */ select 1",
-                "create function f() returns int as $body$ select 1; $body$ language sql",
-                "select E'it\\'s; fine', $1",
-            ]
-        );
+        assert_eq!(sources.len(), 5);
+        assert_eq!(sources.first().copied(), Some("select ';' as aé"));
+        assert_eq!(sources.last().copied(), Some("select E'it\\'s; fine', $1"));
     }
 
     #[test]
     fn skips_empty_and_comment_only_statements() {
-        assert!(split_statements(" ; -- nothing\n ; /* none */").is_empty());
+        assert!(describe_script(" ; -- nothing\n ; /* none */").is_empty());
     }
 
     #[test]
-    fn tells_statements_that_answer_rows() {
-        for statement in [
-            "SELECT 1",
-            "-- note\n  with x as (select 1) select * from x",
-            "/* c */ values (1)",
-            "delete from t returning id",
-        ] {
-            assert!(answers_rows(statement), "{statement}");
-        }
+    fn identifies_empty_result_sets_from_the_statement_type() {
+        let script = "select 1; values (1); table t; delete from t returning id;
+                      with x as (select 1) update t set a = 1; update t set a = 'returning';
+                      create table returning_log (id int)";
+        let described = describe_script(script);
+        let kinds: Vec<_> = described
+            .iter()
+            .map(|statement| statement.returns_rows)
+            .collect();
 
-        for statement in ["update t set a = 1", "create table returning_log (id int)"] {
-            assert!(answers_rows(statement) == false, "{statement}");
-        }
+        assert_eq!(kinds, [true, true, true, true, false, false, false]);
+    }
+
+    #[test]
+    fn leaves_malformed_scripts_for_postgres_to_reject() {
+        assert!(describe_script("select 1; selec from ;").is_empty());
     }
 }

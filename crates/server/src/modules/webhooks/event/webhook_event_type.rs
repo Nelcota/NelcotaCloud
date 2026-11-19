@@ -18,6 +18,9 @@ pub enum WebhookEventType {
     /// Sessions ended by the user or an admin (not a plain sign out).
     #[serde(rename = "session.revoked")]
     SessionRevoked,
+    /// Every new activity log entry: logins, refusals, account and project changes.
+    #[serde(rename = "audit.event")]
+    AuditEvent,
 }
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -25,7 +28,7 @@ pub enum WebhookEventType {
 pub struct UnknownEventType(pub String);
 
 /// How many event types exist; request bodies accept at most this many.
-pub const EVENT_TYPE_COUNT: usize = 6;
+pub const EVENT_TYPE_COUNT: usize = 7;
 
 impl WebhookEventType {
     pub const ALL: [Self; EVENT_TYPE_COUNT] = [
@@ -35,6 +38,7 @@ impl WebhookEventType {
         Self::UserBanned,
         Self::UserUnbanned,
         Self::SessionRevoked,
+        Self::AuditEvent,
     ];
 
     pub fn as_str(self) -> &'static str {
@@ -45,6 +49,7 @@ impl WebhookEventType {
             Self::UserBanned => "user.banned",
             Self::UserUnbanned => "user.unbanned",
             Self::SessionRevoked => "session.revoked",
+            Self::AuditEvent => "audit.event",
         }
     }
 
@@ -53,6 +58,19 @@ impl WebhookEventType {
 
         found.ok_or_else(|| UnknownEventType(raw.to_owned()))
     }
+}
+
+/// Unknown stored names should not prevent delivery of known event types.
+pub fn known_event_types(raw: &[String]) -> Vec<WebhookEventType> {
+    raw.iter()
+        .filter_map(|name| match WebhookEventType::parse(name) {
+            Ok(event_type) => Some(event_type),
+            Err(error) => {
+                tracing::warn!(%error, "skipping an unknown stored webhook event type");
+                None
+            }
+        })
+        .collect()
 }
 
 #[cfg(test)]

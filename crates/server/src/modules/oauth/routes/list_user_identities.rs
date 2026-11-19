@@ -26,9 +26,7 @@ pub async fn list_user_identities(
     Path(user_id): Path<Uuid>,
 ) -> Result<Json<UserIdentities>, ApiError> {
     let identities = find_identities(&admin.pool, user_id).await?;
-    let Some(identities) = identities else {
-        return Err(ApiError::NotFound("user"));
-    };
+    let identities = identities.ok_or(ApiError::NotFound("user"))?;
 
     Ok(Json(identities))
 }

@@ -7,7 +7,7 @@ use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
 /// The longest URL accepted, as in `WebhookUrl`.
 const MAX_URL_LENGTH: u64 = 2048;
 /// Every event type at most once; kept equal to `EVENT_TYPE_COUNT` by a test.
-const MAX_EVENT_TYPES: u64 = 6;
+const MAX_EVENT_TYPES: u64 = 7;
 
 #[derive(Deserialize, Validate, ToSchema)]
 pub struct WebhookEndpointBody {

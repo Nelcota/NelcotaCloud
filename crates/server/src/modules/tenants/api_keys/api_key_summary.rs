@@ -19,4 +19,8 @@ pub struct ApiKeySummary {
     pub created_at: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339::option")]
     pub revoked_at: Option<OffsetDateTime>,
+    /// The last request made with the key, to within a few minutes; empty when it has not been
+    /// used since use started being recorded.
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub last_used_at: Option<OffsetDateTime>,
 }

@@ -3,13 +3,8 @@ use axum::http::StatusCode;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
-use crate::modules::auth::audit::audit_action::AuditAction;
-use crate::modules::auth::audit::audit_event::NewAuditEvent;
-use crate::modules::auth::audit::audit_recorder::record_audit_event;
-use crate::modules::auth::mfa::mfa_factor_repository::delete_mfa_factor;
-use crate::modules::auth::user::user_events::{UserChange, record_user_change};
+use crate::modules::auth::mfa::admin_mfa_reset::reset_factor_as_admin;
 use crate::modules::tenants::access::tenant_admin_context::TenantAdminContext;
-use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
 /// `DELETE /admin/users/{user_id}/mfa`: removes the user's authenticator (e.g. a lost phone),
@@ -32,22 +27,11 @@ pub async fn reset_user_mfa(
     Path(user_id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
     let webhooks = state.webhooks.recorder(admin.tenant_id).await?;
-    let mut transaction = admin.pool.begin().await?;
-    let deleted = delete_mfa_factor(&mut *transaction, user_id).await?;
+    let deleted = reset_factor_as_admin(&admin.pool, &webhooks, (user_id, admin.author())).await?;
 
     if deleted == false {
         return Err(ApiError::NotFound("authenticator"));
     }
-
-    let change = UserChange {
-        event_type: WebhookEventType::UserUpdated,
-        user_id,
-    };
-    record_user_change(&mut transaction, &webhooks, change).await?;
-    transaction.commit().await?;
-
-    let event = NewAuditEvent::by_admin(AuditAction::MfaReset, user_id, admin.actor);
-    record_audit_event(&admin.pool, event).await;
 
     Ok(StatusCode::NO_CONTENT)
 }

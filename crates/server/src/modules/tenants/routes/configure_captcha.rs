@@ -1,8 +1,11 @@
 use axum::Json;
 use axum::extract::State;
+use serde_json::json;
 
 use crate::app_state::AppState;
 use crate::modules::tenants::access::tenant_admin::TenantAdmin;
+use crate::modules::tenants::audit::audit_action::AuditAction;
+use crate::modules::tenants::audit::project_change::{ProjectChange, record_project_change};
 use crate::modules::tenants::captcha::captcha_settings_change::{
     CaptchaSettingsBody, save_captcha,
 };
@@ -30,5 +33,14 @@ pub async fn configure_captcha(
     admin: TenantAdmin,
     ValidatedJson(body): ValidatedJson<CaptchaSettingsBody>,
 ) -> Result<Json<CaptchaSettingsView>, ApiError> {
-    Ok(Json(save_captcha(&state, admin.tenant_id, &body).await?))
+    let saved = save_captcha(&state, admin.tenant_id, &body).await?;
+    let change = ProjectChange {
+        tenant_id: admin.tenant_id,
+        author: admin.author(),
+        action: AuditAction::SettingsChanged,
+        details: json!({ "section": "captcha" }),
+    };
+    record_project_change(&state.tenant_pools, change).await;
+
+    Ok(Json(saved))
 }

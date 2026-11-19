@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::modules::auth::rate_limiting::quota_spec::QuotaSpec;
+use crate::shared::rate_limiting::quota_spec::QuotaSpec;
 
 /// Wrong passwords for one account from one network: 10, then one every 30 seconds.
 pub const LOGIN_PER_EMAIL_FROM_NETWORK: QuotaSpec = QuotaSpec {
@@ -41,11 +41,6 @@ pub const EMAIL_PER_PROJECT: QuotaSpec = QuotaSpec {
     burst: 1000,
     replenish_every: Duration::from_millis(3_600),
 };
-/// Invitations one console account sends: 10, then one every 6 minutes.
-pub const INVITATIONS_PER_ACCOUNT: QuotaSpec = QuotaSpec {
-    burst: 10,
-    replenish_every: Duration::from_secs(360),
-};
 /// Signup: each one costs an Argon2 run and may send an email.
 pub const SIGNUP_PER_EMAIL: QuotaSpec = QuotaSpec {
     burst: 3,
@@ -61,21 +56,6 @@ pub const MFA_PER_ACCOUNT: QuotaSpec = QuotaSpec {
     replenish_every: Duration::from_secs(60),
 };
 pub const MFA_PER_CLIENT_IP: QuotaSpec = QuotaSpec {
-    burst: 20,
-    replenish_every: Duration::from_secs(6),
-};
-/// Each console project is a new database: a client gets a few, then one every 5 minutes.
-pub const PROJECT_CREATION_PER_CLIENT_IP: QuotaSpec = QuotaSpec {
-    burst: 3,
-    replenish_every: Duration::from_secs(300),
-};
-/// And an account 5 a day, however many networks it uses.
-pub const PROJECT_CREATION_PER_ACCOUNT: QuotaSpec = QuotaSpec {
-    burst: 5,
-    replenish_every: Duration::from_secs(17_280),
-};
-/// Starting an OAuth login writes a pending authorization to the control plane.
-pub const OAUTH_START_PER_CLIENT_IP: QuotaSpec = QuotaSpec {
     burst: 20,
     replenish_every: Duration::from_secs(6),
 };
@@ -96,24 +76,4 @@ pub const PROFILE_UPDATE_PER_ACCOUNT: QuotaSpec = QuotaSpec {
 pub const AVATAR_CHANGE_PER_ACCOUNT: QuotaSpec = QuotaSpec {
     burst: 5,
     replenish_every: Duration::from_secs(60),
-};
-/// Data API requests of apps (publishable key): 300, then 20 per second, per client.
-pub const DATA_API_PER_CLIENT_IP: QuotaSpec = QuotaSpec {
-    burst: 300,
-    replenish_every: Duration::from_millis(50),
-};
-/// Data API requests of a project's servers (secret key) and the console: 500, then 100 per
-/// second, per project.
-pub const DATA_API_PER_PROJECT: QuotaSpec = QuotaSpec {
-    burst: 500,
-    replenish_every: Duration::from_millis(10),
-};
-/// Every request of one client, whatever the route or project: 2000, then 500 per second.
-///
-/// Above
-/// the per-project Data API limit, so a server calling several projects from one address (or
-/// many users behind one NAT) is held by the per-route limits, not by this floor.
-pub const REQUESTS_PER_CLIENT_IP: QuotaSpec = QuotaSpec {
-    burst: 2_000,
-    replenish_every: Duration::from_millis(2),
 };

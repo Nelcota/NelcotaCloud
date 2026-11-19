@@ -1,0 +1,90 @@
+use axum::extract::Query;
+use axum::http::header::{CONTENT_DISPOSITION, CONTENT_TYPE};
+use axum::response::{IntoResponse, Response};
+use serde::Deserialize;
+use time::OffsetDateTime;
+use utoipa::IntoParams;
+use uuid::Uuid;
+use validator::Validate;
+
+use crate::modules::auth::audit::audit_csv::audit_csv;
+use crate::modules::auth::audit::audit_export::export_audit_events as find_rows;
+use crate::modules::auth::audit::audit_kind::AuditKind;
+use crate::modules::auth::audit::audit_period::{AuditPeriod, PeriodParams};
+use crate::modules::auth::audit::audit_query::AuditQuery;
+use crate::modules::tenants::access::tenant_admin_context::TenantAdminContext;
+use crate::shared::http::api_error::{ApiError, ErrorBody};
+use crate::shared::text::not_blank::check_not_blank;
+
+const CSV_CONTENT_TYPE: &str = "text/csv; charset=utf-8";
+const CSV_DISPOSITION: &str = "attachment; filename=\"activity.csv\"";
+
+/// The list's filters without its paging. Not flattened into the list's query: query strings
+/// carry numbers as text, which `serde(flatten)` cannot parse back.
+#[derive(Deserialize, Validate, IntoParams)]
+#[into_params(parameter_in = Query)]
+pub struct AuditExportQuery {
+    /// Only events about this user.
+    pub user_id: Option<Uuid>,
+    /// Only events of this kind.
+    #[param(inline)]
+    pub kind: Option<AuditKind>,
+    /// Part of the email or IP address to search for.
+    #[validate(length(min = 1, max = 254), custom(function = check_not_blank))]
+    pub search: Option<String>,
+    /// Only events of the last this many days. The log keeps 90.
+    #[validate(range(min = 1, max = 90))]
+    pub days: Option<i32>,
+    /// Only events at or after this instant (RFC 3339). Pass with `to`, instead of `days`.
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    #[param(value_type = Option<String>, format = DateTime)]
+    pub from: Option<OffsetDateTime>,
+    /// Only events before this instant (RFC 3339), at most 92 days after `from`.
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    #[param(value_type = Option<String>, format = DateTime)]
+    pub to: Option<OffsetDateTime>,
+}
+
+/// `GET /admin/audit-events/export`: the matching events as a CSV file, newest first, up to
+/// 100,000 rows.
+///
+/// Takes the same filters as the activity log, so the file holds what the console shows.
+#[utoipa::path(
+    get,
+    path = "/auth/v1/admin/audit-events/export",
+    tag = "tenant-admin",
+    security(("api_key" = []), ("platform_account" = [], "project" = [])),
+    params(AuditExportQuery),
+    responses(
+        (status = 200, description = "The events as CSV", body = String, content_type = "text/csv"),
+        (status = 400, description = "Invalid user, kind, search or period", body = ErrorBody),
+        (status = 403, description = "Requires the secret API key, or membership in the project", body = ErrorBody),
+    )
+)]
+pub async fn export_audit_events(
+    admin: TenantAdminContext,
+    Query(query): Query<AuditExportQuery>,
+) -> Result<Response, ApiError> {
+    query.validate().map_err(ApiError::invalid_request)?;
+    let period = AuditPeriod::parse(PeriodParams {
+        days: query.days,
+        from: query.from,
+        to: query.to,
+    })
+    .map_err(ApiError::invalid_request)?;
+    let audit_query = AuditQuery {
+        user_id: query.user_id,
+        kind: query.kind,
+        search: query.search.as_deref(),
+        period,
+        before: None,
+    };
+    let rows = find_rows(&admin.pool, &audit_query).await?;
+    let csv = audit_csv(&rows).map_err(ApiError::internal)?;
+    let headers = [
+        (CONTENT_TYPE, CSV_CONTENT_TYPE),
+        (CONTENT_DISPOSITION, CSV_DISPOSITION),
+    ];
+
+    Ok((headers, csv).into_response())
+}

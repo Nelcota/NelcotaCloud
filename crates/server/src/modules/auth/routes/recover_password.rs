@@ -7,8 +7,9 @@ use crate::modules::auth::email::auth_email_request::{
     EmailBody, EmailLinkRequest, request_email_link,
 };
 use crate::modules::tenants::access::tenant_context::TenantContext;
+use crate::modules::tenants::ip_blocks::address_guard::ensure_address_allowed;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
-use crate::shared::http::client_ip::ClientIp;
+use crate::shared::http::request_origin::RequestOrigin;
 use crate::shared::http::validated_json::ValidatedJson;
 
 /// `POST /recover`: emails a password reset link.
@@ -26,15 +27,18 @@ use crate::shared::http::validated_json::ValidatedJson;
 pub async fn recover_password(
     State(state): State<AppState>,
     tenant: TenantContext,
-    ClientIp(client_ip): ClientIp,
+    origin: RequestOrigin,
     ValidatedJson(body): ValidatedJson<EmailBody>,
 ) -> Result<StatusCode, ApiError> {
+    ensure_address_allowed(&tenant.pool, origin.client_ip).await?;
     let request = EmailLinkRequest {
         raw_email: &body.email,
-        client_ip,
+        origin,
         kind: AuthEmailKind::PasswordReset,
         captcha_token: body.captcha_token.as_deref(),
     };
 
-    request_email_link(&state, tenant, &request).await
+    request_email_link(state.auth_email_links(), tenant, &request).await?;
+
+    Ok(StatusCode::ACCEPTED)
 }

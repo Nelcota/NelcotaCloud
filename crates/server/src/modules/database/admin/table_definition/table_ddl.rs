@@ -42,11 +42,13 @@ pub fn create_table_sql(request: &CreateTableRequest) -> Result<String, Database
         parts.push(format!("PRIMARY KEY ({})", primary_key.join(", ")));
     }
 
-    Ok(format!(
-        "CREATE TABLE {} ({})",
-        table.in_public(),
-        parts.join(", ")
-    ))
+    let mut statements = format!("CREATE TABLE {} ({})", table.in_public(), parts.join(", "));
+    let leading_key = primary_key.first();
+    for column in columns {
+        statements.push_str(&foreign_key_index_sql(&table, column, leading_key)?);
+    }
+
+    Ok(statements)
 }
 
 pub fn drop_table_sql(table: &str) -> Result<String, DatabaseRejection> {
@@ -60,11 +62,33 @@ pub fn add_column_sql(table: &str, column: &ColumnDefinition) -> Result<String, 
         ));
     }
 
-    Ok(format!(
+    let table = parse_name(table)?;
+    let mut statements = format!(
         "ALTER TABLE {} ADD COLUMN {}",
-        parse_name(table)?.in_public(),
+        table.in_public(),
         column.to_sql()?
-    ))
+    );
+    statements.push_str(&foreign_key_index_sql(&table, column, None)?);
+
+    Ok(statements)
+}
+
+fn foreign_key_index_sql(
+    table: &ObjectName,
+    column: &ColumnDefinition,
+    leading_key: Option<&String>,
+) -> Result<String, DatabaseRejection> {
+    if column.references.is_none() || column.unique {
+        return Ok(String::new());
+    }
+
+    let name = parse_name(&column.name)?.quoted();
+
+    if leading_key == Some(&name) {
+        return Ok(String::new());
+    }
+
+    Ok(format!("; CREATE INDEX ON {} ({name})", table.in_public()))
 }
 
 pub fn drop_column_sql(table: &str, column: &str) -> Result<String, DatabaseRejection> {

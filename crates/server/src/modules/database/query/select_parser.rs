@@ -89,9 +89,9 @@ fn parse_cast(name: &str) -> Result<CastType, DatabaseRejection> {
 
 /// `alias:relation!hint!inner` followed by `items)`.
 fn parse_embed(head: &str, rest: &str, depth: usize) -> Result<EmbedSelection, DatabaseRejection> {
-    let Some(inner_items) = rest.strip_suffix(')') else {
-        return Err(DatabaseRejection::invalid_query("an embed must end with )"));
-    };
+    let inner_items = rest
+        .strip_suffix(')')
+        .ok_or_else(|| DatabaseRejection::invalid_query("an embed must end with )"))?;
     let (alias, target) = split_alias(head)?;
     let mut modifiers = target.split('!');
     let relation = parse_name(modifiers.next().unwrap_or_default())?;
@@ -121,8 +121,9 @@ fn apply_modifier(embed: &mut EmbedSelection, modifier: &str) -> Result<(), Data
 }
 
 fn split_alias(text: &str) -> Result<(Option<String>, &str), DatabaseRejection> {
-    let Some((alias, target)) = text.split_once(':') else {
-        return Ok((None, text.trim()));
+    let (alias, target) = match text.split_once(':') {
+        Some((alias, target)) => (alias, target),
+        None => return Ok((None, text.trim())),
     };
 
     Ok((Some(parse_alias(alias)?), target.trim()))
@@ -162,8 +163,9 @@ mod tests {
     #[test]
     fn parses_nested_embeds_with_hints() -> Result<(), DatabaseRejection> {
         let items = parse_select("id,writer:users!posts_author_fkey!inner(name,teams(id))")?;
-        let Some(SelectItem::Embed(embed)) = items.get(1) else {
-            return Err(DatabaseRejection::invalid_query("expected an embed"));
+        let embed = match items.get(1) {
+            Some(SelectItem::Embed(embed)) => embed,
+            _ => return Err(DatabaseRejection::invalid_query("expected an embed")),
         };
 
         assert_eq!(embed.relation, "users");

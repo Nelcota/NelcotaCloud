@@ -66,9 +66,7 @@ pub async fn is_member_email(
 
 impl TeamMemberRow {
     fn into_member(self) -> Result<TeamMember, TeamMemberError> {
-        let Some(role) = ProjectRole::parse(&self.role) else {
-            return Err(TeamMemberError::UnknownRole);
-        };
+        let role = ProjectRole::parse(&self.role).ok_or(TeamMemberError::UnknownRole)?;
 
         Ok(TeamMember {
             account_id: self.account_id,

@@ -24,9 +24,7 @@ pub async fn list_user_sessions(
     Path(user_id): Path<Uuid>,
 ) -> Result<Json<UserSessions>, ApiError> {
     let sessions = load_user_sessions(&admin.pool, user_id).await?;
-    let Some(sessions) = sessions else {
-        return Err(ApiError::NotFound("user"));
-    };
+    let sessions = sessions.ok_or(ApiError::NotFound("user"))?;
 
     Ok(Json(sessions))
 }

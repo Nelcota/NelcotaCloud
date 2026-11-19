@@ -2,9 +2,10 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::modules::team::member::ownership_changes::{
-    MembershipTarget, ensure_below_owner_limit, lock_membership, set_role,
+    MembershipTarget, ensure_below_owner_limit, require_member_role, set_role,
 };
 use crate::modules::team::member::ownership_error::OwnershipError;
+use crate::modules::tenants::platform::membership_repository::lock_project_memberships;
 use crate::modules::tenants::platform::project_role::ProjectRole;
 
 /// Who hands the project over, and to whom.
@@ -42,12 +43,13 @@ pub async fn transfer_ownership(
 
     let (from, to) = transfer.targets();
     let mut transaction = pool.begin().await?;
+    let memberships = lock_project_memberships(&mut transaction, transfer.tenant_id).await?;
 
-    if lock_membership(&mut transaction, from).await? != ProjectRole::Owner {
+    if require_member_role(&memberships, from.account_id)? != ProjectRole::Owner {
         return Err(OwnershipError::NotOwner);
     }
 
-    if lock_membership(&mut transaction, to).await? == ProjectRole::Member {
+    if require_member_role(&memberships, to.account_id)? == ProjectRole::Member {
         ensure_below_owner_limit(&mut transaction, to.account_id).await?;
         set_role(&mut transaction, to, ProjectRole::Owner).await?;
     }

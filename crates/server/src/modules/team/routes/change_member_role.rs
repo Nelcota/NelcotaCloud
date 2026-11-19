@@ -1,6 +1,7 @@
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use serde::Deserialize;
+use serde_json::json;
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
@@ -8,10 +9,14 @@ use validator::Validate;
 use crate::app_state::AppState;
 use crate::modules::team::member::owner_actions::{OwnerAction, change_member_role};
 use crate::modules::team::member::ownership_changes::MembershipTarget;
+use crate::modules::tenants::access::admin_actor::AdminActor;
+use crate::modules::tenants::audit::audit_action::AuditAction;
+use crate::modules::tenants::audit::project_change::{ProjectChange, record_project_change};
 use crate::modules::tenants::platform::platform_account::PlatformAccount;
 use crate::modules::tenants::platform::project_access::require_owner;
 use crate::modules::tenants::platform::project_role::ProjectRole;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
+use crate::shared::http::request_origin::RequestOrigin;
 use crate::shared::http::validated_json::ValidatedJson;
 
 #[derive(Deserialize, Validate, ToSchema)]
@@ -41,6 +46,7 @@ pub struct MemberRoleBody {
 pub async fn change_role(
     State(state): State<AppState>,
     account: PlatformAccount,
+    origin: RequestOrigin,
     Path((project_id, member_id)): Path<(Uuid, Uuid)>,
     ValidatedJson(body): ValidatedJson<MemberRoleBody>,
 ) -> Result<StatusCode, ApiError> {
@@ -54,6 +60,13 @@ pub async fn change_role(
         target,
     };
     change_member_role(&state.control_plane_pool, action, body.role).await?;
+    let change = ProjectChange {
+        tenant_id: project_id,
+        author: (AdminActor::ConsoleAccount(account.account_id), &origin),
+        action: AuditAction::MemberRoleChanged,
+        details: json!({ "account_id": member_id, "role": body.role }),
+    };
+    record_project_change(&state.tenant_pools, change).await;
 
     Ok(StatusCode::NO_CONTENT)
 }

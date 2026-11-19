@@ -41,9 +41,10 @@ impl ColumnType {
             Some(base_name) => (base_name, true),
             None => (name, false),
         };
-        let Some((_, sql)) = COLUMN_TYPES.iter().find(|(known, _)| *known == base_name) else {
-            return Err(UnsupportedColumnType(name.to_owned()));
-        };
+        let (_, sql) = COLUMN_TYPES
+            .iter()
+            .find(|(known, _)| *known == base_name)
+            .ok_or_else(|| UnsupportedColumnType(name.to_owned()))?;
 
         Ok(Self { sql, is_array })
     }

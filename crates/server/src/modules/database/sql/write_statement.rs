@@ -76,7 +76,7 @@ pub fn write_returning_statements(
     }
 
     for sql in &mut statements {
-        sql.push(format!(" RETURNING {ROOT_ALIAS}.*) "));
+        sql.push(format!(" RETURNING {ROOT_ALIAS}.*), "));
         push_written_rows(sql, SelectWriter::new(schema, query), table)?;
     }
 

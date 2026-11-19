@@ -1,4 +1,5 @@
 use crate::modules::team::rejection::team_rejection::TeamRejection;
+use crate::modules::tenants::platform::membership_repository::MembershipError;
 use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::shared::http::api_error::ApiError;
 
@@ -18,6 +19,15 @@ pub enum OwnershipError {
     UnknownRole,
     #[error("database error while changing a membership: {0}")]
     Database(#[from] sqlx::Error),
+}
+
+impl From<MembershipError> for OwnershipError {
+    fn from(error: MembershipError) -> Self {
+        match error {
+            MembershipError::Database(error) => Self::Database(error),
+            MembershipError::UnknownRole => Self::UnknownRole,
+        }
+    }
 }
 
 impl From<OwnershipError> for ApiError {

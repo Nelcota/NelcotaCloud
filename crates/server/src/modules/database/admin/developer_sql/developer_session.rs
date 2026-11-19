@@ -4,13 +4,15 @@ use sqlx::{AssertSqlSafe, Postgres, Transaction};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::app_state::AppState;
 use crate::modules::database::admin::developer_sql::sql_error_response::sql_error_response;
+use crate::modules::database::execution::database_sessions::{
+    DatabaseSessionPools, DatabaseSessions,
+};
 use crate::modules::database::execution::query_guard::{
     BackendIdentity, QueryGuard, backend_identity_columns,
 };
 use crate::modules::database::execution::session_slots::SessionSlot;
-use crate::modules::tenants::database::database_roles::DEVELOPER_ROLE;
+use crate::modules::tenants::postgres::database_roles::DEVELOPER_ROLE;
 use crate::shared::http::api_error::ApiError;
 
 /// The console's SQL may run longer than API requests, but never unbounded.
@@ -38,17 +40,12 @@ pub struct DeveloperSession {
 }
 
 impl DeveloperSession {
-    pub async fn open(state: &AppState, tenant_id: Uuid) -> Result<Self, ApiError> {
-        let slot = state.data_api_slots.acquire(tenant_id).await?;
-        let tenant_pools = &state.tenant_pools;
-        let data_pool = tenant_pools
-            .data_api_pool_for(tenant_id)
-            .await
-            .map_err(ApiError::internal)?;
-        let admin_pool = tenant_pools
-            .pool_for(tenant_id)
-            .await
-            .map_err(ApiError::internal)?;
+    pub async fn open(sessions: &DatabaseSessions<'_>, tenant_id: Uuid) -> Result<Self, ApiError> {
+        let DatabaseSessionPools {
+            slot,
+            data_pool,
+            admin_pool,
+        } = sessions.acquire(tenant_id).await?;
         let mut connection = data_pool.acquire().await?;
         // Closing the connection discards settings and temporary objects that survive commit.
         connection.close_on_drop();

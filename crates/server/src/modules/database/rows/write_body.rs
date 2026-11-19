@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde_json::{Map, Value};
 
 use crate::modules::database::query::preferences::Resolution;
@@ -12,24 +14,31 @@ pub fn insert_batches(
     table: &TableModel,
     body: Value,
 ) -> Result<Vec<InsertBatch>, DatabaseRejection> {
+    let mut batch_positions = HashMap::<Vec<String>, usize>::new();
     let mut batches: Vec<(Vec<String>, Vec<Value>)> = Vec::new();
 
     for row in insert_rows(body)? {
-        let Value::Object(object) = row else {
-            return Err(DatabaseRejection::invalid_query(
-                "every row must be an object",
-            ));
+        let object = match row {
+            Value::Object(object) => object,
+            _ => {
+                return Err(DatabaseRejection::invalid_query(
+                    "every row must be an object",
+                ));
+            }
         };
         let columns = row_columns(table, &object)?;
         let row = Value::Object(object);
 
-        match batches
-            .iter_mut()
-            .find(|(batch_columns, _)| *batch_columns == columns)
+        if let Some((_, rows)) = batch_positions
+            .get(&columns)
+            .and_then(|&position| batches.get_mut(position))
         {
-            Some((_, rows)) => rows.push(row),
-            None => batches.push((columns, vec![row])),
+            rows.push(row);
+            continue;
         }
+
+        batch_positions.insert(columns.clone(), batches.len());
+        batches.push((columns, vec![row]));
     }
 
     Ok(batches
@@ -82,10 +91,13 @@ fn row_columns(
 
 /// An update body: one object with at least one column.
 pub fn update_values(table: &TableModel, body: Value) -> Result<UpdateValues, DatabaseRejection> {
-    let Value::Object(values) = body else {
-        return Err(DatabaseRejection::invalid_query(
-            "send an object with the new values",
-        ));
+    let values = match body {
+        Value::Object(values) => values,
+        _ => {
+            return Err(DatabaseRejection::invalid_query(
+                "send an object with the new values",
+            ));
+        }
     };
 
     if values.is_empty() {

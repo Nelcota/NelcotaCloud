@@ -111,8 +111,9 @@ impl TenantEmailSenders {
 
     async fn load_sender(&self, tenant_id: Uuid) -> Result<Arc<EmailSender>, TenantSmtpError> {
         let stored = find_smtp_settings(&self.control_plane_pool, tenant_id).await?;
-        let Some(stored) = stored else {
-            return Ok(Arc::clone(&self.platform_sender));
+        let stored = match stored {
+            Some(stored) => stored,
+            None => return Ok(Arc::clone(&self.platform_sender)),
         };
         let smtp_url = self.open_smtp_url(tenant_id, &stored.smtp_url_ciphertext)?;
         let endpoint = SmtpEndpoint::parse(&smtp_url)?;

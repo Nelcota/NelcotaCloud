@@ -16,9 +16,7 @@ pub type StatementRow = (Option<String>, i64, Option<i64>);
 impl RowsResult {
     pub fn from_row(row: StatementRow, offset: u32) -> Result<Self, DatabaseRejection> {
         let (body, row_count, total) = row;
-        let Some(body) = body else {
-            return Err(DatabaseRejection::ResponseTooLarge);
-        };
+        let body = body.ok_or(DatabaseRejection::ResponseTooLarge)?;
 
         Ok(Self {
             body: Some(body),

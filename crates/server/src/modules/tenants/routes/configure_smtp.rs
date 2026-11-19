@@ -1,11 +1,14 @@
 use axum::Json;
 use axum::extract::State;
 use serde::Deserialize;
+use serde_json::json;
 use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::app_state::AppState;
 use crate::modules::tenants::access::tenant_admin::TenantAdmin;
+use crate::modules::tenants::audit::audit_action::AuditAction;
+use crate::modules::tenants::audit::project_change::{ProjectChange, record_project_change};
 use crate::modules::tenants::smtp::smtp_settings_change::{
     SmtpSettingsChange, SmtpSettingsChangeError,
 };
@@ -49,9 +52,20 @@ pub async fn configure_smtp(
         smtp_url: body.smtp_url.trim(),
         email_from: body.email_from.trim(),
     };
-    let saved = state.smtp_settings_store().save(change).await;
+    let saved = state
+        .smtp_settings_store()
+        .save(change)
+        .await
+        .map_err(map_change_error)?;
+    let change = ProjectChange {
+        tenant_id: admin.tenant_id,
+        author: admin.author(),
+        action: AuditAction::SettingsChanged,
+        details: json!({ "section": "smtp" }),
+    };
+    record_project_change(&state.tenant_pools, change).await;
 
-    Ok(Json(saved.map_err(map_change_error)?))
+    Ok(Json(saved))
 }
 
 fn map_change_error(error: SmtpSettingsChangeError) -> ApiError {
