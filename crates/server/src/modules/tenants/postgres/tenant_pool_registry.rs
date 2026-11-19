@@ -69,16 +69,15 @@ impl TenantPoolRegistry {
             control_plane_pool,
             tenant_database_base_url,
             pools: pool_cache(TenantPoolLimits::API),
-            data_api_pools: pool_cache(TenantPoolLimits::API),
+            data_api_pools: pool_cache(TenantPoolLimits::DATA_API),
             mode: TenantPoolMode::Legacy,
             limits: TenantPoolLimits::API,
         }
     }
 
-    /// Replaces the default API limits; call before the first pool opens.
+    /// Replaces the API limits of the platform pools; call before the first pool opens.
     pub fn with_limits(mut self, limits: TenantPoolLimits) -> Self {
         self.pools = pool_cache(limits);
-        self.data_api_pools = pool_cache(limits);
         self.limits = limits;
         self
     }
@@ -94,18 +93,7 @@ impl TenantPoolRegistry {
     }
 
     pub async fn pool_for(&self, tenant_id: Uuid) -> Result<PgPool, Arc<TenantPoolError>> {
-        let entry = self
-            .pools
-            .entry(tenant_id)
-            .or_try_insert_with(self.open_pool(tenant_id))
-            .await?;
-        if entry.is_fresh() {
-            // The cache evicts lazily; evicting now keeps a new pool from pushing the process
-            // past its limit. An evicted pool closes once the last run using it lets go.
-            self.pools.run_pending_tasks().await;
-        }
-
-        Ok(entry.into_value())
+        cached_pool(&self.pools, tenant_id, self.open_pool(tenant_id)).await
     }
 
     pub async fn audit_maintenance_pool(
@@ -124,9 +112,9 @@ impl TenantPoolRegistry {
     pub async fn data_api_pool_for(&self, tenant_id: Uuid) -> Result<PgPool, Arc<TenantPoolError>> {
         self.pool_for(tenant_id).await?;
 
-        self.data_api_pools
-            .try_get_with(tenant_id, self.open_data_api_pool(tenant_id))
-            .await
+        let opening = self.open_data_api_pool(tenant_id);
+
+        cached_pool(&self.data_api_pools, tenant_id, opening).await
     }
 
     async fn open_pool(&self, tenant_id: Uuid) -> Result<PgPool, TenantPoolError> {
@@ -154,7 +142,7 @@ impl TenantPoolRegistry {
         }
         let options = database_server.data_api_options(&slug)?;
 
-        Ok(tenant_pool_options(self.limits)
+        Ok(tenant_pool_options(TenantPoolLimits::DATA_API)
             .idle_timeout(DATA_API_POOL_IDLE_TIMEOUT)
             .connect_lazy_with(options))
     }
@@ -186,6 +174,22 @@ impl TenantPoolRegistry {
             pool.close().await;
         }
     }
+}
+
+/// The tenant's cached pool, opened once by concurrent callers when it is missing.
+async fn cached_pool(
+    cache: &Cache<Uuid, PgPool>,
+    tenant_id: Uuid,
+    opening: impl Future<Output = Result<PgPool, TenantPoolError>>,
+) -> Result<PgPool, Arc<TenantPoolError>> {
+    let entry = cache.entry(tenant_id).or_try_insert_with(opening).await?;
+    if entry.is_fresh() {
+        // The cache evicts lazily; evicting now keeps a new pool from pushing the process past
+        // its limit. An evicted pool closes once the last request or run using it lets go.
+        cache.run_pending_tasks().await;
+    }
+
+    Ok(entry.into_value())
 }
 
 fn pool_cache(limits: TenantPoolLimits) -> Cache<Uuid, PgPool> {
