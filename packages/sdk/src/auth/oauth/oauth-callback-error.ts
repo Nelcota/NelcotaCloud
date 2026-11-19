@@ -1,4 +1,4 @@
-import { NelcotaError } from '../http/nelcota-error'
+import { NelcotaError } from '../../http/nelcota-error'
 
 const CALLBACK_ERROR_STATUS = 400
 const DEFAULT_MESSAGE = 'The OAuth login failed'

@@ -1,4 +1,4 @@
-import type { AuthEvent, Session } from '../types'
+import type { AuthEvent, Session } from '../auth-types'
 
 /** The event that describes going from `previous` to `next` (e.g. a change made by another tab). */
 export function sessionChangeEvent(previous: Session | null, next: Session | null): AuthEvent {

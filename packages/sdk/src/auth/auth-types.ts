@@ -1,4 +1,4 @@
-import type { components } from './generated/api-schema'
+import type { components } from '../generated/api-schema'
 
 type Schemas = components['schemas']
 

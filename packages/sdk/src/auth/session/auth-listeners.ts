@@ -1,4 +1,4 @@
-import type { AuthEvent, AuthStateListener, Session } from '../types'
+import type { AuthEvent, AuthStateListener, Session } from '../auth-types'
 
 /** The app's `onAuthStateChange` listeners. */
 export class AuthListeners {

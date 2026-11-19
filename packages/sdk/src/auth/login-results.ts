@@ -1,5 +1,5 @@
 import type { components } from '../generated/api-schema'
-import type { Session, SignInResult, SignUpResult } from '../types'
+import type { Session, SignInResult, SignUpResult } from './auth-types'
 import { NelcotaError } from '../http/nelcota-error'
 import { isRecord, isUser } from './user-shape'
 

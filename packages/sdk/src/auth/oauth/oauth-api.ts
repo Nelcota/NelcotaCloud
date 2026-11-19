@@ -1,17 +1,18 @@
-import type { components } from '../generated/api-schema'
-import type { HttpClient } from '../http/http-client'
-import type { OAuthProvider, SignInResult } from '../types'
-import { toSignInResult } from './login-results'
+import type { components } from '../../generated/api-schema'
+import type { HttpClient } from '../../http/http-client'
+import type { OAuthProvider, SignInResult } from '../auth-types'
+import { toSignInResult } from '../login-results'
 import { oauthCallbackError } from './oauth-callback-error'
 import { createOAuthState, createPkcePair } from './pkce'
-import type { SessionManager } from './session-manager'
-import type { SessionStore } from './session-store'
+import type { SessionManager } from '../session/session-manager'
+import type { PkceVerifierStore } from './pkce-verifier-store'
 
 type LoginResponse = components['schemas']['LoginResponse']
+type OAuthVerifierStore = Pick<PkceVerifierStore, 'saveVerifier' | 'takeVerifier'>
 type OAuthContext = {
   http: HttpClient
   manager: SessionManager
-  store: SessionStore
+  store: OAuthVerifierStore
   now: () => number
 }
 
@@ -22,7 +23,7 @@ type OAuthContext = {
 export class OAuthApi {
   private readonly http: HttpClient
   private readonly manager: SessionManager
-  private readonly store: SessionStore
+  private readonly store: OAuthVerifierStore
   private readonly now: () => number
 
   constructor(context: OAuthContext) {
@@ -56,8 +57,14 @@ export class OAuthApi {
   async exchangeCode(callbackUrl: string | URL): Promise<SignInResult> {
     const parameters = new URL(callbackUrl).searchParams
     const state = parameters.get('nelcota_state')
+
     // Taken first so a failed or cancelled login never leaves the verifier behind.
-    const verifier = state === null ? null : this.store.takeVerifier(state)
+    let verifier: string | null = null
+
+    if (state !== null) {
+      verifier = this.store.takeVerifier(state)
+    }
+
     const error = parameters.get('error')
 
     if (error !== null) {

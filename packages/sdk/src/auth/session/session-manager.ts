@@ -1,5 +1,5 @@
-import type { HttpClient } from '../http/http-client'
-import type { AuthEvent, AuthStateListener, Session, User } from '../types'
+import type { HttpClient } from '../../http/http-client'
+import type { AuthEvent, AuthStateListener, Session, User } from '../auth-types'
 import { AuthListeners } from './auth-listeners'
 import { notAuthenticated } from './not-authenticated'
 import { sessionChangeEvent } from './session-change'
