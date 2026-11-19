@@ -37,8 +37,9 @@ pub async fn accept_totp_code(
     let factor = attempt.factor;
     let context = mfa_secret_context(attempt.tenant_id, factor.id);
     let secret = secret_box.open(&factor.secret_ciphertext, &context)?;
-    let Some(step) = matched_step(&secret, attempt.code)? else {
-        return Ok(false);
+    let step = match matched_step(&secret, attempt.code)? {
+        Some(step) => step,
+        None => return Ok(false),
     };
     let step = i64::try_from(step).map_err(|_| TotpVerificationError::StepOutOfRange)?;
 

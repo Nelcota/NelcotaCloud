@@ -67,9 +67,7 @@ fn accepted_reader(upload: &[u8]) -> Result<ImageReader<Cursor<&[u8]>>, AvatarIm
     let reader = ImageReader::new(Cursor::new(upload))
         .with_guessed_format()
         .map_err(|_| AvatarImageError::Unreadable)?;
-    let Some(format) = reader.format() else {
-        return Err(AvatarImageError::UnsupportedFormat);
-    };
+    let format = reader.format().ok_or(AvatarImageError::UnsupportedFormat)?;
 
     if ACCEPTED_FORMATS.contains(&format) == false {
         return Err(AvatarImageError::UnsupportedFormat);
@@ -98,9 +96,8 @@ fn flatten_onto_white(image: &DynamicImage) -> Result<RgbImage, AvatarImageError
             [red, green, blue].map(|channel| blend_with_white(channel, alpha))
         })
         .collect();
-    let Some(flattened) = RgbImage::from_raw(width, height, channels) else {
-        return Err(AvatarImageError::Unreadable);
-    };
+    let flattened =
+        RgbImage::from_raw(width, height, channels).ok_or(AvatarImageError::Unreadable)?;
 
     Ok(flattened)
 }

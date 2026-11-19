@@ -60,8 +60,9 @@ pub async fn end_session_of_user(
     .bind(user_id)
     .fetch_optional(&mut *transaction)
     .await?;
-    let Some(is_active) = session else {
-        return Ok(false);
+    let is_active = match session {
+        Some(is_active) => is_active,
+        None => return Ok(false),
     };
 
     if is_active == false {

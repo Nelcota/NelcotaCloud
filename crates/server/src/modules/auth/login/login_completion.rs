@@ -1,10 +1,11 @@
 use serde::Serialize;
 use utoipa::ToSchema;
 
-use crate::app_state::AppState;
 use crate::modules::auth::mfa::mfa_challenge_repository::create_mfa_challenge;
 use crate::modules::auth::mfa::mfa_factor_repository::has_verified_mfa_factor;
-use crate::modules::auth::session::session_grant::{SessionRequest, issue_session_with};
+use crate::modules::auth::session::session_grant::{
+    SessionRequest, TokenSigning, issue_session_with,
+};
 use crate::modules::auth::session::session_issuer::SessionTokens;
 use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::shared::http::api_error::ApiError;
@@ -21,14 +22,14 @@ pub struct MfaRequired {
 #[derive(Debug, Serialize, ToSchema)]
 #[serde(untagged)]
 pub enum LoginResponse {
-    Session(SessionTokens),
+    Session(Box<SessionTokens>),
     MfaRequired(MfaRequired),
 }
 
 /// Ends every login that proved the first factor (password, magic link, OAuth): a user with a
 /// verified authenticator gets an MFA challenge instead of tokens.
 pub async fn complete_login(
-    state: &AppState,
+    signing: &TokenSigning<'_>,
     request: SessionRequest<'_>,
 ) -> Result<LoginResponse, ApiError> {
     let user = &request.grant.user;
@@ -48,7 +49,7 @@ pub async fn complete_login(
         return Ok(LoginResponse::MfaRequired(required));
     }
 
-    Ok(LoginResponse::Session(
-        issue_session_with(&state.token_signing(), request).await?,
-    ))
+    Ok(LoginResponse::Session(Box::new(
+        issue_session_with(signing, request).await?,
+    )))
 }

@@ -9,13 +9,3 @@ pub enum UserStatusFilter {
     Unverified,
     Banned,
 }
-
-impl UserStatusFilter {
-    /// The value bound to the listing query, matched there in SQL.
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Unverified => "unverified",
-            Self::Banned => "banned",
-        }
-    }
-}

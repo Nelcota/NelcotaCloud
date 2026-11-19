@@ -37,8 +37,9 @@ pub async fn authenticate_with_password(
         return Err(PasswordAuthenticationError::InvalidCredentials);
     }
 
-    let (Some(user), Some(password_hash)) = (user, stored_hash) else {
-        return Err(PasswordAuthenticationError::InvalidCredentials);
+    let (user, password_hash) = match (user, stored_hash) {
+        (Some(user), Some(password_hash)) => (user, password_hash),
+        _ => return Err(PasswordAuthenticationError::InvalidCredentials),
     };
 
     Ok(VerifiedCredentials {
@@ -70,6 +71,9 @@ mod tests {
                 avatar_updated_at: None,
                 user_metadata: sqlx::types::Json(serde_json::Map::new()),
                 app_metadata: sqlx::types::Json(serde_json::Map::new()),
+                last_sign_in_at: None,
+                has_password: false,
+                providers: Vec::new(),
             },
             password_hash,
         }

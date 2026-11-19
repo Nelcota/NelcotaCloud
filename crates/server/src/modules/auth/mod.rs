@@ -1,13 +1,14 @@
-pub mod audit;
+mod audit;
 pub mod avatar;
 pub mod email;
-pub mod login;
+pub(crate) mod integration;
+mod login;
 pub mod mfa;
-pub mod one_time_token;
+mod one_time_token;
 pub mod password;
 pub mod rate_limiting;
 pub mod rejection;
 pub mod routes;
 pub mod session;
 pub mod usage;
-pub mod user;
+mod user;

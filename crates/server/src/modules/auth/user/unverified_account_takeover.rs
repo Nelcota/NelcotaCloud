@@ -26,8 +26,9 @@ pub async fn take_over_unverified_account(
     email: &EmailAddress,
     password_hash: &str,
 ) -> Result<Option<User>, sqlx::Error> {
-    let Some(user) = find_user_by_email(&mut *transaction, email).await? else {
-        return Ok(None);
+    let user = match find_user_by_email(&mut *transaction, email).await? {
+        Some(user) => user,
+        None => return Ok(None),
     };
     let replaced = replace_unverified_password(transaction, user.id, password_hash).await?;
 

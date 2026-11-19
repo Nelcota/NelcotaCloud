@@ -35,11 +35,11 @@ pub async fn check_factor_code(
     check: FactorCodeCheck<'_>,
 ) -> Result<FactorCodeOutcome, TotpVerificationError> {
     let factor = find_mfa_factor(&mut *connection, check.user_id).await?;
-    let Some(factor) =
-        factor.filter(|factor| state_of(factor.verified_at.is_some()) == check.expected)
-    else {
-        return Ok(FactorCodeOutcome::NoFactor);
-    };
+    let factor =
+        match factor.filter(|factor| state_of(factor.verified_at.is_some()) == check.expected) {
+            Some(factor) => factor,
+            None => return Ok(FactorCodeOutcome::NoFactor),
+        };
     let attempt = TotpAttempt {
         tenant_id: check.tenant_id,
         factor: &factor,

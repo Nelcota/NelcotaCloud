@@ -3,11 +3,11 @@ use axum::http::StatusCode;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
-use crate::modules::auth::audit::audit_action::AuditAction;
-use crate::modules::auth::audit::audit_event::NewAuditEvent;
-use crate::modules::auth::audit::audit_recorder::record_audit_event;
 use crate::modules::auth::user::user_administration::delete_user as delete;
 use crate::modules::tenants::access::tenant_admin_context::TenantAdminContext;
+use crate::modules::tenants::audit::audit_action::AuditAction;
+use crate::modules::tenants::audit::audit_entry::NewAuditEvent;
+use crate::modules::tenants::audit::audit_recorder::record_audit_event;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
 /// `DELETE /admin/users/{user_id}`: removes the user with their identities and sessions.
@@ -35,7 +35,7 @@ pub async fn delete_user(
         return Err(ApiError::NotFound("user"));
     }
 
-    let event = NewAuditEvent::by_admin(AuditAction::UserDeleted, user_id, admin.actor);
+    let event = NewAuditEvent::by_admin(AuditAction::UserDeleted, user_id, admin.author());
     record_audit_event(&admin.pool, event).await;
 
     Ok(StatusCode::NO_CONTENT)

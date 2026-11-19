@@ -2,17 +2,15 @@ use axum::Json;
 use axum::extract::State;
 
 use crate::app_state::AppState;
-use crate::modules::auth::one_time_token::one_time_token_purpose::OneTimeTokenPurpose;
-use crate::modules::auth::one_time_token::one_time_token_repository::consume_one_time_token;
-use crate::modules::auth::rejection::auth_rejection::AuthRejection;
+use crate::modules::auth::email::email_verification::redeem_email_verification;
 use crate::modules::auth::routes::one_time_token_body::OneTimeTokenBody;
-use crate::modules::auth::user::user_account_updates::mark_email_verified;
-use crate::modules::auth::user::user_events::record_user_event;
-use crate::modules::auth::user::user_record::User;
+use crate::modules::auth::user::user_response::UserResponse;
 use crate::modules::tenants::access::tenant_context::TenantContext;
-use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
+use crate::modules::tenants::audit::audit_action::AuditAction;
+use crate::modules::tenants::audit::audit_entry::NewAuditEvent;
+use crate::modules::tenants::audit::audit_recorder::record_audit_event;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
-use crate::shared::http::client_ip::ClientIp;
+use crate::shared::http::request_origin::RequestOrigin;
 use crate::shared::http::validated_json::ValidatedJson;
 
 /// `POST /verify-email`: consuming the link and marking the email verified are one transaction.
@@ -23,34 +21,25 @@ use crate::shared::http::validated_json::ValidatedJson;
     security(("api_key" = [])),
     request_body = OneTimeTokenBody,
     responses(
-        (status = 200, description = "Email verified", body = User),
+        (status = 200, description = "Email verified", body = UserResponse),
         (status = 400, description = "Invalid or expired token", body = ErrorBody),
     )
 )]
 pub async fn verify_email(
     State(state): State<AppState>,
     tenant: TenantContext,
-    ClientIp(client_ip): ClientIp,
+    origin: RequestOrigin,
     ValidatedJson(body): ValidatedJson<OneTimeTokenBody>,
-) -> Result<Json<User>, ApiError> {
+) -> Result<Json<UserResponse>, ApiError> {
+    let client_ip = origin.client_ip;
     state
         .rate_limits
         .token_redemption
         .check(tenant.tenant_id, client_ip)?;
     let webhooks = state.webhooks.recorder(tenant.tenant_id).await?;
-    let mut transaction = tenant.pool.begin().await?;
-    let purpose = OneTimeTokenPurpose::EmailVerification;
-    let consumed = consume_one_time_token(&mut transaction, purpose, &body.token).await?;
-    let Some(consumed) = consumed else {
-        return Err(ApiError::from(AuthRejection::InvalidToken));
-    };
-    let user = mark_email_verified(&mut transaction, consumed.user_id).await?;
-    let Some(user) = user else {
-        return Err(ApiError::from(AuthRejection::InvalidToken));
-    };
-    let event = (WebhookEventType::UserUpdated, &user);
-    record_user_event(&mut transaction, &webhooks, event).await?;
-    transaction.commit().await?;
+    let user = redeem_email_verification(&tenant.pool, &webhooks, &body.token).await?;
+    let event = NewAuditEvent::by_user(AuditAction::EmailVerified, user.id, origin);
+    record_audit_event(&tenant.pool, event).await;
 
-    Ok(Json(user))
+    Ok(Json(user.into()))
 }

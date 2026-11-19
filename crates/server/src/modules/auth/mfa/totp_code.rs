@@ -35,16 +35,18 @@ pub fn new_totp_enrollment(label: &TotpLabel) -> Result<TotpEnrollment, TotpErro
 /// The time step a code belongs to (current, previous or next), or `None` if it is wrong.
 /// The caller must accept each step only once.
 pub fn matched_step(secret: &[u8], code: &str) -> Result<Option<u64>, TotpError> {
-    let Some(digits) = code_digits(code) else {
-        return Ok(None);
+    let digits = match code_digits(code) {
+        Some(digits) => digits,
+        None => return Ok(None),
     };
     let label = TotpLabel {
         issuer: "NelcotaCloud",
         account: "user",
     };
     let totp = build_totp(secret, &label)?;
-    let Ok(now) = u64::try_from(OffsetDateTime::now_utc().unix_timestamp()) else {
-        return Ok(None);
+    let now = match u64::try_from(OffsetDateTime::now_utc().unix_timestamp()) {
+        Ok(now) => now,
+        Err(_) => return Ok(None),
     };
 
     Ok(totp.check(&digits, now))

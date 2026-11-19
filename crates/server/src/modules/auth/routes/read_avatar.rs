@@ -58,9 +58,7 @@ pub async fn read_avatar(
         .await
         .map_err(ApiError::internal)?;
     let avatar = find_avatar(&pool, user_id).await?;
-    let Some(avatar) = avatar else {
-        return Err(ApiError::NotFound("avatar"));
-    };
+    let avatar = avatar.ok_or(ApiError::NotFound("avatar"))?;
 
     Ok((avatar_headers(), avatar.image).into_response())
 }

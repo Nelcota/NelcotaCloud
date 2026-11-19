@@ -17,7 +17,10 @@ pub struct NewRefreshToken<'a> {
 pub enum RefreshTokenStatus {
     /// The token was valid and is now revoked; the caller issues its successor. The user is
     /// read in the same statement, so a refresh costs no second lookup.
-    Consumed { user: User, family: SessionFamily },
+    Consumed {
+        user: Box<User>,
+        family: SessionFamily,
+    },
     /// The token was already used: someone may hold a stolen copy.
     Reused { family_id: Uuid },
     /// Unknown, expired, or its session was ended.
@@ -79,8 +82,9 @@ pub async fn consume_refresh_token(
         .fetch_optional(pool)
         .await?;
 
-    let Some(consumed) = consumed else {
-        return find_reused_family(pool, token_hash).await;
+    let consumed = match consumed {
+        Some(consumed) => consumed,
+        None => return find_reused_family(pool, token_hash).await,
     };
     let family = SessionFamily {
         id: consumed.consumed_family_id,
@@ -88,7 +92,7 @@ pub async fn consume_refresh_token(
     };
 
     Ok(RefreshTokenStatus::Consumed {
-        user: consumed.user,
+        user: Box::new(consumed.user),
         family,
     })
 }
@@ -105,14 +109,26 @@ async fn find_reused_family(
     .bind(token_hash)
     .fetch_optional(pool)
     .await?;
-    let Some(family_id) = family_id else {
-        return Ok(RefreshTokenStatus::Invalid);
+    let family_id = match family_id {
+        Some(family_id) => family_id,
+        None => return Ok(RefreshTokenStatus::Invalid),
     };
 
     Ok(RefreshTokenStatus::Reused { family_id })
 }
 
 /// The marker keeps the family revoked even for tokens inserted after this call.
+/// The user a session family belongs to; `None` once its tokens are gone.
+pub async fn find_family_owner(
+    pool: &PgPool,
+    family_id: Uuid,
+) -> Result<Option<Uuid>, sqlx::Error> {
+    sqlx::query_scalar("SELECT user_id FROM refresh_tokens WHERE family_id = $1 LIMIT 1")
+        .bind(family_id)
+        .fetch_optional(pool)
+        .await
+}
+
 pub async fn revoke_token_family(pool: &PgPool, family_id: Uuid) -> Result<(), sqlx::Error> {
     let mut connection = pool.acquire().await?;
 
@@ -141,17 +157,23 @@ pub async fn revoke_token_family_with(
 }
 
 /// Logout ends the whole session (every rotated token of the family), not just the one presented.
-pub async fn revoke_family_of_token(pool: &PgPool, token_hash: &[u8]) -> Result<(), sqlx::Error> {
-    let family_id: Option<Uuid> =
-        sqlx::query_scalar("SELECT family_id FROM refresh_tokens WHERE token_hash = $1")
+/// Ends the session the token belongs to; returns its user, or `None` for an unknown token.
+pub async fn revoke_family_of_token(
+    pool: &PgPool,
+    token_hash: &[u8],
+) -> Result<Option<Uuid>, sqlx::Error> {
+    let family: Option<(Uuid, Uuid)> =
+        sqlx::query_as("SELECT family_id, user_id FROM refresh_tokens WHERE token_hash = $1")
             .bind(token_hash)
             .fetch_optional(pool)
             .await?;
-    let Some(family_id) = family_id else {
-        return Ok(());
+    let (family_id, user_id) = match family {
+        Some(family) => family,
+        None => return Ok(None),
     };
+    revoke_token_family(pool, family_id).await?;
 
-    revoke_token_family(pool, family_id).await
+    Ok(Some(user_id))
 }
 
 /// Ends every session of the user, including ones being rotated right now: their successors

@@ -52,12 +52,14 @@ pub async fn consume_one_time_token(
     plaintext: &str,
 ) -> Result<Option<ConsumedOneTimeToken>, sqlx::Error> {
     let token_hash = hash_opaque_token(plaintext.trim());
-    let Some(owner_id) = lock_token_owner(connection, purpose, token_hash).await? else {
-        return Ok(None);
+    let owner_id = match lock_token_owner(connection, purpose, token_hash).await? {
+        Some(owner_id) => owner_id,
+        None => return Ok(None),
     };
     let consumed = mark_consumed(connection, purpose, token_hash).await?;
-    let Some((user_id, code_challenge)) = consumed else {
-        return Ok(None);
+    let (user_id, code_challenge) = match consumed {
+        Some((user_id, code_challenge)) => (user_id, code_challenge),
+        None => return Ok(None),
     };
 
     if purpose.supersedes_pending_tokens() {

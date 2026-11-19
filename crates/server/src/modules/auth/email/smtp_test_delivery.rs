@@ -1,8 +1,8 @@
 use uuid::Uuid;
 
-use crate::app_state::AppState;
 use crate::modules::auth::email::auth_email::{AuthEmailContext, smtp_test_email};
 use crate::modules::auth::email::auth_email_template::render_auth_email;
+use crate::modules::auth::email::auth_mailer::AuthMailer;
 use crate::modules::auth::user::email_address::EmailAddress;
 use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::modules::tenants::settings::loaded_tenant_settings::load_tenant_settings;
@@ -12,18 +12,18 @@ use crate::shared::http::api_error::ApiError;
 /// Sends a test email through the tenant's SMTP server and waits for it to accept the
 /// message, so the owner sees a delivery problem right away.
 pub async fn deliver_smtp_test(
-    state: &AppState,
+    mailer: &AuthMailer,
     tenant_id: Uuid,
     recipient: &EmailAddress,
 ) -> Result<(), ApiError> {
-    let settings = load_tenant_settings(&state.control_plane_pool, tenant_id).await?;
+    let settings = load_tenant_settings(&mailer.control_plane_pool, tenant_id).await?;
     let context = AuthEmailContext {
         tenant_name: &settings.name,
         site_url: &settings.site_url,
     };
     let email = render_auth_email(smtp_test_email(&context), recipient.as_str())
         .map_err(ApiError::internal)?;
-    let sender = state
+    let sender = mailer
         .email_senders
         .sender_for(tenant_id)
         .await

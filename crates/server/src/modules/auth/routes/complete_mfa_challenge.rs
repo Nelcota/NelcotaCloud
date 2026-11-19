@@ -5,16 +5,18 @@ use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::app_state::AppState;
-use crate::modules::auth::audit::audit_event::NewAuditEvent;
-use crate::modules::auth::audit::audit_recorder::record_audit_event;
-use crate::modules::auth::audit::login_method::LoginMethod;
 use crate::modules::auth::login::mfa_challenge_redemption::{
     ChallengeAnswer, redeem_mfa_challenge,
 };
 use crate::modules::auth::session::session_issuer::SessionTokens;
 use crate::modules::tenants::access::tenant_context::TenantContext;
+use crate::modules::tenants::audit::audit_action::AuditAction;
+use crate::modules::tenants::audit::audit_entry::NewAuditEvent;
+use crate::modules::tenants::audit::audit_recorder::record_audit_event;
+use crate::modules::tenants::audit::login_method::LoginMethod;
+use crate::modules::tenants::ip_blocks::address_guard::ensure_address_allowed;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
-use crate::shared::http::client_ip::ClientIp;
+use crate::shared::http::request_origin::RequestOrigin;
 use crate::shared::http::validated_json::ValidatedJson;
 
 #[derive(Deserialize, Validate, ToSchema)]
@@ -44,17 +46,23 @@ pub struct MfaChallengeBody {
 pub async fn complete_mfa_challenge(
     State(state): State<AppState>,
     tenant: TenantContext,
-    ClientIp(client_ip): ClientIp,
+    origin: RequestOrigin,
     ValidatedJson(body): ValidatedJson<MfaChallengeBody>,
 ) -> Result<Json<SessionTokens>, ApiError> {
+    ensure_address_allowed(&tenant.pool, origin.client_ip).await?;
     let answer = ChallengeAnswer {
         mfa_token: &body.mfa_token,
         code: &body.code,
-        client_ip,
+        origin: origin.clone(),
     };
 
-    let tokens = redeem_mfa_challenge(&state, &tenant, answer).await?;
-    let event = NewAuditEvent::login(tokens.user.id, LoginMethod::Totp, client_ip);
+    let access = state.factor_code_access();
+    let signing = state.token_signing();
+    let tokens = redeem_mfa_challenge((&access, &signing), &tenant, answer).await?;
+    let event = NewAuditEvent {
+        login_method: Some(LoginMethod::Totp),
+        ..NewAuditEvent::by_user(AuditAction::LoggedIn, tokens.user.id, origin)
+    };
     record_audit_event(&tenant.pool, event).await;
 
     Ok(Json(tokens))

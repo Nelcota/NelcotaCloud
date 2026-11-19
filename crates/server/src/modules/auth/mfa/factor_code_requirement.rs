@@ -2,17 +2,18 @@ use std::net::IpAddr;
 
 use sqlx::PgConnection;
 
-use crate::app_state::AppState;
+use crate::modules::auth::mfa::factor_code_access::FactorCodeAccess;
 use crate::modules::auth::mfa::factor_code_check::{
     FactorCodeCheck, FactorCodeOutcome, FactorState, check_factor_code,
 };
 use crate::modules::auth::mfa::mfa_factor_repository::delete_mfa_factor;
-use crate::modules::auth::rate_limiting::attempt_limiter::Attempt;
 use crate::modules::auth::rejection::auth_rejection::AuthRejection;
 use crate::modules::auth::session::authenticated_user::AuthenticatedUser;
 use crate::modules::auth::user::user_events::{UserChange, record_user_change};
 use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
+use crate::modules::webhooks::outbox::webhook_recorder::WebhookRecorder;
 use crate::shared::http::api_error::ApiError;
+use crate::shared::rate_limiting::attempt_limiter::Attempt;
 
 /// A signed-in user typing a code from their authenticator app.
 pub struct FactorCodeRequest<'a> {
@@ -23,15 +24,15 @@ pub struct FactorCodeRequest<'a> {
 
 /// The first code turns the pending authenticator on.
 pub async fn activate_factor(
-    state: &AppState,
+    access: &FactorCodeAccess<'_>,
+    webhooks: &WebhookRecorder,
     request: &FactorCodeRequest<'_>,
 ) -> Result<(), ApiError> {
     let tenant = &request.authenticated.tenant;
-    let webhooks = state.webhooks.recorder(tenant.tenant_id).await?;
     let mut transaction = tenant.pool.begin().await?;
-    require_code(state, &mut transaction, (request, FactorState::Pending)).await?;
+    require_code(access, &mut transaction, (request, FactorState::Pending)).await?;
     let change = mfa_change(request);
-    record_user_change(&mut transaction, &webhooks, change).await?;
+    record_user_change(&mut transaction, webhooks, change).await?;
     transaction.commit().await?;
 
     Ok(())
@@ -39,16 +40,16 @@ pub async fn activate_factor(
 
 /// A current code is required, so a stolen access token alone cannot remove the second factor.
 pub async fn disable_factor(
-    state: &AppState,
+    access: &FactorCodeAccess<'_>,
+    webhooks: &WebhookRecorder,
     request: &FactorCodeRequest<'_>,
 ) -> Result<(), ApiError> {
     let authenticated = request.authenticated;
     let tenant = &authenticated.tenant;
-    let webhooks = state.webhooks.recorder(tenant.tenant_id).await?;
     let mut transaction = tenant.pool.begin().await?;
-    require_code(state, &mut transaction, (request, FactorState::Verified)).await?;
+    require_code(access, &mut transaction, (request, FactorState::Verified)).await?;
     delete_mfa_factor(&mut *transaction, authenticated.claims.sub).await?;
-    record_user_change(&mut transaction, &webhooks, mfa_change(request)).await?;
+    record_user_change(&mut transaction, webhooks, mfa_change(request)).await?;
     transaction.commit().await?;
 
     Ok(())
@@ -64,7 +65,7 @@ fn mfa_change(request: &FactorCodeRequest<'_>) -> UserChange {
 
 /// Rate limited per user and client, then checked against the authenticator in `expected` state.
 async fn require_code(
-    state: &AppState,
+    access: &FactorCodeAccess<'_>,
     connection: &mut PgConnection,
     (request, expected): (&FactorCodeRequest<'_>, FactorState),
 ) -> Result<(), ApiError> {
@@ -76,14 +77,14 @@ async fn require_code(
         email: &claims.email,
         client_ip: request.client_ip,
     };
-    state.rate_limits.mfa.check(&attempt)?;
+    access.limiter.check(&attempt)?;
     let check = FactorCodeCheck {
         tenant_id,
         user_id: claims.sub,
         code: request.code,
         expected,
     };
-    let outcome = check_factor_code(connection, &state.secret_box, check).await;
+    let outcome = check_factor_code(connection, access.secret_box, check).await;
 
     accepted_or_refused(outcome.map_err(ApiError::internal)?, expected)
 }

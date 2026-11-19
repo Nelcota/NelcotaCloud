@@ -3,13 +3,13 @@ use axum::extract::{Path, State};
 use uuid::Uuid;
 
 use crate::app_state::AppState;
-use crate::modules::auth::audit::audit_action::AuditAction;
-use crate::modules::auth::audit::audit_event::NewAuditEvent;
-use crate::modules::auth::audit::audit_recorder::record_audit_event;
 use crate::modules::auth::user::status_change::StatusChange;
 use crate::modules::auth::user::user_administration::ban_user as ban;
-use crate::modules::auth::user::user_record::User;
+use crate::modules::auth::user::user_response::UserResponse;
 use crate::modules::tenants::access::tenant_admin_context::TenantAdminContext;
+use crate::modules::tenants::audit::audit_action::AuditAction;
+use crate::modules::tenants::audit::audit_entry::NewAuditEvent;
+use crate::modules::tenants::audit::audit_recorder::record_audit_event;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
 /// `POST /admin/users/{user_id}/ban`: no more logins or refreshes, and every session ends.
@@ -20,7 +20,7 @@ use crate::shared::http::api_error::{ApiError, ErrorBody};
     security(("api_key" = []), ("platform_account" = [], "project" = [])),
     params(("user_id" = Uuid, Path, description = "Id of the user")),
     responses(
-        (status = 200, description = "User banned", body = User),
+        (status = 200, description = "User banned", body = UserResponse),
         (status = 403, description = "Requires the secret API key, or membership in the project", body = ErrorBody),
         (status = 404, description = "No such user", body = ErrorBody),
     )
@@ -29,17 +29,17 @@ pub async fn ban_user(
     State(state): State<AppState>,
     admin: TenantAdminContext,
     Path(user_id): Path<Uuid>,
-) -> Result<Json<User>, ApiError> {
+) -> Result<Json<UserResponse>, ApiError> {
     let webhooks = state.webhooks.recorder(admin.tenant_id).await?;
     let change = ban(&admin.pool, user_id, &webhooks).await?;
     let user = match change {
         None => return Err(ApiError::NotFound("user")),
-        Some(StatusChange::Unchanged(user)) => return Ok(Json(user)),
+        Some(StatusChange::Unchanged(user)) => return Ok(Json(user.into())),
         Some(StatusChange::Changed(user)) => user,
     };
 
-    let event = NewAuditEvent::by_admin(AuditAction::UserBanned, user_id, admin.actor);
+    let event = NewAuditEvent::by_admin(AuditAction::UserBanned, user_id, admin.author());
     record_audit_event(&admin.pool, event).await;
 
-    Ok(Json(user))
+    Ok(Json(user.into()))
 }

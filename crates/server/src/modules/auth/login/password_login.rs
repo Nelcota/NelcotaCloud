@@ -1,13 +1,12 @@
-use sqlx::PgConnection;
+use sqlx::{PgConnection, PgPool};
 
-use crate::app_state::AppState;
 use crate::modules::auth::login::login_completion::{LoginResponse, complete_login};
 use crate::modules::auth::password::password_authentication::{
     PasswordAuthenticationError, VerifiedCredentials, authenticate_with_password,
 };
 use crate::modules::auth::rejection::auth_rejection::AuthRejection;
 use crate::modules::auth::session::session_family::SessionFamily;
-use crate::modules::auth::session::session_grant::{SessionGrant, SessionRequest};
+use crate::modules::auth::session::session_grant::{SessionGrant, SessionRequest, TokenSigning};
 use crate::modules::auth::user::email_address::EmailAddress;
 use crate::modules::auth::user::user_lookup::{
     PasswordLock, find_credentials_by_email, lock_if_password_unchanged,
@@ -23,24 +22,30 @@ pub struct PasswordLogin<'a> {
     pub password: String,
 }
 
+pub struct PasswordLoginServices<'a> {
+    pub control_plane_pool: &'a PgPool,
+    pub signing: TokenSigning<'a>,
+    pub dummy_password_hash: &'a str,
+}
+
 pub async fn log_in_with_password(
-    state: &AppState,
+    services: &PasswordLoginServices<'_>,
     tenant: &TenantContext,
     login: PasswordLogin<'_>,
 ) -> Result<LoginResponse, ApiError> {
-    let verified = authenticate(state, tenant, login).await?;
+    let verified = authenticate(&tenant.pool, services.dummy_password_hash, login).await?;
     // Only after the password matched, so it never reveals anything to a wrong password.
     let email_verified_at = verified.user.email_verified_at;
-    let pool = &state.control_plane_pool;
+    let pool = services.control_plane_pool;
     ensure_email_verified(pool, tenant.tenant_id, email_verified_at).await?;
 
-    open_session(state, tenant, verified).await
+    open_session(&services.signing, tenant, verified).await
 }
 
 /// Creates the session while holding the user's row with the password just verified, so a
 /// password reset racing with this login either makes it fail or revokes what it created.
 async fn open_session(
-    state: &AppState,
+    signing: &TokenSigning<'_>,
     tenant: &TenantContext,
     verified: VerifiedCredentials,
 ) -> Result<LoginResponse, ApiError> {
@@ -55,21 +60,20 @@ async fn open_session(
             family: SessionFamily::new_login(),
         },
     };
-    let response = complete_login(state, request).await?;
+    let response = complete_login(signing, request).await?;
     transaction.commit().await?;
 
     Ok(response)
 }
 
 async fn authenticate(
-    state: &AppState,
-    tenant: &TenantContext,
+    pool: &PgPool,
+    dummy_password_hash: &str,
     login: PasswordLogin<'_>,
 ) -> Result<VerifiedCredentials, ApiError> {
     let email = EmailAddress::parse(login.email)
         .map_err(|_| ApiError::from(AuthRejection::InvalidCredentials))?;
-    let credentials = find_credentials_by_email(&tenant.pool, &email).await?;
-    let dummy_password_hash = &state.settings.dummy_password_hash;
+    let credentials = find_credentials_by_email(pool, &email).await?;
     let authentication =
         authenticate_with_password(credentials, login.password, dummy_password_hash).await;
 

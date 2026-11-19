@@ -1,12 +1,11 @@
 use serde::Serialize;
 use sqlx::PgPool;
 use utoipa::ToSchema;
-use uuid::Uuid;
 
 use crate::modules::auth::audit::audit_event::AuditEvent;
-
-/// How long events are kept; older ones are deleted when the log is read.
-pub const RETENTION_DAYS: i32 = 90;
+use crate::modules::auth::audit::audit_query::{
+    AuditQuery, AuditSelection, audit_selection, audit_statement,
+};
 
 /// One page of events, newest first.
 #[derive(Debug, Serialize, ToSchema)]
@@ -16,31 +15,24 @@ pub struct AuditPage {
     pub next_before: Option<i64>,
 }
 
-pub struct AuditQuery {
-    /// Only events about this user; every event without it.
-    pub user_id: Option<Uuid>,
-    /// Only events older than this id.
-    pub before: Option<i64>,
-    pub page_size: usize,
-}
+const AUDIT_EVENTS_QUERY: AuditSelection = audit_selection!(
+    "audit_events.id, action, user_id, COALESCE(users.email, audit_events.email) AS email,",
+    " actor, actor_account_id, login_method, ip_address, user_agent, request_id, details,",
+    " occurred_at",
+);
 
 pub async fn list_audit_events(
     pool: &PgPool,
-    query: &AuditQuery,
+    query: &AuditQuery<'_>,
+    page_size: usize,
 ) -> Result<AuditPage, sqlx::Error> {
-    delete_expired_events(pool).await?;
     // One more than asked, to know whether an older page exists.
-    let fetch_limit = i64::try_from(query.page_size.saturating_add(1)).unwrap_or(i64::MAX);
-    let mut events: Vec<AuditEvent> = sqlx::query_as(
-        "SELECT audit_events.id, action, user_id, COALESCE(users.email, audit_events.email) AS email, actor, actor_account_id, login_method, ip_address, occurred_at FROM audit_events LEFT JOIN users ON users.id = audit_events.user_id WHERE ($1::uuid IS NULL OR user_id = $1) AND ($2::bigint IS NULL OR audit_events.id < $2) ORDER BY audit_events.id DESC LIMIT $3",
-    )
-    .bind(query.user_id)
-    .bind(query.before)
-    .bind(fetch_limit)
-    .fetch_all(pool)
-    .await?;
-    let next_before = next_cursor(&events, query.page_size);
-    events.truncate(query.page_size);
+    let fetch_limit = i64::try_from(page_size.saturating_add(1)).unwrap_or(i64::MAX);
+    let mut events: Vec<AuditEvent> = audit_statement(&AUDIT_EVENTS_QUERY, query, fetch_limit)
+        .fetch_all(pool)
+        .await?;
+    let next_before = next_cursor(&events, page_size);
+    events.truncate(page_size);
 
     Ok(AuditPage {
         events,
@@ -57,13 +49,4 @@ fn next_cursor(events: &[AuditEvent], page_size: usize) -> Option<i64> {
     let last_on_page = page_size.checked_sub(1)?;
 
     events.get(last_on_page).map(|event| event.id)
-}
-
-async fn delete_expired_events(pool: &PgPool) -> Result<(), sqlx::Error> {
-    sqlx::query("DELETE FROM audit_events WHERE occurred_at < now() - make_interval(days => $1)")
-        .bind(RETENTION_DAYS)
-        .execute(pool)
-        .await?;
-
-    Ok(())
 }

@@ -7,13 +7,13 @@ use validator::Validate;
 
 use crate::app_state::AppState;
 use crate::modules::auth::email::smtp_test_delivery::deliver_smtp_test;
-use crate::modules::auth::rate_limiting::attempt_limiter::Attempt;
 use crate::modules::auth::user::email_address::EmailAddress;
 use crate::modules::tenants::access::tenant_admin::TenantAdmin;
 use crate::modules::tenants::smtp::smtp_settings_repository::find_smtp_settings;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::client_ip::ClientIp;
 use crate::shared::http::validated_json::ValidatedJson;
+use crate::shared::rate_limiting::attempt_limiter::Attempt;
 
 #[derive(Deserialize, Validate, ToSchema)]
 pub struct SmtpTestBody {
@@ -48,18 +48,17 @@ pub async fn send_smtp_test(
     ValidatedJson(body): ValidatedJson<SmtpTestBody>,
 ) -> Result<StatusCode, ApiError> {
     let tenant_id = admin.tenant_id;
-    let Ok(recipient) = EmailAddress::parse(&body.to) else {
-        return Err(ApiError::InvalidRequest("invalid email address".to_owned()));
-    };
+    let recipient = EmailAddress::parse(&body.to)
+        .map_err(|_| ApiError::InvalidRequest("invalid email address".to_owned()))?;
     require_own_smtp(&state, tenant_id).await?;
     let attempt = Attempt {
         tenant_id,
         email: recipient.as_str(),
         client_ip,
     };
-    state.rate_limits.check_email(&attempt)?;
+    state.rate_limits.email.check(&attempt)?;
 
-    deliver_smtp_test(&state, tenant_id, &recipient).await?;
+    deliver_smtp_test(&state.auth_mailer(), tenant_id, &recipient).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

@@ -12,6 +12,8 @@ use crate::modules::auth::routes::end_other_sessions;
 use crate::modules::auth::routes::end_session;
 use crate::modules::auth::routes::end_user_sessions;
 use crate::modules::auth::routes::enroll_totp;
+use crate::modules::auth::routes::export_audit_events;
+use crate::modules::auth::routes::export_users;
 use crate::modules::auth::routes::get_user;
 use crate::modules::auth::routes::jwks;
 use crate::modules::auth::routes::list_audit_events;
@@ -19,9 +21,12 @@ use crate::modules::auth::routes::list_email_templates;
 use crate::modules::auth::routes::list_sessions;
 use crate::modules::auth::routes::list_user_sessions;
 use crate::modules::auth::routes::list_users;
+use crate::modules::auth::routes::list_users_page;
 use crate::modules::auth::routes::log_in;
 use crate::modules::auth::routes::log_out;
+use crate::modules::auth::routes::read_audit_summary;
 use crate::modules::auth::routes::read_avatar;
+use crate::modules::auth::routes::read_daily_usage;
 use crate::modules::auth::routes::read_mfa_status;
 use crate::modules::auth::routes::read_project_usage;
 use crate::modules::auth::routes::recover_password;
@@ -111,6 +116,8 @@ fn user_admin_routes() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
         .routes(routes!(reset_user_mfa::reset_user_mfa))
         .routes(routes!(list_users::list_users))
+        .routes(routes!(list_users_page::list_users_page))
+        .routes(routes!(export_users::export_users))
         .routes(routes!(
             get_user::get_user,
             update_user::update_user,
@@ -122,5 +129,8 @@ fn user_admin_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(list_user_sessions::list_user_sessions))
         .routes(routes!(resend_user_verification::resend_user_verification))
         .routes(routes!(list_audit_events::list_audit_events))
+        .routes(routes!(read_audit_summary::read_audit_summary))
+        .routes(routes!(export_audit_events::export_audit_events))
         .routes(routes!(read_project_usage::read_project_usage))
+        .routes(routes!(read_daily_usage::read_daily_usage))
 }

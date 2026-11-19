@@ -9,7 +9,7 @@ use crate::modules::auth::session::authenticated_user::AuthenticatedUser;
 use crate::modules::auth::user::user_lookup::find_user_by_id;
 use crate::modules::auth::user::user_metadata::{MetadataObject, check_user_metadata_size};
 use crate::modules::auth::user::user_metadata_update::{MetadataChange, update_user_metadata};
-use crate::modules::auth::user::user_record::User;
+use crate::modules::auth::user::user_response::UserResponse;
 use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::validated_json::ValidatedJson;
@@ -32,7 +32,7 @@ pub struct UpdateCurrentUserBody {
     security(("api_key" = [], "bearer" = [])),
     request_body = UpdateCurrentUserBody,
     responses(
-        (status = 200, description = "The updated user", body = User),
+        (status = 200, description = "The updated user", body = UserResponse),
         (status = 400, description = "Not a JSON object, or too large", body = ErrorBody),
         (status = 401, description = "Missing or invalid access token", body = ErrorBody),
         (status = 403, description = "The user is banned", body = ErrorBody),
@@ -43,13 +43,11 @@ pub async fn update_current_user(
     State(state): State<AppState>,
     authenticated: AuthenticatedUser,
     ValidatedJson(body): ValidatedJson<UpdateCurrentUserBody>,
-) -> Result<Json<User>, ApiError> {
+) -> Result<Json<UserResponse>, ApiError> {
     let tenant = &authenticated.tenant;
     let user_id = authenticated.claims.sub;
     let current = find_user_by_id(&tenant.pool, user_id).await?;
-    let Some(current) = current else {
-        return Err(ApiError::from(TenantsRejection::InvalidAccessToken));
-    };
+    let current = current.ok_or(TenantsRejection::InvalidAccessToken)?;
 
     if current.banned_at.is_some() {
         return Err(ApiError::from(TenantsRejection::UserBanned));
@@ -67,10 +65,10 @@ pub async fn update_current_user(
         user_metadata: Some(body.user_metadata),
         app_metadata: None,
     };
-    let user = update_user_metadata(&tenant.pool, change, &webhooks).await?;
-    let Some(change) = user else {
-        return Err(ApiError::from(TenantsRejection::InvalidAccessToken));
-    };
+    let user = update_user_metadata(&tenant.pool, change, &webhooks)
+        .await
+        .map_err(ApiError::internal)?;
+    let change = user.ok_or(TenantsRejection::InvalidAccessToken)?;
 
-    Ok(Json(change.into_user()))
+    Ok(Json(change.into_user().into()))
 }

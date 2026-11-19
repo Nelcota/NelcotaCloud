@@ -1,84 +1,157 @@
-use serde::Serialize;
-use sqlx::PgPool;
-use utoipa::ToSchema;
+use sqlx::{PgPool, Postgres, QueryBuilder};
 
+use crate::modules::auth::user::user_page_order::{UserOrder, UserPageCursor, push_rows_after};
 use crate::modules::auth::user::user_record::{User, user_columns};
 use crate::modules::auth::user::user_status_filter::UserStatusFilter;
+use crate::shared::text::contains_pattern::{contains_pattern, has_search_trigram};
 
-/// Search and status filter shared by the page and its count; `$2` is the status or `NULL`.
-macro_rules! user_filter {
-    () => {
-        r" WHERE email LIKE $1 ESCAPE '\' AND ($2::text IS NULL OR ($2 = 'unverified' AND email_verified_at IS NULL) OR ($2 = 'banned' AND banned_at IS NOT NULL))"
-    };
-}
+const NEWEST_FIRST: &str = " ORDER BY created_at DESC, id DESC LIMIT ";
 
 /// One page of users, newest first, and how many match in total.
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug)]
 pub struct UserPage {
     pub users: Vec<User>,
     pub total: i64,
 }
 
 pub struct UserQuery<'a> {
-    /// Part of the email to search for; `None` lists everyone.
-    pub email_contains: Option<&'a str>,
-    /// `None` lists every status.
-    pub status: Option<UserStatusFilter>,
+    pub filters: UserFilters<'a>,
     pub limit: i64,
     pub offset: i64,
 }
 
+pub struct UserFilters<'a> {
+    email_contains: Option<&'a str>,
+    status: Option<UserStatusFilter>,
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("email must not be blank")]
+pub struct InvalidUserFilter;
+
+impl<'a> UserFilters<'a> {
+    pub fn new(
+        email: Option<&'a str>,
+        status: Option<UserStatusFilter>,
+    ) -> Result<Self, InvalidUserFilter> {
+        if email.is_some_and(|email| email.trim().is_empty()) {
+            return Err(InvalidUserFilter);
+        }
+
+        Ok(Self {
+            email_contains: email,
+            status,
+        })
+    }
+}
+
+pub struct UserCursorQuery<'a> {
+    pub filters: UserFilters<'a>,
+    pub order: UserOrder,
+    /// Must be a cursor of `order` (the route parses it with that order).
+    pub before: Option<UserPageCursor>,
+    pub limit: u16,
+}
+
+pub struct UserCursorPage {
+    pub users: Vec<User>,
+    pub next_cursor: Option<UserPageCursor>,
+}
+
 pub async fn list_users(pool: &PgPool, query: &UserQuery<'_>) -> Result<UserPage, sqlx::Error> {
-    let pattern = like_pattern(query.email_contains);
-    let status = query.status.map(UserStatusFilter::as_str);
-    let users: Vec<User> = sqlx::query_as(concat!(
-        "SELECT ",
-        user_columns!(),
-        " FROM users",
-        user_filter!(),
-        " ORDER BY created_at DESC, id DESC LIMIT $3 OFFSET $4"
-    ))
-    .bind(&pattern)
-    .bind(status)
-    .bind(query.limit)
-    .bind(query.offset)
-    .fetch_all(pool)
-    .await?;
-    let total: i64 = sqlx::query_scalar(concat!("SELECT count(*) FROM users", user_filter!()))
-        .bind(&pattern)
-        .bind(status)
-        .fetch_one(pool)
-        .await?;
+    let users = read_user_rows(pool, query).await?;
+    let mut total = QueryBuilder::new("SELECT count(*) FROM users WHERE true");
+    push_filters(&mut total, &query.filters);
+    let total = total.build_query_scalar().fetch_one(pool).await?;
 
     Ok(UserPage { users, total })
 }
 
-/// Emails are stored lowercase; `%` and `_` typed by the admin are matched literally.
-fn like_pattern(email_contains: Option<&str>) -> String {
-    let Some(text) = email_contains else {
-        return "%".to_owned();
-    };
-    let escaped = text
-        .trim()
-        .to_lowercase()
-        .replace('\\', r"\\")
-        .replace('%', r"\%")
-        .replace('_', r"\_");
+pub async fn list_users_before(
+    pool: &PgPool,
+    query: &UserCursorQuery<'_>,
+) -> Result<UserCursorPage, sqlx::Error> {
+    let mut statement = user_rows(&query.filters);
 
-    format!("%{escaped}%")
+    if let Some(before) = &query.before {
+        push_rows_after(&mut statement, before);
+    }
+
+    statement
+        .push(query.order.order_clause())
+        .push_bind(i64::from(query.limit).saturating_add(1));
+    let mut users: Vec<User> = statement.build_query_as().fetch_all(pool).await?;
+    let next_cursor = next_page_cursor(&mut users, usize::from(query.limit), query.order);
+
+    Ok(UserCursorPage { users, next_cursor })
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn matches_everyone_without_a_search() {
-        assert_eq!(like_pattern(None), "%");
+fn next_page_cursor(
+    users: &mut Vec<User>,
+    limit: usize,
+    order: UserOrder,
+) -> Option<UserPageCursor> {
+    if users.len() <= limit {
+        return None;
     }
 
-    #[test]
-    fn escapes_wildcards_and_lowercases() {
-        assert_eq!(like_pattern(Some(" Ana_100% ")), r"%ana\_100\%%");
+    users.truncate(limit);
+    users.last().map(|user| order.cursor_after(user))
+}
+
+async fn read_user_rows(pool: &PgPool, query: &UserQuery<'_>) -> Result<Vec<User>, sqlx::Error> {
+    if query.limit == 0 {
+        return Ok(Vec::new());
     }
+
+    let mut statement = user_rows(&query.filters);
+    statement
+        .push(NEWEST_FIRST)
+        .push_bind(query.limit)
+        .push(" OFFSET ")
+        .push_bind(query.offset);
+
+    statement.build_query_as().fetch_all(pool).await
+}
+
+pub(crate) fn user_rows(filters: &UserFilters<'_>) -> QueryBuilder<Postgres> {
+    let mut statement = QueryBuilder::new(concat!(
+        "SELECT ",
+        user_columns!(),
+        " FROM users WHERE true"
+    ));
+    push_filters(&mut statement, filters);
+
+    statement
+}
+
+fn push_filters(statement: &mut QueryBuilder<Postgres>, filters: &UserFilters<'_>) {
+    if let Some(email) = filters.email_contains {
+        push_email_filter(statement, email);
+    }
+
+    let status_filter = match filters.status {
+        Some(UserStatusFilter::Unverified) => " AND email_verified_at IS NULL",
+        Some(UserStatusFilter::Banned) => " AND banned_at IS NOT NULL",
+        None => return,
+    };
+    statement.push(status_filter);
+}
+
+fn push_email_filter(statement: &mut QueryBuilder<Postgres>, email: &str) {
+    let pattern = contains_pattern(email);
+
+    if has_search_trigram(email) {
+        statement
+            .push(" AND email LIKE ")
+            .push_bind(pattern)
+            .push(r" ESCAPE '\'");
+        return;
+    }
+
+    // The Boolean test keeps generic plans from using GIN for patterns without search keys.
+    statement
+        .push(" AND (email LIKE ")
+        .push_bind(pattern)
+        .push(r" ESCAPE '\') IS TRUE");
 }
