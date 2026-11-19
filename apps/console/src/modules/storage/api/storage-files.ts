@@ -48,10 +48,13 @@ export async function listFiles(
 export async function createUpload(
   projectId: string,
   bucketId: string,
-  file: File,
+  upload: { file: File; signal: AbortSignal },
 ): Promise<StorageUpload> {
+  const { file, signal } = upload
+
   return dataOf(
     await apiClient.POST('/storage/v1/buckets/{bucket_id}/uploads', {
+      signal,
       headers: projectHeaders(projectId),
       params: { path: { bucket_id: bucketId } },
       body: storageFileInput({ name: file.name, file }),
@@ -59,9 +62,14 @@ export async function createUpload(
   )
 }
 
-export async function completeUpload(projectId: string, objectId: string): Promise<StorageObject> {
-  return dataOf(
+export async function completeUpload(
+  projectId: string,
+  objectId: string,
+  signal: AbortSignal,
+): Promise<void> {
+  dataOf(
     await apiClient.POST('/storage/v1/objects/{object_id}/complete', {
+      signal,
       headers: projectHeaders(projectId),
       params: { path: { object_id: objectId } },
     }),
