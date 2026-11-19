@@ -1,37 +1,69 @@
 # Production stack for a single VPS:
 #   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
-# Only Caddy is published; Postgres and the API are reachable inside the compose network only.
+# Only Caddy is published. The webhook worker has no listening port.
 
 services:
   postgres:
-    image: postgres:17
+    image: postgres:18.7
     restart: unless-stopped
-    # Every project's pools share this server: idle tenant connections close within a minute
+    # Every project's pools share this server: idle tenant connections close quickly
     # and Data API sessions are capped per instance, but bursts across many projects need room.
-    command: ["postgres", "-c", "max_connections=300"]
+    command: ["postgres", "-c", "max_connections=300", "-c", "reserved_connections=20", "-c", "shared_preload_libraries=pg_stat_statements"]
     environment:
       POSTGRES_USER: nelcota
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
       POSTGRES_DB: nelcota_control
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U nelcota -d nelcota_control"]
       interval: 5s
       timeout: 3s
       retries: 20
 
+  valkey:
+    image: valkey/valkey:9.1.4
+    profiles: ["cache"]
+    restart: unless-stopped
+    mem_limit: 256m
+    environment:
+      VALKEY_PASSWORD: ${VALKEY_PASSWORD:-}
+    command:
+      - sh
+      - -ec
+      - |
+        case "$$VALKEY_PASSWORD" in
+          *[!0-9a-f]*|"") exit 1 ;;
+        esac
+        test "$${#VALKEY_PASSWORD}" -eq 64
+        exec docker-entrypoint.sh valkey-server --requirepass "$$VALKEY_PASSWORD" --save "" --appendonly no \
+          --maxmemory 128mb --maxmemory-policy allkeys-lru --maxmemory-clients 10%
+    tmpfs:
+      - /data
+    networks:
+      - project-cache
+    healthcheck:
+      test: ["CMD-SHELL", "VALKEYCLI_AUTH=\"$$VALKEY_PASSWORD\" valkey-cli ping | grep -q '^PONG$'"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
   api:
-    build:
+    build: &server-build
       context: .
       dockerfile: crates/server/Dockerfile
     restart: unless-stopped
+    stop_grace_period: 70s
+    networks:
+      - default
+      - project-cache
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      CONTROL_PLANE_DATABASE_URL: postgres://nelcota:${POSTGRES_PASSWORD}@postgres:5432/nelcota_control
-      TENANT_DATABASE_BASE_URL: postgres://nelcota:${POSTGRES_PASSWORD}@postgres:5432
+      CONTROL_PLANE_DATABASE_URL: &control-plane-url postgres://nelcota:${POSTGRES_PASSWORD}@postgres:5432/nelcota_control
+      TENANT_DATABASE_BASE_URL: &tenant-database-url postgres://nelcota:${POSTGRES_PASSWORD}@postgres:5432
+      DATABASE_RUNTIME_PASSWORD: ${POSTGRES_RUNTIME_PASSWORD:?set POSTGRES_RUNTIME_PASSWORD}
       PUBLIC_BASE_URL: https://${API_DOMAIN:?set API_DOMAIN}
       MASTER_KEY_HEX: ${MASTER_KEY_HEX:?set MASTER_KEY_HEX}
       ADMIN_TOKEN: ${ADMIN_TOKEN:?set ADMIN_TOKEN}
@@ -42,6 +74,36 @@ services:
       RUST_LOG: ${RUST_LOG:-info}
       # Users of this tenant are the console accounts (see docs/deploy.md).
       PLATFORM_TENANT_SLUG: ${PLATFORM_TENANT_SLUG:-console}
+      WEBHOOK_WORKER_REPLICAS: ${WEBHOOK_WORKER_REPLICAS:-2}
+      CACHE_VALKEY_URL: ${CACHE_VALKEY_URL:-}
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -ec
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/8080;
+          printf 'GET /ready HTTP/1.0\r\n%s: 127.0.0.1\r\n\r\n' "$$CLIENT_IP_HEADER" >&3;
+          grep -q '^HTTP/1[.][01] 200 ' <&3
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+  webhook-worker:
+    build: *server-build
+    scale: ${WEBHOOK_WORKER_REPLICAS:-2}
+    command: ["--webhook-worker"]
+    restart: unless-stopped
+    stop_grace_period: 25s
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      CONTROL_PLANE_DATABASE_URL: postgres://nelcota_control_runtime:${POSTGRES_RUNTIME_PASSWORD}@postgres:5432/nelcota_control
+      TENANT_DATABASE_BASE_URL: postgres://nelcota_tenant_runtime:${POSTGRES_RUNTIME_PASSWORD}@postgres:5432
+      DATABASE_SCHEMA_MANAGED_EXTERNALLY: "true"
+      MASTER_KEY_HEX: ${MASTER_KEY_HEX:?set MASTER_KEY_HEX}
+      RUST_LOG: ${RUST_LOG:-info}
 
   caddy:
     build:
@@ -50,6 +112,8 @@ services:
       args:
         VITE_API_URL: https://${API_DOMAIN}
         VITE_PLATFORM_PUBLISHABLE_KEY: ${PLATFORM_PUBLISHABLE_KEY:-}
+        VITE_CONSOLE_OAUTH_PROVIDERS: ${CONSOLE_OAUTH_PROVIDERS:-}
+        VITE_SUPPORT_EMAIL: ${SUPPORT_EMAIL:?set SUPPORT_EMAIL}
     restart: unless-stopped
     depends_on:
       - api
@@ -65,19 +129,21 @@ services:
       - caddy-data:/data
       - caddy-config:/config
 
-  # Daily encrypted dumps of every database to Cloudflare R2 (any S3-compatible storage works).
+  # Daily verified cluster snapshots to Cloudflare R2 (any S3-compatible storage works).
   # List snapshots:  docker compose -f docker-compose.prod.yml --env-file .env.production run --rm --entrypoint restore.sh backup
-  # Restore one:     stop the api service, then run the same command followed by the snapshot name.
+  # Stage a restore in an empty volume before the documented cutover.
   backup:
     build:
       context: .
       dockerfile: deploy/backup/Dockerfile
     restart: unless-stopped
+    network_mode: "service:postgres"
     depends_on:
       postgres:
         condition: service_healthy
+        restart: true
     environment:
-      PGHOST: postgres
+      PGHOST: 127.0.0.1
       PGUSER: nelcota
       PGPASSWORD: ${POSTGRES_PASSWORD}
       BACKUP_BUCKET: ${BACKUP_BUCKET:?set BACKUP_BUCKET}
@@ -88,7 +154,12 @@ services:
       BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
 
+networks:
+  project-cache:
+    internal: true
+
 volumes:
   postgres-data:
+    name: ${POSTGRES_DATA_VOLUME:-${COMPOSE_PROJECT_NAME}_postgres-data}
   caddy-data:
   caddy-config:

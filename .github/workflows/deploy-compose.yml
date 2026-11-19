@@ -1,0 +1,51 @@
+name: Deploy Compose environment
+
+on:
+  workflow_call:
+    inputs:
+      target:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Migrate and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: ${{ inputs.target }}
+    env:
+      NELCOTA_API_URL: ${{ vars.NELCOTA_API_URL }}
+      NELCOTA_SSH_TARGET: ${{ vars.NELCOTA_SSH_TARGET }}
+      NELCOTA_SSH_PORT: ${{ vars.NELCOTA_SSH_PORT || '22' }}
+      NELCOTA_SSH_KNOWN_HOSTS: ${{ vars.NELCOTA_SSH_KNOWN_HOSTS }}
+      NELCOTA_COMPOSE_ENV_FILE: ${{ vars.NELCOTA_COMPOSE_ENV_FILE }}
+      NELCOTA_COMPOSE_PROJECT: ${{ vars.NELCOTA_COMPOSE_PROJECT }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check Compose target
+        env:
+          NELCOTA_SSH_PRIVATE_KEY: ${{ secrets.NELCOTA_SSH_PRIVATE_KEY }}
+        run: bash deploy/ssh-compose.sh check
+      - name: Apply project SQL migrations
+        uses: ./.github/actions/apply-project-migrations
+        with:
+          api-url: ${{ vars.NELCOTA_API_URL }}
+          secret-key: ${{ secrets.NELCOTA_SECRET_KEY }}
+      - name: Publish with Docker Compose
+        env:
+          NELCOTA_SSH_PRIVATE_KEY: ${{ secrets.NELCOTA_SSH_PRIVATE_KEY }}
+        run: bash deploy/ssh-compose.sh publish
+      - name: Check API health
+        run: |
+          status=$(curl --silent --show-error --fail --output /dev/null --write-out '%{http_code}' \
+            --proto '=https' --connect-timeout 5 --max-time 10 --retry 12 --retry-delay 5 \
+            --retry-connrefused "${NELCOTA_API_URL%/}/health")
+          if [[ "$status" != 200 ]]; then
+            printf 'Expected HTTP 200 from /health, got %s.\n' "$status" >&2
+            exit 1
+          fi
