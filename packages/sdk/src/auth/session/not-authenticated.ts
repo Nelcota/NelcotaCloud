@@ -1,4 +1,4 @@
-import { NelcotaError } from '../http/nelcota-error'
+import { NelcotaError } from '../../http/nelcota-error'
 
 const UNAUTHORIZED = 401
 

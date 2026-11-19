@@ -1,13 +1,11 @@
-import type { Session } from '../types'
+import type { Session } from '../auth-types'
 import type { SessionStorageAdapter } from './session-storage'
-import { isRecord, isUser } from './user-shape'
+import { isRecord, isUser } from '../user-shape'
 
-const PKCE_SUFFIX = '-pkce-verifier-'
-
-/** Reads and writes the session and the pending OAuth verifier in the chosen storage. */
+/** Reads and writes the session in the chosen storage. */
 export class SessionStore {
-  private readonly storage: SessionStorageAdapter
-  private readonly key: string
+  readonly storage: SessionStorageAdapter
+  readonly key: string
 
   constructor(storage: SessionStorageAdapter, key: string) {
     this.storage = storage
@@ -58,18 +56,6 @@ export class SessionStore {
     globalThis.addEventListener('storage', onStorage)
 
     return () => globalThis.removeEventListener('storage', onStorage)
-  }
-
-  takeVerifier(state: string): string | null {
-    const verifierKey = `${this.key}${PKCE_SUFFIX}${state}`
-    const verifier = this.storage.getItem(verifierKey)
-    this.storage.removeItem(verifierKey)
-
-    return verifier
-  }
-
-  saveVerifier(state: string, verifier: string): void {
-    this.storage.setItem(`${this.key}${PKCE_SUFFIX}${state}`, verifier)
   }
 }
 

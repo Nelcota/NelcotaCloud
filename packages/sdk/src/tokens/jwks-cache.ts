@@ -1,3 +1,5 @@
+import { createLocalJWKSet, type FlattenedJWSInput, type JWSHeaderParameters } from 'jose'
+
 import { AccessTokenVerificationError } from './access-token-verification-error'
 
 /** A forged `kid` must not make every request download the keys again. */
@@ -19,7 +21,7 @@ export type JwksSource = {
  */
 export class JwksCache {
   private readonly source: JwksSource
-  private keys = new Map<string, CryptoKey>()
+  private resolve = createLocalJWKSet({ keys: [] })
   private loadedAt: number | null = null
   private loading: Promise<void> | null = null
 
@@ -27,29 +29,25 @@ export class JwksCache {
     this.source = source
   }
 
-  async key(keyId: string): Promise<CryptoKey> {
-    if (this.keys.has(keyId) === false && this.canRefresh()) {
+  async key(header: JWSHeaderParameters, signature: FlattenedJWSInput): Promise<CryptoKey> {
+    if (this.loadedAt === null) {
       await this.refresh()
     }
 
-    const key = this.keys.get(keyId)
+    const key = await this.resolve(header, signature).catch(() => null)
 
-    if (key === undefined) {
-      throw new AccessTokenVerificationError(
-        'unknown_key',
-        'The token was signed by an unknown key.',
-      )
+    if (key !== null) {
+      return key
     }
 
-    return key
-  }
-
-  private canRefresh(): boolean {
-    if (this.loadedAt === null) {
-      return true
+    if (this.loadedAt !== null && this.source.now() - this.loadedAt >= MIN_REFRESH_INTERVAL_MS) {
+      await this.refresh()
+      return this.resolve(header, signature).catch(() => {
+        throw unknownKey()
+      })
     }
 
-    return this.source.now() - this.loadedAt >= MIN_REFRESH_INTERVAL_MS
+    throw unknownKey()
   }
 
   /** Concurrent misses share one download. */
@@ -65,10 +63,7 @@ export class JwksCache {
 
   private async download(): Promise<void> {
     const jwks = await this.fetchJwks()
-    const imported = await Promise.allSettled(jwks.map(importKey))
-    // A key the runtime cannot import is left out; tokens it signed fail as `unknown_key`.
-    const usable = imported.flatMap((result) => fulfilledValue(result))
-    this.keys = new Map(usable)
+    this.resolve = createLocalJWKSet({ keys: jwks })
     this.loadedAt = this.source.now()
   }
 
@@ -97,7 +92,7 @@ function publicKeysOf(body: unknown): PublicJwk[] {
     throw unavailable()
   }
 
-  return keys.filter(isEd25519Jwk)
+  return keys.filter(isEd25519Jwk).map(({ kid, kty, crv, x }) => ({ kid, kty, crv, x }))
 }
 
 function isEd25519Jwk(value: unknown): value is PublicJwk {
@@ -115,26 +110,13 @@ function isEd25519Jwk(value: unknown): value is PublicJwk {
   )
 }
 
-async function importKey(jwk: PublicJwk): Promise<[string, CryptoKey]> {
-  const publicJwk = { kty: jwk.kty, crv: jwk.crv, x: jwk.x }
-  const key = await crypto.subtle.importKey('jwk', publicJwk, { name: 'Ed25519' }, false, [
-    'verify',
-  ])
-
-  return [jwk.kid, key]
-}
-
-function fulfilledValue<T>(result: PromiseSettledResult<T>): T[] {
-  if (result.status === 'rejected') {
-    return []
-  }
-
-  return [result.value]
-}
-
 function unavailable(): AccessTokenVerificationError {
   return new AccessTokenVerificationError(
     'jwks_unavailable',
     'The project keys could not be loaded.',
   )
+}
+
+function unknownKey(): AccessTokenVerificationError {
+  return new AccessTokenVerificationError('unknown_key', 'The token was signed by an unknown key.')
 }

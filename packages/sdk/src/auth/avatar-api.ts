@@ -1,7 +1,7 @@
 import type { HttpClient } from '../http/http-client'
-import type { User } from '../types'
+import type { User } from './auth-types'
 import { type AuthorizedContext, authorizedRequest } from './authorized-request'
-import type { SessionManager } from './session-manager'
+import type { SessionManager } from './session/session-manager'
 type AvatarOwner = Pick<User, 'id' | 'avatar_updated_at'>
 
 const AVATAR_PATH = '/auth/v1/user/avatar'

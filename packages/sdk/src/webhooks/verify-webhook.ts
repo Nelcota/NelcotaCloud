@@ -1,4 +1,6 @@
-import { expectedSignature, hasMatchingSignature, secretKey } from './webhook-signature'
+import { Webhook, type WebhookUnbrandedRequiredHeaders } from 'standardwebhooks'
+
+import { matchesRawSignature, secretKey } from './webhook-signature'
 import { WebhookVerificationError } from './webhook-verification-error'
 
 /** Requests older or newer than this are refused, so a captured one cannot be replayed later. */
@@ -46,13 +48,57 @@ export async function verifyWebhook(options: VerifyWebhookOptions): Promise<Webh
 
   checkTimestamp(timestamp, options)
   const key = secretKey(options.secret)
-  const expected = await expectedSignature(key, `${id}.${timestamp}.${options.payload}`)
-
-  if (hasMatchingSignature(signature, expected) === false) {
-    throw new WebhookVerificationError('invalid_signature', 'The webhook signature does not match.')
+  const signedHeaders = {
+    'webhook-id': id,
+    'webhook-timestamp': timestamp,
+    'webhook-signature': signature,
   }
+  await verifySignature(options, signedHeaders, key)
 
   return parseEvent(options.payload)
+}
+
+async function verifySignature(
+  options: VerifyWebhookOptions,
+  headers: WebhookUnbrandedRequiredHeaders,
+  key: Uint8Array<ArrayBuffer>,
+): Promise<void> {
+  const timestamp = headers['webhook-timestamp']
+  const sentAt = Number(timestamp)
+
+  if (
+    options.now === undefined &&
+    options.toleranceSeconds === undefined &&
+    Number.isSafeInteger(sentAt) &&
+    String(sentAt) === timestamp
+  ) {
+    verifyStandardSignature(options.payload, headers, key)
+    return
+  }
+
+  // The upstream verifier fixes the clock and tolerance and canonicalizes the timestamp.
+  // These callers need the exact signed header bytes and the SDK's configurable clock.
+  const content = `${headers['webhook-id']}.${timestamp}.${options.payload}`
+
+  if ((await matchesRawSignature(key, content, headers['webhook-signature'])) === false) {
+    throw signatureMismatch()
+  }
+}
+
+function verifyStandardSignature(
+  payload: string,
+  headers: WebhookUnbrandedRequiredHeaders,
+  key: Uint8Array<ArrayBuffer>,
+): void {
+  try {
+    new Webhook(key, { format: 'raw' }).verify(payload, headers, { jsonParse: false })
+  } catch {
+    throw signatureMismatch()
+  }
+}
+
+function signatureMismatch(): WebhookVerificationError {
+  return new WebhookVerificationError('invalid_signature', 'The webhook signature does not match.')
 }
 
 function header(headers: WebhookHeaders, name: string): string | null {

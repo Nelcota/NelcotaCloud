@@ -2,44 +2,16 @@ import { describe, expect, it } from 'vitest'
 
 import { WebhookVerificationError, verifyWebhook } from '../src/index'
 
-/**
- * The public example of the Standard Webhooks specification, not a real secret. Joined at run
- * time so secret scanners do not read the published test vector as a leaked credential.
- */
-const SPEC_SECRET = ['whsec', 'MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw'].join('_')
-const SPEC_ID = 'msg_p5jXN8AQM9LWM0D4loKWxJek'
-const SPEC_TIMESTAMP = '1614265330'
-const SPEC_SIGNATURE = 'v1,g0hM9SsE+OTPJTGt/tmIKtSyZlE3uFJELVlNIOLJ1OE='
-const SPEC_NOW = () => Number(SPEC_TIMESTAMP) * 1000
-
-const EVENT = JSON.stringify({
-  type: 'user.created',
-  timestamp: '2026-11-17T12:00:00Z',
-  data: { user: { id: 'u1' } },
-})
-
-async function sign(body: string, timestamp: string): Promise<string> {
-  const key = Uint8Array.from(atob(SPEC_SECRET.slice('whsec_'.length)), (c) => c.charCodeAt(0))
-  const cryptoKey = await crypto.subtle.importKey(
-    'raw',
-    key,
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  )
-  const content = new TextEncoder().encode(`${SPEC_ID}.${timestamp}.${body}`)
-  const digest = await crypto.subtle.sign('HMAC', cryptoKey, content)
-
-  return `v1,${btoa(String.fromCharCode(...new Uint8Array(digest)))}`
-}
-
-function headers(signature: string, timestamp = SPEC_TIMESTAMP): Record<string, string> {
-  return {
-    'webhook-id': SPEC_ID,
-    'webhook-timestamp': timestamp,
-    'webhook-signature': signature,
-  }
-}
+import {
+  EVENT,
+  SPEC_ID,
+  SPEC_NOW,
+  SPEC_SECRET,
+  SPEC_SIGNATURE,
+  SPEC_TIMESTAMP,
+  headers,
+  sign,
+} from './webhook-test-fixture'
 
 async function codeOf(promise: Promise<unknown>): Promise<string> {
   const error = await promise.then(

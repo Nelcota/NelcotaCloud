@@ -1,6 +1,19 @@
 # @nelcota/sdk
 
-TypeScript client for NelcotaCloud Auth and Database. No runtime dependencies: it uses `fetch` and WebCrypto.
+TypeScript client for NelcotaCloud Auth and Database. The package uses `fetch` and WebCrypto
+and bundles its verification libraries, so consumers install no runtime dependencies.
+
+## Package exports
+
+Use `createClient` to get the configured `auth` and `database` clients. The package also
+exports their classes, query builders, types, and errors for consumers that reference them
+directly. Server applications can use `createAccessTokenVerifier` and `verifyWebhook`
+independently of the client.
+
+For internal ownership and type generation, see the
+[architecture map](../../docs/architecture.md#sdk-structure).
+
+## Usage
 
 ```ts
 import { createClient } from '@nelcota/sdk'
@@ -37,7 +50,8 @@ await nelcota.auth.avatar.remove()
 
 // Metadata: the user replaces their own user_metadata (a JSON object, up to 16 KiB).
 // app_metadata (roles, plans) is set by the project's admins and arrives in the access token's
-// `app_metadata` claim from the next refresh.
+// `app_metadata` claim from the next refresh. Keep the person's name under `name` (or
+// `full_name`): the console's user list and the users CSV export show it beside the email.
 await nelcota.auth.updateUser({ name: 'Ana', theme: 'dark' }) // emits USER_UPDATED
 
 // Session
@@ -103,6 +117,16 @@ included) and `auth.role()` (`anon` or `authenticated`):
 CREATE POLICY own_posts ON posts FOR ALL TO nelcota_authenticated
   USING (author_id = auth.uid()) WITH CHECK (author_id = auth.uid());
 ```
+
+## Project cache (on your server)
+
+Enable Cache in the project console and issue a cache credential. Use
+`createCacheClient({ url, token })` from application-server code. The client supports
+`get(key)`, `set(key, value, ttlSeconds?)`, and `delete(key)`. A miss returns `null`.
+A cached JSON null returns `{ value: null }`. Other API failures throw `NelcotaError`.
+
+See the [project cache guide](../../docs/project-cache.md) for a complete example with fallback
+to the source of truth.
 
 ## Access tokens (on your server)
 

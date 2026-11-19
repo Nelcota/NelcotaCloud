@@ -1,5 +1,5 @@
 import type { HttpMethod } from '../http/http-client'
-import type { MfaStatus, TotpEnrollment } from '../types'
+import type { MfaStatus, TotpEnrollment } from './auth-types'
 import { type AuthorizedContext, authorizedRequest } from './authorized-request'
 
 /** The logged-in user's TOTP second factor. */
