@@ -1,10 +1,14 @@
-import type { FormEvent, JSX } from 'react'
+import type { JSX, SubmitEvent } from 'react'
 import { useState } from 'react'
 
+import { MfaLostAccess } from '@/modules/account/components/mfa-lost-access'
 import { useVerifyMfaMutation } from '@/modules/account/queries/use-verify-mfa-mutation'
 import { Button } from '@/shared/ui/button'
 import { ErrorAlert } from '@/shared/ui/error-alert'
 import { FormField } from '@/shared/ui/form-field'
+
+const CODE_PATTERN = '[0-9 ]{6,7}'
+const CODE_MAX_LENGTH = 7
 
 type MfaChallengeFormProps = {
   mfaToken: string
@@ -16,7 +20,7 @@ export function MfaChallengeForm({ mfaToken, onSignedIn }: MfaChallengeFormProps
   const [code, setCode] = useState('')
   const verify = useVerifyMfaMutation()
 
-  function submit(event: FormEvent<HTMLFormElement>): void {
+  function submit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault()
     verify.mutate({ mfaToken, code }, { onSuccess: onSignedIn })
   }
@@ -24,21 +28,23 @@ export function MfaChallengeForm({ mfaToken, onSignedIn }: MfaChallengeFormProps
   return (
     <form className="grid gap-4" onSubmit={submit}>
       <FormField
-        label="Código do autenticador"
+        label="Código de 6 dígitos"
         inputMode="numeric"
         autoComplete="one-time-code"
-        pattern="[0-9 ]{6,7}"
+        pattern={CODE_PATTERN}
+        patternMessage="Digite os 6 números que aparecem no app."
         required
         autoFocus
-        maxLength={7}
+        maxLength={CODE_MAX_LENGTH}
         className="h-12 text-center font-mono text-xl tracking-[0.4em] md:text-xl"
         value={code}
         onChange={(event) => setCode(event.target.value)}
       />
       <ErrorAlert error={verify.error} />
       <Button type="submit" size="lg" disabled={verify.isPending} aria-busy={verify.isPending}>
-        Confirmar
+        Entrar
       </Button>
+      <MfaLostAccess />
     </form>
   )
 }

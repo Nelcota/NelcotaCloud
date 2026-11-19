@@ -129,7 +129,7 @@ function MemberNote({ canManage }: { canManage: boolean }): JSX.Element | null {
   }
 
   return (
-    <p className="text-muted-foreground rounded-lg border px-4 py-3 text-sm">
+    <p className="text-muted-foreground surface px-4 py-3 text-sm">
       Você é membro deste projeto: só donos convidam, removem pessoas e mudam papéis. Para sair, use
       o menu ⋯ na sua linha.
     </p>

@@ -9,7 +9,7 @@ import {
 import { acceptInvitation } from '@/modules/projects/api/accept-invitation'
 import { declineInvitation } from '@/modules/projects/api/decline-invitation'
 import { listReceivedInvitations } from '@/modules/projects/api/list-received-invitations'
-import { PROJECTS_QUERY_KEY } from '@/modules/projects/queries/use-projects'
+import { PROJECT_CATALOG_KEY, projectDataKey } from '@/modules/projects/queries/project-catalog-key'
 import type { components } from '@/shared/api/api-schema'
 
 type Schemas = components['schemas']
@@ -29,9 +29,10 @@ export function useAcceptInvitationMutation(): UseMutationResult<
 
   return useMutation({
     mutationFn: acceptInvitation,
-    onSuccess: async () => {
+    onSuccess: async (accepted) => {
       await queryClient.invalidateQueries({ queryKey: INVITATIONS_KEY })
-      await queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY })
+      await queryClient.invalidateQueries({ queryKey: PROJECT_CATALOG_KEY, exact: true })
+      await queryClient.invalidateQueries({ queryKey: projectDataKey(accepted.project_id) })
     },
   })
 }

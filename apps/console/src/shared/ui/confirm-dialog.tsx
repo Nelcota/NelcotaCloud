@@ -1,4 +1,4 @@
-import type { FormEvent, JSX, ReactNode } from 'react'
+import type { JSX, ReactNode, SubmitEvent } from 'react'
 import { useState } from 'react'
 
 import { Button } from '@/shared/ui/button'
@@ -67,7 +67,7 @@ export function ConfirmDialog(props: ConfirmDialogProps): JSX.Element {
     notifyOpen(props, isOpen)
   }
 
-  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
+  async function submit(event: SubmitEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
 
     if (isBlocked(props, typedText) || isWorking) {

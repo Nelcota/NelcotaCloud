@@ -16,7 +16,7 @@ export function PolicyCard({ projectId, table, policy }: PolicyCardProps): JSX.E
   const drop = useDropPolicyMutation(projectId)
 
   return (
-    <article className="bg-card grid gap-3 rounded-xl border p-4">
+    <article className="surface grid gap-3 p-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <span className="flex min-w-0 flex-wrap items-center gap-2">
           <h3 className="font-mono text-sm break-all">{policy.name}</h3>

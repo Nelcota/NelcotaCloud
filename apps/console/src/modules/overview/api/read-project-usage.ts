@@ -6,5 +6,10 @@ import type { components } from '@/shared/api/api-schema'
 export async function readProjectUsage(
   projectId: string,
 ): Promise<components['schemas']['ProjectUsage']> {
-  return dataOf(await apiClient.GET('/auth/v1/admin/usage', { headers: projectHeaders(projectId) }))
+  return dataOf(
+    await apiClient.GET('/auth/v1/admin/usage', {
+      params: { query: { cached: true } },
+      headers: projectHeaders(projectId),
+    }),
+  )
 }

@@ -1,5 +1,5 @@
 import type { TotpEnrollment } from '@nelcota/sdk'
-import type { FormEvent, JSX } from 'react'
+import type { JSX, SubmitEvent } from 'react'
 import { useState } from 'react'
 
 import { MfaEnrollIllustration } from '@/modules/account/components/mfa-illustrations'
@@ -29,7 +29,7 @@ export function TotpEnrollmentSteps({
   const [code, setCode] = useState('')
   const verification = useVerifyTotpMutation()
 
-  function submit(event: FormEvent<HTMLFormElement>): void {
+  function submit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault()
 
     if (step === SCAN_STEP) {

@@ -14,7 +14,7 @@ export function CopyableValue({ label, value, autoFocusCopy }: CopyableValueProp
   return (
     <div className="grid gap-1.5">
       <span className="text-sm font-medium">{label}</span>
-      <div className="bg-muted/60 flex items-start gap-2 rounded-lg border p-1.5 pl-3">
+      <div className="bg-shell/70 flex items-start gap-2 rounded-xl p-1.5 pl-3">
         <code className="min-w-0 flex-1 self-center py-1 font-mono text-xs break-all">{value}</code>
         <CopyButton value={value} description={label} autoFocus={autoFocusCopy} />
       </div>

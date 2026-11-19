@@ -1,13 +1,15 @@
 import { useRouter, type ErrorComponentProps } from '@tanstack/react-router'
+import DangerTriangle from '~icons/solar/danger-triangle-linear'
 import type { JSX } from 'react'
 
 import { ErrorReport } from '@/app/error-report'
 import { StatusScreen } from '@/app/status-screen'
+import { SUPPORT_EMAIL } from '@/shared/lib/support-email'
 import { Button } from '@/shared/ui/button'
 import { buttonVariants } from '@/shared/ui/button-variants'
 
 /**
- * Shown when a page throws while rendering or loading. "Ir para os projetos" is a full page
+ * Shown when a page throws while rendering or loading. "Voltar ao início" is a full page
  * load on purpose: the router state that failed may be what broke, so a fresh start is the
  * safest way out.
  */
@@ -21,19 +23,30 @@ export function RouteErrorPage({ error, reset }: ErrorComponentProps): JSX.Eleme
 
   return (
     <StatusScreen
-      title="Esta página não carregou"
-      description="Tente de novo. Se o erro se repetir, copie o relatório do erro e envie para nós."
+      title="Algo deu errado"
+      tabTitle="Erro"
+      mark={{ icon: DangerTriangle, tone: 'danger' }}
+      description={errorAdvice()}
       actions={
         <>
           <Button size="lg" onClick={retry}>
             Tentar de novo
           </Button>
-          <a href="/" className={buttonVariants({ variant: 'outline', size: 'lg' })}>
-            Ir para os projetos
+          <a href="/" className={buttonVariants({ variant: 'secondary', size: 'lg' })}>
+            Voltar ao início
           </a>
         </>
       }
-      aside={<ErrorReport error={error} />}
+      details={<ErrorReport error={error} />}
     />
   )
+}
+
+/** Points to support only when there is a support address to write to. */
+function errorAdvice(): string {
+  if (SUPPORT_EMAIL === '') {
+    return 'Tente de novo. Se continuar, copie os detalhes do erro e envie para quem cuida da sua conta.'
+  }
+
+  return `Tente de novo. Se continuar, envie os detalhes do erro para ${SUPPORT_EMAIL}.`
 }

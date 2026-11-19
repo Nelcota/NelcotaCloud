@@ -1,28 +1,26 @@
 import type { JSX } from 'react'
 
 import { ConfirmedActionButton } from '@/modules/users/components/confirmed-action-button'
-import type { UserActionProps } from '@/modules/users/components/user-account-section'
-import { SettingsSection } from '@/shared/ui/settings-section'
+import type { UserActionProps } from '@/modules/users/components/user-action-props'
+import { confirmationSubjectOf } from '@/modules/users/model/account-state'
+import { UserSection } from '@/modules/users/components/user-section'
 
 export function UserDangerZone({ user, pendingAction, onAction }: UserActionProps): JSX.Element {
   return (
-    <SettingsSection title="Zona de perigo" tone="danger">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-medium">Excluir este usuário</p>
-          <p className="text-muted-foreground mt-1 text-sm text-pretty">
-            Remove a conta, os logins sociais e as sessões.
-          </p>
-        </div>
+    <UserSection title="Zona de perigo">
+      <div className="flex flex-col gap-3 @2xl:flex-row @2xl:items-center @2xl:justify-between">
+        <p className="text-muted-foreground text-sm text-pretty">
+          Remove a conta, os logins sociais e as sessões. Não dá para desfazer.
+        </p>
         <div className="shrink-0">
           <ConfirmedActionButton
             action="delete"
-            email={user.email}
+            subject={confirmationSubjectOf(user)}
             isPending={pendingAction === 'delete'}
             onConfirm={() => onAction('delete')}
           />
         </div>
       </div>
-    </SettingsSection>
+    </UserSection>
   )
 }

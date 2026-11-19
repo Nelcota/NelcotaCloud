@@ -13,11 +13,11 @@ export function ProjectIsolationIllustration(): JSX.Element {
   return (
     <Illustration
       name="project-isolation"
-      description="A NelcotaCloud cria um banco de dados só para este projeto, separado dos outros."
+      description="A Nelcota cria um banco de dados só para este projeto, separado dos outros."
     >
       <FlowDiagram
         nodes={[
-          { icon: Cloud, label: 'NelcotaCloud' },
+          { icon: Cloud, label: 'Nelcota' },
           { icon: Database, label: 'Banco só do projeto', tone: 'focus' },
         ]}
         links={[{ label: 'cria', state: 'flowing' }]}
@@ -49,12 +49,12 @@ export function ProjectConnectionIllustration(): JSX.Element {
   return (
     <Illustration
       name="project-connection"
-      description="Seu app se conecta à NelcotaCloud, que guarda os usuários no banco só deste projeto."
+      description="Seu app se conecta à Nelcota, que guarda os usuários no banco só deste projeto."
     >
       <FlowDiagram
         nodes={[
           { icon: Smartphone, label: 'Seu app' },
-          { icon: Cloud, label: 'NelcotaCloud' },
+          { icon: Cloud, label: 'Nelcota' },
           { icon: Database, label: 'Banco só do projeto', tone: 'focus' },
         ]}
         links={[

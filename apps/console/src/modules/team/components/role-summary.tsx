@@ -9,7 +9,7 @@ import { RoleBadge } from '@/modules/projects/components/role-badge'
  */
 export function RoleSummary(): JSX.Element {
   return (
-    <details className="group rounded-xl border">
+    <details className="surface group">
       <summary className="hover:bg-muted/40 flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-5 py-3 text-sm font-medium transition-colors [&::-webkit-details-marker]:hidden">
         O que cada papel pode fazer
         <ArrowDown

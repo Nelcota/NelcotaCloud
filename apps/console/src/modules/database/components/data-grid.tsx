@@ -19,7 +19,7 @@ type DataGridProps = {
  */
 export function DataGrid({ label, columns, rows }: DataGridProps): JSX.Element {
   return (
-    <div className="bg-card overflow-hidden rounded-xl border">
+    <div className="surface overflow-hidden">
       <Table aria-label={label} className="font-mono text-xs">
         <TableHeader>
           <TableRow>

@@ -1,18 +1,24 @@
 import { Link } from '@tanstack/react-router'
 import type { JSX } from 'react'
 
-import { PROJECT_SECTIONS, type ProjectSection, sectionPath } from '@/app/shell/project-sections'
+import {
+  PROJECT_SECTIONS,
+  type ProjectGroup,
+  type ProjectSection,
+  sectionPath,
+} from '@/app/shell/project-sections'
 import { SectionCount } from '@/app/shell/section-count'
+import { SIDEBAR_ITEM, SIDEBAR_ITEM_CURRENT } from '@/app/shell/sidebar-item'
 import { cn } from '@/shared/lib/class-names'
 
 type ProjectNavProps = {
   projectId: string
   currentSection: ProjectSection
-  group: ProjectSection['group']
+  group: ProjectGroup
   onNavigate?: () => void
 }
 
-/** One group of a project's pages. The current one is marked by fill, weight and a filled blue icon. */
+/** One group of a project's pages. */
 export function ProjectNav(props: ProjectNavProps): JSX.Element {
   const sections = PROJECT_SECTIONS.filter((section) => section.group === props.group)
 
@@ -45,10 +51,7 @@ function SectionLink({ projectId, section, isCurrent, onNavigate }: SectionLinkP
       to={sectionPath(projectId, section)}
       onClick={onNavigate}
       aria-current={ariaCurrent(isCurrent)}
-      className={cn(
-        'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors',
-        isCurrent && 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold',
-      )}
+      className={cn(SIDEBAR_ITEM, isCurrent && SIDEBAR_ITEM_CURRENT)}
     >
       <SectionIcon section={section} isCurrent={isCurrent} />
       <span className="min-w-0 flex-1 truncate">{section.label}</span>
@@ -68,7 +71,7 @@ function SectionIcon({
     return <section.currentIcon className="text-primary-ink size-5 shrink-0" />
   }
 
-  return <section.icon className="size-5 shrink-0" />
+  return <section.icon className="text-muted-foreground size-5 shrink-0" />
 }
 
 function ariaCurrent(isCurrent: boolean): 'page' | undefined {

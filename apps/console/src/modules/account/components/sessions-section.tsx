@@ -73,7 +73,7 @@ function SessionList({ sessions, pendingId, onRevoke }: SessionListProps): JSX.E
   }
 
   return (
-    <ul className="divide-y rounded-lg border">
+    <ul className="divide-y rounded-xl border">
       {sessions.map((session) => (
         <li key={session.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
           <div className="min-w-0 flex-1 text-sm">

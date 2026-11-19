@@ -65,7 +65,7 @@ function StepDownChoice({ isShown, isChecked, onChange }: StepDownChoiceProps): 
   }
 
   return (
-    <label className="hover:bg-muted/40 flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 text-sm transition-colors">
+    <label className="hover:bg-muted/40 flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 text-sm transition-colors">
       <input
         type="checkbox"
         checked={isChecked}

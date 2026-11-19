@@ -17,7 +17,9 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       // The SDK is used from source: one type check, no build step between the two packages.
-      '@nelcota/sdk': fileURLToPath(new URL('../../packages/sdk/src/index.ts', import.meta.url)),
+      '@nelcota/sdk': fileURLToPath(
+        new URL('../../packages/sdk/src/client-entry.ts', import.meta.url),
+      ),
     },
   },
 })

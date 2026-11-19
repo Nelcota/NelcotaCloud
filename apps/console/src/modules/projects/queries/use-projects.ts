@@ -9,14 +9,13 @@ import {
 import { createProject } from '@/modules/projects/api/create-project'
 import { deleteProject } from '@/modules/projects/api/delete-project'
 import { listProjects } from '@/modules/projects/api/list-projects'
+import { PROJECT_CATALOG_KEY, projectDataKey } from '@/modules/projects/queries/project-catalog-key'
 import type { components } from '@/shared/api/api-schema'
 
 type Schemas = components['schemas']
 
-export const PROJECTS_QUERY_KEY = ['projects'] as const
-
 export function useProjectsQuery(): UseQueryResult<Schemas['ProjectSummary'][]> {
-  return useQuery({ queryKey: PROJECTS_QUERY_KEY, queryFn: listProjects })
+  return useQuery({ queryKey: PROJECT_CATALOG_KEY, queryFn: listProjects })
 }
 
 /** The project with this id from the projects list; undefined while it loads. */
@@ -35,7 +34,7 @@ export function useCreateProjectMutation(): UseMutationResult<
 
   return useMutation({
     mutationFn: createProject,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: PROJECT_CATALOG_KEY, exact: true }),
   })
 }
 
@@ -44,6 +43,9 @@ export function useDeleteProjectMutation(): UseMutationResult<void, Error, strin
 
   return useMutation({
     mutationFn: deleteProject,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY }),
+    onSuccess: async (_result, projectId) => {
+      queryClient.removeQueries({ queryKey: projectDataKey(projectId) })
+      await queryClient.invalidateQueries({ queryKey: PROJECT_CATALOG_KEY, exact: true })
+    },
   })
 }

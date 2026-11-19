@@ -36,7 +36,7 @@ export function DeliveryLog({ projectId, endpointId }: DeliveryLogProps): JSX.El
   return (
     <div className="grid gap-2">
       <ErrorAlert error={retry.error} />
-      <ul className="divide-y rounded-lg border">
+      <ul className="divide-y rounded-xl border">
         {deliveries.data.map((delivery) => (
           <DeliveryRow
             key={delivery.id}

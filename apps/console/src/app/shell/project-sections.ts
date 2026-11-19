@@ -1,3 +1,5 @@
+import BoltBold from '~icons/solar/bolt-bold'
+import Bolt from '~icons/solar/bolt-linear'
 import CodeBold from '~icons/solar/code-square-bold'
 import Code from '~icons/solar/code-square-linear'
 import DatabaseBold from '~icons/solar/database-bold'
@@ -20,7 +22,11 @@ import TeamBold from '~icons/solar/users-group-two-rounded-bold'
 import Team from '~icons/solar/users-group-two-rounded-linear'
 import UsersBold from '~icons/solar/users-group-rounded-bold'
 import Users from '~icons/solar/users-group-rounded-linear'
+import MigrationBold from '~icons/solar/document-text-bold'
+import Migration from '~icons/solar/document-text-linear'
 import type { IconComponent } from '@/shared/ui/icon-component'
+
+export type ProjectGroup = 'start' | 'auth' | 'data' | 'project'
 
 export type ProjectSection = {
   /** Path below `/projects/$projectId`; empty for the overview. */
@@ -29,9 +35,16 @@ export type ProjectSection = {
   icon: IconComponent
   /** Solar's filled variant, shown while the section is the current page. */
   currentIcon: IconComponent
-  /** Daily work sits at the top of the sidebar; project settings sit at its foot. */
-  group: 'main' | 'footer'
+  group: ProjectGroup
 }
+
+/** The sidebar's groups in order; the first one has no heading, as the project's name tops it. */
+export const PROJECT_GROUPS: readonly { group: ProjectGroup; label: string | null }[] = [
+  { group: 'start', label: null },
+  { group: 'auth', label: 'Autenticação' },
+  { group: 'data', label: 'Dados' },
+  { group: 'project', label: 'Projeto' },
+]
 
 /** Every page of a project, in sidebar order: connecting the app comes before running it. */
 export const PROJECT_SECTIONS: readonly ProjectSection[] = [
@@ -40,47 +53,55 @@ export const PROJECT_SECTIONS: readonly ProjectSection[] = [
     label: 'Visão geral',
     icon: LayoutGrid,
     currentIcon: LayoutGridBold,
-    group: 'main',
+    group: 'start',
   },
   {
     segment: 'keys',
     label: 'Chaves de API',
     icon: KeyRound,
     currentIcon: KeyRoundBold,
-    group: 'main',
+    group: 'start',
   },
-  { segment: 'users', label: 'Usuários', icon: Users, currentIcon: UsersBold, group: 'main' },
-  {
-    segment: 'providers',
-    label: 'Login social',
-    icon: LogIn,
-    currentIcon: LogInBold,
-    group: 'main',
-  },
-  { segment: 'email', label: 'Email', icon: Mail, currentIcon: MailBold, group: 'main' },
-  { segment: 'webhooks', label: 'Webhooks', icon: Plug, currentIcon: PlugBold, group: 'main' },
-  {
-    segment: 'database',
-    label: 'Banco de dados',
-    icon: Database,
-    currentIcon: DatabaseBold,
-    group: 'main',
-  },
-  { segment: 'sql', label: 'SQL', icon: Code, currentIcon: CodeBold, group: 'main' },
   {
     segment: 'activity',
     label: 'Atividade',
     icon: History,
     currentIcon: HistoryBold,
-    group: 'main',
+    group: 'start',
   },
-  { segment: 'team', label: 'Equipe', icon: Team, currentIcon: TeamBold, group: 'footer' },
+  { segment: 'users', label: 'Usuários', icon: Users, currentIcon: UsersBold, group: 'auth' },
+  {
+    segment: 'providers',
+    label: 'Login social',
+    icon: LogIn,
+    currentIcon: LogInBold,
+    group: 'auth',
+  },
+  { segment: 'email', label: 'Email', icon: Mail, currentIcon: MailBold, group: 'auth' },
+  {
+    segment: 'database',
+    label: 'Banco de dados',
+    icon: Database,
+    currentIcon: DatabaseBold,
+    group: 'data',
+  },
+  { segment: 'sql', label: 'SQL', icon: Code, currentIcon: CodeBold, group: 'data' },
+  { segment: 'cache', label: 'Cache', icon: Bolt, currentIcon: BoltBold, group: 'data' },
+  {
+    segment: 'migrations',
+    label: 'Migrações',
+    icon: Migration,
+    currentIcon: MigrationBold,
+    group: 'data',
+  },
+  { segment: 'webhooks', label: 'Webhooks', icon: Plug, currentIcon: PlugBold, group: 'project' },
+  { segment: 'team', label: 'Equipe', icon: Team, currentIcon: TeamBold, group: 'project' },
   {
     segment: 'settings',
     label: 'Configurações',
     icon: Settings,
     currentIcon: SettingsBold,
-    group: 'footer',
+    group: 'project',
   },
 ]
 

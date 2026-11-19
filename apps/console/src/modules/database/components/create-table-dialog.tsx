@@ -2,6 +2,7 @@ import Plus from '~icons/solar/add-linear'
 import { useNavigate } from '@tanstack/react-router'
 import type { JSX } from 'react'
 import { useState } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
 
 import {
   type ColumnDraft,
@@ -10,7 +11,7 @@ import {
   isDraftComplete,
   toColumnDefinition,
 } from '@/modules/database/components/column-draft'
-import { ColumnsEditor } from '@/modules/database/components/columns-editor'
+import { ColumnsEditor, type CreateTableFields } from '@/modules/database/components/columns-editor'
 import { OBJECT_NAME_HINT, isObjectName } from '@/modules/database/components/object-name'
 import { referenceTargets } from '@/modules/database/components/reference-targets'
 import { useSchemaQuery } from '@/modules/database/queries/use-schema-query'
@@ -22,22 +23,23 @@ import { FormField } from '@/shared/ui/form-field'
 /** Creates a table with its columns, then opens it; it starts with row level security on. */
 export function CreateTableDialog({ projectId }: { projectId: string }): JSX.Element {
   const [isOpen, setIsOpen] = useState(false)
-  const [name, setName] = useState('')
-  const [columns, setColumns] = useState<ColumnDraft[]>([])
+  const form = useForm<CreateTableFields>({ defaultValues: { name: '', columns: [] } })
+  const name = useWatch({ control: form.control, name: 'name' })
+  const columns = useWatch({ control: form.control, name: 'columns' })
   const schema = useSchemaQuery(projectId)
   const creation = useCreateTableMutation(projectId)
   const navigate = useNavigate()
 
   function open(): void {
-    setName('')
-    setColumns([idColumnDraft()])
+    form.reset({ name: '', columns: [idColumnDraft()] })
     setIsOpen(true)
   }
 
   async function create(): Promise<void> {
-    const table = name.trim()
+    const draft = form.getValues()
+    const table = draft.name.trim()
 
-    await creation.mutateAsync({ name: table, columns: columns.map(toColumnDefinition) })
+    await creation.mutateAsync({ name: table, columns: draft.columns.map(toColumnDefinition) })
     await navigate({ to: '/projects/$projectId/database/$table', params: { projectId, table } })
   }
 
@@ -65,13 +67,11 @@ export function CreateTableDialog({ projectId }: { projectId: string }): JSX.Ele
           placeholder="posts"
           hint={OBJECT_NAME_HINT}
           className="font-mono"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
+          {...form.register('name')}
         />
         <ColumnsEditor
-          columns={columns}
+          control={form.control}
           targets={referenceTargets(schema.data?.tables ?? [])}
-          onChange={setColumns}
         />
       </ConfirmDialog>
     </>

@@ -12,6 +12,7 @@ import {
   retryWebhookDelivery,
 } from '@/modules/webhooks/api/retry-webhook-delivery'
 import { sendTestWebhook } from '@/modules/webhooks/api/send-test-webhook'
+import { queueHealthKey } from '@/modules/webhooks/queries/use-webhook-queue-health'
 import type { components } from '@/shared/api/api-schema'
 
 type Schemas = components['schemas']
@@ -42,7 +43,10 @@ export function useRetryWebhookDeliveryMutation(
   return useMutation({
     mutationFn: (delivery: DeliveryRef) => retryWebhookDelivery(projectId, delivery),
     onSuccess: (_, delivery) =>
-      queryClient.invalidateQueries({ queryKey: deliveriesKey(projectId, delivery.endpointId) }),
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: deliveriesKey(projectId, delivery.endpointId) }),
+        queryClient.invalidateQueries({ queryKey: queueHealthKey(projectId) }),
+      ]),
   })
 }
 

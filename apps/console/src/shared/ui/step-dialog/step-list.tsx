@@ -36,7 +36,7 @@ function StepRow({ label, index, current, onSelect }: StepRowProps): JSX.Element
       <button
         type="button"
         onClick={() => onSelect(index)}
-        className="hover:bg-accent flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors"
+        className="hover:bg-accent flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors"
       >
         <span className="border-primary/60 text-primary-ink flex size-7 shrink-0 items-center justify-center rounded-full border">
           <Check aria-hidden="true" className="size-4" />
@@ -51,7 +51,7 @@ function StepRow({ label, index, current, onSelect }: StepRowProps): JSX.Element
     <div
       aria-current={currentMarker(index, current)}
       className={cn(
-        'flex items-center gap-3 rounded-lg px-3 py-2.5',
+        'flex items-center gap-3 rounded-xl px-3 py-2.5',
         index === current && 'bg-primary/10 text-primary-ink font-medium',
         index > current && 'text-muted-foreground',
       )}

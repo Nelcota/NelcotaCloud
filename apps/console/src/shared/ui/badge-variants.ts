@@ -8,11 +8,11 @@ import { cva } from 'class-variance-authority'
  * Kept apart from the component so other elements (the change preview) share the look.
  */
 export const badgeVariants = cva(
-  'inline-flex w-fit shrink-0 items-center justify-center gap-1.5 rounded-full border font-medium whitespace-nowrap [&>svg]:pointer-events-none [&>svg]:shrink-0',
+  'inline-flex w-fit shrink-0 items-center justify-center gap-1.5 rounded-md border font-medium whitespace-nowrap [&>svg]:pointer-events-none [&>svg]:shrink-0',
   {
     variants: {
       variant: {
-        neutral: 'bg-foreground/8 text-foreground border-transparent',
+        neutral: 'bg-foreground/10 text-foreground border-transparent',
         success:
           'border-transparent bg-emerald-500/12 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400',
         warning:
@@ -21,7 +21,7 @@ export const badgeVariants = cva(
         muted: 'border-border text-muted-foreground bg-transparent',
       },
       size: {
-        default: 'h-6 px-2.5 text-xs [&>svg]:size-4',
+        default: 'h-5.5 px-1.5 text-xs [&>svg]:size-3.5',
       },
     },
     defaultVariants: {

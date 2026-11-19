@@ -1,0 +1,48 @@
+/* Phones get the same fan, a size smaller, so the form stays in the first screen. */
+.auth-fan {
+  --mascot-scale: 0.78;
+}
+
+@media (width >= 40rem) {
+  .auth-fan {
+    --mascot-scale: 1;
+  }
+}
+
+.auth-mascot {
+  transform-origin: 50% 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .auth-mascot {
+    animation: auth-mascot-hop 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .auth-mascot:hover {
+    animation: auth-mascot-hop 560ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* On a failure the mascots stay seated; cheering above an error reads as mockery. */
+  .auth-fan[data-calm] .auth-mascot {
+    animation: none;
+  }
+}
+
+/* A small jump with a squash on landing, starting and ending seated so nothing pops in. */
+@keyframes auth-mascot-hop {
+  0% {
+    transform: translateY(0) scale(1, 1);
+  }
+
+  35% {
+    transform: translateY(-12px) scale(0.96, 1.05);
+  }
+
+  70% {
+    transform: translateY(0) scale(1.06, 0.92);
+  }
+
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+}

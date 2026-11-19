@@ -1,0 +1,26 @@
+.project-avatar {
+  background-image: url('../assets/project-avatars.webp');
+  background-image: image-set(
+    url('../assets/project-avatars.webp') 1x,
+    url('../assets/project-avatars-2x.webp') 2x
+  );
+  background-repeat: no-repeat;
+  background-size: 400% 400%;
+}
+
+.project-avatar-expanded {
+  background-image: url('../assets/project-avatars-expanded.webp');
+  background-image: image-set(
+    url('../assets/project-avatars-expanded.webp') 1x,
+    url('../assets/project-avatars-expanded-2x.webp') 2x
+  );
+}
+
+/* For mascots drawn larger than a tile: always the 2x artwork, even on 1x screens. */
+.project-avatar.project-avatar-sharp {
+  background-image: url('../assets/project-avatars-2x.webp');
+}
+
+.project-avatar-expanded.project-avatar-sharp {
+  background-image: url('../assets/project-avatars-expanded-2x.webp');
+}

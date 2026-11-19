@@ -30,7 +30,7 @@ export function RowLevelSecuritySwitch({
   }
 
   return (
-    <div className="bg-card grid gap-3 rounded-xl border p-5">
+    <div className="surface grid gap-3 p-5">
       <SwitchField
         label="Row level security"
         description="Ligado, os apps só alcançam as linhas que as políticas abaixo liberam."

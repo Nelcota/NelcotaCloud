@@ -75,11 +75,11 @@ function TeamSkeleton(): JSX.Element {
     <div
       aria-busy="true"
       aria-label="Carregando equipe"
-      className="grid gap-px overflow-hidden rounded-xl border"
+      className="surface grid gap-px overflow-hidden"
     >
       <div className="bg-foreground/10 h-12" />
       {SKELETON_ROWS.map((row) => (
-        <div key={row} className="bg-card flex items-center gap-4 px-5 py-4">
+        <div key={row} className="flex items-center gap-4 px-5 py-4">
           <Skeleton className="size-10 rounded-full" />
           <Skeleton className="h-5 w-56" />
           <Skeleton className="ml-auto size-10 rounded-md" />

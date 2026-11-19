@@ -45,7 +45,7 @@ export function ColumnDraftFields(props: ColumnDraftFieldsProps): JSX.Element {
   }
 
   return (
-    <fieldset className="grid gap-3 rounded-lg border p-4">
+    <fieldset className="grid gap-3 rounded-xl border p-4">
       <legend className="sr-only">Coluna {draft.name}</legend>
       <div className="grid items-end gap-3 sm:grid-cols-[1fr_10rem_1fr_auto]">
         <FormField

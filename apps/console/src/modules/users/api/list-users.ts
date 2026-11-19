@@ -1,48 +1,31 @@
 import { apiClient, projectHeaders } from '@/shared/api/api-client'
 import { dataOf } from '@/shared/api/api-result'
-import type { components, operations } from '@/shared/api/api-schema'
+import type { UserStatusFilter } from '@/modules/users/model/user-status-filter'
+import type { UserOrder } from '@/modules/users/model/users-search'
+import { emailQuery, statusQuery } from '@/modules/users/api/user-filter-query'
+import type { components } from '@/shared/api/api-schema'
 
-type UserPage = components['schemas']['UserPage']
-
-type UserStatus = NonNullable<
-  NonNullable<operations['list_users']['parameters']['query']>['status']
->
-
-/** `all` sends no filter. */
-export type UserStatusFilter = UserStatus | 'all'
+type UserPage = components['schemas']['UserCursorPageResponse']
 
 export type UserListQuery = {
   email: string
   status: UserStatusFilter
-  offset: number
+  order: UserOrder
+  before?: string
   limit: number
 }
 
-/** One page of the project's users, newest first, optionally searched and filtered. */
+/** One page of the project's users in the chosen order, optionally searched and filtered. */
 export async function listUsers(projectId: string, query: UserListQuery): Promise<UserPage> {
   const filters = { ...emailQuery(query.email), ...statusQuery(query.status) }
-  const params = { query: { ...filters, offset: query.offset, limit: query.limit } }
+  const params = {
+    query: { ...filters, order: query.order, before: query.before, limit: query.limit },
+  }
 
   return dataOf(
-    await apiClient.GET('/auth/v1/admin/users', { params, headers: projectHeaders(projectId) }),
+    await apiClient.GET('/auth/v1/admin/users/page', {
+      params,
+      headers: projectHeaders(projectId),
+    }),
   )
-}
-
-/** A blank search lists everyone. */
-function emailQuery(email: string): { email?: string } {
-  const search = email.trim()
-
-  if (search === '') {
-    return {}
-  }
-
-  return { email: search }
-}
-
-function statusQuery(status: UserStatusFilter): { status?: UserStatus } {
-  if (status === 'all') {
-    return {}
-  }
-
-  return { status }
 }

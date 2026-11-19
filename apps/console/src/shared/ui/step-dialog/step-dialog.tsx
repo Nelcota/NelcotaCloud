@@ -1,4 +1,4 @@
-import type { FormEvent, JSX, ReactNode } from 'react'
+import type { JSX, ReactNode, SubmitEvent } from 'react'
 import { useState } from 'react'
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/shared/ui/dialog'
@@ -75,7 +75,7 @@ export function StepDialog(props: StepDialogProps): JSX.Element {
     setError(null)
   }
 
-  async function advance(event: FormEvent<HTMLFormElement>): Promise<void> {
+  async function advance(event: SubmitEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
 
     if (step === undefined || step.missing !== null || isWorking) {

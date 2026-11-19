@@ -17,7 +17,8 @@ type WebhookEndpointView = components['schemas']['WebhookEndpointView']
 type EndpointActionsProps = {
   projectId: string
   endpoint: WebhookEndpointView
-  isRotating: boolean
+  isIssuing: boolean
+  isAwaitingConfirmation: boolean
   onRotate: () => Promise<void>
 }
 
@@ -53,7 +54,8 @@ export function EndpointActions(props: EndpointActionsProps): JSX.Element {
             from: 'Assinando',
             to: 'Válido por 24 horas',
           }}
-          isPending={props.isRotating}
+          isPending={props.isIssuing}
+          isDisabled={props.isAwaitingConfirmation}
           onConfirm={props.onRotate}
         >
           Novo segredo

@@ -6,10 +6,9 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 
-import { createWebhookEndpoint } from '@/modules/webhooks/api/create-webhook-endpoint'
 import { deleteWebhookEndpoint } from '@/modules/webhooks/api/delete-webhook-endpoint'
 import { listWebhookEndpoints } from '@/modules/webhooks/api/list-webhook-endpoints'
-import { rotateWebhookSecret } from '@/modules/webhooks/api/rotate-webhook-secret'
+import { queueHealthKey } from '@/modules/webhooks/queries/use-webhook-queue-health'
 import {
   type WebhookEndpointUpdate,
   updateWebhookEndpoint,
@@ -31,17 +30,6 @@ export function useWebhookEndpointsQuery(
   })
 }
 
-export function useCreateWebhookEndpointMutation(
-  projectId: string,
-): UseMutationResult<Schemas['WebhookEndpointWithSecret'], Error, Schemas['WebhookEndpointBody']> {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (body: Schemas['WebhookEndpointBody']) => createWebhookEndpoint(projectId, body),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: webhookEndpointsKey(projectId) }),
-  })
-}
-
 export function useUpdateWebhookEndpointMutation(
   projectId: string,
 ): UseMutationResult<Schemas['WebhookEndpointView'], Error, WebhookEndpointUpdate> {
@@ -49,7 +37,11 @@ export function useUpdateWebhookEndpointMutation(
 
   return useMutation({
     mutationFn: (update: WebhookEndpointUpdate) => updateWebhookEndpoint(projectId, update),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: webhookEndpointsKey(projectId) }),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: webhookEndpointsKey(projectId) }),
+        queryClient.invalidateQueries({ queryKey: queueHealthKey(projectId) }),
+      ]),
   })
 }
 
@@ -60,14 +52,10 @@ export function useDeleteWebhookEndpointMutation(
 
   return useMutation({
     mutationFn: (endpointId: string) => deleteWebhookEndpoint(projectId, endpointId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: webhookEndpointsKey(projectId) }),
-  })
-}
-
-export function useRotateWebhookSecretMutation(
-  projectId: string,
-): UseMutationResult<Schemas['WebhookEndpointWithSecret'], Error, string> {
-  return useMutation({
-    mutationFn: (endpointId: string) => rotateWebhookSecret(projectId, endpointId),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: webhookEndpointsKey(projectId) }),
+        queryClient.invalidateQueries({ queryKey: queueHealthKey(projectId) }),
+      ]),
   })
 }

@@ -24,7 +24,7 @@ export function InvitationsTable({
   onCancel,
 }: InvitationsTableProps): JSX.Element {
   return (
-    <div className="bg-card overflow-hidden rounded-xl border">
+    <div className="surface overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow>

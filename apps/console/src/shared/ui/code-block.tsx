@@ -21,7 +21,7 @@ export function CodeBlock({ code, language }: CodeBlockProps): JSX.Element {
   const tokens = highlightCode(code, language)
 
   return (
-    <pre className="bg-muted/60 overflow-x-auto rounded-lg border p-4 font-mono text-xs leading-relaxed">
+    <pre className="bg-shell/70 overflow-x-auto rounded-xl p-4 font-mono text-xs leading-relaxed">
       <code>
         {tokens.map((token) => (
           <span key={token.start} className={TOKEN_CLASSES[token.kind]}>

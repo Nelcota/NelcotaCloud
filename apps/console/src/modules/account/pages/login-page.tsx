@@ -1,64 +1,70 @@
 import type { SignInResult, SignUpResult } from '@nelcota/sdk'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import type { JSX } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { AuthCard } from '@/modules/account/components/auth-card'
-import { MfaChallengeForm } from '@/modules/account/components/mfa-challenge-form'
-import { RecoverPasswordForm } from '@/modules/account/components/recover-password-form'
-import { SignInForm } from '@/modules/account/components/sign-in-form'
-import { SignUpForm } from '@/modules/account/components/sign-up-form'
-import { Button } from '@/shared/ui/button'
+import { LoginStepContent, type LoginStep } from '@/modules/account/components/login-step-content'
+import { LoginStepFooter } from '@/modules/account/components/login-step-footer'
+import { loginHeadingOf } from '@/modules/account/model/login-headings'
+import {
+  type LoginRouteStep,
+  invitationOf,
+  loginStepOf,
+  searchForStep,
+} from '@/modules/account/model/login-search'
+import { forgetInvitation, rememberInvitation } from '@/modules/account/model/pending-invitation'
 
-type LoginStep =
-  | { kind: 'sign-in' }
-  | { kind: 'sign-up' }
-  | { kind: 'mfa'; mfaToken: string }
-  | { kind: 'recover' }
-  | { kind: 'notice'; message: string }
+/** A step that only makes sense right after an action (MFA, a sent link), so it has no URL. */
+type TransientStep = Exclude<LoginStep, { kind: LoginRouteStep }> & { from: LoginRouteStep }
 
-const STEP_HEADINGS: Record<LoginStep['kind'], { title: string; description?: string }> = {
-  'sign-in': { title: 'Entrar na sua conta' },
-  'sign-up': { title: 'Criar conta', description: 'Uma conta para criar e gerenciar projetos.' },
-  mfa: {
-    title: 'Verificação em duas etapas',
-    description: 'Digite o código de 6 dígitos do seu app autenticador.',
-  },
-  recover: {
-    title: 'Redefinir senha',
-    description: 'Informe seu email e enviamos um link para criar uma senha nova.',
-  },
-  notice: { title: 'Confira seu email', description: 'O link chega em instantes.' },
-}
-
-const RECOVERY_SENT: LoginStep = {
-  kind: 'notice',
-  message: 'Se houver uma conta com esse email, o link de redefinição chega em instantes.',
-}
-
+/**
+ * Sign-in, sign-up and recovery live in the URL (`?etapa=`), so Back, refresh and shared links
+ * keep them. The MFA token and the sent-link notice stay in memory: the token must never reach
+ * the URL, and a notice has nothing to show after a refresh.
+ */
 export function LoginPage(): JSX.Element {
   const navigate = useNavigate()
-  const [step, setStep] = useState<LoginStep>({ kind: 'sign-in' })
-  const heading = STEP_HEADINGS[step.kind]
-  const goToProjects = (): void => {
+  const search = useSearch({ from: '/_public/login' })
+  const routeStep = loginStepOf(search)
+  const invitation = invitationOf(search)
+  const [transient, setTransient] = useState<TransientStep | null>(null)
+  const [email, setEmail] = useState('')
+  const step = currentStep(routeStep, transient)
+  const heading = loginHeadingOf(step.kind, invitation)
+  const invitedProject = invitation?.projectName
+
+  // The confirmation email opens in another tab without the invitation, so it is noted here.
+  useEffect(() => {
+    if (invitedProject === undefined) {
+      return
+    }
+
+    rememberInvitation({ projectName: invitedProject })
+  }, [invitedProject])
+
+  function goToStep(next: LoginRouteStep): void {
+    setTransient(null)
+    void navigate({ to: '/login', search: searchForStep(next, search) })
+  }
+
+  function goToProjects(): void {
+    forgetInvitation()
     void navigate({ to: '/' })
   }
 
   function handleSignIn(result: SignInResult): void {
     if (result.kind === 'mfa_required') {
-      setStep({ kind: 'mfa', mfaToken: result.mfaToken })
+      setTransient({ kind: 'mfa', mfaToken: result.mfaToken, from: routeStep })
       return
     }
 
     goToProjects()
   }
 
-  function handleSignUp(result: SignUpResult): void {
+  function handleSignUp(result: SignUpResult, signUpEmail: string): void {
     if (result.kind === 'verification_required') {
-      setStep({
-        kind: 'notice',
-        message: 'Enviamos um link de confirmação. Abra-o e depois entre.',
-      })
+      setTransient({ kind: 'notice', email: signUpEmail, purpose: 'verification', from: routeStep })
       return
     }
 
@@ -68,82 +74,35 @@ export function LoginPage(): JSX.Element {
   return (
     <AuthCard
       title={heading.title}
+      tabTitle={heading.tabTitle}
       description={heading.description}
-      footer={<StepFooter step={step} onStep={setStep} />}
+      mark={heading.mark}
+      footer={<LoginStepFooter kind={step.kind} onStep={goToStep} />}
     >
-      <StepContent
+      <LoginStepContent
         step={step}
-        onSignIn={handleSignIn}
-        onSignUp={handleSignUp}
-        onStep={setStep}
-        onSignedIn={goToProjects}
+        email={email}
+        handlers={{
+          onEmailChange: setEmail,
+          onSignIn: handleSignIn,
+          onSignUp: handleSignUp,
+          onSignInInstead: () => goToStep('sign-in'),
+          onForgotPassword: () => goToStep('recover'),
+          onMagicLink: () => goToStep('magic-link'),
+          onLinkSent: (sentTo, purpose) =>
+            setTransient({ kind: 'notice', email: sentTo, purpose, from: routeStep }),
+          onSignedIn: goToProjects,
+        }}
       />
     </AuthCard>
   )
 }
 
-type StepContentProps = {
-  step: LoginStep
-  onSignIn: (result: SignInResult) => void
-  onSignUp: (result: SignUpResult) => void
-  onStep: (step: LoginStep) => void
-  onSignedIn: () => void
-}
-
-function StepContent(props: StepContentProps): JSX.Element {
-  const { step, onStep } = props
-
-  switch (step.kind) {
-    case 'sign-up':
-      return <SignUpForm onResult={props.onSignUp} />
-    case 'mfa':
-      return <MfaChallengeForm mfaToken={step.mfaToken} onSignedIn={props.onSignedIn} />
-    case 'recover':
-      return <RecoverPasswordForm onSent={() => onStep(RECOVERY_SENT)} />
-    case 'notice':
-      return <p className="text-lg text-pretty">{step.message}</p>
-    case 'sign-in':
-      return (
-        <SignInForm
-          onResult={props.onSignIn}
-          onForgotPassword={() => onStep({ kind: 'recover' })}
-        />
-      )
-  }
-}
-
-/** Under the card: the way between signing in and signing up, or back to signing in. */
-function StepFooter({
-  step,
-  onStep,
-}: {
-  step: LoginStep
-  onStep: (step: LoginStep) => void
-}): JSX.Element {
-  if (step.kind === 'sign-in') {
-    return (
-      <>
-        Ainda não tem conta?{' '}
-        <FooterLink label="Criar conta" onClick={() => onStep({ kind: 'sign-up' })} />
-      </>
-    )
+/** A transient step shows only on the URL step it started from; Back or a link clears it. */
+function currentStep(routeStep: LoginRouteStep, transient: TransientStep | null): LoginStep {
+  if (transient === null || transient.from !== routeStep) {
+    return { kind: routeStep }
   }
 
-  if (step.kind === 'sign-up') {
-    return (
-      <>
-        Já tem conta? <FooterLink label="Entrar" onClick={() => onStep({ kind: 'sign-in' })} />
-      </>
-    )
-  }
-
-  return <FooterLink label="Voltar para o login" onClick={() => onStep({ kind: 'sign-in' })} />
-}
-
-function FooterLink({ label, onClick }: { label: string; onClick: () => void }): JSX.Element {
-  return (
-    <Button variant="link" className="h-auto p-0 text-base" onClick={onClick}>
-      {label}
-    </Button>
-  )
+  return transient
 }

@@ -1,30 +1,48 @@
 import type { JSX } from 'react'
 
+import {
+  ACCOUNT_STATE_LABELS,
+  type AccountState,
+  accountStateOf,
+} from '@/modules/users/model/account-state'
 import type { components } from '@/shared/api/api-schema'
+import { cn } from '@/shared/lib/class-names'
 import { Badge } from '@/shared/ui/badge'
 
 type User = components['schemas']['User']
 
-/** The account's state at a glance: blocked wins over everything, then email and MFA. */
-export function UserStatusBadges({ user }: { user: User }): JSX.Element {
-  return (
-    <div className="flex flex-wrap gap-1">
-      <AccountBadge user={user} />
-      <MfaBadge isEnabled={user.mfa_enabled} />
-    </div>
-  )
+/** One dot colour per state: calm for a working account, amber and red for those needing a hand. */
+const DOT_COLORS: Record<AccountState, string> = {
+  active: 'bg-emerald-500',
+  unverified: 'bg-amber-500',
+  banned: 'bg-destructive',
 }
 
-function AccountBadge({ user }: { user: User }): JSX.Element {
-  if (user.banned_at !== null && user.banned_at !== undefined) {
-    return <Badge variant="destructive">Bloqueado</Badge>
-  }
+const TEXT_COLORS: Record<AccountState, string> = {
+  active: 'text-muted-foreground',
+  unverified: 'text-amber-700 dark:text-amber-400',
+  banned: 'text-destructive',
+}
 
-  if (user.email_verified_at === null || user.email_verified_at === undefined) {
-    return <Badge variant="warning">Email não confirmado</Badge>
-  }
+/**
+ * The account's state as a dot and a word, the same in the list and on the user's page, so a
+ * column of states scans as colour first; MFA follows as a neutral tag when it is on.
+ */
+export function UserStatusBadges({ user }: { user: User }): JSX.Element {
+  const state = accountStateOf(user)
 
-  return <Badge variant="success">Ativo</Badge>
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+      <span className={cn('inline-flex items-center gap-1.5', TEXT_COLORS[state])}>
+        <span
+          aria-hidden="true"
+          className={cn('size-1.5 shrink-0 rounded-full', DOT_COLORS[state])}
+        />
+        {ACCOUNT_STATE_LABELS[state]}
+      </span>
+      <MfaBadge isEnabled={user.mfa_enabled} />
+    </span>
+  )
 }
 
 function MfaBadge({ isEnabled }: { isEnabled: boolean }): JSX.Element | null {

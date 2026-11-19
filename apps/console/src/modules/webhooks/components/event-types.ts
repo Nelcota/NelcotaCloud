@@ -10,6 +10,7 @@ export const EVENT_TYPE_LABELS: Record<WebhookEventType, string> = {
   'user.banned': 'Usuário bloqueado',
   'user.unbanned': 'Usuário desbloqueado',
   'session.revoked': 'Sessões encerradas',
+  'audit.event': 'Toda a atividade do projeto',
 }
 
 export const EVENT_TYPES = Object.keys(EVENT_TYPE_LABELS).filter(isEventType)

@@ -94,7 +94,7 @@ function EventCard({ eventType, isChecked, onToggle }: EventCardProps): JSX.Elem
   return (
     <label
       className={cn(
-        'hover:bg-accent/60 has-[:focus-visible]:ring-ring/50 relative flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 transition-colors has-[:focus-visible]:ring-3',
+        'hover:bg-accent/60 has-[:focus-visible]:ring-ring/50 relative flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-2.5 transition-colors has-[:focus-visible]:ring-3',
         isChecked && 'border-foreground/50 bg-accent/60',
       )}
     >

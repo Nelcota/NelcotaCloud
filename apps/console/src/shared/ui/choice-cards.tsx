@@ -58,7 +58,7 @@ function ChoiceCard<Value extends string>(props: ChoiceCardProps<Value>): JSX.El
   return (
     <label
       className={cn(
-        'hover:bg-accent/60 has-[:focus-visible]:ring-ring/50 relative flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors has-[:focus-visible]:ring-3',
+        'hover:bg-accent/60 has-[:focus-visible]:ring-ring/50 relative flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors has-[:focus-visible]:ring-3',
         props.isSelected && 'border-foreground/50 bg-accent/60',
       )}
     >

@@ -8,8 +8,8 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 
-import { auditEventsKey } from '@/modules/activity/queries/use-audit-events-query'
 import { banUser } from '@/modules/users/api/ban-user'
+import { type UserCountFilter, countUsers } from '@/modules/users/api/count-users'
 import { deleteUser } from '@/modules/users/api/delete-user'
 import { endUserSessions } from '@/modules/users/api/end-user-sessions'
 import { listUsers, type UserListQuery } from '@/modules/users/api/list-users'
@@ -17,6 +17,7 @@ import { resendVerification } from '@/modules/users/api/resend-verification'
 import { resetUserMfa } from '@/modules/users/api/reset-user-mfa'
 import { unbanUser } from '@/modules/users/api/unban-user'
 import type { components } from '@/shared/api/api-schema'
+import { auditEventsKey } from '@/shared/lib/audit-events-key'
 
 export type UserAction =
   | 'ban'
@@ -42,17 +43,38 @@ export function usersQueryKey(projectId: string): readonly string[] {
 
 export const USERS_PAGE_SIZE = 50
 
+/** Shares one count between the navigation badge and the overview. */
+export function useUserCountQuery(projectId: string): UseQueryResult<number> {
+  return useQuery({
+    queryKey: [...usersQueryKey(projectId), 'count'],
+    queryFn: () => countUsers(projectId),
+  })
+}
+
+/** How many users match a search and status, for the list's range ("1–50 de 64"). */
+export function useMatchingUserCountQuery(
+  projectId: string,
+  filter: UserCountFilter,
+): UseQueryResult<number> {
+  return useQuery({
+    queryKey: [...usersQueryKey(projectId), 'count', filter.email, filter.status],
+    queryFn: () => countUsers(projectId, filter),
+    placeholderData: keepPreviousData,
+  })
+}
+
 export function useUsersQuery(
   projectId: string,
   query: UserListQuery,
-): UseQueryResult<components['schemas']['UserPage']> {
+): UseQueryResult<components['schemas']['UserCursorPageResponse']> {
   return useQuery({
     queryKey: [
       ...usersQueryKey(projectId),
       'list',
       query.email,
       query.status,
-      String(query.offset),
+      query.order,
+      query.before ?? null,
       String(query.limit),
     ],
     queryFn: () => listUsers(projectId, query),

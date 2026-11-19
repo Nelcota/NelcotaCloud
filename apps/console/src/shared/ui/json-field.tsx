@@ -9,6 +9,8 @@ type JsonFieldProps = {
   value: string
   error: string | null
   onChange: (value: string) => void
+  /** Leaving the field is when its content is checked (not halfway through typing). */
+  onBlur?: () => void
 }
 
 /** A labelled monospace text area for a JSON document, with its hint or its parse error. */
@@ -21,13 +23,14 @@ export function JsonField(props: JsonFieldProps): JSX.Element {
       <Label htmlFor={id}>{props.label}</Label>
       <textarea
         id={id}
-        rows={6}
+        rows={rowsFor(props.value)}
         spellCheck={false}
         aria-describedby={noteId}
         aria-invalid={props.error !== null}
         value={props.value}
         onChange={(event) => props.onChange(event.target.value)}
-        className="border-input focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:bg-input/30 min-h-28 w-full resize-y rounded-lg border bg-transparent px-3 py-2 font-mono text-sm outline-none focus-visible:ring-3 aria-invalid:ring-3"
+        onBlur={props.onBlur}
+        className="border-input focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:bg-input/30 w-full resize-y rounded-lg border bg-transparent px-3 py-2 font-mono text-sm outline-none focus-visible:ring-3 aria-invalid:ring-3"
       />
       <FieldNote id={noteId} hint={props.hint} error={props.error} />
     </div>
@@ -50,4 +53,14 @@ function FieldNote({ id, hint, error }: FieldNoteProps): JSX.Element {
       {hint}
     </p>
   )
+}
+
+/** Tall enough for the document plus a line to type in, within a sensible range. */
+const MIN_ROWS = 3
+const MAX_ROWS = 14
+
+function rowsFor(value: string): number {
+  const lines = value.split('\n').length + 1
+
+  return Math.min(MAX_ROWS, Math.max(MIN_ROWS, lines))
 }

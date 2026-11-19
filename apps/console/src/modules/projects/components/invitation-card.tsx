@@ -18,7 +18,7 @@ export function InvitationCard(props: InvitationCardProps): JSX.Element {
   const { invitation } = props
 
   return (
-    <article className="bg-card flex flex-col gap-4 rounded-xl border p-4 sm:flex-row sm:items-center">
+    <article className="surface flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
       <span className="bg-secondary flex size-11 shrink-0 items-center justify-center rounded-lg">
         <Letter className="text-muted-foreground size-5" />
       </span>

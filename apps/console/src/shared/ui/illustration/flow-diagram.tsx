@@ -79,7 +79,7 @@ function Link({ link }: { link: FlowLink | undefined }): JSX.Element | null {
   }
 
   return (
-    <div className="flex h-8 min-w-0 items-center gap-3 pl-5 @md:h-auto @md:min-w-8 @md:flex-1 @md:flex-col @md:gap-1 @md:pt-3 @md:pl-0">
+    <div className="flex h-8 min-w-0 items-center gap-3 pl-5 @md:h-auto @md:min-w-8 @md:flex-1 @md:flex-col @md:gap-3.5 @md:pt-3 @md:pl-0">
       <LinkLine state={link.state} />
       <span className="text-muted-foreground max-w-full truncate text-xs leading-4 @md:order-first @md:h-4">
         {link.label}
