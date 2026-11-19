@@ -28,7 +28,7 @@ type TeamTableProps = {
 /** Who has access. Below `xl` the role and date move under the email, so it stays readable. */
 export function TeamTable(props: TeamTableProps): JSX.Element {
   return (
-    <div className="bg-card overflow-hidden rounded-xl border">
+    <div className="surface overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow>

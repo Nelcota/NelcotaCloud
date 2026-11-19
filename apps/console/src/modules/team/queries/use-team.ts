@@ -13,13 +13,13 @@ import { leaveProject } from '@/modules/team/api/leave-project'
 import { readTeam } from '@/modules/team/api/read-team'
 import { transferOwnership } from '@/modules/team/api/transfer-ownership'
 import { removeMember } from '@/modules/team/api/remove-member'
-import { PROJECTS_QUERY_KEY } from '@/modules/projects/queries/use-projects'
+import { PROJECT_CATALOG_KEY, projectDataKey } from '@/modules/projects/queries/project-catalog-key'
 import type { components } from '@/shared/api/api-schema'
 
 type Schemas = components['schemas']
 
 function teamKey(projectId: string): readonly string[] {
-  return ['projects', projectId, 'team']
+  return [...projectDataKey(projectId), 'team']
 }
 
 export function useTeamQuery(projectId: string): UseQueryResult<Schemas['TeamView']> {
@@ -72,7 +72,7 @@ function useMembershipMutation<TVariables>(
   return useMutation({
     mutationFn: action,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY })
+      await queryClient.invalidateQueries({ queryKey: PROJECT_CATALOG_KEY, exact: true })
       await queryClient.invalidateQueries({ queryKey: teamKey(projectId) })
     },
   })
@@ -88,7 +88,15 @@ export function useChangeRoleMutation(
 
 /** After leaving, the project is gone from the list; the caller moves away from its pages. */
 export function useLeaveProjectMutation(projectId: string): UseMutationResult<void, Error, void> {
-  return useMembershipMutation(projectId, () => leaveProject(projectId))
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => leaveProject(projectId),
+    onSuccess: async () => {
+      queryClient.removeQueries({ queryKey: projectDataKey(projectId) })
+      await queryClient.invalidateQueries({ queryKey: PROJECT_CATALOG_KEY, exact: true })
+    },
+  })
 }
 
 /** The caller becomes a member, so the roles in the projects list change too. */

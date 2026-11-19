@@ -17,7 +17,7 @@ export function InviteIllustration(): JSX.Element {
     >
       <FlowDiagram
         nodes={[
-          { icon: Cloud, label: 'NelcotaCloud' },
+          { icon: Cloud, label: 'Nelcota' },
           { icon: User, label: 'Pessoa convidada', tone: 'focus' },
           { icon: UsersGroup, label: 'Equipe do projeto' },
         ]}
