@@ -1,29 +1,27 @@
 import { Link } from '@tanstack/react-router'
 import type { JSX } from 'react'
 
-import { AccountMenu } from '@/app/shell/account-menu'
-import { ApiStatusDot } from '@/app/shell/api-status-dot'
 import {
   type ConsoleSection,
   CONSOLE_SECTIONS,
   consoleSectionOf,
 } from '@/app/shell/console-sections'
 import { MfaReminderCard } from '@/app/shell/mfa-reminder-card'
+import { SIDEBAR_ITEM, SIDEBAR_ITEM_CURRENT } from '@/app/shell/sidebar-item'
 import { cn } from '@/shared/lib/class-names'
-import { LogoMark } from '@/shared/ui/logo-mark'
 
 type ConsoleSidebarProps = {
   pathname: string
   onNavigate?: () => void
 }
 
-/** The sidebar outside a project: the console's pages, a security reminder and the account. */
+/** The sidebar list outside a project: the console's pages and a security reminder. */
 export function ConsoleSidebar({ pathname, onNavigate }: ConsoleSidebarProps): JSX.Element {
   const currentSection = consoleSectionOf(pathname)
 
   return (
-    <nav aria-label="Console" className="flex h-full flex-col gap-3 overflow-y-auto px-3 py-4">
-      <Brand onNavigate={onNavigate} />
+    <nav aria-label="Conta" className="flex h-full flex-col gap-2 overflow-y-auto p-3">
+      <p className="flex min-h-12 items-center pr-10 pl-2 text-base font-bold md:pr-2">Nelcota</p>
       <ul className="grid gap-0.5">
         {CONSOLE_SECTIONS.map((section) => (
           <li key={section.path}>
@@ -37,28 +35,7 @@ export function ConsoleSidebar({ pathname, onNavigate }: ConsoleSidebarProps): J
       </ul>
       <div className="flex-1" />
       <MfaReminderCard onNavigate={onNavigate} />
-      <hr className="border-sidebar-border mx-3" />
-      <AccountMenu />
     </nav>
-  )
-}
-
-/** The logo where the project sidebar has its switcher, with the API status on its tile. */
-function Brand({ onNavigate }: { onNavigate?: () => void }): JSX.Element {
-  return (
-    <div className="flex min-h-15 items-center gap-3 p-2">
-      <span className="relative shrink-0">
-        <LogoMark className="size-11 rounded-lg p-2" />
-        <ApiStatusDot />
-      </span>
-      <Link
-        to="/"
-        onClick={onNavigate}
-        className="truncate rounded-md text-base font-semibold tracking-tight"
-      >
-        NelcotaCloud
-      </Link>
-    </div>
   )
 }
 
@@ -74,10 +51,7 @@ function SectionLink({ section, isCurrent, onNavigate }: SectionLinkProps): JSX.
       to={section.path}
       onClick={onNavigate}
       activeOptions={{ exact: true }}
-      className={cn(
-        'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors',
-        isCurrent && 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold',
-      )}
+      className={cn(SIDEBAR_ITEM, isCurrent && SIDEBAR_ITEM_CURRENT)}
     >
       <SectionIcon section={section} isCurrent={isCurrent} />
       <span className="min-w-0 flex-1 truncate">{section.label}</span>
@@ -90,5 +64,5 @@ function SectionIcon({ section, isCurrent }: Omit<SectionLinkProps, 'onNavigate'
     return <section.currentIcon className="text-primary-ink size-5 shrink-0" />
   }
 
-  return <section.icon className="size-5 shrink-0" />
+  return <section.icon className="text-muted-foreground size-5 shrink-0" />
 }

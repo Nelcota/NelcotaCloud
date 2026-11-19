@@ -1,20 +1,23 @@
 import { Outlet } from '@tanstack/react-router'
 import type { JSX, ReactNode } from 'react'
 
+import { NavRail } from '@/app/shell/nav-rail'
 import { SidebarContent } from '@/app/shell/sidebar-content'
 import { TopBar } from '@/app/shell/top-bar'
 import { UnverifiedEmailBanner } from '@/modules/account/components/unverified-email-banner'
 import { FlashNotice } from '@/shared/ui/flash-notice'
+import { PAGE_SCROLLER_ID } from '@/app/shell/page-scroller'
 
 /**
- * The signed-in console: the sidebar (the project's, or the console's outside a project) and
- * the page under a top bar. Below md the sidebar moves into the top bar's menu sheet.
+ * The signed-in console, laid out like a desktop app: an icon rail on the shell (the console and
+ * every project), then one rounded panel holding the sidebar list and the page. Below md the rail
+ * and the list move into the top bar's menu sheet.
  */
 export function AppShell(): JSX.Element {
   return (
-    <SidebarFrame>
+    <ShellFrame>
       <Page />
-    </SidebarFrame>
+    </ShellFrame>
   )
 }
 
@@ -23,9 +26,9 @@ function Page(): JSX.Element {
     <>
       <TopBar />
       <main className="flex-1 px-4 pt-6 pb-16 sm:px-6 sm:pt-8 lg:px-10">
-        <div className="mx-auto max-w-6xl">
+        {/* Pages read best in a column; a page of wide data (`data-wide-page`) takes the room. */}
+        <div className="mx-auto max-w-5xl has-[[data-wide-page]]:max-w-none">
           <UnverifiedEmailBanner />
-          <FlashNotice />
           <Outlet />
         </div>
       </main>
@@ -34,17 +37,30 @@ function Page(): JSX.Element {
 }
 
 /**
- * The page is a panel inset in the sidebar's color, with a rounded top-left
- * corner where it meets the sidebar. The panel scrolls on its own, so the corner stays put.
+ * The panel scrolls on its own, so the rail, the list and the rounded corners stay put. The
+ * scroller is positioned so absolute descendants (screen-reader-only text) scroll and clip with
+ * it instead of stretching the document below the panel. The flash notice sits beside the
+ * scroller, so it floats over the page's own column and stays put while the page scrolls.
  */
-function SidebarFrame({ children }: { children: ReactNode }): JSX.Element {
+function ShellFrame({ children }: { children: ReactNode }): JSX.Element {
   return (
-    <div className="bg-sidebar flex h-svh overflow-hidden">
-      <aside className="hidden h-full w-72 shrink-0 md:block">
-        <SidebarContent />
-      </aside>
-      <div className="bg-background md:border-foreground/10 flex min-w-0 flex-1 flex-col overflow-y-auto md:mt-5 md:rounded-tl-[1.75rem] md:border-t md:border-l">
-        {children}
+    <div className="bg-shell flex h-svh overflow-hidden md:py-2 md:pr-2">
+      <div className="hidden md:flex">
+        <NavRail />
+      </div>
+      <div className="bg-background flex min-w-0 flex-1 overflow-hidden md:rounded-2xl md:border">
+        <aside className="bg-sidebar hidden w-72 shrink-0 border-r md:block">
+          <SidebarContent />
+        </aside>
+        <div className="relative flex min-w-0 flex-1">
+          <div
+            data-scroll-restoration-id={PAGE_SCROLLER_ID}
+            className="relative flex min-w-0 flex-1 flex-col overflow-y-auto [scrollbar-gutter:stable]"
+          >
+            {children}
+          </div>
+          <FlashNotice />
+        </div>
       </div>
     </div>
   )

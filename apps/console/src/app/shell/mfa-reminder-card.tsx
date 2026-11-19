@@ -5,6 +5,7 @@ import type { JSX } from 'react'
 import { useState } from 'react'
 
 import { useMfaStatusQuery } from '@/modules/account/queries/use-mfa'
+import { useSession } from '@/shared/auth/use-session'
 import { buttonVariants } from '@/shared/ui/button-variants'
 
 const DISMISSED_KEY = 'nelcota-mfa-reminder-dismissed'
@@ -14,23 +15,22 @@ const DISMISSED_KEY = 'nelcota-mfa-reminder-dismissed'
  * Shown only while MFA is off; dismissing it is remembered on this browser.
  */
 export function MfaReminderCard({ onNavigate }: { onNavigate?: () => void }): JSX.Element | null {
-  const status = useMfaStatusQuery()
+  const session = useSession()
+  const status = useMfaStatusQuery(false)
   const [isDismissed, setIsDismissed] = useState(readDismissed)
+  const mfaEnabled = status.data?.totp_enabled ?? session?.user.mfa_enabled
 
   function dismiss(): void {
     setIsDismissed(true)
     writeDismissed()
   }
 
-  if (isDismissed || status.data?.totp_enabled !== false) {
+  if (isDismissed || mfaEnabled !== false) {
     return null
   }
 
   return (
-    <section
-      aria-labelledby="mfa-reminder-title"
-      className="bg-card relative rounded-xl border p-3"
-    >
+    <section aria-labelledby="mfa-reminder-title" className="surface relative p-3">
       <span className="rounded-md bg-amber-500/15 px-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
         Recomendado
       </span>

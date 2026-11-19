@@ -1,39 +1,48 @@
 import type { JSX, ReactNode } from 'react'
+import { useEffect } from 'react'
 
-import { LogoMark } from '@/shared/ui/logo-mark'
+import { AuthMascotFan } from '@/modules/account/components/auth-mascots'
+import { type StatusMark, StatusIcon } from '@/shared/ui/status-icon'
 
 type StatusScreenProps = {
   title: string
+  /** The browser tab's name, short: "Página não encontrada", "Erro". */
+  tabTitle: string
+  /** The icon above the title: what kind of trouble this is. */
+  mark: StatusMark
   description: ReactNode
   actions: ReactNode
-  /** The evidence beside the message: the error report, the missing status code. */
-  aside: ReactNode
+  /** What a support request needs, folded under the actions; most people never open it. */
+  details?: ReactNode
 }
 
-const ENTER = 'animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out'
-
 /**
- * A full-screen message (an error, a missing page). It covers the screen because the router
- * renders it inside whichever layout the route belongs to.
+ * A full-screen message (an error, a missing page), in the same frame as the login: the shell,
+ * the mascots and one centered column. It covers the screen because the router renders it
+ * inside whichever layout the route belongs to.
  */
 export function StatusScreen(props: StatusScreenProps): JSX.Element {
+  const tabTitle = props.tabTitle
+
+  useEffect(() => {
+    document.title = `${tabTitle} · Nelcota`
+  }, [tabTitle])
+
   return (
-    <div className="bg-background fixed inset-0 z-50 flex flex-col overflow-y-auto">
-      <header className="flex h-14 shrink-0 items-center gap-2.5 border-b px-4 sm:px-6">
-        <LogoMark className="size-7" />
-        <span className="text-sm font-semibold tracking-tight">NelcotaCloud</span>
-      </header>
-      <main className="mx-auto grid w-full max-w-5xl flex-1 content-center gap-12 px-4 py-12 sm:px-6 lg:grid-cols-[1fr_1.1fr] lg:items-center lg:gap-16">
-        <section className={ENTER}>
-          <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-5xl sm:leading-tight">
-            {props.title}
-          </h1>
-          <p className="text-muted-foreground mt-4 max-w-md text-sm text-pretty">
-            {props.description}
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">{props.actions}</div>
-        </section>
-        <div className={`${ENTER} delay-150`}>{props.aside}</div>
+    <div className="bg-shell fixed inset-0 z-50 flex overflow-y-auto md:p-2">
+      <main className="bg-background flex min-h-full min-w-0 flex-1 flex-col items-center justify-center px-4 py-12 sm:px-6 md:rounded-2xl md:border">
+        <div className="grid w-full max-w-sm gap-8">
+          <AuthMascotFan isCalm={props.mark.tone === 'danger'} />
+          <header className="grid justify-items-center gap-2 text-center">
+            <StatusIcon mark={props.mark} />
+            <h1 className="text-3xl leading-tight text-balance sm:text-4xl">{props.title}</h1>
+            <p className="text-muted-foreground text-base text-pretty sm:text-lg">
+              {props.description}
+            </p>
+          </header>
+          <div className="grid gap-3 [&>*]:h-11 [&>*]:w-full [&>*]:text-base">{props.actions}</div>
+          {props.details}
+        </div>
       </main>
     </div>
   )

@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 
-import { useUsersQuery } from '@/modules/users/queries/use-users'
+import { useUserCountQuery } from '@/modules/users/queries/use-users'
 import { cn } from '@/shared/lib/class-names'
 import { badgeVariants } from '@/shared/ui/badge-variants'
 
@@ -18,10 +18,8 @@ export function SectionCount({ projectId, segment }: SectionCountProps): JSX.Ele
   return <UsersCount projectId={projectId} />
 }
 
-/** The project's user total, from a one-row page so the sidebar stays cheap to load. */
 function UsersCount({ projectId }: { projectId: string }): JSX.Element | null {
-  const users = useUsersQuery(projectId, { email: '', status: 'all', offset: 0, limit: 1 })
-  const total = users.data?.total
+  const total = useUserCountQuery(projectId).data
 
   if (total === undefined || total === 0) {
     return null
