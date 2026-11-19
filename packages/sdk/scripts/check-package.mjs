@@ -13,11 +13,13 @@ if (npm === undefined) {
 
 using consumer = mkdtempDisposableSync(join(tmpdir(), 'nelcota-sdk-consumer-'))
 const folder = consumer.path
-const [pack] = JSON.parse(
-  execFileSync(process.execPath, [npm, 'pack', '--json', '--pack-destination', folder], {
-    cwd: root,
-    encoding: 'utf8',
-  }),
+const pack = packedPackage(
+  JSON.parse(
+    execFileSync(process.execPath, [npm, 'pack', '--json', '--pack-destination', folder], {
+      cwd: root,
+      encoding: 'utf8',
+    }),
+  ),
 )
 
 writeFileSync(join(folder, 'package.json'), JSON.stringify({ private: true, type: 'module' }))
@@ -73,3 +75,22 @@ execFileSync(
   { cwd: folder, stdio: 'inherit' },
 )
 execFileSync(process.execPath, [entry], { cwd: folder, stdio: 'inherit' })
+
+/** npm 12 keys the pack report by package name; earlier versions return a list. */
+function packedPackage(report) {
+  const packs = packsOf(report)
+
+  if (packs.length !== 1 || typeof packs[0]?.filename !== 'string') {
+    throw new Error('npm pack did not report exactly one package.')
+  }
+
+  return packs[0]
+}
+
+function packsOf(report) {
+  if (Array.isArray(report)) {
+    return report
+  }
+
+  return Object.values(report)
+}
