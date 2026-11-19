@@ -4,8 +4,8 @@ use lettre::transport::smtp::authentication::Credentials;
 use lettre::transport::smtp::client::{Tls, TlsParameters};
 use lettre::transport::smtp::extension::ClientId;
 use lettre::{AsyncSmtpTransport, Tokio1Executor};
-use oauth2::url::Url;
 use percent_encoding::percent_decode_str;
+use url::Url;
 
 use crate::modules::tenants::smtp::smtp_endpoint::{SmtpEndpoint, SmtpTlsMode};
 use crate::shared::email::email_sender::{EmailError, EmailSender};
@@ -67,8 +67,9 @@ fn tls_for(endpoint: &SmtpEndpoint) -> Result<Tls, PinnedSenderError> {
 
 /// `user:password@` in the URL, percent-decoded; none without a password.
 fn credentials_in(url: &Url) -> Result<Option<Credentials>, PinnedSenderError> {
-    let Some(password) = url.password() else {
-        return Ok(None);
+    let password = match url.password() {
+        Some(password) => password,
+        None => return Ok(None),
     };
     let username = percent_decoded(url.username())?;
     let password = percent_decoded(password)?;

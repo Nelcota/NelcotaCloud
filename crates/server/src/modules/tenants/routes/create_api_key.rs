@@ -2,6 +2,7 @@ use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
 use serde::Deserialize;
+use serde_json::json;
 use utoipa::ToSchema;
 
 use crate::app_state::AppState;
@@ -12,6 +13,8 @@ use crate::modules::tenants::api_keys::api_key_issuance::{
 use crate::modules::tenants::api_keys::api_key_kind::ApiKeyKind;
 use crate::modules::tenants::api_keys::api_key_limit::{MAX_ACTIVE_API_KEYS, has_room_for_api_key};
 use crate::modules::tenants::api_keys::api_key_repository::ApiKeyOwner;
+use crate::modules::tenants::audit::audit_action::AuditAction;
+use crate::modules::tenants::audit::project_change::{ProjectChange, record_project_change};
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::validated_json::ValidatedJson;
 
@@ -61,6 +64,13 @@ pub async fn create_api_key(
     };
     let issued = issue_api_key(&mut transaction, request).await?;
     transaction.commit().await?;
+    let change = ProjectChange {
+        tenant_id: admin.tenant_id,
+        author: admin.author(),
+        action: AuditAction::ApiKeyCreated,
+        details: json!({ "key_id": issued.id, "kind": issued.kind, "name": issued.name }),
+    };
+    record_project_change(&state.tenant_pools, change).await;
 
     Ok((StatusCode::CREATED, Json(issued)))
 }

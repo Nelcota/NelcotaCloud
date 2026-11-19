@@ -1,4 +1,4 @@
-use oauth2::url::Url;
+use url::Url;
 
 const ALLOWED_SCHEMES: [&str; 2] = ["http", "https"];
 const TOKEN_FRAGMENT_PARAMETER: &str = "token=";
@@ -56,13 +56,26 @@ impl SiteUrl {
 
         link.into()
     }
+
+    /// A page of the site with query parameters, each one percent-encoded.
+    pub fn link_with_query(&self, path: &str, parameters: &[(&str, &str)]) -> String {
+        let mut link = self.0.clone();
+        let base_path = link.path().trim_end_matches('/').to_owned();
+        link.set_path(&format!("{base_path}/{path}"));
+        link.set_fragment(None);
+        link.set_query(None);
+        link.query_pairs_mut().extend_pairs(parameters);
+
+        link.into()
+    }
 }
 
 /// `/app/x` is under `/app`, `/application` is not; everything is under `/`.
 fn is_under_path(target_path: &str, site_path: &str) -> bool {
     let site_path = site_path.trim_end_matches('/');
-    let Some(rest) = target_path.strip_prefix(site_path) else {
-        return false;
+    let rest = match target_path.strip_prefix(site_path) {
+        Some(rest) => rest,
+        None => return false,
     };
 
     rest.is_empty() || rest.starts_with('/')
@@ -96,6 +109,20 @@ mod tests {
         assert_eq!(
             link,
             "https://app.test/base/auth/verify-email#token=abc%20123"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn builds_query_links_under_the_site_path() -> Result<(), InvalidSiteUrl> {
+        let site_url = SiteUrl::parse("https://console.test/app/?old=1#frag")?;
+
+        let link =
+            site_url.link_with_query("login", &[("convite", "1"), ("projeto", "Loja & Cia")]);
+
+        assert_eq!(
+            link,
+            "https://console.test/app/login?convite=1&projeto=Loja+%26+Cia"
         );
         Ok(())
     }

@@ -13,6 +13,7 @@ pub struct TenantSettingsUpdate<'a> {
     pub name: Option<&'a str>,
     pub site_url: Option<&'a str>,
     pub require_email_verification: Option<bool>,
+    pub mascot_id: Option<i16>,
 }
 
 /// Validates the sent fields and stores them, returning the settings now in effect.
@@ -28,11 +29,11 @@ pub async fn update_settings(
         name,
         site_url: site_url.as_ref(),
         require_email_verification: update.require_email_verification,
+        mascot_id: update.mascot_id,
     };
     let settings = update_tenant_settings(control_plane_pool, tenant_id, change).await?;
-    let Some(settings) = settings else {
-        return Err(ApiError::internal(format!("tenant {tenant_id} not found")));
-    };
+    let settings =
+        settings.ok_or_else(|| ApiError::internal(format!("tenant {tenant_id} not found")))?;
 
     Ok(settings)
 }

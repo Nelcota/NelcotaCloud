@@ -1,6 +1,6 @@
 use sqlx::AssertSqlSafe;
 
-use crate::modules::tenants::database::database_roles::tenant_authenticator_role;
+use crate::modules::tenants::postgres::database_roles::tenant_authenticator_role;
 use crate::modules::tenants::provisioning::tenant_slug::TenantSlug;
 
 /// The request roles exist once per Postgres server (privileges are granted inside each tenant
@@ -12,7 +12,7 @@ DO $roles$
 DECLARE
     role_name text;
 BEGIN
-    FOREACH role_name IN ARRAY ARRAY['nelcota_anon', 'nelcota_authenticated'] LOOP
+    FOREACH role_name IN ARRAY ARRAY['nelcota_anon', 'nelcota_authenticated', 'nelcota_migrator'] LOOP
         IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = role_name) THEN
             EXECUTE format('CREATE ROLE %I NOLOGIN NOINHERIT', role_name);
         END IF;
@@ -49,12 +49,20 @@ BEGIN
 END
 $role$;
 ALTER ROLE \"{role}\" WITH LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION
-    NOBYPASSRLS PASSWORD '{password}';
+    NOBYPASSRLS CONNECTION LIMIT 5 PASSWORD '{password}';
 ALTER ROLE \"{role}\" RESET ALL;
 GRANT nelcota_anon, nelcota_authenticated, nelcota_service, nelcota_developer TO \"{role}\";
 REVOKE ALL ON DATABASE \"{database}\" FROM PUBLIC;
 GRANT CONNECT ON DATABASE \"{database}\" TO \"{role}\";
 GRANT TEMPORARY ON DATABASE \"{database}\" TO nelcota_developer;
+DO $runtime$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nelcota_tenant_runtime') THEN
+        GRANT CONNECT ON DATABASE \"{database}\" TO nelcota_tenant_runtime;
+        GRANT nelcota_migrator TO nelcota_tenant_runtime WITH INHERIT FALSE, SET TRUE;
+    END IF;
+END
+$runtime$;
 "
     ))
 }

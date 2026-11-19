@@ -1,4 +1,5 @@
 pub mod provisioning_error;
+pub mod rate_limit_quotas;
 pub mod tenant_deletion;
 pub mod tenant_provisioner;
 pub mod tenant_registration;

@@ -44,6 +44,32 @@ pub async fn find_tenant_slug(
         .await
 }
 
+pub async fn tenant_ids_after(
+    pool: &PgPool,
+    cursor: Option<Uuid>,
+    limit: i64,
+) -> Result<Vec<Uuid>, sqlx::Error> {
+    sqlx::query_scalar(
+        "SELECT id FROM tenants WHERE ($1::uuid IS NULL OR id > $1) ORDER BY id LIMIT $2",
+    )
+    .bind(cursor)
+    .bind(limit)
+    .fetch_all(pool)
+    .await
+}
+
+pub async fn tenant_slugs_after(
+    pool: &PgPool,
+    after: &str,
+    limit: i64,
+) -> Result<Vec<String>, sqlx::Error> {
+    sqlx::query_scalar("SELECT slug FROM tenants WHERE slug > $1 ORDER BY slug LIMIT $2")
+        .bind(after)
+        .bind(limit)
+        .fetch_all(pool)
+        .await
+}
+
 pub async fn find_tenant_id_by_slug(
     pool: &PgPool,
     slug: &TenantSlug,
@@ -58,10 +84,13 @@ pub async fn slug_exists<'e>(
     executor: impl PgExecutor<'e>,
     slug: &TenantSlug,
 ) -> Result<bool, sqlx::Error> {
-    sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM tenants WHERE slug = $1)")
-        .bind(slug.as_str())
-        .fetch_one(executor)
-        .await
+    sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM tenants WHERE slug = $1) OR \
+         EXISTS (SELECT 1 FROM pending_tenant_deletions WHERE slug = $1)",
+    )
+    .bind(slug.as_str())
+    .fetch_one(executor)
+    .await
 }
 
 /// Serializes provisioning of one slug across requests and server instances until the

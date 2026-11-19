@@ -6,10 +6,10 @@ use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
 use uuid::Uuid;
 
-use crate::modules::tenants::database::tenant_database_server::{
+use crate::modules::tenants::postgres::tenant_database_server::{
     TenantDatabaseError, TenantDatabaseServer,
 };
-use crate::modules::tenants::database::tenant_migration::{
+use crate::modules::tenants::postgres::tenant_migration::{
     TenantMigrationError, migrate_tenant_database,
 };
 use crate::modules::tenants::provisioning::tenant_repository::find_tenant_slug;
@@ -19,9 +19,9 @@ use crate::modules::tenants::provisioning::tenant_slug::{InvalidTenantSlug, Tena
 const MAX_CONNECTIONS_PER_TENANT: u32 = 5;
 /// Idle tenants give their connections back quickly: the sum of every tenant's pool must stay
 /// under the Postgres server's `max_connections`.
-const TENANT_POOL_IDLE_TIMEOUT: Duration = Duration::from_secs(60);
+const TENANT_POOL_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
 /// Data API connections are given back sooner: project traffic comes in bursts.
-const DATA_API_POOL_IDLE_TIMEOUT: Duration = Duration::from_secs(15);
+const DATA_API_POOL_IDLE_TIMEOUT: Duration = Duration::from_secs(5);
 /// A tenant database that does not answer fails its own requests quickly.
 const TENANT_POOL_ACQUIRE_TIMEOUT: Duration = Duration::from_secs(5);
 /// Pools of tenants without requests for this long are dropped, closing their connections.
@@ -56,6 +56,13 @@ pub struct TenantPoolRegistry {
     tenant_database_base_url: String,
     pools: Cache<Uuid, PgPool>,
     data_api_pools: Cache<Uuid, PgPool>,
+    mode: TenantPoolMode,
+}
+
+enum TenantPoolMode {
+    Legacy,
+    ManagedApi { runtime_password: String },
+    ManagedWorker,
 }
 
 impl TenantPoolRegistry {
@@ -65,13 +72,36 @@ impl TenantPoolRegistry {
             tenant_database_base_url,
             pools: pool_cache(),
             data_api_pools: pool_cache(),
+            mode: TenantPoolMode::Legacy,
         }
+    }
+
+    pub fn with_runtime_password(mut self, runtime_password: String) -> Self {
+        self.mode = TenantPoolMode::ManagedApi { runtime_password };
+        self
+    }
+
+    pub fn with_managed_schema(mut self) -> Self {
+        self.mode = TenantPoolMode::ManagedWorker;
+        self
     }
 
     pub async fn pool_for(&self, tenant_id: Uuid) -> Result<PgPool, Arc<TenantPoolError>> {
         self.pools
             .try_get_with(tenant_id, self.open_pool(tenant_id))
             .await
+    }
+
+    pub async fn audit_maintenance_pool(
+        &self,
+        tenant_id: Uuid,
+    ) -> Result<Option<PgPool>, Arc<TenantPoolError>> {
+        if matches!(self.mode, TenantPoolMode::Legacy) {
+            // The maintenance scan must not start a migration in a cold development database.
+            return Ok(self.pools.get(&tenant_id).await);
+        }
+
+        self.pool_for(tenant_id).await.map(Some)
     }
 
     /// Connections as the authenticator role, on a database already migrated.
@@ -85,10 +115,17 @@ impl TenantPoolRegistry {
 
     async fn open_pool(&self, tenant_id: Uuid) -> Result<PgPool, TenantPoolError> {
         let slug = self.tenant_slug(tenant_id).await?;
-        let options = self.database_server().auth_options(&slug)?;
+        let server = self.database_server();
+        let options = match &self.mode {
+            TenantPoolMode::ManagedApi { runtime_password } => {
+                server.runtime_auth_options(&slug, runtime_password)?
+            }
+            _ => server.auth_options(&slug)?,
+        };
         let pool = tenant_pool_options().connect_lazy_with(options);
-        // Brings databases of tenants created before the latest migrations up to date.
-        migrate_tenant_database(&pool).await?;
+        if matches!(self.mode, TenantPoolMode::Legacy) {
+            migrate_tenant_database(&pool).await?;
+        }
 
         Ok(pool)
     }
@@ -96,7 +133,9 @@ impl TenantPoolRegistry {
     async fn open_data_api_pool(&self, tenant_id: Uuid) -> Result<PgPool, TenantPoolError> {
         let slug = self.tenant_slug(tenant_id).await?;
         let database_server = self.database_server();
-        database_server.ensure_tenant_role(&slug).await?;
+        if matches!(self.mode, TenantPoolMode::Legacy) {
+            database_server.ensure_tenant_role(&slug).await?;
+        }
         let options = database_server.data_api_options(&slug)?;
 
         Ok(tenant_pool_options()
@@ -106,16 +145,19 @@ impl TenantPoolRegistry {
 
     async fn tenant_slug(&self, tenant_id: Uuid) -> Result<TenantSlug, TenantPoolError> {
         let raw_slug = find_tenant_slug(&self.control_plane_pool, tenant_id).await?;
-        let Some(raw_slug) = raw_slug else {
-            return Err(TenantPoolError::TenantNotFound(tenant_id));
-        };
+        let raw_slug = raw_slug.ok_or(TenantPoolError::TenantNotFound(tenant_id))?;
 
         Ok(TenantSlug::parse(&raw_slug)?)
     }
 
     /// The server that holds every tenant database.
     pub fn database_server(&self) -> TenantDatabaseServer<'_> {
-        TenantDatabaseServer::new(&self.tenant_database_base_url)
+        let server = TenantDatabaseServer::new(&self.tenant_database_base_url);
+        if matches!(self.mode, TenantPoolMode::ManagedApi { .. }) {
+            return server.with_runtime_role();
+        }
+
+        server
     }
 
     /// Closes and forgets the tenant's pool, before its database is dropped.
@@ -142,4 +184,5 @@ fn tenant_pool_options() -> PgPoolOptions {
         .max_connections(MAX_CONNECTIONS_PER_TENANT)
         .idle_timeout(TENANT_POOL_IDLE_TIMEOUT)
         .acquire_timeout(TENANT_POOL_ACQUIRE_TIMEOUT)
+        .acquire_slow_threshold(Duration::from_millis(100))
 }

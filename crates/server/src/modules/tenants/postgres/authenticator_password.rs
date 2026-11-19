@@ -1,6 +1,6 @@
 use hmac::{Hmac, KeyInit, Mac};
-use oauth2::url::Url;
 use sha2::Sha256;
+use url::Url;
 
 use crate::modules::tenants::provisioning::tenant_slug::TenantSlug;
 use crate::shared::crypto::hex_encoding::encode_hex;
@@ -34,12 +34,10 @@ pub fn authenticator_password(
 
 fn server_password(tenant_database_base_url: &str) -> Result<String, MissingServerPassword> {
     let url = Url::parse(tenant_database_base_url.trim()).map_err(|_| MissingServerPassword)?;
-    let Some(password) = url
+    let password = url
         .password()
         .filter(|password| password.is_empty() == false)
-    else {
-        return Err(MissingServerPassword);
-    };
+        .ok_or(MissingServerPassword)?;
 
     Ok(password.to_owned())
 }

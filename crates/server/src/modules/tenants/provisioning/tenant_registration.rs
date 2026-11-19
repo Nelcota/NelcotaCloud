@@ -5,7 +5,7 @@ use crate::modules::tenants::api_keys::api_key_issuance::{ApiKeyRequest, issue_a
 use crate::modules::tenants::api_keys::api_key_kind::ApiKeyKind;
 use crate::modules::tenants::api_keys::api_key_repository::ApiKeyOwner;
 use crate::modules::tenants::platform::membership_repository::{
-    NewMembership, count_owned_projects, insert_membership,
+    MAX_OWNED_PROJECTS, NewMembership, can_own_another_project, insert_membership,
 };
 use crate::modules::tenants::platform::project_role::ProjectRole;
 use crate::modules::tenants::provisioning::provisioning_error::ProvisioningError;
@@ -18,9 +18,6 @@ use crate::modules::tenants::signing_keys::signing_key_repository::{
     SealedSigningKey, insert_active_signing_key,
 };
 use crate::shared::crypto::secret_box::SecretBox;
-
-/// Each project is a database, so one account cannot create them without bound.
-pub const MAX_OWNED_PROJECTS: i64 = 10;
 
 /// Writes the tenant row, its signing key and both API keys inside the caller's transaction,
 /// so they become visible together, or not at all.
@@ -82,11 +79,12 @@ async fn add_owner(
     tenant_id: Uuid,
     owner: Option<&ProjectOwner>,
 ) -> Result<(), ProvisioningError> {
-    let Some(owner) = owner else {
-        return Ok(());
+    let owner = match owner {
+        Some(owner) => owner,
+        None => return Ok(()),
     };
 
-    if count_owned_projects(transaction, owner.account_id).await? >= MAX_OWNED_PROJECTS {
+    if can_own_another_project(transaction, owner.account_id).await? == false {
         return Err(ProvisioningError::ProjectLimitReached(MAX_OWNED_PROJECTS));
     }
 

@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::modules::tenants::api_keys::api_key_kind::ApiKeyKind;
+use crate::modules::tenants::api_keys::api_key_repository::find_active_api_key;
 use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::shared::crypto::opaque_token::hash_opaque_token;
 use crate::shared::http::api_error::ApiError;
@@ -23,9 +24,9 @@ impl FromRequestParts<AppState> for ApiKeyTenant {
 
     async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, ApiError> {
         let headers = &parts.headers;
-        let Some(header_value) = headers.get(API_KEY_HEADER) else {
-            return Err(ApiError::from(TenantsRejection::MissingApiKey));
-        };
+        let header_value = headers
+            .get(API_KEY_HEADER)
+            .ok_or(TenantsRejection::MissingApiKey)?;
         let api_key = header_value
             .to_str()
             .map_err(|_| ApiError::from(TenantsRejection::InvalidApiKey))?;
@@ -38,15 +39,13 @@ impl ApiKeyTenant {
     /// Also used directly by routes reached through browser redirects, which cannot send headers.
     pub async fn resolve(state: &AppState, api_key: &str) -> Result<Self, ApiError> {
         let key_hash = hash_opaque_token(api_key.trim());
-        let owner = state
-            .api_keys
-            .owner_of(key_hash)
+        let active_key = find_active_api_key(&state.control_plane_pool, &key_hash)
             .await
             .map_err(ApiError::internal)?;
-        let Some(owner) = owner else {
-            return Err(ApiError::from(TenantsRejection::InvalidApiKey));
-        };
+        let active_key = active_key.ok_or(TenantsRejection::InvalidApiKey)?;
+        let owner = active_key.owner;
         record_tenant(owner.tenant_id);
+        state.api_key_usage.note_use(active_key.id).await;
 
         Ok(Self {
             tenant_id: owner.tenant_id,

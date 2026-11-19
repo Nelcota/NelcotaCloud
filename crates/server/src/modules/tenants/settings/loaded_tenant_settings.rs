@@ -17,9 +17,8 @@ pub async fn load_tenant_settings(
     tenant_id: Uuid,
 ) -> Result<LoadedTenantSettings, ApiError> {
     let settings = find_tenant_settings(control_plane_pool, tenant_id).await?;
-    let Some(settings) = settings else {
-        return Err(ApiError::internal(format!("tenant {tenant_id} not found")));
-    };
+    let settings =
+        settings.ok_or_else(|| ApiError::internal(format!("tenant {tenant_id} not found")))?;
     let site_url = SiteUrl::parse(&settings.site_url).map_err(ApiError::internal)?;
 
     Ok(LoadedTenantSettings {

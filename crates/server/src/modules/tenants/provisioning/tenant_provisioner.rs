@@ -1,7 +1,10 @@
+use std::time::Duration;
+
 use sqlx::{PgConnection, PgPool};
+use tokio::sync::Semaphore;
 use uuid::Uuid;
 
-use crate::modules::tenants::database::tenant_database_server::{
+use crate::modules::tenants::postgres::tenant_database_server::{
     TenantDatabaseError, TenantDatabaseServer,
 };
 use crate::modules::tenants::provisioning::provisioning_error::ProvisioningError;
@@ -11,8 +14,12 @@ use crate::modules::tenants::provisioning::tenant_slug::TenantSlug;
 use crate::modules::tenants::settings::site_url::SiteUrl;
 use crate::shared::crypto::secret_box::SecretBox;
 
+pub const MAX_CONCURRENT_PROVISIONING: usize = 2;
+const PROVISIONING_WAIT: Duration = Duration::from_secs(2);
+
 pub struct TenantProvisioner<'a> {
     pub control_plane_pool: &'a PgPool,
+    pub slots: &'a Semaphore,
     pub secret_box: &'a SecretBox,
     pub database_server: TenantDatabaseServer<'a>,
 }
@@ -51,14 +58,21 @@ impl TenantProvisioner<'_> {
     ) -> Result<ProvisionedTenant, ProvisioningError> {
         let database_server = &self.database_server;
         let slug = request.slug.clone();
+        let _slot = tokio::time::timeout(PROVISIONING_WAIT, self.slots.acquire())
+            .await
+            .map_err(|_| ProvisioningError::Busy)?
+            .map_err(|_| ProvisioningError::Busy)?;
         let mut transaction = self.control_plane_pool.begin().await?;
         claim_slug(&mut transaction, &slug).await?;
         let provisioning = self
             .create_and_register(database_server, &mut transaction, request)
             .await;
-        let Ok(provisioned) = provisioning else {
-            database_server.drop_database(&slug).await;
-            return provisioning;
+        let provisioned = match provisioning {
+            Ok(provisioned) => provisioned,
+            Err(error) => {
+                database_server.drop_database(&slug).await;
+                return Err(error);
+            }
         };
 
         if let Err(error) = transaction.commit().await {
@@ -127,9 +141,10 @@ async fn create_fresh_database(
     slug: &TenantSlug,
 ) -> Result<(), ProvisioningError> {
     let creation = database_server.create_database(slug).await;
-    let Err(TenantDatabaseError::AlreadyExists) = creation else {
-        return Ok(creation?);
-    };
+
+    if matches!(creation, Err(TenantDatabaseError::AlreadyExists)) == false {
+        return creation.map_err(Into::into);
+    }
 
     tracing::warn!(slug = slug.as_str(), "replacing orphan tenant database");
     database_server.drop_database(slug).await;

@@ -1,11 +1,14 @@
 use axum::Json;
 use axum::extract::State;
 use serde::Serialize;
+use serde_json::json;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::modules::tenants::access::tenant_admin::TenantAdmin;
+use crate::modules::tenants::audit::audit_action::AuditAction;
+use crate::modules::tenants::audit::project_change::{ProjectChange, record_project_change};
 use crate::modules::tenants::signing_keys::signing_key_repository::SigningKeyStoreError;
 use crate::modules::tenants::signing_keys::signing_key_rotation::rotate_signing_key as rotate;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
@@ -41,6 +44,13 @@ pub async fn rotate_signing_key(
             other => ApiError::internal(other),
         })?;
     state.signing_keys.forget(tenant_id);
+    let change = ProjectChange {
+        tenant_id: admin.tenant_id,
+        author: admin.author(),
+        action: AuditAction::SettingsChanged,
+        details: json!({ "section": "signing_key", "key_id": key_id }),
+    };
+    record_project_change(&state.tenant_pools, change).await;
 
     Ok(Json(RotatedSigningKey { key_id }))
 }

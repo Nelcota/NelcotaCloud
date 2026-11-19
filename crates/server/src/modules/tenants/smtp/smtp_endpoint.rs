@@ -1,4 +1,4 @@
-use oauth2::url::Url;
+use url::Url;
 
 const SMTP_SCHEME: &str = "smtp";
 const SMTPS_SCHEME: &str = "smtps";
@@ -56,12 +56,10 @@ impl SmtpEndpoint {
             _ => return Err(SmtpEndpointError::UnsupportedScheme),
         };
         // `smtps:///` has an empty host rather than none.
-        let Some(host) = url
+        let host = url
             .host_str()
             .filter(|host| host.trim().is_empty() == false)
-        else {
-            return Err(SmtpEndpointError::MissingHost);
-        };
+            .ok_or(SmtpEndpointError::MissingHost)?;
 
         // The sender would connect without credentials and every email would fail unseen.
         if url.username().is_empty() == false && url.password().is_none() {

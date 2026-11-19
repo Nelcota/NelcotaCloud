@@ -38,7 +38,7 @@ pub async fn create_project(
     // Keyed by IP alone, so new accounts from the same client share the limit.
     state
         .rate_limits
-        .project_creation
+        .project_creation_per_client_ip
         .check(Uuid::nil(), client_ip)?;
     state
         .rate_limits

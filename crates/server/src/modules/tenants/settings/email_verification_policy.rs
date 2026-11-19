@@ -12,9 +12,8 @@ pub async fn requires_email_verification(
     tenant_id: Uuid,
 ) -> Result<bool, ApiError> {
     let requirement = find_require_email_verification(control_plane_pool, tenant_id).await?;
-    let Some(requirement) = requirement else {
-        return Err(ApiError::internal(format!("tenant {tenant_id} not found")));
-    };
+    let requirement =
+        requirement.ok_or_else(|| ApiError::internal(format!("tenant {tenant_id} not found")))?;
 
     Ok(requirement)
 }

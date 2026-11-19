@@ -8,7 +8,7 @@ use crate::modules::tenants::settings::tenant_settings::TenantSettings;
 /// time with `concat!` instead of `format!` on every call.
 macro_rules! settings_columns {
     () => {
-        "name, site_url, require_email_verification"
+        "name, site_url, require_email_verification, mascot_id"
     };
 }
 
@@ -17,6 +17,7 @@ pub struct TenantSettingsChange<'a> {
     pub name: Option<&'a str>,
     pub site_url: Option<&'a SiteUrl>,
     pub require_email_verification: Option<bool>,
+    pub mascot_id: Option<i16>,
 }
 
 pub async fn find_tenant_settings(
@@ -40,7 +41,8 @@ pub async fn update_tenant_settings(
 ) -> Result<Option<TenantSettings>, sqlx::Error> {
     sqlx::query_as(concat!(
         "UPDATE tenants SET name = COALESCE($2, name), site_url = COALESCE($3, site_url), \
-         require_email_verification = COALESCE($4, require_email_verification) \
+         require_email_verification = COALESCE($4, require_email_verification), \
+         mascot_id = COALESCE($5, mascot_id) \
          WHERE id = $1 RETURNING ",
         settings_columns!()
     ))
@@ -48,6 +50,7 @@ pub async fn update_tenant_settings(
     .bind(change.name)
     .bind(change.site_url.map(SiteUrl::as_str))
     .bind(change.require_email_verification)
+    .bind(change.mascot_id)
     .fetch_optional(pool)
     .await
 }

@@ -4,14 +4,17 @@ use sqlx::error::DatabaseError;
 use sqlx::postgres::{PgConnectOptions, PgConnection, PgPoolOptions};
 use sqlx::{AssertSqlSafe, Connection};
 
-use crate::modules::tenants::database::authenticator_password::{
+use crate::modules::tenants::postgres::authenticator_password::{
     MissingServerPassword, authenticator_password,
 };
-use crate::modules::tenants::database::database_role_setup::{
+use crate::modules::tenants::postgres::database_role_setup::{
     CREATE_SHARED_ROLES, drop_tenant_role_statement, tenant_role_statements,
 };
-use crate::modules::tenants::database::database_roles::tenant_authenticator_role;
-use crate::modules::tenants::database::tenant_migration::{
+use crate::modules::tenants::postgres::database_roles::tenant_authenticator_role;
+use crate::modules::tenants::postgres::runtime_roles::{
+    TENANT_RUNTIME_ROLE, configure_runtime_roles, grant_tenant_runtime,
+};
+use crate::modules::tenants::postgres::tenant_migration::{
     TenantMigrationError, migrate_tenant_database,
 };
 use crate::modules::tenants::provisioning::tenant_slug::TenantSlug;
@@ -41,13 +44,36 @@ pub enum TenantDatabaseError {
 /// The Postgres server where tenant databases live: creates, migrates and drops them.
 pub struct TenantDatabaseServer<'a> {
     base_url: &'a str,
+    uses_runtime_role: bool,
 }
 
 impl<'a> TenantDatabaseServer<'a> {
     pub fn new(base_url: &'a str) -> Self {
         Self {
             base_url: base_url.trim_end_matches('/'),
+            uses_runtime_role: false,
         }
+    }
+
+    pub fn with_runtime_role(mut self) -> Self {
+        self.uses_runtime_role = true;
+        self
+    }
+
+    pub async fn prepare_runtime_role(&self, password: &str) -> Result<(), sqlx::Error> {
+        let options = self.database_options(MAINTENANCE_DATABASE)?;
+        configure_runtime_roles(options, password).await
+    }
+
+    pub fn runtime_auth_options(
+        &self,
+        slug: &TenantSlug,
+        password: &str,
+    ) -> Result<PgConnectOptions, sqlx::Error> {
+        Ok(self
+            .auth_options(slug)?
+            .username(TENANT_RUNTIME_ROLE)
+            .password(password))
     }
 
     /// Built from the current configuration on every use, so changing the server address or
@@ -55,7 +81,9 @@ impl<'a> TenantDatabaseServer<'a> {
     pub fn auth_options(&self, slug: &TenantSlug) -> Result<PgConnectOptions, sqlx::Error> {
         let options = self.database_options(&slug.database_name())?;
 
-        Ok(options.options([("search_path", AUTH_SEARCH_PATH)]))
+        Ok(options
+            .application_name("nelcota-tenant-auth")
+            .options([("search_path", AUTH_SEARCH_PATH)]))
     }
 
     /// Connects as the project's own authenticator role, which only acts through the role a
@@ -68,6 +96,7 @@ impl<'a> TenantDatabaseServer<'a> {
         let options = self.database_options(&slug.database_name())?;
 
         Ok(options
+            .application_name("nelcota-data-api")
             .username(&tenant_authenticator_role(slug))
             .password(&password)
             .options([("search_path", DATA_API_SEARCH_PATH)]))
@@ -105,9 +134,23 @@ impl<'a> TenantDatabaseServer<'a> {
             .max_connections(MIGRATION_CONNECTIONS)
             .connect_with(self.auth_options(slug)?)
             .await?;
-        let migration = migrate_tenant_database(&tenant_pool).await;
+        let migration = self.migrate_with_pool(&tenant_pool).await;
         tenant_pool.close().await;
         migration?;
+
+        if self.uses_runtime_role {
+            self.ensure_tenant_role(slug).await?;
+        }
+
+        Ok(())
+    }
+
+    async fn migrate_with_pool(&self, pool: &sqlx::PgPool) -> Result<(), TenantDatabaseError> {
+        migrate_tenant_database(pool).await?;
+
+        if self.uses_runtime_role {
+            grant_tenant_runtime(pool).await?;
+        }
 
         Ok(())
     }

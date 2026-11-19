@@ -82,6 +82,7 @@ pub async fn provision_tenant(
 
 fn map_provisioning_error(error: ProvisioningError) -> ApiError {
     match error {
+        ProvisioningError::Busy => ApiError::ServiceBusy,
         ProvisioningError::SlugTaken => ApiError::from(TenantsRejection::SlugTaken),
         error @ ProvisioningError::ProjectLimitReached(_) => ApiError::Conflict(error.to_string()),
         other => ApiError::internal(other),

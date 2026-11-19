@@ -16,9 +16,7 @@ pub async fn role_in_project(
     let role = find_project_role(control_plane_pool, project_id, account.account_id)
         .await
         .map_err(ApiError::internal)?;
-    let Some(role) = role else {
-        return Err(ApiError::from(TenantsRejection::ProjectAccessDenied));
-    };
+    let role = role.ok_or(TenantsRejection::ProjectAccessDenied)?;
 
     Ok(role)
 }

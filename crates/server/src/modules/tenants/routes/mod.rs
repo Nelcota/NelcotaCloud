@@ -1,3 +1,4 @@
+pub mod block_address;
 pub mod change_tenant_settings;
 pub mod configure_captcha;
 pub mod configure_smtp;
@@ -7,6 +8,7 @@ pub mod create_tenant;
 pub mod delete_project;
 pub mod delete_tenant;
 pub mod list_api_keys;
+pub mod list_blocked_addresses;
 pub mod list_projects;
 pub mod read_captcha_settings;
 pub mod read_public_captcha;
@@ -18,3 +20,4 @@ pub mod revoke_api_key;
 pub mod rotate_signing_key;
 pub mod tenant_creation_body;
 pub mod tenants_routes;
+pub mod unblock_address;

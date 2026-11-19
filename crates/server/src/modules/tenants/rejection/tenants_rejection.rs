@@ -35,6 +35,8 @@ pub enum TenantsRejection {
     CaptchaUnavailable,
     #[error("Cloudflare does not recognize this Turnstile secret key")]
     InvalidCaptchaSecret,
+    #[error("requests from this address are blocked")]
+    AddressBlocked,
 }
 
 impl TenantsRejection {
@@ -57,6 +59,7 @@ impl TenantsRejection {
             Self::CaptchaFailed => (StatusCode::BAD_REQUEST, "captcha_failed"),
             Self::CaptchaUnavailable => (StatusCode::SERVICE_UNAVAILABLE, "captcha_unavailable"),
             Self::InvalidCaptchaSecret => (StatusCode::BAD_REQUEST, "invalid_captcha_secret"),
+            Self::AddressBlocked => (StatusCode::FORBIDDEN, "address_blocked"),
         }
     }
 }
@@ -157,6 +160,11 @@ mod tests {
                 TenantsRejection::InvalidCaptchaSecret,
                 StatusCode::BAD_REQUEST,
                 "invalid_captcha_secret",
+            ),
+            (
+                TenantsRejection::AddressBlocked,
+                StatusCode::FORBIDDEN,
+                "address_blocked",
             ),
         ];
         let mut seen_codes = HashSet::new();

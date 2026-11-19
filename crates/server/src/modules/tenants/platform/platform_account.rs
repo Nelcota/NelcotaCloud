@@ -27,9 +27,7 @@ impl FromRequestParts<AppState> for PlatformAccount {
     type Rejection = ApiError;
 
     async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, ApiError> {
-        let Some(access_token) = bearer_token(parts) else {
-            return Err(ApiError::from(TenantsRejection::InvalidAccessToken));
-        };
+        let access_token = bearer_token(parts).ok_or(TenantsRejection::InvalidAccessToken)?;
 
         verify_platform_token(state, access_token).await
     }
@@ -87,9 +85,7 @@ async fn account_status(
         .await
         .map_err(ApiError::internal)?;
     let status = find_platform_account_status(&platform_pool, account_id).await?;
-    let Some(status) = status else {
-        return Err(ApiError::from(TenantsRejection::InvalidAccessToken));
-    };
+    let status = status.ok_or(TenantsRejection::InvalidAccessToken)?;
 
     Ok(status)
 }

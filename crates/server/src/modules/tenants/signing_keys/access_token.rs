@@ -60,15 +60,11 @@ pub fn verify_access_token(
     audience: &TokenAudience,
 ) -> Result<AccessTokenClaims, AccessTokenError> {
     let header = decode_header(token)?;
-    let Some(raw_key_id) = header.kid else {
-        return Err(AccessTokenError::MissingKeyId);
-    };
-    let Ok(key_id) = Uuid::parse_str(&raw_key_id) else {
-        return Err(AccessTokenError::UnknownKeyId);
-    };
-    let Some(signing_key) = signing_keys.find(key_id) else {
-        return Err(AccessTokenError::UnknownKeyId);
-    };
+    let raw_key_id = header.kid.ok_or(AccessTokenError::MissingKeyId)?;
+    let key_id = Uuid::parse_str(&raw_key_id).map_err(|_| AccessTokenError::UnknownKeyId)?;
+    let signing_key = signing_keys
+        .find(key_id)
+        .ok_or(AccessTokenError::UnknownKeyId)?;
     let mut validation = Validation::new(Algorithm::EdDSA);
     validation.set_audience(&[audience.tenant_id]);
     validation.set_issuer(&[audience.issuer]);

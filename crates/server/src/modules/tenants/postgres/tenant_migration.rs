@@ -3,16 +3,21 @@ use sqlx::PgPool;
 use crate::shared::database::migrators::TENANT_MIGRATOR;
 
 /// Tenant pools search only the `auth` schema, where the Auth tables live. Databases created
-/// before it existed keep their migration history in `public`; it moves first, under a lock,
-/// so the migrator finds it (the migration that follows moves the remaining tables).
+/// before it existed keep their migration history and Auth tables in `public`, and the
+/// migrations still pending name those tables unqualified, so every table moves first, under a
+/// lock. Such a database predates the Data API, so `public` holds no project tables yet.
 const PREPARE_AUTH_SCHEMA: &str = "
 SELECT pg_advisory_xact_lock(7120000002);
 CREATE SCHEMA IF NOT EXISTS auth;
 DO $prepare$
+DECLARE
+    table_name text;
 BEGIN
     IF to_regclass('public._sqlx_migrations') IS NOT NULL
         AND to_regclass('auth._sqlx_migrations') IS NULL THEN
-        ALTER TABLE public._sqlx_migrations SET SCHEMA auth;
+        FOR table_name IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' LOOP
+            EXECUTE format('ALTER TABLE public.%I SET SCHEMA auth', table_name);
+        END LOOP;
     END IF;
 END
 $prepare$;

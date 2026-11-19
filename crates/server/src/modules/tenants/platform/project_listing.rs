@@ -14,6 +14,10 @@ pub struct ProjectSummary {
     pub slug: String,
     pub name: String,
     pub site_url: String,
+    pub require_email_verification: bool,
+    /// Zero selects the automatic mascot. Values 1 through 32 select a catalog entry.
+    #[schema(minimum = 0, maximum = 32)]
+    pub mascot_id: i16,
     pub role: ProjectRole,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
@@ -25,6 +29,8 @@ struct ProjectRow {
     slug: String,
     name: String,
     site_url: String,
+    require_email_verification: bool,
+    mascot_id: i16,
     role: String,
     created_at: OffsetDateTime,
 }
@@ -34,7 +40,8 @@ pub async fn list_projects_of(
     account_id: Uuid,
 ) -> Result<Vec<ProjectSummary>, MembershipError> {
     let rows: Vec<ProjectRow> = sqlx::query_as(
-        "SELECT tenants.id, tenants.slug, tenants.name, tenants.site_url, members.role, tenants.created_at \
+        "SELECT tenants.id, tenants.slug, tenants.name, tenants.site_url, \
+         tenants.require_email_verification, tenants.mascot_id, members.role, tenants.created_at \
          FROM tenant_members AS members JOIN tenants ON tenants.id = members.tenant_id \
          WHERE members.account_id = $1 ORDER BY tenants.created_at DESC",
     )
@@ -47,15 +54,15 @@ pub async fn list_projects_of(
 
 impl ProjectRow {
     fn into_summary(self) -> Result<ProjectSummary, MembershipError> {
-        let Some(role) = ProjectRole::parse(&self.role) else {
-            return Err(MembershipError::UnknownRole);
-        };
+        let role = ProjectRole::parse(&self.role).ok_or(MembershipError::UnknownRole)?;
 
         Ok(ProjectSummary {
             id: self.id,
             slug: self.slug,
             name: self.name,
             site_url: self.site_url,
+            require_email_verification: self.require_email_verification,
+            mascot_id: self.mascot_id,
             role,
             created_at: self.created_at,
         })
