@@ -279,7 +279,8 @@ The backup service takes a PostgreSQL base backup with streamed WAL for the enti
 verifies it with `pg_verifybackup`, encrypts the archive and uploads it to R2. The completion
 marker is uploaded last. All tenant databases and the control plane recover together to the
 end of that backup. Snapshots are daily by default and expire after `BACKUP_RETENTION_DAYS`
-(30 days). The archive includes PostgreSQL roles and stored password verifiers. Keep the backup
+(30 days). Retention uses the snapshot timestamp so all contents expire together, including
+objects with an older modification time. The archive includes PostgreSQL roles and stored password verifiers. Keep the backup
 encryption password, the application master key, and the applicable database credentials
 available outside the VPS.
 

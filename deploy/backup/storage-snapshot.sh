@@ -29,7 +29,8 @@ SQL
 
 snapshot_storage_inventory() (
     local work_dir=$1 endpoint=$2
-    local cluster="${work_dir}/inventory-cluster"
+    # The cluster is already archived. Recover this working copy to avoid duplicating PGDATA.
+    local cluster="${work_dir}/cluster"
     local socket="${work_dir}/inventory-socket"
     trap 'if gosu postgres pg_ctl -D "${cluster}" status >/dev/null 2>&1; then
         gosu postgres pg_ctl -D "${cluster}" -m fast -w stop >/dev/null
@@ -37,7 +38,6 @@ snapshot_storage_inventory() (
 
     chmod 0711 "${work_dir}" || return
     install -d -m 0700 -o postgres -g postgres "${socket}" || return
-    cp -a --reflink=auto -- "${work_dir}/cluster" "${cluster}" || return
     chown -R postgres:postgres "${cluster}" || return
     chmod 0700 "${cluster}" || return
     gosu postgres pg_ctl -D "${cluster}" -l "${socket}/startup.log" -w \

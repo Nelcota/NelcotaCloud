@@ -25,6 +25,7 @@ jobs:
           persist-credentials: false
       - run: python3 -B scripts/check-module-boundaries.py
       - run: bash deploy/backup/test-snapshot-manifest.sh
+      - run: bash deploy/backup/test-snapshot-retention.sh
 
   migration-action:
     name: Project migration action
