@@ -4,6 +4,8 @@ import CodeBold from '~icons/solar/code-square-bold'
 import Code from '~icons/solar/code-square-linear'
 import DatabaseBold from '~icons/solar/database-bold'
 import Database from '~icons/solar/database-linear'
+import FolderBold from '~icons/solar/folder-bold'
+import Folder from '~icons/solar/folder-linear'
 import HistoryBold from '~icons/solar/history-bold'
 import History from '~icons/solar/history-linear'
 import KeyRoundBold from '~icons/solar/key-bold'
@@ -86,6 +88,7 @@ export const PROJECT_SECTIONS: readonly ProjectSection[] = [
     group: 'data',
   },
   { segment: 'sql', label: 'SQL', icon: Code, currentIcon: CodeBold, group: 'data' },
+  { segment: 'storage', label: 'Arquivos', icon: Folder, currentIcon: FolderBold, group: 'data' },
   { segment: 'cache', label: 'Cache', icon: Bolt, currentIcon: BoltBold, group: 'data' },
   {
     segment: 'migrations',

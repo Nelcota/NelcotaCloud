@@ -6,6 +6,7 @@ use tokio::time::{interval, timeout};
 
 use crate::app_state::AppState;
 use crate::modules::oauth::login::oauth_state_repository::delete_expired_authorizations;
+use crate::modules::storage::catalog::storage_cleanup::run_cleanup;
 use crate::modules::tenants::provisioning::tenant_deletion::{
     pending_deletions, postpone_deletion,
 };
@@ -32,6 +33,19 @@ impl BackgroundTasks {
             stopped.clone(),
         ));
         tasks.spawn(run_audit_maintenance(state.clone(), stopped.clone()));
+        if let Some(store) = &state.storage_store {
+            tasks.spawn(store.clone().monitor_health(stopped.clone()));
+            tasks.spawn(run_cleanup(
+                state.control_plane_pool.clone(),
+                store.clone(),
+                stopped.clone(),
+            ));
+        }
+
+        tasks.spawn(crate::startup::storage_erasure::run_user_erasure(
+            state.clone(),
+            stopped.clone(),
+        ));
         tasks.spawn(run_maintenance(state, stopped));
 
         Self { stop, tasks }

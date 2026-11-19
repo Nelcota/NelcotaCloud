@@ -37,6 +37,9 @@ pub async fn delete_own_account(
     }
 
     let user_id = authenticated.claims.sub;
+    state
+        .erase_user_storage(tenant.tenant_id, (&tenant.pool, user_id))
+        .await;
     let event = NewAuditEvent::by_user(AuditAction::UserDeleted, user_id, origin);
     record_audit_event(&tenant.pool, event).await;
 

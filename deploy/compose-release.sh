@@ -51,6 +51,17 @@ case "$operation" in
         "${compose[@]}" build
         "${compose[@]}" stop webhook-worker
         "${compose[@]}" up --detach --wait --wait-timeout 600
+        "${compose[@]}" exec -T api bash -ec '
+            if [[ -z "${STORAGE_R2_BUCKET:-}" ]]; then
+                exit 0
+            fi
+
+            timeout 5s bash -ec '\''
+                exec 3<>/dev/tcp/127.0.0.1/8080
+                printf "GET /ops/storage/health HTTP/1.0\r\n%s: 127.0.0.1\r\n\r\n" "$CLIENT_IP_HEADER" >&3
+                grep -q "^HTTP/1[.][01] 200 " <&3
+            '\'' || { echo "Project Storage readiness check failed" >&2; exit 1; }
+        '
         ;;
     *)
         printf 'Unknown Compose deployment operation.\n' >&2

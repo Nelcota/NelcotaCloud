@@ -13,6 +13,7 @@ SERVER_DEPENDENCIES = {
     "cache": {"tenants"},
     "database": {"tenants"},
     "oauth": {"auth", "tenants", "webhooks"},
+    "storage": {"auth", "tenants"},
     "team": {"auth", "tenants"},
     "tenants": set(),
     "webhooks": {"tenants"},

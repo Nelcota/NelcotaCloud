@@ -9,6 +9,7 @@ pub mod server;
 mod service_dependencies;
 mod shutdown_signal;
 pub mod startup_error;
+mod storage_erasure;
 mod tenant_database_preparation;
 pub mod webhook_worker_config;
 pub mod webhook_worker_process;

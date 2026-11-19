@@ -6,6 +6,8 @@ set -euo pipefail
 . /usr/local/bin/backup-env.sh
 # shellcheck source=snapshot-manifest.sh
 . /usr/local/bin/snapshot-manifest.sh
+# shellcheck source=storage-snapshot.sh
+. /usr/local/bin/storage-snapshot.sh
 
 snapshot="${1:-}"
 
@@ -96,7 +98,7 @@ restore_snapshot() {
 trap cleanup EXIT
 chmod 0711 "${work_dir}"
 install --directory --owner=postgres --group=postgres --mode=0700 "${socket}"
-rclone copy "backup:${snapshot}" "${work_dir}"
+rclone copy --max-depth 1 "backup:${snapshot}" "${work_dir}"
 
 if ! verify_snapshot_manifest "${work_dir}"; then
     echo "snapshot ${snapshot} is incomplete or corrupt" >&2
@@ -114,5 +116,6 @@ if [[ "${missing_databases}" != "0" ]]; then
     exit 1
 fi
 
+restore_storage "${work_dir}" "${snapshot}"
 stop_cluster
 echo "verified snapshot ${snapshot} on ${restore_volume}; ready for cutover"

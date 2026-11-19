@@ -9,6 +9,8 @@ use crate::modules::cache::entries::cache_store::CacheStore;
 use crate::modules::database::execution::session_slots::SessionSlots;
 use crate::modules::database::schema::schema_cache::SchemaCache;
 use crate::modules::oauth::provider::provider_endpoints::OAuthEndpoints;
+use crate::modules::storage::catalog::storage_cleanup::adopt_legacy_location;
+use crate::modules::storage::object_store::r2_store::R2Store;
 use crate::modules::tenants::api_keys::api_key_usage::ApiKeyUsage;
 use crate::modules::tenants::platform::platform_tenant::PlatformTenantDirectory;
 use crate::modules::tenants::postgres::tenant_pool_registry::TenantPoolRegistry;
@@ -77,8 +79,20 @@ pub async fn build_app_state_with_endpoints(
     }
     let (webhooks, webhook_hints) = build_webhooks(config, &control_plane_pool)?;
 
+    let storage_store = config.storage_config()?.as_ref().map(R2Store::new);
+    if let Some(store) = &storage_store {
+        store.refresh_health().await;
+        if config.storage_r2_adopt_legacy == Some(true) {
+            store
+                .require_healthy()
+                .map_err(|_| StartupError::StorageAdoptionUnavailable)?;
+            adopt_legacy_location(&control_plane_pool, store.location()).await?;
+        }
+    }
+
     let state = AppState {
         project_usage: Default::default(),
+        storage_store,
         cache_authentication_pool: cache_authentication_pool(&control_plane_pool),
         cache_store: config
             .cache_valkey_url

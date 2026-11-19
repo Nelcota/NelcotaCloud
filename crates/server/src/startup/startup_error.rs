@@ -52,6 +52,8 @@ pub enum StartupError {
     PlatformTenantSlug(#[from] InvalidTenantSlug),
     #[error("server I/O error: {0}")]
     Io(#[from] std::io::Error),
+    #[error("the storage provider must be reachable to adopt legacy storage files")]
+    StorageAdoptionUnavailable,
     #[error("a background task stopped unexpectedly")]
     BackgroundTaskStopped,
 }

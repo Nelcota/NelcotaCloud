@@ -5,6 +5,7 @@ mod fixtures;
 mod oauth;
 mod platform;
 mod protocol;
+mod storage;
 mod support;
 mod tenants;
 mod webhooks;

@@ -92,6 +92,10 @@ const databaseTableRoute = createRoute({
   import('@/app/lazy-routes/database-table').then((module) => module.databaseTableLazyRoute),
 )
 
+const storageRoute = createRoute({ getParentRoute: () => projectRoute, path: '/storage' }).lazy(
+  () => import('@/app/lazy-routes/storage').then((module) => module.storageLazyRoute),
+)
+
 const sqlEditorRoute = createRoute({ getParentRoute: () => projectRoute, path: '/sql' }).lazy(() =>
   import('@/app/lazy-routes/sql-editor').then((module) => module.sqlEditorLazyRoute),
 )
@@ -132,6 +136,7 @@ const routeTree = rootRoute.addChildren([
       databaseRoute,
       cacheRoute,
       databaseTableRoute,
+      storageRoute,
       sqlEditorRoute,
       migrationsRoute,
       activityRoute,

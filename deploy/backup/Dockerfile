@@ -6,6 +6,6 @@ RUN apt-get update \
     && apt-get install --yes --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=rclone /usr/local/bin/rclone /usr/local/bin/rclone
-COPY deploy/backup/backup-env.sh deploy/backup/snapshot-manifest.sh deploy/backup/backup.sh deploy/backup/restore.sh /usr/local/bin/
+COPY deploy/backup/backup-env.sh deploy/backup/snapshot-manifest.sh deploy/backup/storage-snapshot.sh deploy/backup/backup.sh deploy/backup/restore.sh /usr/local/bin/
 RUN chmod 0755 /usr/local/bin/backup.sh /usr/local/bin/restore.sh
 ENTRYPOINT ["/usr/local/bin/backup.sh"]
