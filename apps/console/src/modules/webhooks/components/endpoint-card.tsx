@@ -16,7 +16,8 @@ type WebhookEndpointView = components['schemas']['WebhookEndpointView']
 type EndpointCardProps = {
   projectId: string
   endpoint: WebhookEndpointView
-  isRotating: boolean
+  isIssuing: boolean
+  isAwaitingConfirmation: boolean
   onRotate: () => Promise<void>
 }
 
@@ -32,7 +33,7 @@ export function EndpointCard(props: EndpointCardProps): JSX.Element {
   }
 
   return (
-    <section className="grid gap-4 rounded-xl border p-4" aria-label={endpoint.url}>
+    <section className="surface grid gap-4 p-5" aria-label={endpoint.url}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
         <div className="grid min-w-0 flex-1 gap-2">
           <code className="font-mono text-sm break-all">{endpoint.url}</code>
@@ -55,7 +56,8 @@ export function EndpointCard(props: EndpointCardProps): JSX.Element {
       <EndpointActions
         projectId={projectId}
         endpoint={endpoint}
-        isRotating={props.isRotating}
+        isIssuing={props.isIssuing}
+        isAwaitingConfirmation={props.isAwaitingConfirmation}
         onRotate={props.onRotate}
       />
       <TestWebhookButton projectId={projectId} endpointId={endpoint.id} />

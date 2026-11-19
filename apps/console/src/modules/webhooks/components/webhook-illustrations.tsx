@@ -11,12 +11,12 @@ export function WebhookFlowIllustration(): JSX.Element {
   return (
     <Illustration
       name="webhook-flow"
-      description="Quando algo acontece com um usuário do seu app, a NelcotaCloud envia um POST assinado para o seu servidor."
+      description="Quando algo acontece com um usuário do seu app, a Nelcota envia um POST assinado para o seu servidor."
     >
       <FlowDiagram
         nodes={[
           { icon: Smartphone, label: 'Seu app' },
-          { icon: Cloud, label: 'NelcotaCloud' },
+          { icon: Cloud, label: 'Nelcota' },
           { icon: Server, label: 'Seu servidor', tone: 'focus' },
         ]}
         links={[
@@ -33,11 +33,11 @@ export function WebhookDeleteIllustration(): JSX.Element {
   return (
     <Illustration
       name="webhook-delete"
-      description="A NelcotaCloud para de enviar eventos para o seu servidor na hora."
+      description="A Nelcota para de enviar eventos para o seu servidor na hora."
     >
       <FlowDiagram
         nodes={[
-          { icon: Cloud, label: 'NelcotaCloud' },
+          { icon: Cloud, label: 'Nelcota' },
           { icon: Server, label: 'Seu servidor' },
         ]}
         links={[{ label: 'eventos', state: 'cut' }]}

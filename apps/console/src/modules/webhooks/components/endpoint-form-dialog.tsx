@@ -69,7 +69,7 @@ export function EndpointFormDialog(props: EndpointFormDialogProps): JSX.Element 
         steps={[
           {
             label: 'Endereço',
-            description: 'Para onde a NelcotaCloud envia os eventos.',
+            description: 'Para onde a Nelcota envia os eventos.',
             missing: missingUnless(isWebAddress(url), 'Digite o endereço do seu servidor'),
             illustration: <WebhookFlowIllustration />,
             content: (

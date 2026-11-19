@@ -3,11 +3,12 @@ import type { JSX } from 'react'
 import { useId } from 'react'
 
 import { SecretLeaveGuard } from '@/modules/api-keys/components/secret-leave-guard'
+import type { components } from '@/shared/api/api-schema'
 import { CopyableValue } from '@/shared/ui/copyable-value'
 import { Button } from '@/shared/ui/button'
 
 type WebhookSecretNoticeProps = {
-  revealed: { url: string; secret: string } | undefined
+  revealed: components['schemas']['WebhookEndpointWithSecret'] | undefined
   /** The user confirms the secret is stored, which hides it for good. */
   onDismiss: () => void
 }
@@ -39,7 +40,7 @@ export function WebhookSecretNotice({
           </h2>
           <p className="text-muted-foreground text-sm break-all">
             Ele não aparece de novo. Seu servidor usa ele para conferir o header webhook-signature
-            de {revealed.url}.
+            de {revealed.endpoint.url}.
           </p>
         </div>
       </div>
