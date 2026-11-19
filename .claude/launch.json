@@ -4,19 +4,70 @@
     {
       "name": "api",
       "runtimeExecutable": "cargo",
-      "runtimeArgs": ["run", "-p", "server"],
+      "runtimeArgs": [
+        "run",
+        "-p",
+        "server"
+      ],
+      "port": 8080,
+      "env": {
+        "LIBCLANG_PATH": "C:/Program Files/LLVM/bin"
+      }
+    },
+    {
+      "name": "api-built",
+      "runtimeExecutable": "target/claude-activity/debug/server.exe",
+      "runtimeArgs": [],
+      "port": 8080
+    },
+    {
+      "name": "api-debug-built",
+      "runtimeExecutable": "target/debug/server.exe",
+      "runtimeArgs": [],
       "port": 8080
     },
     {
       "name": "console",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "apps/console", "run", "dev"],
+      "runtimeArgs": [
+        "--prefix",
+        "apps/console",
+        "run",
+        "dev"
+      ],
       "port": 5173
     },
     {
-      "name": "example",
+      "name": "api-activity",
+      "runtimeExecutable": "cargo",
+      "runtimeArgs": [
+        "run",
+        "-p",
+        "server"
+      ],
+      "env": {
+        "BIND_ADDRESS": "127.0.0.1:8090",
+        "CARGO_TARGET_DIR": "E:/NelcotaCloud/target/claude-activity",
+        "LIBCLANG_PATH": "C:/Program Files/LLVM/bin"
+      },
+      "port": 8090
+    },
+    {
+      "name": "console-activity",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "examples/react-auth", "run", "dev"],
+      "runtimeArgs": [
+        "--prefix",
+        "apps/console",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5174",
+        "--strictPort"
+      ],
+      "env": {
+        "VITE_API_URL": "http://127.0.0.1:8090"
+      },
       "port": 5174
     }
   ]
