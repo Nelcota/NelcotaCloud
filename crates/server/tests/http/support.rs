@@ -2,7 +2,7 @@ use std::error::Error;
 use std::future::IntoFuture;
 use std::net::SocketAddr;
 use std::str::FromStr;
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
 use reqwest::{Client, Response};
@@ -19,7 +19,7 @@ use server::startup::webhook_worker_process::build_webhook_worker;
 use sqlx::postgres::PgConnectOptions;
 use sqlx::{AssertSqlSafe, Connection, PgConnection};
 use tokio::net::TcpListener;
-use tokio::sync::watch;
+use tokio::sync::{OwnedSemaphorePermit, Semaphore, watch};
 use tokio::task::JoinSet;
 use uuid::Uuid;
 
@@ -38,6 +38,12 @@ static TEST_TRACING: LazyLock<()> = LazyLock::new(|| {
         .with_max_level(tracing::Level::ERROR)
         .init();
 });
+/// Test APIs alive at once. Each keeps its own control plane, cache and tenant pools, so on a
+/// machine with many cores the parallel tests would otherwise exhaust the default
+/// `max_connections` of 100 and fail at random.
+const MAX_LIVE_SERVERS: usize = 4;
+static LIVE_SERVERS: LazyLock<Arc<Semaphore>> =
+    LazyLock::new(|| Arc::new(Semaphore::new(MAX_LIVE_SERVERS)));
 const SLUG_SUFFIX_BYTES: usize = 6;
 const EMAIL_SUFFIX_BYTES: usize = 6;
 const MAIL_POLL_ATTEMPTS: u32 = 50;
@@ -78,6 +84,8 @@ pub struct ErrorBody {
 
 /// A real API on a free local port, with its own admin token.
 pub struct TestServer {
+    /// Held while the server lives; see `MAX_LIVE_SERVERS`.
+    _live_slot: OwnedSemaphorePermit,
     _background: server::startup::background_tasks::BackgroundTasks,
     workers: JoinSet<()>,
     pub client: Client,
@@ -159,6 +167,7 @@ impl TestServer {
         cache_url: Option<String>,
     ) -> TestResult<Self> {
         LazyLock::force(&TEST_TRACING);
+        let live_slot = Arc::clone(&LIVE_SERVERS).acquire_owned().await?;
 
         if let Err(error) = dotenvy::dotenv()
             && error.not_found() == false
@@ -210,6 +219,7 @@ impl TestServer {
             .build()?;
 
         Ok(Self {
+            _live_slot: live_slot,
             _background: background,
             workers: JoinSet::new(),
             client,
