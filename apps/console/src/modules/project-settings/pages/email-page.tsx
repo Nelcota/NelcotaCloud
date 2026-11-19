@@ -1,9 +1,9 @@
 import type { JSX } from 'react'
 
-import { CurrentSmtp } from '@/modules/project-settings/components/current-smtp'
-import { EmailTemplatesSection } from '@/modules/project-settings/components/email-templates-section'
-import { SmtpTestSection } from '@/modules/project-settings/components/smtp-test-section'
-import { useSmtpQuery } from '@/modules/project-settings/queries/use-project-settings'
+import { EmailTemplatesSection } from '@/modules/project-settings/email-templates/components/email-templates-section'
+import { CurrentSmtp } from '@/modules/project-settings/smtp/components/current-smtp'
+import { SmtpTestSection } from '@/modules/project-settings/smtp/components/smtp-test-section'
+import { useSmtpQuery } from '@/modules/project-settings/smtp/queries/use-smtp-settings'
 import { useProjectId } from '@/shared/routing/use-project-id'
 import { LoadError } from '@/shared/ui/load-error'
 import { PageHeader } from '@/shared/ui/page-header'
