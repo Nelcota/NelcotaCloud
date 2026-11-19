@@ -3,8 +3,8 @@ use std::net::IpAddr;
 use governor::{DefaultKeyedRateLimiter, RateLimiter};
 use uuid::Uuid;
 
-use crate::modules::auth::rate_limiting::client_ip_limiter::ClientIpLimiter;
-use crate::modules::auth::rate_limiting::quota_spec::{AttemptRejected, InvalidQuota, QuotaSpec};
+use crate::shared::rate_limiting::client_ip_limiter::ClientIpLimiter;
+use crate::shared::rate_limiting::quota_spec::{AttemptRejected, InvalidQuota, QuotaSpec};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 struct EmailKey {

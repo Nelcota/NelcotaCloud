@@ -63,8 +63,9 @@ impl ApiError {
 
     /// The stable code of a module's refusal; `None` for every other error.
     pub fn rejection_code(&self) -> Option<&'static str> {
-        let Self::Rejected(rejection) = self else {
-            return None;
+        let rejection = match self {
+            Self::Rejected(rejection) => rejection,
+            _ => return None,
         };
 
         Some(rejection.code)
@@ -72,8 +73,9 @@ impl ApiError {
 
     /// Whole seconds to wait, rounded up so a client never comes back too early.
     fn retry_after_seconds(&self) -> Option<u64> {
-        let Self::RateLimited(wait) = self else {
-            return None;
+        let wait = match self {
+            Self::RateLimited(wait) => wait,
+            _ => return None,
         };
         let rounded_up = wait
             .as_secs()

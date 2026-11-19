@@ -1,6 +1,6 @@
 use governor::{DefaultKeyedRateLimiter, RateLimiter};
 
-use crate::modules::auth::rate_limiting::quota_spec::{AttemptRejected, InvalidQuota, QuotaSpec};
+use crate::shared::rate_limiting::quota_spec::{AttemptRejected, InvalidQuota, QuotaSpec};
 
 /// Limits emails to one address across every project, so nobody can flood an inbox by
 /// spreading requests over many projects (each has its own per-address limit too).

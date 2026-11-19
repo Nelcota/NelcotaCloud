@@ -52,9 +52,9 @@ impl SecretBox {
     }
 
     pub fn open(&self, sealed: &[u8], context: &str) -> Result<Vec<u8>, SecretBoxError> {
-        let Some((nonce_bytes, ciphertext)) = sealed.split_at_checked(NONCE_LENGTH) else {
-            return Err(SecretBoxError::DecryptionFailed);
-        };
+        let (nonce_bytes, ciphertext) = sealed
+            .split_at_checked(NONCE_LENGTH)
+            .ok_or(SecretBoxError::DecryptionFailed)?;
         let nonce = Nonce::try_from(nonce_bytes).map_err(|_| SecretBoxError::DecryptionFailed)?;
         let payload = Payload {
             msg: ciphertext,
@@ -96,9 +96,7 @@ mod tests {
     fn rejects_tampered_ciphertext() -> Result<(), SecretBoxError> {
         let secret_box = SecretBox::new(&random_bytes::<32>())?;
         let mut sealed = secret_box.seal(b"secret", CONTEXT)?;
-        let Some(last_byte) = sealed.last_mut() else {
-            return Err(SecretBoxError::EncryptionFailed);
-        };
+        let last_byte = sealed.last_mut().ok_or(SecretBoxError::EncryptionFailed)?;
         *last_byte ^= 0x01;
 
         assert!(secret_box.open(&sealed, CONTEXT).is_err());

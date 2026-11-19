@@ -3,7 +3,7 @@ use std::net::{IpAddr, Ipv6Addr};
 use governor::{DefaultKeyedRateLimiter, RateLimiter};
 use uuid::Uuid;
 
-use crate::modules::auth::rate_limiting::quota_spec::{AttemptRejected, InvalidQuota, QuotaSpec};
+use crate::shared::rate_limiting::quota_spec::{AttemptRejected, InvalidQuota, QuotaSpec};
 
 /// IPv6 clients usually control a whole /64, so it counts as one client.
 const IPV6_CLIENT_PREFIX_SEGMENTS: usize = 4;
@@ -47,8 +47,9 @@ impl ClientIpLimiter {
 
 /// IPv4 (and IPv4-mapped IPv6) per address; other IPv6 per /64 network.
 pub(crate) fn client_network(client_ip: IpAddr) -> IpAddr {
-    let IpAddr::V6(address) = client_ip else {
-        return client_ip;
+    let address = match client_ip {
+        IpAddr::V6(address) => address,
+        _ => return client_ip,
     };
 
     if let Some(ipv4) = address.to_ipv4_mapped() {

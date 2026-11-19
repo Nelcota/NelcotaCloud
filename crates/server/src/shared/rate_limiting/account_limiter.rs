@@ -1,7 +1,7 @@
 use governor::{DefaultKeyedRateLimiter, RateLimiter};
 use uuid::Uuid;
 
-use crate::modules::auth::rate_limiting::quota_spec::{AttemptRejected, InvalidQuota, QuotaSpec};
+use crate::shared::rate_limiting::quota_spec::{AttemptRejected, InvalidQuota, QuotaSpec};
 
 /// Fixed-size key: checking a request allocates nothing.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]

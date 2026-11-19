@@ -4,5 +4,6 @@ pub mod database;
 pub mod email;
 pub mod http;
 pub mod net;
+pub mod rate_limiting;
 pub mod text;
 pub mod time;

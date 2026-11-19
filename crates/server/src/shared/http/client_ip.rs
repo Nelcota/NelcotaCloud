@@ -40,11 +40,12 @@ fn resolve_client_ip(
         return client_ip_from_header(&parts.headers, header_name);
     }
 
-    let Some(ConnectInfo(peer)) = parts.extensions.get::<ConnectInfo<SocketAddr>>() else {
-        return Err(ApiError::internal(
-            "connection info missing: serve the router with connect info",
-        ));
-    };
+    let ConnectInfo(peer) = parts
+        .extensions
+        .get::<ConnectInfo<SocketAddr>>()
+        .ok_or_else(|| {
+            ApiError::internal("connection info missing: serve the router with connect info")
+        })?;
 
     Ok(ClientIp(peer.ip()))
 }
@@ -62,9 +63,9 @@ fn client_ip_from_header(
     };
     let header_value = headers.get(header_name);
     let header_text = header_value.and_then(|value| value.to_str().ok());
-    let Some(client_ip) = header_text.and_then(proxy_seen_address) else {
-        return Err(missing_header());
-    };
+    let client_ip = header_text
+        .and_then(proxy_seen_address)
+        .ok_or_else(missing_header)?;
 
     Ok(ClientIp(client_ip))
 }

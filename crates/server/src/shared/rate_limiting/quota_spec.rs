@@ -40,12 +40,8 @@ pub struct QuotaSpec {
 
 impl QuotaSpec {
     pub fn to_quota(&self) -> Result<Quota, InvalidQuota> {
-        let Some(burst) = NonZeroU32::new(self.burst) else {
-            return Err(InvalidQuota);
-        };
-        let Some(quota) = Quota::with_period(self.replenish_every) else {
-            return Err(InvalidQuota);
-        };
+        let burst = NonZeroU32::new(self.burst).ok_or(InvalidQuota)?;
+        let quota = Quota::with_period(self.replenish_every).ok_or(InvalidQuota)?;
 
         Ok(quota.allow_burst(burst))
     }
