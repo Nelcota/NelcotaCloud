@@ -39,9 +39,7 @@ impl TestDelivery<'_> {
         endpoint_id: Uuid,
     ) -> Result<TestDeliveryResult, WebhookEndpointError> {
         let stored = find_endpoint(self.control_plane_pool, tenant_id, endpoint_id).await?;
-        let Some(stored) = stored else {
-            return Err(WebhookEndpointError::NotFound);
-        };
+        let stored = stored.ok_or(WebhookEndpointError::NotFound)?;
         let target = delivery_target(self.secret_box, stored)?;
         let message = test_message(endpoint_id);
         let outcome = self.transport.send(&target, &message).await;

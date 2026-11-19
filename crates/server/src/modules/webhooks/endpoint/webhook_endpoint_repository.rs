@@ -1,4 +1,4 @@
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -70,12 +70,12 @@ pub async fn find_endpoint(
     .await
 }
 
-/// Inserts unless the tenant already has the maximum; `false` when it does. The tenant row is
+/// Inserts unless the tenant already has the maximum; `None` when it does. The tenant row is
 /// locked first, so two concurrent creations cannot both pass the count.
 pub async fn insert_endpoint(
     pool: &PgPool,
     endpoint: NewWebhookEndpoint<'_>,
-) -> Result<bool, sqlx::Error> {
+) -> Result<Option<StoredWebhookEndpoint>, sqlx::Error> {
     let mut transaction = pool.begin().await?;
     sqlx::query("SELECT id FROM tenants WHERE id = $1 FOR UPDATE")
         .bind(endpoint.tenant_id)
@@ -88,78 +88,77 @@ pub async fn insert_endpoint(
             .await?;
 
     if count >= MAX_ENDPOINTS_PER_TENANT {
-        return Ok(false);
+        return Ok(None);
     }
 
-    sqlx::query(
+    let stored = sqlx::query_as(concat!(
         "INSERT INTO webhook_endpoints (id, tenant_id, url, event_types, secret_ciphertext) \
-         VALUES ($1, $2, $3, $4, $5)",
-    )
+         VALUES ($1, $2, $3, $4, $5) RETURNING ",
+        endpoint_columns!()
+    ))
     .bind(endpoint.id)
     .bind(endpoint.tenant_id)
     .bind(endpoint.url)
     .bind(endpoint.event_types)
     .bind(endpoint.secret_ciphertext)
-    .execute(&mut *transaction)
+    .fetch_one(&mut *transaction)
     .await?;
     transaction.commit().await?;
 
-    Ok(true)
+    Ok(Some(stored))
 }
 
-/// Applies only the given changes; `false` when the endpoint does not exist.
+/// Applies only the given changes; `None` when the endpoint does not exist.
 pub async fn update_endpoint(
-    pool: &PgPool,
+    connection: &mut PgConnection,
     (tenant_id, endpoint_id): (Uuid, Uuid),
     changes: WebhookEndpointChanges<'_>,
-) -> Result<bool, sqlx::Error> {
-    let updated = sqlx::query(
+) -> Result<Option<StoredWebhookEndpoint>, sqlx::Error> {
+    sqlx::query_as(concat!(
         "UPDATE webhook_endpoints SET url = COALESCE($3, url), event_types = COALESCE($4, event_types), \
-         is_enabled = COALESCE($5, is_enabled), updated_at = now() WHERE tenant_id = $1 AND id = $2",
-    )
+         is_enabled = COALESCE($5, is_enabled), updated_at = now() WHERE tenant_id = $1 AND id = $2 RETURNING ",
+        endpoint_columns!()
+    ))
     .bind(tenant_id)
     .bind(endpoint_id)
     .bind(changes.url)
     .bind(changes.event_types)
     .bind(changes.is_enabled)
-    .execute(pool)
-    .await?;
-
-    Ok(updated.rows_affected() > 0)
+    .fetch_optional(connection)
+    .await
 }
 
 pub async fn delete_endpoint(
-    pool: &PgPool,
+    connection: &mut PgConnection,
     tenant_id: Uuid,
     endpoint_id: Uuid,
 ) -> Result<bool, sqlx::Error> {
     let deleted = sqlx::query("DELETE FROM webhook_endpoints WHERE tenant_id = $1 AND id = $2")
         .bind(tenant_id)
         .bind(endpoint_id)
-        .execute(pool)
+        .execute(connection)
         .await?;
 
     Ok(deleted.rows_affected() > 0)
 }
 
-/// The current secret becomes the previous one for a day; `false` when there is no endpoint.
+/// The current secret becomes the previous one for a day; `None` when there is no endpoint.
 pub async fn replace_secret(
     pool: &PgPool,
     (tenant_id, endpoint_id): (Uuid, Uuid),
     secret_ciphertext: &[u8],
-) -> Result<bool, sqlx::Error> {
-    let updated = sqlx::query(
+) -> Result<Option<StoredWebhookEndpoint>, sqlx::Error> {
+    sqlx::query_as(concat!(
         "UPDATE webhook_endpoints SET previous_secret_ciphertext = secret_ciphertext, \
          previous_secret_expires_at = now() + interval '1 day', secret_ciphertext = $3, \
-         updated_at = now() WHERE tenant_id = $1 AND id = $2",
-    )
+         updated_at = now() WHERE tenant_id = $1 AND id = $2 RETURNING ",
+        endpoint_columns!()
+    ))
     .bind(tenant_id)
     .bind(endpoint_id)
     .bind(secret_ciphertext)
-    .execute(pool)
-    .await?;
-
-    Ok(updated.rows_affected() > 0)
+    .fetch_optional(pool)
+    .await
 }
 
 /// Binds an encrypted secret to its endpoint, so it cannot be copied into another row.

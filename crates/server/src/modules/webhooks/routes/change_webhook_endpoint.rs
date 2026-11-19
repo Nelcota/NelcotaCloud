@@ -43,10 +43,5 @@ pub async fn change_webhook_endpoint(
         .await
         .map_err(endpoint_error_response)?;
 
-    if body.is_enabled == Some(false) {
-        // Its pending deliveries are given up on the worker's next look; wake it now.
-        state.webhooks.hint(admin.tenant_id);
-    }
-
     Ok(Json(saved))
 }

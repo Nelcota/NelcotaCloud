@@ -59,9 +59,7 @@ impl WebhookUrl {
 }
 
 fn check_shape(url: &Url, policy: WebhookHostPolicy) -> Result<(), WebhookUrlError> {
-    let Some(host) = url.host_str() else {
-        return Err(WebhookUrlError::Malformed);
-    };
+    let host = url.host_str().ok_or(WebhookUrlError::Malformed)?;
 
     if url.username().is_empty() == false || url.password().is_some() {
         return Err(WebhookUrlError::CredentialsNotAllowed);

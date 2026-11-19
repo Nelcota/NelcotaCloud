@@ -13,9 +13,7 @@ pub async fn require_endpoint(
     endpoint_id: Uuid,
 ) -> Result<StoredWebhookEndpoint, ApiError> {
     let endpoint = find_endpoint(&state.control_plane_pool, tenant_id, endpoint_id).await?;
-    let Some(endpoint) = endpoint else {
-        return Err(ApiError::NotFound("webhook endpoint"));
-    };
+    let endpoint = endpoint.ok_or(ApiError::NotFound("webhook endpoint"))?;
 
     Ok(endpoint)
 }

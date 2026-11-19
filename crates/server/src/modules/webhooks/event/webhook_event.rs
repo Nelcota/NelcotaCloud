@@ -30,7 +30,7 @@ pub enum RevokedSessions {
 }
 
 impl WebhookEvent {
-    /// `data.user` is the user as the API returns it, at the time of the change.
+    /// Wraps the published user snapshot at the time of the change.
     pub fn about_user(
         event_type: WebhookEventType,
         user: &impl Serialize,

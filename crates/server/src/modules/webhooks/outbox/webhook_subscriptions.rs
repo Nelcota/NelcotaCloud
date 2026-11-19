@@ -6,7 +6,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::modules::webhooks::endpoint::webhook_endpoint_repository::list_endpoints;
-use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
+use crate::modules::webhooks::event::webhook_event_type::{WebhookEventType, known_event_types};
 use crate::shared::cache::cache_generation::CacheGeneration;
 
 /// Changes made through this instance invalidate at once; the time bound only matters when
@@ -83,20 +83,6 @@ impl WebhookSubscriptions {
 
         Ok(Arc::new(subscribed))
     }
-}
-
-/// Stored event types this version knows. A name it does not know (an event removed later, a
-/// manual edit) is logged and skipped: it must not fail every request that changes a user.
-pub fn known_event_types(raw: &[String]) -> Vec<WebhookEventType> {
-    raw.iter()
-        .filter_map(|name| match WebhookEventType::parse(name) {
-            Ok(event_type) => Some(event_type),
-            Err(error) => {
-                tracing::warn!(%error, "skipping an unknown stored webhook event type");
-                None
-            }
-        })
-        .collect()
 }
 
 /// The endpoints that receive `event_type`.

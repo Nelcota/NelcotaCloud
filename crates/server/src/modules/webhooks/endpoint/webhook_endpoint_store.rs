@@ -1,11 +1,10 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::modules::webhooks::delivery::webhook_schedule_repository::mark_due_now;
 use crate::modules::webhooks::endpoint::webhook_endpoint_error::WebhookEndpointError;
 use crate::modules::webhooks::endpoint::webhook_endpoint_repository::{
-    NewWebhookEndpoint, WebhookEndpointChanges, delete_endpoint, find_endpoint, insert_endpoint,
-    list_endpoints, replace_secret, update_endpoint, webhook_secret_context,
+    NewWebhookEndpoint, StoredWebhookEndpoint, WebhookEndpointChanges, delete_endpoint,
+    insert_endpoint, list_endpoints, replace_secret, update_endpoint, webhook_secret_context,
 };
 use crate::modules::webhooks::endpoint::webhook_endpoint_view::{
     WebhookEndpointView, WebhookEndpointWithSecret,
@@ -13,6 +12,7 @@ use crate::modules::webhooks::endpoint::webhook_endpoint_view::{
 use crate::modules::webhooks::endpoint::webhook_url::{WebhookHostPolicy, WebhookUrl};
 use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
 use crate::modules::webhooks::outbox::webhook_subscriptions::WebhookSubscriptions;
+use crate::modules::webhooks::scheduling::webhook_schedule_repository::mark_due_now;
 use crate::modules::webhooks::signing::webhook_secret::WebhookSecret;
 use crate::shared::crypto::secret_box::SecretBox;
 
@@ -66,11 +66,11 @@ impl WebhookEndpointStore<'_> {
             secret_ciphertext: &secret_ciphertext,
         };
 
-        if insert_endpoint(self.control_plane_pool, endpoint).await? == false {
-            return Err(WebhookEndpointError::LimitReached);
-        }
+        let stored = insert_endpoint(self.control_plane_pool, endpoint)
+            .await?
+            .ok_or(WebhookEndpointError::LimitReached)?;
 
-        self.with_secret(tenant_id, endpoint_id, &secret).await
+        Ok(self.reveal_secret(stored, &secret))
     }
 
     pub async fn update(
@@ -89,19 +89,18 @@ impl WebhookEndpointStore<'_> {
             is_enabled: update.is_enabled,
         };
 
-        if update_endpoint(self.control_plane_pool, (tenant_id, endpoint_id), changes).await?
-            == false
-        {
-            return Err(WebhookEndpointError::NotFound);
-        }
-
-        self.subscriptions.forget(tenant_id);
+        let mut transaction = self.control_plane_pool.begin().await?;
+        let stored = update_endpoint(&mut transaction, (tenant_id, endpoint_id), changes)
+            .await?
+            .ok_or(WebhookEndpointError::NotFound)?;
 
         if update.is_enabled == Some(false) {
-            mark_due_now(self.control_plane_pool, &[tenant_id]).await?;
+            mark_due_now(&mut *transaction, &[tenant_id]).await?;
         }
 
-        self.view(tenant_id, endpoint_id).await
+        transaction.commit().await?;
+        self.subscriptions.forget(tenant_id);
+        Ok(WebhookEndpointView::from(stored))
     }
 
     pub async fn delete(
@@ -109,13 +108,16 @@ impl WebhookEndpointStore<'_> {
         tenant_id: Uuid,
         endpoint_id: Uuid,
     ) -> Result<(), WebhookEndpointError> {
-        if delete_endpoint(self.control_plane_pool, tenant_id, endpoint_id).await? == false {
+        let mut transaction = self.control_plane_pool.begin().await?;
+
+        if delete_endpoint(&mut transaction, tenant_id, endpoint_id).await? == false {
             return Err(WebhookEndpointError::NotFound);
         }
 
-        self.subscriptions.forget(tenant_id);
         // The worker gives up the endpoint's pending deliveries on its next look.
-        mark_due_now(self.control_plane_pool, &[tenant_id]).await?;
+        mark_due_now(&mut *transaction, &[tenant_id]).await?;
+        transaction.commit().await?;
+        self.subscriptions.forget(tenant_id);
 
         Ok(())
     }
@@ -131,39 +133,24 @@ impl WebhookEndpointStore<'_> {
         let secret_ciphertext = self.secret_box.seal(secret.key(), &context)?;
         let ids = (tenant_id, endpoint_id);
 
-        if replace_secret(self.control_plane_pool, ids, &secret_ciphertext).await? == false {
-            return Err(WebhookEndpointError::NotFound);
-        }
+        let stored = replace_secret(self.control_plane_pool, ids, &secret_ciphertext)
+            .await?
+            .ok_or(WebhookEndpointError::NotFound)?;
 
-        self.with_secret(tenant_id, endpoint_id, &secret).await
+        Ok(self.reveal_secret(stored, &secret))
     }
 
-    async fn view(
+    fn reveal_secret(
         &self,
-        tenant_id: Uuid,
-        endpoint_id: Uuid,
-    ) -> Result<WebhookEndpointView, WebhookEndpointError> {
-        let stored = find_endpoint(self.control_plane_pool, tenant_id, endpoint_id).await?;
-        let Some(stored) = stored else {
-            return Err(WebhookEndpointError::NotFound);
-        };
-
-        Ok(WebhookEndpointView::from(stored))
-    }
-
-    async fn with_secret(
-        &self,
-        tenant_id: Uuid,
-        endpoint_id: Uuid,
+        stored: StoredWebhookEndpoint,
         secret: &WebhookSecret,
-    ) -> Result<WebhookEndpointWithSecret, WebhookEndpointError> {
-        self.subscriptions.forget(tenant_id);
-        let endpoint = self.view(tenant_id, endpoint_id).await?;
+    ) -> WebhookEndpointWithSecret {
+        self.subscriptions.forget(stored.tenant_id);
 
-        Ok(WebhookEndpointWithSecret {
-            endpoint,
+        WebhookEndpointWithSecret {
+            endpoint: WebhookEndpointView::from(stored),
             secret: secret.encode(),
-        })
+        }
     }
 }
 

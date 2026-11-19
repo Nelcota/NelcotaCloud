@@ -8,7 +8,7 @@ use crate::modules::webhooks::event::webhook_event::{WebhookEvent, WebhookEventE
 use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
 use crate::modules::webhooks::outbox::webhook_hints::WebhookHints;
 use crate::modules::webhooks::outbox::webhook_outbox_repository::{
-    OutboxEntry, database_now, insert_outbox_entry,
+    OutboxBatch, OutboxEvent, database_now, insert_outbox_batch,
 };
 use crate::modules::webhooks::outbox::webhook_subscriptions::{SubscribedEndpoint, endpoints_for};
 use crate::shared::http::api_error::ApiError;
@@ -67,14 +67,16 @@ impl WebhookRecorder {
         }
 
         let occurred_at = database_now(connection).await?;
-        let payload = event.into_payload(occurred_at)?;
-        let entry = OutboxEntry {
-            event_id: Uuid::new_v4(),
+        let outbox_event = OutboxEvent {
+            id: Uuid::new_v4(),
+            payload: event.into_payload(occurred_at)?,
+        };
+        let batch = OutboxBatch {
+            events: std::slice::from_ref(&outbox_event),
             event_type,
-            payload: &payload,
             endpoint_ids: &endpoint_ids,
         };
-        insert_outbox_entry(connection, entry).await?;
+        insert_outbox_batch(connection, batch).await?;
         self.has_recorded.store(true, Ordering::Relaxed);
 
         Ok(())
