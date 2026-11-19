@@ -31,8 +31,9 @@ fn collect_embed_paths(
     known: &mut HashSet<EmbedPath>,
 ) {
     for item in items {
-        let SelectItem::Embed(embed) = item else {
-            continue;
+        let embed = match item {
+            SelectItem::Embed(embed) => embed,
+            _ => continue,
         };
         prefix.push(embed.key().to_owned());
         known.insert(prefix.clone());

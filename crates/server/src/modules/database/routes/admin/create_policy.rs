@@ -1,5 +1,6 @@
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
+use serde_json::json;
 
 use crate::app_state::AppState;
 use crate::modules::database::admin::developer_sql::schema_change::apply_schema_change;
@@ -7,6 +8,8 @@ use crate::modules::database::admin::policy::policy_definition::{
     CreatePolicyRequest, create_policy_sql,
 };
 use crate::modules::tenants::access::tenant_admin::TenantAdmin;
+use crate::modules::tenants::audit::audit_action::AuditAction;
+use crate::modules::tenants::audit::project_change::{ProjectChange, record_project_change};
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::validated_json::ValidatedJson;
 
@@ -33,7 +36,14 @@ pub async fn create_policy(
     ValidatedJson(request): ValidatedJson<CreatePolicyRequest>,
 ) -> Result<StatusCode, ApiError> {
     let statement = create_policy_sql(&table, &request)?;
-    apply_schema_change(&state, admin.tenant_id, statement).await?;
+    apply_schema_change(&state.database_sessions(), admin.tenant_id, statement).await?;
+    let change = ProjectChange {
+        tenant_id: admin.tenant_id,
+        author: admin.author(),
+        action: AuditAction::SchemaChanged,
+        details: json!({ "operation": "create_policy", "table": table, "policy": request.name }),
+    };
+    record_project_change(&state.tenant_pools, change).await;
 
     Ok(StatusCode::CREATED)
 }

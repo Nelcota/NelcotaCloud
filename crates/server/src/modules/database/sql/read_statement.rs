@@ -7,8 +7,7 @@ use crate::modules::database::sql::select_writer::{Level, LevelMode, SelectWrite
 use crate::shared::database::sql_identifier::quote_identifier;
 
 pub const ROOT_ALIAS: &str = "t0";
-/// Largest JSON body a response carries. Postgres measures it and answers no body beyond, so
-/// a huge result never reaches the API's memory.
+/// Largest JSON body the database may aggregate for a response.
 pub const MAX_RESPONSE_BYTES: usize = 16 * 1024 * 1024;
 
 /// What a read answers besides the rows.
@@ -29,7 +28,7 @@ pub fn read_statement(
     shape: ReadShape,
 ) -> Result<QueryBuilder<Postgres>, DatabaseRejection> {
     let root = table_level(table, query, ROOT_ALIAS);
-    let mut sql = QueryBuilder::new("");
+    let mut sql = QueryBuilder::new("WITH ");
     push_json_rows(&mut sql, SelectWriter::new(schema, query), &root, shape)?;
 
     Ok(sql)
@@ -48,8 +47,7 @@ pub fn planned_count_statement(
     Ok(sql)
 }
 
-/// `SELECT <json or NULL past the size limit>, row_count, total FROM (SELECT <json> AS body,
-/// count(*) AS row_count, <total> AS total FROM (<rows>) _r) _b`.
+/// Check the encoded row sizes before asking Postgres to assemble one JSON value.
 pub fn push_json_rows<'a>(
     sql: &mut QueryBuilder<Postgres>,
     mut writer: SelectWriter<'a>,
@@ -57,11 +55,15 @@ pub fn push_json_rows<'a>(
     shape: ReadShape,
 ) -> Result<(), DatabaseRejection> {
     let body = match shape.is_single_object {
-        true => "coalesce(json_agg(_r) -> 0, 'null')::text",
-        false => "coalesce(json_agg(_r), '[]')::text",
+        true => "coalesce((SELECT value::text FROM _encoded_rows LIMIT 1), 'null')",
+        false => "(SELECT coalesce(json_agg(value), '[]')::text FROM _encoded_rows)",
     };
+    sql.push("_encoded_rows AS MATERIALIZED (SELECT row_to_json(_r) AS value FROM (");
+    writer.push_level(sql, root, LevelMode::Rows)?;
+    sql.push(") _r) ");
     sql.push(format!(
-        "SELECT CASE WHEN octet_length(_b.body) <= {MAX_RESPONSE_BYTES} THEN _b.body END,          _b.row_count, _b.total FROM (SELECT {body} AS body, count(*) AS row_count, "
+        "SELECT CASE WHEN coalesce(sum(octet_length(value::text)::bigint + 2), 0)::bigint \
+         <= {MAX_RESPONSE_BYTES} THEN {body} END, count(*) AS row_count, "
     ));
 
     match shape.counts_exactly {
@@ -76,9 +78,7 @@ pub fn push_json_rows<'a>(
         }
     }
 
-    sql.push(" AS total FROM (");
-    writer.push_level(sql, root, LevelMode::Rows)?;
-    sql.push(") _r) _b");
+    sql.push(" AS total FROM _encoded_rows");
 
     Ok(())
 }

@@ -18,6 +18,7 @@ const CARDINALITY_VIOLATION: &str = "21000";
 const EXCLUSION_VIOLATION: &str = "23P01";
 const SERIALIZATION_FAILURE: &str = "40001";
 const DEADLOCK_DETECTED: &str = "40P01";
+const RESPONSE_TOO_LARGE: &str = "NC413";
 /// Class 22: data exceptions (invalid text for a type, out of range, bad JSON...).
 const DATA_EXCEPTION_CLASS: &str = "22";
 
@@ -26,14 +27,17 @@ const DATA_EXCEPTION_CLASS: &str = "22";
 /// Only the constraint name and messages the project raised itself are passed on; anything else is
 /// logged and answered as a generic 500.
 pub fn database_error_response(error: sqlx::Error) -> ApiError {
-    let Some(database_error) = error.as_database_error() else {
-        return ApiError::internal(error);
+    let database_error = match error.as_database_error() {
+        Some(database_error) => database_error,
+        None => return ApiError::internal(error),
     };
-    let Some(postgres_error) = database_error.try_downcast_ref::<PgDatabaseError>() else {
-        return ApiError::internal(error);
+    let postgres_error = match database_error.try_downcast_ref::<PgDatabaseError>() {
+        Some(postgres_error) => postgres_error,
+        None => return ApiError::internal(error),
     };
-    let Some(rejection) = rejection_for(postgres_error) else {
-        return ApiError::internal(error);
+    let rejection = match rejection_for(postgres_error) {
+        Some(rejection) => rejection,
+        None => return ApiError::internal(error),
     };
 
     ApiError::from(rejection)
@@ -52,6 +56,7 @@ fn rejection_for(error: &PgDatabaseError) -> Option<DatabaseRejection> {
         }
         CHECK_VIOLATION => DatabaseRejection::CheckViolation(constraint()),
         QUERY_CANCELED => DatabaseRejection::QueryTimeout,
+        RESPONSE_TOO_LARGE => DatabaseRejection::ResponseTooLarge,
         RAISE_EXCEPTION => DatabaseRejection::RaisedException(error.message().to_owned()),
         UNDEFINED_FUNCTION => {
             DatabaseRejection::invalid_query("this operator does not apply to the column's type")

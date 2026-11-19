@@ -13,9 +13,12 @@ pub fn push_projection(
     items: Option<&[SelectItem]>,
     embeds: &[EmbedPlan],
 ) -> Result<(), DatabaseRejection> {
-    let Some(items) = items else {
-        sql.push(format!("{}.*", target.alias));
-        return Ok(());
+    let items = match items {
+        Some(items) => items,
+        None => {
+            sql.push(format!("{}.*", target.alias));
+            return Ok(());
+        }
     };
     let mut embeds = embeds.iter();
 
@@ -28,9 +31,9 @@ pub fn push_projection(
             SelectItem::AllColumns => format!("{}.*", target.alias),
             SelectItem::Column(selection) => column_expression(target, selection)?,
             SelectItem::Embed(selection) => {
-                let Some(embed) = embeds.next() else {
-                    return Err(DatabaseRejection::invalid_query("embed was not planned"));
-                };
+                let embed = embeds
+                    .next()
+                    .ok_or_else(|| DatabaseRejection::invalid_query("embed was not planned"))?;
                 let key = quote_identifier(selection.key());
                 format!("{}.value AS {key}", embed.lateral_alias)
             }

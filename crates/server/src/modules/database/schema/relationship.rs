@@ -20,27 +20,36 @@ pub fn find_relationship<'a>(
     target: &str,
     hint: Option<&str>,
 ) -> Result<Relationship<'a>, DatabaseRejection> {
-    let Some(target_table) = schema.table(target) else {
-        return Err(DatabaseRejection::TableNotFound(target.to_owned()));
-    };
-    let mut candidates = schema
-        .foreign_keys
-        .iter()
-        .flat_map(|foreign_key| candidates_of(foreign_key, source, target))
+    let target_table = schema
+        .table(target)
+        .ok_or_else(|| DatabaseRejection::TableNotFound(target.to_owned()))?;
+    let outgoing = schema.foreign_keys_between(source, target);
+    let incoming = schema.foreign_keys_between(target, source);
+    let mut candidates = outgoing
+        .into_iter()
+        .flat_map(|keys| keys.values())
+        .map(|key| (key, false))
+        .chain(
+            incoming
+                .into_iter()
+                .flat_map(|keys| keys.values())
+                .map(|key| (key, true)),
+        )
         .filter(|(foreign_key, _)| matches_hint(foreign_key, hint));
-    let not_found =
-        || DatabaseRejection::RelationshipNotFound(source.to_owned(), target.to_owned());
-    let Some((foreign_key, is_to_many)) = candidates.next() else {
-        let junction = find_junction(schema, source, target, hint)?;
-        let Some(junction) = junction else {
-            return Err(not_found());
-        };
-        return Ok(Relationship {
-            target: target_table,
-            is_to_many: true,
-            column_pairs: Vec::new(),
-            junction: Some(junction),
-        });
+    let (foreign_key, is_to_many) = match candidates.next() {
+        Some(candidate) => candidate,
+        None => {
+            let junction = find_junction(schema, source, target, hint)?.ok_or_else(|| {
+                DatabaseRejection::RelationshipNotFound(source.to_owned(), target.to_owned())
+            })?;
+
+            return Ok(Relationship {
+                target: target_table,
+                is_to_many: true,
+                column_pairs: Vec::new(),
+                junction: Some(junction),
+            });
+        }
     };
 
     if candidates.next().is_some() {
@@ -58,28 +67,10 @@ pub fn find_relationship<'a>(
     })
 }
 
-/// A key from `source` to `target` embeds one row; a key from `target` to `source`, many.
-fn candidates_of<'a>(
-    foreign_key: &'a ForeignKeyModel,
-    source: &str,
-    target: &str,
-) -> Vec<(&'a ForeignKeyModel, bool)> {
-    let mut candidates = Vec::new();
-
-    if foreign_key.table == source && foreign_key.foreign_table == target {
-        candidates.push((foreign_key, false));
-    }
-
-    if foreign_key.table == target && foreign_key.foreign_table == source {
-        candidates.push((foreign_key, true));
-    }
-
-    candidates
-}
-
 fn matches_hint(foreign_key: &ForeignKeyModel, hint: Option<&str>) -> bool {
-    let Some(hint) = hint else {
-        return true;
+    let hint = match hint {
+        Some(hint) => hint,
+        None => return true,
     };
 
     foreign_key.name == hint || foreign_key.columns.iter().any(|column| column == hint)

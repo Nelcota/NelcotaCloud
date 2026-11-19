@@ -5,8 +5,8 @@ use axum::response::Response;
 
 use crate::app_state::AppState;
 use crate::modules::database::access::data_api_caller::DataApiCaller;
-use crate::modules::database::routes::rows_response::rows_response;
-use crate::modules::database::routes::write_request::write_request;
+use crate::modules::database::routes::data_api::rows_response::rows_response;
+use crate::modules::database::routes::data_api::write_request::write_request;
 use crate::modules::database::rows::row_writing::{WriteKind, write_rows};
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
@@ -42,7 +42,12 @@ pub async fn insert_rows(
     body: Bytes,
 ) -> Result<Response, ApiError> {
     let mut request = write_request(query_string.as_deref(), &headers, &body)?;
-    let result = write_rows(&state, &caller, request.write(WriteKind::Insert, &table)).await?;
+    let result = write_rows(
+        &state.database_sessions(),
+        &caller,
+        request.write(WriteKind::Insert, &table),
+    )
+    .await?;
 
     rows_response(StatusCode::CREATED, result)
 }

@@ -4,7 +4,9 @@ use axum::response::Response;
 
 use crate::app_state::AppState;
 use crate::modules::database::access::data_api_caller::DataApiCaller;
-use crate::modules::database::routes::rows_response::{json_text_response, parse_json_body};
+use crate::modules::database::routes::data_api::rows_response::{
+    json_text_response, parse_json_body,
+};
 use crate::modules::database::rows::function_calling::call_function as call_project_function;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
@@ -31,7 +33,8 @@ pub async fn call_function(
     body: Bytes,
 ) -> Result<Response, ApiError> {
     let arguments = parse_json_body(&body)?;
-    let result = call_project_function(&state, &caller, &function, arguments).await?;
+    let result =
+        call_project_function(&state.database_sessions(), &caller, &function, arguments).await?;
 
     Ok(json_text_response(result))
 }

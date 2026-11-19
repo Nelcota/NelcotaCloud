@@ -22,8 +22,9 @@ pub fn row_values(row: &PgRow) -> Vec<Option<String>> {
 
 /// The value as shown: at most `MAX_VALUE_CHARS` characters, cut values marked.
 fn shown_value(text: &str) -> String {
-    let Some((cut_at, _)) = text.char_indices().nth(MAX_VALUE_CHARS) else {
-        return text.to_owned();
+    let cut_at = match text.char_indices().nth(MAX_VALUE_CHARS) {
+        Some((cut_at, _)) => cut_at,
+        None => return text.to_owned(),
     };
     let kept = text.get(..cut_at).unwrap_or_default();
 

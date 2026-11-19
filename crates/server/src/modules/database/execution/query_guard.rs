@@ -55,9 +55,12 @@ impl QueryGuard {
         map_error: fn(sqlx::Error) -> ApiError,
     ) -> Result<T, ApiError> {
         let deadline = self.statement_timeout.saturating_add(GUARD_GRACE);
-        let Ok(outcome) = tokio::time::timeout(deadline, query).await else {
-            self.terminate_backend().await;
-            return Err(ApiError::from(DatabaseRejection::QueryTimeout));
+        let outcome = match tokio::time::timeout(deadline, query).await {
+            Ok(outcome) => outcome,
+            Err(_) => {
+                self.terminate_backend().await;
+                return Err(ApiError::from(DatabaseRejection::QueryTimeout));
+            }
         };
 
         outcome.map_err(map_error)
@@ -67,13 +70,11 @@ impl QueryGuard {
     /// request; the start time makes sure it is still the same process.
     async fn terminate_backend(&self) {
         let backend = self.backend;
-        let termination = sqlx::query(
-            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE pid = $1 AND backend_start = $2",
-        )
-        .bind(backend.pid)
-        .bind(backend.started_at)
-        .execute(&self.admin_pool)
-        .await;
+        let termination = sqlx::query("SELECT auth.terminate_project_backend($1, $2)")
+            .bind(backend.pid)
+            .bind(backend.started_at)
+            .execute(&self.admin_pool)
+            .await;
 
         if let Err(error) = termination {
             tracing::error!(%error, backend_pid = backend.pid, "failed to end a slow query");

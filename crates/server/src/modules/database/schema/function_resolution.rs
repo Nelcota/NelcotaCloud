@@ -14,9 +14,9 @@ pub fn resolve_function<'a>(
         .functions_named(name)
         .into_iter()
         .filter(|function| accepts(function, arguments));
-    let Some(function) = candidates.next() else {
-        return Err(DatabaseRejection::FunctionNotFound(name.to_owned()));
-    };
+    let function = candidates
+        .next()
+        .ok_or_else(|| DatabaseRejection::FunctionNotFound(name.to_owned()))?;
 
     if candidates.next().is_some() {
         return Err(DatabaseRejection::invalid_query(format!(

@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use moka::future::Cache;
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
@@ -47,6 +47,7 @@ impl SessionSlots {
 
     /// The project's slot first: a busy project waits on its own slots, not the instance's.
     pub async fn acquire(&self, tenant_id: Uuid) -> Result<SessionSlot, DatabaseRejection> {
+        let started = Instant::now();
         let project_slots = self
             .projects
             .get_with(tenant_id, async {
@@ -59,8 +60,14 @@ impl SessionSlots {
 
             (project, instance)
         };
-        let Ok((Ok(project), Ok(instance))) = tokio::time::timeout(SLOT_WAIT, both).await else {
-            return Err(DatabaseRejection::DatabaseBusy);
+        let slots = tokio::time::timeout(SLOT_WAIT, both).await;
+        tracing::debug!(
+            wait_ms = started.elapsed().as_secs_f64() * 1_000.0,
+            "waited for database session slots"
+        );
+        let (project, instance) = match slots {
+            Ok((Ok(project), Ok(instance))) => (project, instance),
+            _ => return Err(DatabaseRejection::DatabaseBusy),
         };
 
         Ok(SessionSlot {

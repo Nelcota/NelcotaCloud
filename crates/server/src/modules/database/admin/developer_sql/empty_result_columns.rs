@@ -30,9 +30,12 @@ pub async fn empty_result_columns(
         .prepare(AssertSqlSafe(unique_text).into_sql_str())
         .await;
 
-    let Ok(prepared) = prepared else {
-        sqlx::raw_sql(ROLLBACK).execute(&mut *connection).await?;
-        return Ok(Vec::new());
+    let prepared = match prepared {
+        Ok(prepared) => prepared,
+        Err(_) => {
+            sqlx::raw_sql(ROLLBACK).execute(&mut *connection).await?;
+            return Ok(Vec::new());
+        }
     };
 
     sqlx::raw_sql(RELEASE).execute(connection).await?;

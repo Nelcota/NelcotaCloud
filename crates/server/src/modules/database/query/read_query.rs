@@ -17,8 +17,6 @@ pub struct ReadQuery {
     /// `None` means every column (`select=*`).
     pub select: Option<Vec<SelectItem>>,
     pub nodes: HashMap<EmbedPath, QueryNode>,
-    /// Upserts: the unique columns rows are matched on (the primary key when absent).
-    pub on_conflict: Option<Vec<String>>,
 }
 
 /// Filters, order and page of one table of the query.

@@ -27,14 +27,12 @@ fn parse_group(
         ));
     }
 
-    let Some(inner) = text
+    let inner = text
         .strip_prefix('(')
         .and_then(|rest| rest.strip_suffix(')'))
-    else {
-        return Err(DatabaseRejection::invalid_query(
-            "and/or take a list like (a.eq.1,b.eq.2)",
-        ));
-    };
+        .ok_or_else(|| {
+            DatabaseRejection::invalid_query("and/or take a list like (a.eq.1,b.eq.2)")
+        })?;
     let conditions = split_top_level(inner)?
         .into_iter()
         .map(|item| parse_member(item, depth))
@@ -70,11 +68,9 @@ fn parse_member(text: &str, depth: usize) -> Result<Condition, DatabaseRejection
             .map(Condition::Group);
     }
 
-    let Some((column, expression)) = text.split_once('.') else {
-        return Err(DatabaseRejection::invalid_query(format!(
-            "{text} must look like column.operator.value"
-        )));
-    };
+    let (column, expression) = text.split_once('.').ok_or_else(|| {
+        DatabaseRejection::invalid_query(format!("{text} must look like column.operator.value"))
+    })?;
 
     parse_filter(column, expression).map(Condition::Filter)
 }
@@ -92,13 +88,15 @@ mod tests {
         )?;
 
         assert_eq!(group.conditions.len(), 3);
-        let Some(Condition::Group(nested)) = group.conditions.get(1) else {
-            return Err(DatabaseRejection::invalid_query("expected a group"));
+        let nested = match group.conditions.get(1) {
+            Some(Condition::Group(nested)) => nested,
+            _ => return Err(DatabaseRejection::invalid_query("expected a group")),
         };
         assert!(nested.is_negated);
         assert_eq!(nested.kind, GroupKind::And);
-        let Some(Condition::Filter(filter)) = group.conditions.get(2) else {
-            return Err(DatabaseRejection::invalid_query("expected a filter"));
+        let filter = match group.conditions.get(2) {
+            Some(Condition::Filter(filter)) => filter,
+            _ => return Err(DatabaseRejection::invalid_query("expected a filter")),
         };
         assert!(filter.is_negated);
         Ok(())

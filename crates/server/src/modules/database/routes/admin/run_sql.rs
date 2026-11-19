@@ -41,7 +41,7 @@ pub async fn run_sql(
     admin: TenantAdmin,
     ValidatedJson(request): ValidatedJson<RunSqlRequest>,
 ) -> Result<Json<SqlResult>, ApiError> {
-    let mut session = DeveloperSession::open(&state, admin.tenant_id).await?;
+    let mut session = DeveloperSession::open(&state.database_sessions(), admin.tenant_id).await?;
     let result = run_script(&mut session, request.query).await?;
     session.commit().await?;
 

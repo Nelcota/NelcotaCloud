@@ -2,15 +2,15 @@ use axum::http::{HeaderMap, StatusCode};
 use serde_json::Value;
 
 use crate::modules::database::query::preferences::Preferences;
-use crate::modules::database::query::query_string_parser::parse_query_string;
-use crate::modules::database::query::read_query::ReadQuery;
-use crate::modules::database::routes::rows_response::parse_json_body;
+use crate::modules::database::query::query_string_parser::parse_write_query;
+use crate::modules::database::query::write_query::WriteQuery;
+use crate::modules::database::routes::data_api::rows_response::parse_json_body;
 use crate::modules::database::rows::row_writing::{RowWrite, WriteKind};
 use crate::shared::http::api_error::ApiError;
 
 /// The parts every write request carries: filters and shape, preferences and body.
 pub struct WriteRequest {
-    query: ReadQuery,
+    query: WriteQuery,
     preferences: Preferences,
     body: Value,
 }
@@ -21,7 +21,7 @@ pub fn write_request(
     body: &[u8],
 ) -> Result<WriteRequest, ApiError> {
     Ok(WriteRequest {
-        query: parse_query_string(query_string.unwrap_or_default())?,
+        query: parse_write_query(query_string.unwrap_or_default())?,
         preferences: Preferences::from_headers(headers),
         body: parse_json_body(body)?,
     })

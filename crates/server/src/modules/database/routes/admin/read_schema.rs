@@ -24,7 +24,7 @@ pub async fn read_schema(
     State(state): State<AppState>,
     admin: TenantAdmin,
 ) -> Result<Json<SchemaOverview>, ApiError> {
-    let mut session = DeveloperSession::open(&state, admin.tenant_id).await?;
+    let mut session = DeveloperSession::open(&state.database_sessions(), admin.tenant_id).await?;
     let overview = read_schema_overview(&mut session.transaction)
         .await
         .map_err(ApiError::internal)?;

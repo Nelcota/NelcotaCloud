@@ -4,6 +4,7 @@ use crate::modules::database::query::select_item::{EmbedSelection, SelectItem};
 use crate::modules::database::rejection::database_rejection::DatabaseRejection;
 use crate::modules::database::schema::junction::Junction;
 use crate::modules::database::schema::relationship::{Relationship, find_relationship};
+use crate::modules::database::sql::read_statement::MAX_RESPONSE_BYTES;
 use crate::modules::database::sql::select_writer::{Level, LevelMode, SelectWriter};
 use crate::shared::database::sql_identifier::quote_identifier;
 
@@ -64,10 +65,6 @@ impl<'a> SelectWriter<'a> {
             true => " INNER",
             false => " LEFT",
         };
-        let aggregate = match relationship.is_to_many {
-            true => format!("coalesce(json_agg({row_alias}), '[]')"),
-            false => format!("row_to_json({row_alias})"),
-        };
         let mut path = parent.path.clone();
         path.push(selection.key().to_owned());
         let child = Level {
@@ -87,11 +84,29 @@ impl<'a> SelectWriter<'a> {
             applies_filters: true,
         };
 
-        sql.push(format!(
-            "{join} JOIN LATERAL (SELECT {aggregate} AS value FROM ("
-        ));
+        sql.push(format!("{join} JOIN LATERAL ("));
+        if relationship.is_to_many {
+            sql.push(format!(
+                "WITH _encoded_children AS MATERIALIZED (SELECT row_to_json({row_alias}) AS value FROM ("
+            ));
+        }
+
+        if relationship.is_to_many == false {
+            sql.push(format!("SELECT row_to_json({row_alias}) AS value FROM ("));
+        }
+
         self.push_level(sql, &child, LevelMode::Rows)?;
-        sql.push(format!(") {row_alias}) {lateral_alias} ON "));
+        sql.push(format!(") {row_alias}"));
+        if relationship.is_to_many {
+            sql.push(format!(
+                ") SELECT CASE WHEN auth.check_json_response_size(\
+                 coalesce(sum(octet_length(value::text)::bigint + 2), 0)::bigint, {MAX_RESPONSE_BYTES}) \
+                 THEN (SELECT coalesce(json_agg(value), '[]') FROM _encoded_children) END AS value \
+                 FROM _encoded_children"
+            ));
+        }
+
+        sql.push(format!(") {lateral_alias} ON "));
         match selection.is_inner && relationship.is_to_many {
             true => sql.push(format!("json_array_length({lateral_alias}.value) > 0")),
             false => sql.push("true"),

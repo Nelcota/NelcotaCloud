@@ -49,6 +49,10 @@ pub enum DatabaseRejection {
     TransactionConflict,
     #[error("the value conflicts with exclusion constraint {0}")]
     ExclusionViolation(String),
+    #[error("migration {0} is already applied with a different name or SQL")]
+    MigrationMismatch(i64),
+    #[error("migration {version} must be newer than applied version {latest}")]
+    MigrationOutOfOrder { version: i64, latest: i64 },
 }
 
 impl DatabaseRejection {
@@ -75,6 +79,8 @@ impl DatabaseRejection {
             Self::DatabaseBusy => (StatusCode::SERVICE_UNAVAILABLE, "database_busy"),
             Self::TransactionConflict => (StatusCode::CONFLICT, "transaction_conflict"),
             Self::ExclusionViolation(_) => (StatusCode::CONFLICT, "exclusion_violation"),
+            Self::MigrationMismatch(_) => (StatusCode::CONFLICT, "migration_mismatch"),
+            Self::MigrationOutOfOrder { .. } => (StatusCode::CONFLICT, "migration_out_of_order"),
         }
     }
 
@@ -127,6 +133,11 @@ mod tests {
             DatabaseRejection::DatabaseBusy,
             DatabaseRejection::TransactionConflict,
             DatabaseRejection::ExclusionViolation(name()),
+            DatabaseRejection::MigrationMismatch(1),
+            DatabaseRejection::MigrationOutOfOrder {
+                version: 1,
+                latest: 2,
+            },
         ];
         let mut seen_codes = HashSet::new();
 

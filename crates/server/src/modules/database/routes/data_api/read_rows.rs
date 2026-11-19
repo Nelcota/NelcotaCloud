@@ -6,7 +6,7 @@ use crate::app_state::AppState;
 use crate::modules::database::access::data_api_caller::DataApiCaller;
 use crate::modules::database::query::preferences::Preferences;
 use crate::modules::database::query::query_string_parser::parse_query_string;
-use crate::modules::database::routes::rows_response::rows_response;
+use crate::modules::database::routes::data_api::rows_response::rows_response;
 use crate::modules::database::rows::row_reading::{RowRead, read_rows as read_table_rows};
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
@@ -49,7 +49,7 @@ pub async fn read_rows(
         query: &query,
         preferences: &preferences,
     };
-    let result = read_table_rows(&state, &caller, read).await?;
+    let result = read_table_rows(&state.database_sessions(), &caller, read).await?;
 
     rows_response(StatusCode::OK, result)
 }

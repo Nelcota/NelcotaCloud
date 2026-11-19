@@ -1,5 +1,7 @@
 use crate::modules::database::rejection::database_rejection::DatabaseRejection;
-use crate::modules::database::schema::schema_model::{ForeignKeyModel, SchemaModel};
+use crate::modules::database::schema::schema_model::{
+    ForeignKeyConstraints, ForeignKeyModel, SchemaModel,
+};
 
 /// A table linking two others many-to-many (`post_tags` with keys to `posts` and `tags`).
 #[derive(Debug, PartialEq, Eq)]
@@ -19,18 +21,21 @@ pub fn find_junction<'a>(
     target: &str,
     hint: Option<&str>,
 ) -> Result<Option<Junction<'a>>, DatabaseRejection> {
-    let keys = &schema.foreign_keys;
-    let mut junctions = keys
-        .iter()
-        .filter(|to_source| to_source.foreign_table == source && to_source.table != source)
-        .flat_map(|to_source| {
-            keys.iter()
-                .filter(move |to_target| links(to_source, to_target, target))
-                .map(move |to_target| (to_source, to_target))
-        })
-        .filter(|(to_source, to_target)| matches_hint(to_source, to_target, hint));
-    let Some((to_source, to_target)) = junctions.next() else {
-        return Ok(None);
+    let mut junctions = schema
+        .referencing_tables(source)
+        .into_iter()
+        .flatten()
+        .filter(|(table, _)| table.as_str() != source && table.as_str() != target)
+        .filter_map(|(table, sources)| Some((sources, schema.foreign_keys_between(table, target)?)))
+        .flat_map(|(sources, targets)| {
+            sources.values().flat_map(move |source_key| {
+                matching_targets(targets, source_key, hint)
+                    .map(move |target_key| (source_key, target_key))
+            })
+        });
+    let (to_source, to_target) = match junctions.next() {
+        Some((to_source, to_target)) => (to_source, to_target),
+        None => return Ok(None),
     };
 
     if junctions.next().is_some() {
@@ -47,24 +52,21 @@ pub fn find_junction<'a>(
     }))
 }
 
-/// A second key of the same table, to the target, that is not the first key.
-fn links(to_source: &ForeignKeyModel, to_target: &ForeignKeyModel, target: &str) -> bool {
-    to_target.table == to_source.table
-        && to_target.foreign_table == target
-        && to_target.table != target
-        && to_target.name != to_source.name
-}
-
-fn matches_hint(
-    to_source: &ForeignKeyModel,
-    to_target: &ForeignKeyModel,
+fn matching_targets<'a>(
+    targets: &'a ForeignKeyConstraints,
+    source: &'a ForeignKeyModel,
     hint: Option<&str>,
-) -> bool {
-    let Some(hint) = hint else {
-        return true;
+) -> impl Iterator<Item = &'a ForeignKeyModel> + use<'a> {
+    let (all_targets, selected) = match hint {
+        Some(hint) if source.table != hint && source.name != hint => (None, targets.get(hint)),
+        _ => (Some(targets), None),
     };
 
-    to_source.table == hint || to_source.name == hint || to_target.name == hint
+    all_targets
+        .into_iter()
+        .flat_map(|keys| keys.values())
+        .chain(selected)
+        .filter(move |target| target.name != source.name)
 }
 
 fn pairs(foreign_key: &ForeignKeyModel) -> Vec<(&str, &str)> {

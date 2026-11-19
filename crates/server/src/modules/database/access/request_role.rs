@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::modules::tenants::database::database_roles::{
+use crate::modules::tenants::postgres::database_roles::{
     ANON_ROLE, AUTHENTICATED_ROLE, SERVICE_ROLE,
 };
 

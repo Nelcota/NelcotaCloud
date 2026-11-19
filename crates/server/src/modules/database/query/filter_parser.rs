@@ -22,11 +22,9 @@ pub fn parse_filter(column: &str, expression: &str) -> Result<Filter, DatabaseRe
 }
 
 fn parse_operation(text: &str) -> Result<Operation, DatabaseRejection> {
-    let Some((operator, value)) = text.split_once('.') else {
-        return Err(DatabaseRejection::invalid_query(format!(
-            "filter {text} must look like operator.value"
-        )));
-    };
+    let (operator, value) = text.split_once('.').ok_or_else(|| {
+        DatabaseRejection::invalid_query(format!("filter {text} must look like operator.value"))
+    })?;
     let value = unquote(value)?;
 
     match operator {
@@ -56,14 +54,10 @@ fn like_pattern(value: &str) -> String {
 
 /// `(a,b,"c,d")`.
 fn parse_in_list(value: &str) -> Result<Vec<String>, DatabaseRejection> {
-    let Some(inner) = value
+    let inner = value
         .strip_prefix('(')
         .and_then(|rest| rest.strip_suffix(')'))
-    else {
-        return Err(DatabaseRejection::invalid_query(
-            "in needs a list like (a,b)",
-        ));
-    };
+        .ok_or_else(|| DatabaseRejection::invalid_query("in needs a list like (a,b)"))?;
     // `in.()` matches no row, like an empty list in SQL.
     if inner.trim().is_empty() {
         return Ok(Vec::new());
