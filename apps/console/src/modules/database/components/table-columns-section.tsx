@@ -24,7 +24,7 @@ export function TableColumnsSection(props: TableColumnsSectionProps): JSX.Elemen
   return (
     <div className="grid gap-3">
       <AddColumnAction {...props} />
-      <div className="bg-card overflow-hidden rounded-xl border">
+      <div className="surface overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>

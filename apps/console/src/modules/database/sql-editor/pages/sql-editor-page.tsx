@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 
-import { SqlEditor } from '@/modules/sql-editor/components/sql-editor'
+import { SqlEditor } from '@/modules/database/sql-editor/components/sql-editor'
 import { useProjectId } from '@/shared/routing/use-project-id'
 import { PageHeader } from '@/shared/ui/page-header'
 

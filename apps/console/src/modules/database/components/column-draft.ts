@@ -13,8 +13,6 @@ export type ReferenceTarget = { table: string; column: string }
 
 /** One column being written in a form, before it becomes the API's `ColumnDefinition`. */
 export type ColumnDraft = {
-  /** Tells the form's rows apart while names are still being typed. */
-  key: number
   name: string
   type: ColumnType
   isArray: boolean
@@ -27,17 +25,8 @@ export type ColumnDraft = {
   onDelete: OnDeleteAction
 }
 
-let lastKey = 0
-
-function nextKey(): number {
-  lastKey += 1
-
-  return lastKey
-}
-
 export function blankColumnDraft(): ColumnDraft {
   return {
-    key: nextKey(),
     name: '',
     type: 'text',
     isArray: false,

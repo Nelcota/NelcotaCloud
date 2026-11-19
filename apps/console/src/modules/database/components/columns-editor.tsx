@@ -1,5 +1,6 @@
 import Plus from '~icons/solar/add-linear'
 import type { JSX } from 'react'
+import { type Control, Controller, useFieldArray } from 'react-hook-form'
 
 import {
   type ColumnDraft,
@@ -9,54 +10,47 @@ import {
 import { ColumnDraftFields } from '@/modules/database/components/column-draft-fields'
 import { Button } from '@/shared/ui/button'
 
+export type CreateTableFields = { name: string; columns: ColumnDraft[] }
+
 type ColumnsEditorProps = {
-  columns: readonly ColumnDraft[]
+  control: Control<CreateTableFields>
   targets: readonly ReferenceTarget[]
-  onChange: (columns: ColumnDraft[]) => void
 }
 
 /** The columns of a new table: edit, add and remove them; a table keeps at least one. */
-export function ColumnsEditor({ columns, targets, onChange }: ColumnsEditorProps): JSX.Element {
-  function replace(updated: ColumnDraft): void {
-    onChange(columns.map((column) => pickUpdated(column, updated)))
-  }
-
-  function remove(key: number): void {
-    onChange(columns.filter((column) => column.key !== key))
-  }
+export function ColumnsEditor({ control, targets }: ColumnsEditorProps): JSX.Element {
+  const { fields, append, remove } = useFieldArray({ control, name: 'columns' })
 
   return (
     <div className="grid gap-3">
       <h3 className="text-sm font-medium">Colunas</h3>
-      {columns.map((column) => (
-        <ColumnDraftFields
-          key={column.key}
-          draft={column}
-          targets={targets}
-          canBePrimaryKey
-          onChange={replace}
-          onRemove={removal(columns.length, () => remove(column.key))}
+      {fields.map((column, index) => (
+        <Controller
+          key={column.id}
+          control={control}
+          name={`columns.${index}`}
+          render={({ field }) => (
+            <ColumnDraftFields
+              draft={field.value}
+              targets={targets}
+              canBePrimaryKey
+              onChange={field.onChange}
+              onRemove={removal(fields.length, () => remove(index))}
+            />
+          )}
         />
       ))}
       <Button
         type="button"
         variant="outline"
         className="w-fit"
-        onClick={() => onChange([...columns, blankColumnDraft()])}
+        onClick={() => append(blankColumnDraft(), { shouldFocus: false })}
       >
         <Plus />
         Adicionar coluna
       </Button>
     </div>
   )
-}
-
-function pickUpdated(column: ColumnDraft, updated: ColumnDraft): ColumnDraft {
-  if (column.key === updated.key) {
-    return updated
-  }
-
-  return column
 }
 
 /** The last column stays: a table needs one. */

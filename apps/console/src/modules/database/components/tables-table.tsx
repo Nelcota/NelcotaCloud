@@ -21,7 +21,7 @@ type TablesTableProps = { projectId: string; tables: readonly TableOverview[] }
 /** The project's tables and views, each linking to its page. */
 export function TablesTable({ projectId, tables }: TablesTableProps): JSX.Element {
   return (
-    <div className="bg-card overflow-hidden rounded-xl border">
+    <div className="surface overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow>
