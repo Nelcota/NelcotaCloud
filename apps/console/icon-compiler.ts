@@ -28,6 +28,7 @@ export function compileReactIcon(svg: string): string {
     "    width: '1em',",
     "    height: '1em',",
     "    focusable: 'false',",
+    "    'data-icon': '',",
     "    'aria-hidden': isNamed ? undefined : true,",
     "    role: isNamed ? 'img' : undefined,",
     '    ...props,',

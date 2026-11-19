@@ -15,7 +15,7 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
-    "paths": { "@/*": ["./src/*"], "@nelcota/sdk": ["../../packages/sdk/src/index.ts"] },
+    "paths": { "@/*": ["./src/*"], "@nelcota/sdk": ["../../packages/sdk/src/client-entry.ts"] },
 
     /* Type checking */
     "strict": true,
