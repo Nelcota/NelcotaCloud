@@ -9,11 +9,12 @@ pub struct TenantPoolLimits {
 }
 
 impl TenantPoolLimits {
-    /// The API's Auth and platform pools: the projects with recent requests keep a small pool,
-    /// and a project past the limit reopens its pool on its next request.
+    /// The API's Auth and platform pools: the projects with recent requests keep a pool, and a
+    /// project past the limit reopens its pool on its next request. Five connections let a
+    /// project's concurrent signups and logins run without waiting on each other.
     pub const API: Self = Self {
-        connections_per_tenant: 3,
-        open_pools: 32,
+        connections_per_tenant: 5,
+        open_pools: 16,
     };
 
     /// Data API pools, sized like its session slots: five sessions per project, forty in all.
