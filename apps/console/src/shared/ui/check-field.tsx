@@ -14,7 +14,7 @@ export function CheckField({ label, isChecked, onChange }: CheckFieldProps): JSX
   return (
     <label
       className={cn(
-        'hover:bg-accent/60 has-[:focus-visible]:ring-ring/50 relative flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 transition-colors has-[:focus-visible]:ring-3',
+        'hover:bg-accent/60 has-[:focus-visible]:ring-ring/50 relative flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors has-[:focus-visible]:ring-3',
         isChecked && 'border-foreground/50 bg-accent/60',
       )}
     >

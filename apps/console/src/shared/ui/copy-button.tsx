@@ -4,6 +4,7 @@ import type { JSX } from 'react'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/shared/ui/button'
+import { Tooltip } from '@/shared/ui/tooltip'
 
 const FEEDBACK_DURATION_MS = 2000
 
@@ -20,10 +21,13 @@ type CopyButtonProps = {
   /** What is copied, for screen readers ("Copiar a secret key"). */
   description: string
   autoFocus?: boolean
+  /** Icon only, named by a tooltip: for a copy action sitting right next to the value. */
+  isCompact?: boolean
 }
 
 /** Copies a value and says so for a moment; the clipboard can be blocked, so failure is shown too. */
-export function CopyButton({ value, description, autoFocus }: CopyButtonProps): JSX.Element {
+export function CopyButton(props: CopyButtonProps): JSX.Element {
+  const { value, description, autoFocus } = props
   const [state, setState] = useState<CopyState>('idle')
 
   useEffect(() => {
@@ -43,6 +47,22 @@ export function CopyButton({ value, description, autoFocus }: CopyButtonProps): 
     } catch {
       setState('failed')
     }
+  }
+
+  if (props.isCompact === true) {
+    return (
+      <Tooltip label={LABELS[state]} side="top">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          onClick={copy}
+          aria-label={`${LABELS[state]}: ${description}`}
+        >
+          <CopyIcon state={state} />
+        </Button>
+      </Tooltip>
+    )
   }
 
   return (

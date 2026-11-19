@@ -8,7 +8,7 @@ export function Skeleton({ className }: { className?: string }): JSX.Element {
     <span
       aria-hidden="true"
       data-slot="skeleton"
-      className={cn('bg-muted block rounded-md motion-safe:animate-pulse', className)}
+      className={cn('bg-foreground/8 block rounded-lg motion-safe:animate-pulse', className)}
     />
   )
 }

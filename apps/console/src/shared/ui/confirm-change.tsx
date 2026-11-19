@@ -27,7 +27,7 @@ export function ConfirmChangePreview({
   const Icon = change.icon
 
   return (
-    <div className="bg-muted/40 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-lg border px-4 py-3">
+    <div className="bg-muted/40 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-xl border px-4 py-3">
       <span className="flex min-w-0 items-center gap-3">
         <Icon aria-hidden="true" className="text-muted-foreground size-5 shrink-0" />
         <span className="truncate font-medium">{change.subject}</span>

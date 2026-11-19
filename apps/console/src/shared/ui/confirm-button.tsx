@@ -13,6 +13,7 @@ type ConfirmButtonProps = {
   onConfirm: () => void | Promise<void>
   isDestructive?: boolean
   isPending?: boolean
+  isDisabled?: boolean
   /** See `ConfirmDialog`: text to type before an irreversible action. */
   confirmationText?: string
   /** See `ConfirmDialog`: the change the action makes, played when the dialog opens. */
@@ -36,7 +37,7 @@ export function ConfirmButton(props: ConfirmButtonProps): JSX.Element {
       <Button
         variant={triggerVariant(props.isDestructive)}
         size={props.size ?? 'sm'}
-        disabled={props.isPending}
+        disabled={props.isPending || props.isDisabled}
         aria-busy={props.isPending}
         aria-label={props.triggerLabel}
         onClick={() => setIsOpen(true)}

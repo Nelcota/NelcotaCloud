@@ -36,6 +36,9 @@ export function createApiClient(auth: AuthTokenSource, baseUrl = API_BASE_URL): 
  */
 export const apiClient = createApiClient(nelcota.auth)
 
+/** Public routes can start immediately, even while an expired account session renews. */
+export const publicApiClient = createClient<paths>({ baseUrl: API_BASE_URL })
+
 /** Names the project a request manages; the API checks the account is a member. */
 export function projectHeaders(projectId: string): Record<string, string> {
   return { 'x-nelcota-project': projectId }

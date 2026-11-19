@@ -16,8 +16,8 @@ export function EmptyState({
   action,
 }: EmptyStateProps): JSX.Element {
   return (
-    <div className="flex flex-col items-center rounded-xl border border-dashed px-6 py-12 text-center">
-      <h2 className="flex items-center gap-2 text-sm">
+    <div className="surface flex flex-col items-center px-6 py-14 text-center">
+      <h2 className="flex items-center gap-2 text-base">
         <Icon aria-hidden="true" className="text-muted-foreground size-5" />
         {title}
       </h2>

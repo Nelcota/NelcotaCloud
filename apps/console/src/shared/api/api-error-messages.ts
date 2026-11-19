@@ -5,9 +5,10 @@
 export const MESSAGES_BY_CODE: Record<string, string> = {
   invalid_credentials: 'Email ou senha incorretos.',
   email_taken: 'Já existe uma conta com esse email.',
-  email_not_verified: 'Confirme seu email antes de entrar. O link está na sua caixa de entrada.',
+  email_not_verified:
+    'Confirme seu email antes de entrar. O link está na sua caixa de entrada ou no spam.',
   invalid_token: 'Este link expirou ou já foi usado. Peça um novo.',
-  invalid_mfa_code: 'Código incorreto. Confira o app autenticador e tente de novo.',
+  invalid_mfa_code: 'Código incorreto. Confira o código no app e digite de novo.',
   invalid_refresh_token: 'Sua sessão terminou. Entre de novo.',
   invalid_access_token: 'Sua sessão terminou. Entre de novo.',
   user_banned: 'Esta conta está bloqueada.',
@@ -15,6 +16,8 @@ export const MESSAGES_BY_CODE: Record<string, string> = {
   too_many_requests: 'Muitas tentativas em pouco tempo. Espere um minuto e tente de novo.',
   slug_taken: 'Esse identificador já está em uso. Escolha outro.',
   project_access_denied: 'Você não tem mais acesso a este projeto.',
+  mascot_save_unconfirmed:
+    'A API não confirmou a escolha do mascote. Verifique se o servidor está atualizado.',
   admin_access_denied: 'Você não tem permissão para isso neste projeto.',
   secret_key_required: 'Essa ação exige uma secret key.',
   smtp_delivery_failed:
@@ -22,7 +25,8 @@ export const MESSAGES_BY_CODE: Record<string, string> = {
   provider_not_configured: 'Esse login social não está configurado neste projeto.',
   unknown_provider: 'Esse provedor de login não existe.',
   invalid_oauth_code: 'O login social expirou. Comece de novo.',
-  webhook_endpoint_limit: 'O projeto já tem 5 endpoints, o máximo. Exclua um antes de criar outro.',
+  webhook_endpoint_limit:
+    'O projeto atingiu o limite de endpoints. Exclua um antes de criar outro.',
   last_owner: 'O projeto precisa de pelo menos um dono. Transfira a propriedade antes.',
   owned_project_limit: 'Essa conta já é dona do máximo de 10 projetos.',
   already_member: 'Essa pessoa já faz parte da equipe.',
@@ -38,6 +42,11 @@ export const MESSAGES_BY_CODE: Record<string, string> = {
   captcha_unavailable: 'Não foi possível falar com o Cloudflare. Tente de novo em instantes.',
   captcha_required: 'Resolva o captcha antes de continuar.',
   captcha_failed: 'O captcha não foi resolvido. Tente de novo.',
+  cache_owner_required: 'Apenas donos do projeto podem gerenciar o cache.',
+  cache_disabled: 'Ative o cache do projeto para continuar.',
+  cache_unavailable: 'O serviço de cache está indisponível. Tente de novo em instantes.',
+  cache_credential_limit:
+    'O projeto atingiu o limite de 10 credenciais. Revogue uma para criar outra.',
 }
 
 /** Generic codes carry the detail in their English message; the known ones read like this. */

@@ -18,12 +18,12 @@ export function SettingsSection(props: SettingsSectionProps): JSX.Element {
   return (
     <section
       className={cn(
-        'bg-card overflow-hidden rounded-xl border',
-        props.tone === 'danger' && 'border-destructive/40',
+        'surface overflow-hidden',
+        props.tone === 'danger' && 'ring-destructive/35 ring-1',
       )}
     >
       <header className="px-5 pt-5">
-        <h2 className="flex items-center gap-2">
+        <h2 className="flex items-center gap-2 text-base">
           {props.leading}
           {props.title}
         </h2>
@@ -49,7 +49,7 @@ function SectionFooter({ footer }: { footer?: ReactNode }): JSX.Element | null {
   }
 
   return (
-    <footer className="bg-muted/30 flex flex-wrap items-center justify-end gap-3 border-t px-5 py-3">
+    <footer className="flex flex-wrap items-center justify-end gap-3 border-t px-5 py-3.5">
       {footer}
     </footer>
   )
