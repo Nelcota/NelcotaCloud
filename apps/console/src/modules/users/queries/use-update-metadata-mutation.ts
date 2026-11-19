@@ -1,9 +1,9 @@
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query'
 
-import { auditEventsKey } from '@/modules/activity/queries/use-audit-events-query'
 import { type MetadataUpdate, updateUserMetadata } from '@/modules/users/api/update-user-metadata'
 import { usersQueryKey } from '@/modules/users/queries/use-users'
 import type { components } from '@/shared/api/api-schema'
+import { auditEventsKey } from '@/shared/lib/audit-events-key'
 
 type User = components['schemas']['User']
 

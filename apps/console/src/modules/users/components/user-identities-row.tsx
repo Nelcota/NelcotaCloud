@@ -1,11 +1,11 @@
 import type { JSX } from 'react'
 
-import { ProviderLogo } from '@/modules/project-settings/components/provider-logo'
+import { DetailRow } from '@/modules/users/components/detail-row'
 import { useUserIdentitiesQuery } from '@/modules/users/queries/use-user-detail'
 import type { components } from '@/shared/api/api-schema'
-import { formatDateTime } from '@/shared/lib/format-date'
+import { formatDate } from '@/shared/lib/format-date'
 import { ErrorAlert } from '@/shared/ui/error-alert'
-import { SettingsSection } from '@/shared/ui/settings-section'
+import { ProviderLogo } from '@/shared/ui/provider-logo'
 import { Skeleton } from '@/shared/ui/skeleton'
 
 type LinkedIdentity = components['schemas']['LinkedIdentity']
@@ -14,15 +14,15 @@ const PROVIDER_NAMES: Record<string, string> = { google: 'Google', github: 'GitH
 
 type UserRef = { projectId: string; userId: string }
 
-/** The Google and GitHub accounts the user can log in with. */
-export function UserIdentitiesSection(ref: UserRef): JSX.Element {
+/** The Google and GitHub accounts the user can log in with, as one fact of the account. */
+export function UserIdentitiesRow(ref: UserRef): JSX.Element {
   const identities = useUserIdentitiesQuery(ref)
 
   return (
-    <SettingsSection title="Login social">
+    <DetailRow label="Login social">
       <ErrorAlert error={identities.error} />
       <IdentityList identities={identities.data?.identities} hasFailed={identities.isError} />
-    </SettingsSection>
+    </DetailRow>
   )
 }
 
@@ -34,21 +34,21 @@ function IdentityList({ identities, hasFailed }: IdentityListProps): JSX.Element
   }
 
   if (identities === undefined) {
-    return <Skeleton className="h-12 rounded-lg" />
+    return <Skeleton className="mt-1 h-4 w-40" />
   }
 
   if (identities.length === 0) {
-    return <p className="text-muted-foreground text-sm">Nenhum login social vinculado.</p>
+    return <span className="text-muted-foreground font-normal">Nenhum</span>
   }
 
   return (
-    <ul className="divide-y rounded-lg border">
+    <ul className="mt-1 flex flex-wrap gap-x-5 gap-y-2">
       {identities.map((identity) => (
-        <li key={identity.provider} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
+        <li key={identity.provider} className="flex items-center gap-2">
           <IdentityLogo provider={identity.provider} />
-          <span className="font-medium">{providerName(identity.provider)}</span>
-          <span className="text-muted-foreground sm:ml-auto">
-            Vinculado em {formatDateTime(identity.linked_at)}
+          {providerName(identity.provider)}
+          <span className="text-muted-foreground font-normal">
+            desde {formatDate(identity.linked_at)}
           </span>
         </li>
       ))}

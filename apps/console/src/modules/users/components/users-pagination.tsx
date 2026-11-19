@@ -2,59 +2,112 @@ import ChevronLeft from '~icons/solar/alt-arrow-left-linear'
 import ChevronRight from '~icons/solar/alt-arrow-right-linear'
 import type { JSX } from 'react'
 
+import { USERS_PAGE_SIZE } from '@/modules/users/queries/use-users'
 import { Button } from '@/shared/ui/button'
 
-/** The API's largest `offset`: pages past it cannot be read. */
-const MAX_OFFSET = 100_000
-
 type UsersPaginationProps = {
-  offset: number
-  pageSize: number
-  /** `undefined` while the first page loads. */
+  page: number
+  /** Rows on this page; nothing to count or page through without any. */
+  shownCount: number
+  /** Users matching the search and status; unknown until its count loads. */
   total: number | undefined
-  onOffsetChange: (offset: number) => void
+  hasNext: boolean
+  isPending: boolean
+  onPrevious: () => void
+  onNext: () => void
 }
 
-/** Which slice of the users is on screen, and the way to the newer or older ones. */
+/** The table card's last row: as tall as a row, split from them by a hairline. */
+const FOOTER_CLASS = 'flex min-h-12 flex-wrap items-center gap-1 border-t px-4 py-1.5'
+
+/**
+ * Which slice of the users is on screen ("1–50 de 64"), announced as the list changes, and the
+ * way to the newer or older ones when there is more than one page.
+ */
 export function UsersPagination(props: UsersPaginationProps): JSX.Element | null {
-  const { offset, pageSize, total } = props
+  const { page, shownCount, hasNext, isPending } = props
 
-  if (total === undefined) {
+  if (shownCount === 0) {
     return null
   }
 
-  // Past the first page it stays, even when deletions shrank the total, so the way back remains.
-  if (offset === 0 && total <= pageSize) {
-    return null
+  function showPrevious(): void {
+    if (page > 1 && isPending === false) {
+      props.onPrevious()
+    }
   }
 
-  const lastShown = Math.min(offset + pageSize, total)
-  const nextOffset = offset + pageSize
+  function showNext(): void {
+    if (hasNext && isPending === false) {
+      props.onNext()
+    }
+  }
+
+  if (page === 1 && hasNext === false) {
+    return (
+      <div className={FOOTER_CLASS}>
+        <RangeText text={countText(shownCount)} isPending={isPending} />
+      </div>
+    )
+  }
 
   return (
-    <nav aria-label="Páginas de usuários" className="flex items-center justify-end gap-3">
-      <p className="text-muted-foreground text-sm">
-        {Math.min(offset + 1, lastShown).toLocaleString('pt-BR')}–
-        {lastShown.toLocaleString('pt-BR')} de {total.toLocaleString('pt-BR')}
-      </p>
+    <nav aria-label="Páginas de usuários" className={FOOTER_CLASS}>
+      <RangeText text={rangeText(props)} isPending={isPending} />
       <Button
-        variant="outline"
+        variant="ghost"
         size="sm"
-        disabled={offset === 0}
-        onClick={() => props.onOffsetChange(Math.max(offset - pageSize, 0))}
+        className="aria-disabled:opacity-50"
+        aria-disabled={page === 1 || isPending}
+        aria-busy={isPending}
+        onClick={showPrevious}
       >
         <ChevronLeft />
         Mais novos
       </Button>
       <Button
-        variant="outline"
+        variant="ghost"
         size="sm"
-        disabled={lastShown >= total || nextOffset > MAX_OFFSET}
-        onClick={() => props.onOffsetChange(nextOffset)}
+        className="aria-disabled:opacity-50"
+        aria-disabled={hasNext === false || isPending}
+        aria-busy={isPending}
+        onClick={showNext}
       >
         Mais antigos
         <ChevronRight />
       </Button>
     </nav>
   )
+}
+
+function RangeText({ text, isPending }: { text: string; isPending: boolean }): JSX.Element {
+  return (
+    <p
+      role="status"
+      aria-busy={isPending}
+      className="text-muted-foreground mr-auto text-sm tabular-nums"
+    >
+      {text}
+    </p>
+  )
+}
+
+function countText(count: number): string {
+  if (count === 1) {
+    return '1 usuário'
+  }
+
+  return `${count.toLocaleString('pt-BR')} usuários`
+}
+
+function rangeText({ page, shownCount, total }: UsersPaginationProps): string {
+  const first = (page - 1) * USERS_PAGE_SIZE + 1
+  const last = first + shownCount - 1
+  const range = `${first.toLocaleString('pt-BR')}–${last.toLocaleString('pt-BR')}`
+
+  if (total === undefined) {
+    return range
+  }
+
+  return `${range} de ${total.toLocaleString('pt-BR')}`
 }

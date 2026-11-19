@@ -1,8 +1,11 @@
 import SearchX from '~icons/solar/magnifier-close-linear'
 import Users from '~icons/solar/users-group-rounded-linear'
+import { Link } from '@tanstack/react-router'
 import type { JSX } from 'react'
 
-import type { UserStatusFilter } from '@/modules/users/api/list-users'
+import type { UserStatusFilter } from '@/modules/users/model/user-status-filter'
+import { Button } from '@/shared/ui/button'
+import { buttonVariants } from '@/shared/ui/button-variants'
 import { EmptyState } from '@/shared/ui/empty-state'
 
 export type UserListFilter = { search: string; status: UserStatusFilter }
@@ -20,17 +23,49 @@ const ALL_CLEAR: Record<Status, string> = {
   banned: 'Ninguém está bloqueado neste projeto.',
 }
 
-/** Why the list is empty: no users yet, none matching the search, or none in that state. */
-export function UsersEmptyState({ filter }: { filter: UserListFilter }): JSX.Element {
+type UsersEmptyStateProps = {
+  filter: UserListFilter
+  onFilterChange: (filter: UserListFilter) => void
+  /** Users matching the search in any status; "Buscar em todos" is offered only when some do. */
+  allStatusCount: number | undefined
+  projectId: string
+}
+
+/**
+ * Why the list is empty (no users yet, none matching the search, none in that state) and the
+ * way back to a list that has someone.
+ */
+export function UsersEmptyState(props: UsersEmptyStateProps): JSX.Element {
+  const { filter, onFilterChange, allStatusCount } = props
   const search = filter.search.trim()
   const status = filter.status
+
+  if (search !== '' && status !== 'all' && allStatusCount !== 0) {
+    return (
+      <EmptyState
+        icon={SearchX}
+        title="Nenhum usuário encontrado"
+        description={`Nenhum usuário ${STATUS_WORDS[status]} tem “${search}” no email.`}
+        action={
+          <Button variant="outline" onClick={() => onFilterChange({ search, status: 'all' })}>
+            Buscar em todos
+          </Button>
+        }
+      />
+    )
+  }
 
   if (search !== '') {
     return (
       <EmptyState
         icon={SearchX}
         title="Nenhum usuário encontrado"
-        description={searchMiss(search, status)}
+        description={`Nenhum email contém “${search}”.`}
+        action={
+          <Button variant="outline" onClick={() => onFilterChange({ search: '', status: 'all' })}>
+            Limpar busca
+          </Button>
+        }
       />
     )
   }
@@ -41,6 +76,11 @@ export function UsersEmptyState({ filter }: { filter: UserListFilter }): JSX.Ele
         icon={Users}
         title={`Nenhum usuário ${STATUS_WORDS[status]}`}
         description={ALL_CLEAR[status]}
+        action={
+          <Button variant="outline" onClick={() => onFilterChange({ search: '', status: 'all' })}>
+            Ver todos
+          </Button>
+        }
       />
     )
   }
@@ -50,14 +90,15 @@ export function UsersEmptyState({ filter }: { filter: UserListFilter }): JSX.Ele
       icon={Users}
       title="Nenhum usuário ainda"
       description="Quando alguém criar uma conta no seu app, ela aparece aqui."
+      action={
+        <Link
+          to="/projects/$projectId"
+          params={{ projectId: props.projectId }}
+          className={buttonVariants({ variant: 'outline' })}
+        >
+          Ver como conectar
+        </Link>
+      }
     />
   )
-}
-
-function searchMiss(search: string, status: UserStatusFilter): string {
-  if (status === 'all') {
-    return `Nenhum email contém “${search}”. Confira a grafia ou busque só uma parte.`
-  }
-
-  return `Nenhum usuário ${STATUS_WORDS[status]} tem “${search}” no email.`
 }

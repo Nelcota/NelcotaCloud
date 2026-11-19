@@ -1,48 +1,82 @@
 import type { JSX } from 'react'
-import { useDeferredValue, useState } from 'react'
+import { useDeferredValue, useRef, useState } from 'react'
 
-import type { UserStatusFilter as Status } from '@/modules/users/api/list-users'
-import { UserCount } from '@/modules/users/components/user-count'
-import { UserStatusFilter } from '@/modules/users/components/user-status-filter'
+import { DONE_MESSAGES } from '@/modules/users/components/user-done-messages'
+import { useUserSelection } from '@/modules/users/components/use-user-selection'
 import { UsersPagination } from '@/modules/users/components/users-pagination'
 import { UsersTable } from '@/modules/users/components/users-table'
-import { DONE_MESSAGES } from '@/modules/users/components/user-done-messages'
+import { UsersToolbar } from '@/modules/users/components/users-toolbar'
+import { VisibleErrorAlert } from '@/modules/users/components/visible-error-alert'
+import type { UserOrder, UsersFilter } from '@/modules/users/model/users-search'
 import {
   USERS_PAGE_SIZE,
   type UserAction,
+  useMatchingUserCountQuery,
   useUserActionMutation,
   useUsersQuery,
 } from '@/modules/users/queries/use-users'
 import type { components } from '@/shared/api/api-schema'
 import { showFlash } from '@/shared/lib/flash-notice'
-import { ErrorAlert } from '@/shared/ui/error-alert'
 import { LoadError } from '@/shared/ui/load-error'
-import { SearchInput } from '@/shared/ui/search-input'
 
 type User = components['schemas']['User']
 
+type UsersBrowserProps = {
+  projectId: string
+  /** From the URL, so Back from a user returns to the same list and page. */
+  filter: UsersFilter
+  onFilterChange: (filter: UsersFilter) => void
+}
+
 /** The project's users, searched by email, filtered by status and paged, with admin actions. */
-export function UsersBrowser({ projectId }: { projectId: string }): JSX.Element {
-  const [search, setSearch] = useState('')
-  const [status, setStatus] = useState<Status>('all')
-  const [offset, setOffset] = useState(0)
+export function UsersBrowser({
+  projectId,
+  filter,
+  onFilterChange,
+}: UsersBrowserProps): JSX.Element {
+  // The field keeps its own text: the URL updates a moment later and would move the cursor.
+  const [search, setSearch] = useState(filter.search)
   const deferredSearch = useDeferredValue(search)
+  const listTop = useRef<HTMLDivElement>(null)
+  const { status, order, cursors } = filter
   const users = useUsersQuery(projectId, {
     email: deferredSearch,
     status,
-    offset,
+    order,
+    before: cursors.at(-1),
     limit: USERS_PAGE_SIZE,
   })
+  const matching = useMatchingUserCountQuery(projectId, { email: deferredSearch, status })
+  const allStatuses = useMatchingUserCountQuery(projectId, { email: deferredSearch, status: 'all' })
   const action = useUserActionMutation(projectId)
+  const pageUsers = users.data?.users ?? []
+  const selection = useUserSelection(pageUsers.map((user) => user.id))
+  const isSettling = users.isPlaceholderData || search !== deferredSearch
 
-  function changeSearch(value: string): void {
-    setSearch(value)
-    setOffset(0)
+  /** A new search, status or order starts again on the first page. */
+  function changeFilter(next: Pick<UsersFilter, 'search' | 'status'>): void {
+    setSearch(next.search)
+    onFilterChange({ ...next, order, cursors: [] })
   }
 
-  function changeStatus(value: Status): void {
-    setStatus(value)
-    setOffset(0)
+  function changeOrder(next: UserOrder): void {
+    onFilterChange({ search, status, order: next, cursors: [] })
+  }
+
+  /** Paging keeps the search and brings the top of the list back into view. */
+  function showPage(nextCursors: readonly string[]): void {
+    onFilterChange({ search, status, order, cursors: nextCursors })
+    listTop.current?.scrollIntoView({ block: 'start' })
+  }
+
+  function showOlder(): void {
+    const next = users.data?.next_cursor
+
+    if (typeof next !== 'string' || isSettling) {
+      return
+    }
+
+    showPage([...cursors, next])
   }
 
   async function runAction(user: User, kind: UserAction): Promise<void> {
@@ -50,44 +84,56 @@ export function UsersBrowser({ projectId }: { projectId: string }): JSX.Element 
     showFlash(`${DONE_MESSAGES[kind]}: ${user.email}`)
   }
 
+  // The toolbar, the table and its footer read as one unit: 12px apart, under the page header.
   return (
-    <>
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <SearchInput label="Buscar por email" value={search} onChange={changeSearch} />
-        <UserStatusFilter value={status} onChange={changeStatus} />
-        <div className="sm:ml-auto">
-          <UserCount total={users.data?.total} />
-        </div>
-      </div>
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
+      <UsersToolbar
+        ref={listTop}
+        projectId={projectId}
+        filter={{ search, status }}
+        onFilterChange={changeFilter}
+        selectedUsers={pageUsers.filter((user) => selection.selectedIds.has(user.id))}
+        selection={selection}
+      />
       <LoadError error={users.error} onRetry={() => users.refetch()} />
-      <ErrorAlert error={unblockError(action.error, action.variables)} />
+      <VisibleErrorAlert error={unconfirmedError(action.error, action.variables)} />
       <UsersTable
         users={users.data?.users}
         projectId={projectId}
         filter={{ search: deferredSearch, status }}
+        onFilterChange={changeFilter}
         hasFailed={users.isError}
         pendingUserId={pendingUserId(action.isPending, action.variables)}
         onAction={runAction}
+        selection={selection}
+        order={order}
+        onOrderChange={changeOrder}
+        allStatusCount={allStatuses.data}
+        footer={
+          <UsersPagination
+            page={cursors.length + 1}
+            shownCount={pageUsers.length}
+            total={matching.data}
+            hasNext={typeof users.data?.next_cursor === 'string'}
+            isPending={isSettling}
+            onPrevious={() => showPage(cursors.slice(0, -1))}
+            onNext={showOlder}
+          />
+        }
       />
-      <UsersPagination
-        offset={offset}
-        pageSize={USERS_PAGE_SIZE}
-        total={users.data?.total}
-        onOffsetChange={setOffset}
-      />
-    </>
+    </div>
   )
 }
 
 type ActionVariables = { action: UserAction; userId: string; email: string } | undefined
 
-/** Confirmed actions show their failure inside the dialog; only unblocking has none. */
-function unblockError(error: Error | null, variables: ActionVariables): Error | null {
-  if (variables?.action !== 'unban') {
-    return null
+/** Confirmed actions show their failure inside the dialog; these two run without one. */
+function unconfirmedError(error: Error | null, variables: ActionVariables): Error | null {
+  if (variables?.action === 'unban' || variables?.action === 'resend-verification') {
+    return error
   }
 
-  return error
+  return null
 }
 
 function pendingUserId(isPending: boolean, variables: ActionVariables): string | null {

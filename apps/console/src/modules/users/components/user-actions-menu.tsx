@@ -1,4 +1,5 @@
 import Ban from '~icons/solar/forbidden-circle-linear'
+import Letter from '~icons/solar/letter-linear'
 import LogOut from '~icons/solar/logout-2-linear'
 import MoreHorizontal from '~icons/solar/menu-dots-linear'
 import ShieldOff from '~icons/solar/shield-cross-linear'
@@ -12,6 +13,7 @@ import {
   type ConfirmedAction,
 } from '@/modules/users/components/user-action-confirmations'
 import { UserActionIllustration } from '@/modules/users/components/user-action-illustration'
+import { accountStateOf, confirmationSubjectOf } from '@/modules/users/model/account-state'
 import type { UserAction } from '@/modules/users/queries/use-users'
 import type { components } from '@/shared/api/api-schema'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
@@ -31,9 +33,18 @@ type UserActionsMenuProps = {
   onAction: (action: UserAction) => Promise<void>
 }
 
-/** Every admin action on a user behind one button, so rows stay one line high on any screen. */
+/**
+ * Every admin action on a user behind one button, so rows stay one line high on any screen. It
+ * follows the account's state like the user's page does; only "Encerrar sessões" is always
+ * offered, since the list does not load each user's sessions (ending none changes nothing).
+ */
 export function UserActionsMenu({ user, isPending, onAction }: UserActionsMenuProps): JSX.Element {
   const [confirming, setConfirming] = useState<ConfirmedAction | null>(null)
+  const state = accountStateOf(user)
+
+  function runWithoutDialog(action: 'unban' | 'resend-verification'): void {
+    void onAction(action).catch(ignoreShownError)
+  }
 
   return (
     <>
@@ -42,14 +53,18 @@ export function UserActionsMenu({ user, isPending, onAction }: UserActionsMenuPr
           disabled={isPending}
           aria-busy={isPending}
           aria-label={`Ações para ${user.email}`}
-          className="hover:bg-accent aria-expanded:bg-accent text-muted-foreground hover:text-foreground flex size-9 items-center justify-center rounded-md transition-colors"
+          className="hover:bg-accent aria-expanded:bg-accent text-muted-foreground hover:text-foreground flex size-9 items-center justify-center rounded-md transition-colors pointer-coarse:size-11"
         >
           <MoreHorizontal className="size-5" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuContent align="end" className="w-56">
+          <ResendItem
+            isShown={state === 'unverified'}
+            onSelect={() => runWithoutDialog('resend-verification')}
+          />
           <BanItem
-            isBanned={user.banned_at !== null && user.banned_at !== undefined}
-            onUnban={() => void onAction('unban').catch(ignoreShownError)}
+            isBanned={state === 'banned'}
+            onUnban={() => runWithoutDialog('unban')}
             onBan={() => setConfirming('ban')}
           />
           <DropdownMenuItem onClick={() => setConfirming('end-sessions')}>
@@ -66,11 +81,27 @@ export function UserActionsMenu({ user, isPending, onAction }: UserActionsMenuPr
       </DropdownMenu>
       <ActionConfirmation
         action={confirming}
-        email={user.email}
+        user={user}
         onClose={() => setConfirming(null)}
         onConfirm={onAction}
       />
     </>
+  )
+}
+
+type OptionalItemProps = { isShown: boolean; onSelect: () => void }
+
+/** Only an unconfirmed, unblocked account can be sent the email again; a blocked one gets none. */
+function ResendItem({ isShown, onSelect }: OptionalItemProps): JSX.Element | null {
+  if (isShown === false) {
+    return null
+  }
+
+  return (
+    <DropdownMenuItem onClick={onSelect}>
+      <Letter />
+      Reenviar confirmação
+    </DropdownMenuItem>
   )
 }
 
@@ -87,20 +118,14 @@ function BanItem({ isBanned, onBan, onUnban }: BanItemProps): JSX.Element {
   }
 
   return (
-    <DropdownMenuItem onClick={onBan}>
+    <DropdownMenuItem variant="destructive" onClick={onBan}>
       <Ban />
       Bloquear
     </DropdownMenuItem>
   )
 }
 
-function ResetMfaItem({
-  isShown,
-  onSelect,
-}: {
-  isShown: boolean
-  onSelect: () => void
-}): JSX.Element | null {
+function ResetMfaItem({ isShown, onSelect }: OptionalItemProps): JSX.Element | null {
   if (isShown === false) {
     return null
   }
@@ -115,39 +140,37 @@ function ResetMfaItem({
 
 type ActionConfirmationProps = {
   action: ConfirmedAction | null
-  email: string
+  user: User
   onClose: () => void
   onConfirm: (action: UserAction) => Promise<void>
 }
 
-function ActionConfirmation({
-  action,
-  email,
-  onClose,
-  onConfirm,
-}: ActionConfirmationProps): JSX.Element | null {
+function ActionConfirmation(props: ActionConfirmationProps): JSX.Element | null {
+  const { action } = props
+
   if (action === null) {
     return null
   }
 
   const confirmation = CONFIRMATIONS[action]
+  const subject = confirmationSubjectOf(props.user)
 
   return (
     <ConfirmDialog
       isOpen
-      onClose={onClose}
-      title={confirmation.title(email)}
-      description={confirmation.description}
+      onClose={props.onClose}
+      title={confirmation.title(subject)}
+      description={confirmation.description(subject)}
       confirmLabel={confirmation.confirmLabel}
       isDestructive={confirmation.isDestructive}
-      change={confirmation.change(email)}
+      change={confirmation.change(subject)}
       illustration={<UserActionIllustration action={action} />}
-      onConfirm={() => onConfirm(action)}
+      onConfirm={() => props.onConfirm(action)}
     />
   )
 }
 
-/** Unblocking needs no dialog; its failure is shown above the list, where the page reads it. */
+/** These run without a dialog; their failure is shown above the list, scrolled into view. */
 function ignoreShownError(): void {
   return undefined
 }

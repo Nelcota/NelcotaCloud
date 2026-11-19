@@ -7,13 +7,16 @@ type DetailRowProps = {
   action?: ReactNode
 }
 
-/** One fact about a user (a label and its value) inside a `<dl>`, with its action beside it. */
+/**
+ * One fact about a user inside a `<dl>`: a small muted label over its value, with its action on
+ * the right. Compact (12px by 16px), so a side panel of facts reads as one list, not a stack of boxes.
+ */
 export function DetailRow({ label, children, action }: DetailRowProps): JSX.Element {
   return (
-    <div className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0 text-sm">
-        <dt className="text-muted-foreground">{label}</dt>
-        <dd className="mt-0.5 font-medium">{children}</dd>
+    <div className="flex items-center justify-between gap-3 px-4 py-3">
+      <div className="min-w-0">
+        <dt className="text-muted-foreground text-xs">{label}</dt>
+        <dd className="mt-0.5 text-sm font-medium">{children}</dd>
       </div>
       <RowAction action={action} />
     </div>
