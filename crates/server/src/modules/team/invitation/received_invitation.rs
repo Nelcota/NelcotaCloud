@@ -52,8 +52,9 @@ pub async fn accept_invitation(
     .bind(answer.email)
     .fetch_optional(&mut *transaction)
     .await?;
-    let Some((tenant_id, role)) = invitation else {
-        return Ok(None);
+    let (tenant_id, role) = match invitation {
+        Some((tenant_id, role)) => (tenant_id, role),
+        None => return Ok(None),
     };
     let membership = InvitedMembership {
         tenant_id,

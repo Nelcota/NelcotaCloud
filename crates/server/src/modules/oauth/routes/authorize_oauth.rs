@@ -1,7 +1,7 @@
 use axum::extract::{Path, Query, State};
 use axum::response::Redirect;
-use oauth2::url::Url;
 use serde::Deserialize;
+use url::Url;
 use utoipa::IntoParams;
 use uuid::Uuid;
 use validator::Validate;
@@ -114,9 +114,8 @@ fn map_start_error(error: OAuthLoginError) -> ApiError {
 }
 
 fn known_provider(provider_name: &str) -> Result<OAuthProvider, ApiError> {
-    let Some(provider) = OAuthProvider::parse(provider_name) else {
-        return Err(ApiError::from(OAuthRejection::UnknownOAuthProvider));
-    };
+    let provider =
+        OAuthProvider::parse(provider_name).ok_or(OAuthRejection::UnknownOAuthProvider)?;
 
     Ok(provider)
 }

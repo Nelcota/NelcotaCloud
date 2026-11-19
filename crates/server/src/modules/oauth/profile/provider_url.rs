@@ -28,8 +28,9 @@ pub fn secure_provider_url(raw_url: &str) -> Result<Url, InsecureProviderUrl> {
 }
 
 fn is_loopback(url: &Url) -> bool {
-    let Some(host) = url.host_str() else {
-        return false;
+    let host = match url.host_str() {
+        Some(host) => host,
+        None => return false,
     };
     let host = host.trim_start_matches('[').trim_end_matches(']');
 

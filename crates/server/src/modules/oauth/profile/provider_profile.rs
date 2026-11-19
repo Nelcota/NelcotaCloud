@@ -2,10 +2,7 @@ use reqwest::StatusCode;
 use reqwest::header::{ACCEPT, USER_AGENT};
 use serde::de::DeserializeOwned;
 
-use crate::modules::oauth::profile::github_profile::fetch_github_profile;
-use crate::modules::oauth::profile::google_profile::fetch_google_profile;
 use crate::modules::oauth::profile::provider_url::{InsecureProviderUrl, secure_provider_url};
-use crate::modules::oauth::provider::oauth_provider::OAuthProvider;
 use crate::modules::oauth::provider::provider_endpoints::ProviderEndpoints;
 
 /// GitHub rejects API requests without a User-Agent.
@@ -33,16 +30,6 @@ pub struct ProfileRequest<'a> {
     pub http_client: &'a reqwest::Client,
     pub endpoints: &'a ProviderEndpoints,
     pub access_token: &'a str,
-}
-
-pub async fn fetch_profile(
-    provider: OAuthProvider,
-    request: &ProfileRequest<'_>,
-) -> Result<ProviderProfile, ProfileError> {
-    match provider {
-        OAuthProvider::Google => fetch_google_profile(request).await,
-        OAuthProvider::GitHub => fetch_github_profile(request).await,
-    }
 }
 
 /// An authenticated GET to the provider API. The typed `T` validates the response shape.

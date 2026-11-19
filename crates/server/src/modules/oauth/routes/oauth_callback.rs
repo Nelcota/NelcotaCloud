@@ -1,11 +1,13 @@
 use axum::extract::{Query, State};
 use axum::response::Redirect;
-use oauth2::url::Url;
 use serde::Deserialize;
+use url::Url;
 use utoipa::IntoParams;
 
 use crate::app_state::AppState;
-use crate::modules::oauth::login::callback_completion::{issue_login_code, take_pending};
+use crate::modules::oauth::login::callback_completion::{
+    CallbackServices, issue_login_code, take_pending,
+};
 use crate::modules::oauth::login::oauth_login_error::OAuthLoginError;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::request_span::record_tenant;
@@ -44,7 +46,12 @@ pub async fn oauth_callback(
     // No API key reaches this endpoint: the tenant comes from the pending authorization.
     record_tenant(pending.tenant_id);
     let redirect_to = Url::parse(&pending.redirect_to).map_err(ApiError::internal)?;
-    let login = issue_login_code(&state, &pending, query.code).await;
+    let services = CallbackServices {
+        tenant_pools: &state.tenant_pools,
+        webhooks: &state.webhooks,
+        login: state.oauth_login_context(),
+    };
+    let login = issue_login_code(&services, &pending, query.code).await;
     let target = match login {
         Ok(login_code) => redirect_with(redirect_to, "code", &login_code),
         Err(error) => {
@@ -88,7 +95,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn replaces_planted_codes_and_keeps_other_parameters() -> Result<(), oauth2::url::ParseError> {
+    fn replaces_planted_codes_and_keeps_other_parameters() -> Result<(), url::ParseError> {
         let planted = Url::parse("https://app.test/cb?code=nc_oc_attacker&tab=2&state=x")?;
         let target = redirect_with(planted, "code", "nc_oc_real");
 

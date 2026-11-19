@@ -4,6 +4,7 @@ use crate::modules::oauth::client::oauth_client::{
     ConfiguredOAuthClient, OAuthClientSettings, build_oauth_client,
 };
 use crate::modules::oauth::login::oauth_login_error::OAuthLoginError;
+use crate::modules::oauth::profile::provider_adapter::ProviderAdapter;
 use crate::modules::oauth::provider::oauth_provider_repository::{
     ProviderKey, find_provider_credentials,
 };
@@ -21,20 +22,20 @@ pub struct OAuthLoginContext<'a> {
 }
 
 impl OAuthLoginContext<'_> {
-    /// An oauth2 client built from the tenant's own OAuth app for that provider.
+    /// Uses the credentials and scopes for this tenant's OAuth provider.
     pub(super) async fn client_for(
         &self,
         key: ProviderKey,
     ) -> Result<ConfiguredOAuthClient, OAuthLoginError> {
         let credentials =
             find_provider_credentials(self.control_plane_pool, key, self.secret_box).await?;
-        let Some(credentials) = credentials else {
-            return Err(OAuthLoginError::ProviderNotConfigured);
-        };
+        let credentials = credentials.ok_or(OAuthLoginError::ProviderNotConfigured)?;
         let settings = OAuthClientSettings {
             credentials,
-            endpoints: self.endpoints.for_provider(key.provider),
+            endpoints: ProviderAdapter::select(key.provider, self.endpoints).endpoints(),
             callback_url: self.callback_url,
+            scopes: key.provider.scopes(),
+            http_client: self.http_client,
         };
 
         Ok(build_oauth_client(settings)?)

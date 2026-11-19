@@ -1,13 +1,11 @@
-use std::future::Future;
-use std::pin::Pin;
+use oauth_providers::{BoxError, BoxFuture, HttpClient, HttpRequest, HttpResponse};
+use reqwest::header::CONTENT_TYPE;
 
-use oauth2::{AsyncHttpClient, HttpRequest, HttpResponse};
+#[derive(Debug, thiserror::Error)]
+#[error("expected a JSON OAuth token response")]
+struct InvalidTokenContentType;
 
-/// Sends oauth2's requests through our reqwest client.
-///
-/// oauth2 itself is built without an HTTP client, which avoids pulling a second reqwest
-/// version. A named type with an explicitly `Send` future is needed: a closure makes the
-/// token exchange future non-Send for axum.
+/// Reuses the application's timeout and redirect policy for requests carrying credentials.
 pub struct OAuthHttpClient {
     client: reqwest::Client,
 }
@@ -18,14 +16,8 @@ impl OAuthHttpClient {
     }
 }
 
-type ResponseFuture<'c> =
-    Pin<Box<dyn Future<Output = Result<HttpResponse, reqwest::Error>> + Send + 'c>>;
-
-impl<'c> AsyncHttpClient<'c> for OAuthHttpClient {
-    type Error = reqwest::Error;
-    type Future = ResponseFuture<'c>;
-
-    fn call(&'c self, request: HttpRequest) -> Self::Future {
+impl HttpClient for OAuthHttpClient {
+    fn send(&self, request: HttpRequest) -> BoxFuture<'_, Result<HttpResponse, BoxError>> {
         Box::pin(send_oauth_request(&self.client, request))
     }
 }
@@ -33,16 +25,73 @@ impl<'c> AsyncHttpClient<'c> for OAuthHttpClient {
 async fn send_oauth_request(
     client: &reqwest::Client,
     request: HttpRequest,
-) -> Result<HttpResponse, reqwest::Error> {
-    let reqwest_request = reqwest::Request::try_from(request)?;
-    let mut response = client.execute(reqwest_request).await?;
-    let status = response.status();
-    // Taken, not cloned: the body read below consumes the response anyway.
-    let headers = std::mem::take(response.headers_mut());
-    let body = Vec::from(response.bytes().await?);
-    let mut http_response = HttpResponse::new(body);
-    *http_response.status_mut() = status;
-    *http_response.headers_mut() = headers;
+) -> Result<HttpResponse, BoxError> {
+    let method = reqwest::Method::from_bytes(request.method.as_bytes())?;
+    let mut builder = client.request(method, request.url);
 
-    Ok(http_response)
+    for (name, value) in request.headers {
+        builder = builder.header(name, value);
+    }
+
+    let response = builder.body(request.body).send().await?;
+
+    if let Some(content_type) = response.headers().get(CONTENT_TYPE)
+        && content_type
+            .to_str()
+            .is_ok_and(|value| value.to_ascii_lowercase().starts_with("application/json"))
+            == false
+    {
+        return Err(InvalidTokenContentType.into());
+    }
+
+    let status = response.status().as_u16();
+    let body = response.bytes().await?.to_vec();
+
+    Ok(HttpResponse { status, body })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use url::Url;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    #[tokio::test]
+    async fn rejects_token_responses_that_declare_a_non_json_content_type() -> Result<(), BoxError>
+    {
+        let server = MockServer::start().await;
+        let client = OAuthHttpClient::new(reqwest::Client::new());
+
+        for (endpoint, response, should_accept) in [
+            ("/no-type", ResponseTemplate::new(200), true),
+            (
+                "/json",
+                ResponseTemplate::new(200)
+                    .insert_header("content-type", "Application/JSON; charset=utf-8"),
+                true,
+            ),
+            (
+                "/text",
+                ResponseTemplate::new(200).insert_header("content-type", "text/plain"),
+                false,
+            ),
+        ] {
+            Mock::given(method("POST"))
+                .and(path(endpoint))
+                .respond_with(response)
+                .mount(&server)
+                .await;
+            let request = HttpRequest {
+                method: "POST",
+                url: Url::parse(&format!("{}{endpoint}", server.uri()))?,
+                headers: Vec::new(),
+                body: Vec::new(),
+            };
+
+            assert_eq!(client.send(request).await.is_ok(), should_accept);
+        }
+
+        Ok(())
+    }
 }

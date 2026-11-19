@@ -2,7 +2,7 @@ use axum::Json;
 use axum::extract::State;
 
 use crate::app_state::AppState;
-use crate::modules::auth::user::email_address::EmailAddress;
+use crate::modules::auth::integration::team_notifications::EmailAddress;
 use crate::modules::team::invitation::received_invitation::{
     ReceivedInvitation, list_invitations_for,
 };
@@ -24,8 +24,9 @@ pub async fn list_my_invitations(
     State(state): State<AppState>,
     account: PlatformAccount,
 ) -> Result<Json<Vec<ReceivedInvitation>>, ApiError> {
-    let Ok(email) = EmailAddress::parse(&account.email) else {
-        return Ok(Json(Vec::new()));
+    let email = match EmailAddress::parse(&account.email) {
+        Ok(email) => email,
+        Err(_) => return Ok(Json(Vec::new())),
     };
     let invitations = list_invitations_for(&state.control_plane_pool, email.as_str()).await?;
 

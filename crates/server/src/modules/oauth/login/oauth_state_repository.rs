@@ -74,9 +74,8 @@ pub async fn take_pending_authorization(
 
 impl PendingAuthorizationRow {
     fn into_pending(self) -> Result<PendingAuthorization, OAuthStateError> {
-        let Some(provider) = OAuthProvider::parse(&self.provider) else {
-            return Err(OAuthStateError::UnknownProvider);
-        };
+        let provider =
+            OAuthProvider::parse(&self.provider).ok_or(OAuthStateError::UnknownProvider)?;
 
         Ok(PendingAuthorization {
             tenant_id: self.tenant_id,

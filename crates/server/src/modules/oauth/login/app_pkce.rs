@@ -1,4 +1,4 @@
-use oauth2::{PkceCodeChallenge, PkceCodeVerifier};
+use oauth_providers::create_s256_code_challenge;
 
 /// RFC 7636 bounds for verifiers.
 const MIN_PKCE_LENGTH: usize = 43;
@@ -38,9 +38,7 @@ pub fn verifier_matches(raw_verifier: &str, challenge: &str) -> bool {
         return false;
     }
 
-    let verifier = PkceCodeVerifier::new(verifier.to_owned());
-
-    PkceCodeChallenge::from_code_verifier_sha256(&verifier).as_str() == challenge
+    create_s256_code_challenge(verifier) == challenge
 }
 
 fn check_pkce_value(value: &str) -> Result<(), InvalidPkceValue> {
@@ -66,15 +64,18 @@ fn is_unreserved_character(character: char) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use oauth_providers::generate_code_verifier;
 
     #[test]
     fn accepts_the_matching_verifier_only() -> Result<(), InvalidPkceValue> {
-        let (challenge, verifier) = PkceCodeChallenge::new_random_sha256();
-        let stored_challenge = parse_code_challenge(challenge.as_str())?;
-        let (_, other_verifier) = PkceCodeChallenge::new_random_sha256();
+        // The verifier and S256 challenge from RFC 7636, Appendix B.
+        let verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
+        let challenge = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM";
+        let stored_challenge = parse_code_challenge(challenge)?;
+        let other_verifier = generate_code_verifier();
 
-        assert!(verifier_matches(verifier.secret(), &stored_challenge));
-        assert!(verifier_matches(other_verifier.secret(), &stored_challenge) == false);
+        assert!(verifier_matches(verifier, &stored_challenge));
+        assert!(verifier_matches(&other_verifier, &stored_challenge) == false);
         Ok(())
     }
 
@@ -95,8 +96,8 @@ mod tests {
 
     #[test]
     fn rejects_a_verifier_equal_to_the_challenge() -> Result<(), InvalidPkceValue> {
-        let (challenge, _) = PkceCodeChallenge::new_random_sha256();
-        let stored_challenge = parse_code_challenge(challenge.as_str())?;
+        let challenge = create_s256_code_challenge(&generate_code_verifier());
+        let stored_challenge = parse_code_challenge(&challenge)?;
 
         assert!(verifier_matches(&stored_challenge, &stored_challenge) == false);
         Ok(())

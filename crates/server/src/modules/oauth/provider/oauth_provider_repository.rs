@@ -5,7 +5,7 @@ use crate::modules::oauth::provider::oauth_provider::OAuthProvider;
 use crate::shared::crypto::secret_box::{SecretBox, SecretBoxError};
 
 #[derive(Debug, thiserror::Error)]
-pub enum ProviderCredentialsError {
+pub enum LoadOAuthCredentialsError {
     #[error("database error while accessing OAuth provider credentials: {0}")]
     Database(#[from] sqlx::Error),
     #[error(transparent)]
@@ -69,7 +69,7 @@ pub async fn find_provider_credentials(
     pool: &PgPool,
     key: ProviderKey,
     secret_box: &SecretBox,
-) -> Result<Option<ProviderCredentials>, ProviderCredentialsError> {
+) -> Result<Option<ProviderCredentials>, LoadOAuthCredentialsError> {
     let row: Option<(String, Vec<u8>)> = sqlx::query_as(
         "SELECT client_id, client_secret_ciphertext FROM tenant_oauth_providers WHERE tenant_id = $1 AND provider = $2",
     )
@@ -77,12 +77,13 @@ pub async fn find_provider_credentials(
     .bind(key.provider.as_str())
     .fetch_optional(pool)
     .await?;
-    let Some((client_id, ciphertext)) = row else {
-        return Ok(None);
+    let (client_id, ciphertext) = match row {
+        Some((client_id, ciphertext)) => (client_id, ciphertext),
+        None => return Ok(None),
     };
     let secret_bytes = secret_box.open(&ciphertext, &client_secret_context(key))?;
     let client_secret =
-        String::from_utf8(secret_bytes).map_err(|_| ProviderCredentialsError::InvalidSecret)?;
+        String::from_utf8(secret_bytes).map_err(|_| LoadOAuthCredentialsError::InvalidSecret)?;
 
     Ok(Some(ProviderCredentials {
         client_id,

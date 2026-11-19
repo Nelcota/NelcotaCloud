@@ -49,9 +49,7 @@ pub async fn accept_invitation(
         email: email.as_str(),
     };
     let joined = join_project(&state.control_plane_pool, answer).await?;
-    let Some(project_id) = joined else {
-        return Err(ApiError::NotFound("invitation"));
-    };
+    let project_id = joined.ok_or(ApiError::NotFound("invitation"))?;
 
     Ok(Json(AcceptedInvitation { project_id }))
 }
