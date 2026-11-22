@@ -8,10 +8,10 @@ import { Button } from '@/shared/ui/primitives/button'
 export type NoticeTone = 'info' | 'success' | 'warning' | 'error'
 
 const TONES: Record<NoticeTone, string> = {
-  info: 'border-border bg-surface text-foreground [&>svg]:text-info',
-  success: 'border-success/25 bg-success/8 text-foreground [&>svg]:text-success',
-  warning: 'border-warning/25 bg-warning/8 text-foreground [&>svg]:text-warning',
-  error: 'border-destructive/30 bg-destructive/8 text-foreground [&>svg]:text-destructive',
+  info: 'border-transparent bg-surface text-foreground [&>svg]:text-info',
+  success: 'border-transparent bg-surface text-foreground [&>svg]:text-success',
+  warning: 'border-warning/20 bg-warning/6 text-foreground [&>svg]:text-warning',
+  error: 'border-destructive/25 bg-destructive/6 text-foreground [&>svg]:text-destructive',
 }
 
 const GLYPHS = { info: Info, success: CircleCheck, warning: TriangleAlert, error: CircleAlert }
@@ -39,7 +39,10 @@ export function Notice({
   const role = tone === 'error' ? 'alert' : 'status'
 
   return (
-    <Alert role={role} className={cn('flex items-start gap-3 px-4 py-3.5', TONES[tone], className)}>
+    <Alert
+      role={role}
+      className={cn('flex items-start gap-3 rounded-xl px-4 py-3', TONES[tone], className)}
+    >
       <Glyph aria-hidden className="mt-0.5 size-4 shrink-0" />
       <div className="grid min-w-0 flex-1 gap-0.5">
         <NoticeTitle title={title} />
@@ -64,7 +67,7 @@ function NoticeBody({ body }: { body?: ReactNode }): JSX.Element | null {
     return null
   }
 
-  return <AlertDescription className="text-sm text-muted-foreground">{body}</AlertDescription>
+  return <AlertDescription className="text-xs text-muted-foreground">{body}</AlertDescription>
 }
 
 function DismissButton({ onDismiss }: { onDismiss?: () => void }): JSX.Element | null {

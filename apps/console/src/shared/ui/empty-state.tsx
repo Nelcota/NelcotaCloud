@@ -34,7 +34,7 @@ export function EmptyState({
       className={cn(
         'gap-4',
         isCompact === true && 'p-6 md:p-6',
-        isFramed === true && 'border border-dashed border-muted-foreground/30 bg-card/40',
+        isFramed === true && 'border border-dashed border-border bg-surface/50',
       )}
     >
       <EmptyHeader>

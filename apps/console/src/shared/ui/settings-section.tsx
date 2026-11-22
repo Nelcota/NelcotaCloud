@@ -23,21 +23,21 @@ type SettingsSectionProps = {
 export function SettingsSection(props: SettingsSectionProps): JSX.Element {
   const titleId = useId()
   const className = cn(
-    'min-w-0 overflow-hidden rounded-xl border bg-card',
-    props.isDanger === true && 'border-destructive/40',
+    'min-w-0 overflow-hidden rounded-xl border border-border/60 bg-card',
+    props.isDanger === true && 'border-destructive/30',
   )
   const content = (
     <>
-      <div className="flex flex-col gap-5 p-6">
+      <div className="flex flex-col gap-4 p-5">
         <div className="grid gap-1">
           <div className="flex items-center gap-2.5">
             {props.leading}
-            <h2 id={titleId} className="text-lg font-semibold">
+            <h2 id={titleId} className="text-base font-medium">
               {props.title}
             </h2>
           </div>
           {props.description !== undefined && (
-            <div className="max-w-prose text-sm text-muted-foreground">{props.description}</div>
+            <div className="max-w-prose text-xs text-muted-foreground">{props.description}</div>
           )}
         </div>
         {props.children !== undefined && (
@@ -79,11 +79,11 @@ function SectionFooter({
   return (
     <div
       className={cn(
-        'flex flex-wrap items-center justify-between gap-3 border-t bg-surface px-6 py-3.5',
+        'flex flex-wrap items-center justify-between gap-3 border-t border-border/60 bg-surface px-5 py-3',
         isDanger === true && 'border-destructive/30 bg-destructive/5',
       )}
     >
-      <div className="min-w-0 text-sm text-muted-foreground">{note}</div>
+      <div className="min-w-0 text-xs text-muted-foreground">{note}</div>
       <div className="ms-auto flex flex-wrap items-center gap-2">{footer}</div>
     </div>
   )

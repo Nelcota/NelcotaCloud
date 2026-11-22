@@ -1,29 +1,78 @@
-@import '@fontsource-variable/geist';
+@import 'cal-sans';
+@import '@fontsource-variable/jetbrains-mono';
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
+/*
+ * Type, radius and motion follow the panel measured in design-reference/TOKENS.md: a dense
+ * engineering tool where 12–13px is body text and 20px is a page title.
+ */
 @theme {
-  --text-xs: 0.8125rem;
-  --text-xs--line-height: 1.15rem;
-  --text-sm: 0.9375rem;
-  --text-sm--line-height: 1.4rem;
-  --text-base: 1.0625rem;
-  --text-base--line-height: 1.55rem;
-  --text-lg: 1.25rem;
-  --text-lg--line-height: 1.75rem;
-  --text-xl: 1.5rem;
-  --text-xl--line-height: 2rem;
-  --text-2xl: 1.875rem;
-  --text-2xl--line-height: 2.25rem;
-  --text-3xl: 2.25rem;
-  --text-3xl--line-height: 2.5rem;
+  --text-2xs: 0.625rem;
+  --text-2xs--line-height: 0.9375rem;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.21875rem;
+  --text-base: 0.875rem;
+  --text-base--line-height: 1.25rem;
+  --text-lg: 1rem;
+  --text-lg--line-height: 1.5rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl: 1.75rem;
+  --text-3xl--line-height: 2.25rem;
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-emphasized: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --animate-page-in: page-in 180ms ease-out both;
+  --animate-row-in: row-in 200ms ease-out both;
+  --animate-row-mark: row-mark 1200ms ease-out both;
+  --animate-live: live 2s var(--ease-standard) infinite;
+
+  @keyframes page-in {
+    from {
+      opacity: 0;
+      filter: blur(4px);
+      translate: -6px 0;
+    }
+  }
+
+  @keyframes row-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes row-mark {
+    from {
+      background-color: var(--brand-subtle);
+    }
+  }
+
+  @keyframes live {
+    50% {
+      opacity: 0.45;
+    }
+  }
 }
 
 @theme inline {
-  --font-sans: 'Geist Variable', system-ui, sans-serif;
+  --font-sans: 'Cal Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -36,12 +85,15 @@
   --color-secondary-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-faint: var(--faint);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--foreground);
   --color-destructive: var(--destructive);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-info: var(--info);
+  --color-brand: var(--brand);
+  --color-brand-subtle: var(--brand-subtle);
   --color-frame: var(--frame);
   --color-heading: var(--heading);
   --color-surface: var(--surface);
@@ -53,91 +105,100 @@
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
-  --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-sidebar: var(--sidebar);
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --radius-sm: calc(var(--radius) - 0.25rem);
-  --radius-md: calc(var(--radius) - 0.125rem);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 0.25rem);
-  --radius-2xl: calc(var(--radius) + 0.5rem);
+  --shadow-popover: var(--popover-shadow);
 }
 
+/* Light comes from the Veloz docs theme; orange text uses #c2410c so it passes AA on white. */
 :root {
   color-scheme: light;
   --radius: 0.75rem;
-  --frame: #ececec;
-  --background: #fafafa;
+  --frame: #ebebeb;
+  --background: #ffffff;
   --foreground: #171717;
   --heading: #0a0a0a;
-  --card: #ffffff;
+  --card: #f4f4f4;
   --popover: #ffffff;
-  --primary: #c93800;
-  --primary-fill: #d93d00;
-  --primary-fill-hover: #c23600;
-  --primary-hover: #b03200;
+  --popover-shadow: 0 0 0 1px rgb(0 0 0 / 0.06), 0 12px 32px -8px rgb(0 0 0 / 0.18);
+  --brand: #ff4d00;
+  --brand-subtle: color-mix(in srgb, #ff4d00 10%, transparent);
+  --primary: #c2410c;
+  --primary-hover: #9a3412;
+  --primary-fill: #d63f00;
+  --primary-fill-hover: #c23900;
   --primary-foreground: #ffffff;
-  --secondary: #f0f0f0;
-  --muted: #f2f2f2;
-  --muted-foreground: #626262;
-  --accent: #ededed;
-  --surface: #0000000a;
-  --surface-hover: #00000012;
-  --destructive: #c4202f;
+  --secondary: #0000000f;
+  --muted: #0000000f;
+  --muted-foreground: #6b6b6b;
+  --faint: #8a8a8a;
+  --accent: #00000012;
+  --surface: #0000000f;
+  --surface-hover: #00000017;
+  --destructive: #dc2626;
   --success: #15803d;
-  --warning: #a35a00;
+  --warning: #b45309;
   --info: #2563eb;
-  --border: #dedede;
+  --border: #e3e3e3;
   --input: #8a8a8a;
-  --ring: #c93800;
-  --sidebar: #fafafa;
-  --sidebar-accent: #0000000d;
+  --ring: #ff4d00;
+  --sidebar: #ffffff;
+  --sidebar-accent: #00000012;
   --sidebar-accent-foreground: #0a0a0a;
-  --chart-1: #e04300;
-  --chart-2: #2563eb;
-  --chart-3: #d97706;
+  --chart-1: #2f7bd9;
+  --chart-2: #e0561f;
+  --chart-3: #d98e04;
   --chart-4: #16a34a;
-  --chart-secondary: #6e43b5;
+  --chart-5: #d03b3b;
+  --chart-6: #7cb3f5;
 }
 
+/* Dark is the Veloz panel: black frame, #141414 panel, blocks separated by fill, not borders. */
 :root[data-theme='dark'] {
   color-scheme: dark;
   --frame: #000000;
-  --background: #0f0f0f;
-  --foreground: #e5e5e5;
+  --background: #141414;
+  --foreground: #ededed;
   --heading: #ffffff;
-  --card: #161616;
+  --card: #1e1e1e;
   --popover: #1c1c1c;
+  --popover-shadow: 0 0 0 1px rgb(255 255 255 / 0.08), 0 16px 40px -12px rgb(0 0 0 / 0.7);
+  --brand: #ff4d00;
+  --brand-subtle: color-mix(in srgb, #ff4d00 14%, transparent);
   --primary: #ff4d00;
-  --primary-fill: #d93d00;
-  --primary-fill-hover: #c23600;
-  --primary-hover: #e64500;
+  --primary-hover: #ff7a40;
+  --primary-fill: #d63f00;
+  --primary-fill-hover: #c23900;
   --primary-foreground: #ffffff;
-  --secondary: #1f1f1f;
-  --muted: #1a1a1a;
-  --muted-foreground: #9c9c9c;
+  --secondary: #ffffff0f;
+  --muted: #ffffff0f;
+  --muted-foreground: #8b8b8b;
+  --faint: #666666;
   --accent: #ffffff12;
-  --surface: #ffffff0a;
-  --surface-hover: #ffffff14;
-  --destructive: #ff6b6b;
-  --success: #3ccf7a;
-  --warning: #f5a524;
-  --info: #5b9dff;
-  --border: #2e2e2e;
-  --input: #6b6b6b;
+  --surface: #ffffff0f;
+  --surface-hover: #ffffff1a;
+  --destructive: #ef4444;
+  --success: #22a356;
+  --warning: #f59e0b;
+  --info: #60a5fa;
+  --border: #262626;
+  --input: #666666;
   --ring: #ff4d00;
-  --sidebar: #0f0f0f;
-  --sidebar-accent: #ffffff12;
+  --sidebar: #141414;
+  --sidebar-accent: #ffffff1a;
   --sidebar-accent-foreground: #ffffff;
-  --chart-1: #ff4d00;
-  --chart-2: #3b82f6;
-  --chart-3: #f5a524;
-  --chart-4: #3ccf7a;
-  --chart-secondary: #c3a6f5;
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #fab219;
+  --chart-4: #16a34a;
+  --chart-5: #d03b3b;
+  --chart-6: #8cc0ff;
 }
 
 @layer base {
@@ -153,9 +214,17 @@
     background: var(--frame);
     color: var(--foreground);
     font-family: var(--font-sans);
-    font-size: 0.9375rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
+  }
+
+  code,
+  kbd,
+  pre,
+  samp {
+    font-family: var(--font-mono);
   }
 
   :focus-visible {
@@ -175,11 +244,17 @@
   }
 
   ::selection {
-    background: color-mix(in oklab, var(--primary) 35%, transparent);
+    background: color-mix(in oklab, var(--brand) 35%, transparent);
   }
 
   :where(button, a[href], [role='button'], [role='tab'], [role='menuitem']):not(:disabled):active {
-    scale: 0.98;
+    scale: 0.97;
+  }
+
+  :where(button, a[href], [role='button'], [role='tab'], [role='menuitem']) {
+    transition-property: color, background-color, border-color, outline-color, opacity, scale;
+    transition-duration: 200ms;
+    transition-timing-function: var(--ease-standard);
   }
 
   a[href],
@@ -211,13 +286,21 @@
 @layer components {
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: var(--input) transparent;
+    scrollbar-color: var(--surface-hover) transparent;
+  }
+
+  /* Horizontal tab rows scroll on narrow screens instead of wrapping. */
+  .scrollbar-none {
+    scrollbar-width: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-slot] {
+  *,
+  ::before,
+  ::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 

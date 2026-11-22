@@ -21,9 +21,9 @@ export function DataListItem({
   children: ReactNode
 }): JSX.Element {
   return (
-    <div className="grid min-w-0 gap-1 py-3 sm:grid-cols-[13rem_minmax(0,1fr)] sm:gap-4">
-      <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="min-w-0 text-sm wrap-anywhere">{children}</dd>
+    <div className="grid min-w-0 gap-1 py-2.5 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-4">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 text-xs wrap-anywhere">{children}</dd>
     </div>
   )
 }

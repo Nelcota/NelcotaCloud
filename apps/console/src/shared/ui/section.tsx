@@ -48,15 +48,15 @@ function SectionHeading(props: SectionProps & { titleId: string }): JSX.Element 
       <div className="grid min-w-0 gap-0.5">
         <div className="flex items-center gap-2">
           {Glyph !== undefined && <Glyph aria-hidden className="size-4 text-muted-foreground" />}
-          <h2 id={props.titleId} className="text-base font-semibold">
+          <h2 id={props.titleId} className="text-base font-medium">
             {props.title}
           </h2>
           {props.meta !== undefined && (
-            <span className="text-sm text-muted-foreground tabular-nums">{props.meta}</span>
+            <span className="text-xs text-muted-foreground tabular-nums">{props.meta}</span>
           )}
         </div>
         {props.description !== undefined && (
-          <div className="text-sm text-muted-foreground">{props.description}</div>
+          <div className="text-xs text-muted-foreground">{props.description}</div>
         )}
       </div>
       {props.action}
@@ -72,7 +72,11 @@ function SectionBody({
   children: ReactNode
 }): JSX.Element {
   if (isFramed === true) {
-    return <div className="min-w-0 overflow-hidden rounded-xl border bg-card">{children}</div>
+    return (
+      <div className="min-w-0 overflow-hidden rounded-xl border border-border/60 bg-card">
+        {children}
+      </div>
+    )
   }
 
   return <>{children}</>

@@ -19,12 +19,12 @@ export function PageHeader({
   children,
 }: PageHeaderProps): JSX.Element {
   return (
-    <header className="flex flex-col gap-5">
+    <header className="flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           {leading}
           <div className="grid min-w-0 gap-0.5">
-            <h1 className="text-3xl font-semibold tracking-tight wrap-anywhere">{title}</h1>
+            <h1 className="text-xl font-medium wrap-anywhere">{title}</h1>
             <PageDescription description={description} />
           </div>
         </div>
@@ -40,7 +40,7 @@ function PageDescription({ description }: { description?: ReactNode }): JSX.Elem
     return null
   }
 
-  return <div className="text-base text-muted-foreground">{description}</div>
+  return <div className="max-w-prose text-sm text-muted-foreground">{description}</div>
 }
 
 function PageActions({ actions }: { actions?: ReactNode }): JSX.Element | null {
