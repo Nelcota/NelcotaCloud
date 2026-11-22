@@ -83,3 +83,21 @@ peso 500, descrição 12px, rodapé com ações à direita (secundário + primá
 | Abas Runtime/Build nos logs | Um só fluxo de eventos | Abas por tipo: Todos / Logins / Admin / Recusas, no mesmo estilo |
 | Marcadores de evento no gráfico (Deploy, Falha, Alerta) | Há eventos de auditoria por dia | Marcadores de "Recusas" e "Mudanças de configuração" no gráfico da visão geral, quando existirem |
 | Botão "IA" na barra superior | Já existe "Copiar contexto para IA" na visão geral | O botão da barra abre o mesmo diálogo em qualquer página do projeto |
+
+## Divergências da referência (decididas na implementação)
+
+| Ponto | Veloz | NelcotaCloud | Por quê |
+| --- | --- | --- | --- |
+| Botão primário | Branco sobre `#FF4D00` (3,3:1) | Branco sobre `#D63F00` (4,6:1), hover `#C23900` | AA para texto de 12–14px; `#FF4D00` segue no foco, item ativo, gráficos e indicadores |
+| Laranja como texto no claro | `#FF4D00` | `#C2410C` (5,2:1) | AA sobre branco (mesmo valor que a documentação da Veloz usa em código) |
+| Borda de inputs de formulário | Sem borda, só `surface` | Borda 3:1 (`#666` / `#8A8A8A`) | WCAG 1.4.11; campos de busca seguem sem borda, como na Veloz |
+| Fonte Cal Sans | Subconjunto latino servido pelo Next (88 KB) | Arquivo variável completo do pacote oficial `cal-sans` (290 KB) | Mesmo arquivo e mesmos pesos; sem ferramenta de subset no projeto |
+| Ícones | Traço fino estilo Lucide | Lucide com traço 1,5 (os ícones Solar saíram) | Uma família só, como na referência |
+| Abas do recurso | Abas horizontais sob o nome do serviço | Barra lateral do projeto + abas `line` nas páginas com subpáginas | O console navega por página, não por recurso |
+| "Organizar" no canvas | Disposição livre dos cards | Alternância grade/tabela | Projetos não têm posição no canvas |
+| Abas Runtime/Build nos logs | Dois fluxos | Pills por tipo de evento (Tudo, Logins, Falhas…) | Há um só fluxo (auditoria) |
+| Dispositivo/IP nas sessões, "convidado por", datas de objetos | Mostrados | Não mostrados | A API não devolve esses dados; nenhuma chamada foi alterada |
+| Progresso "Instâncias 0 de 3" | Etapas do deploy | Etapas reais da criação do projeto (3) | A criação é um único request; nada de progresso inventado |
+| Rótulos em maiúsculas | Grupos da barra lateral | Iguais, só nos grupos da barra lateral e dos menus | Regra registrada no CLAUDE.md |
+
+Prints do estado final: `after/<tela>-<desktop|mobile>-<dark|light>.png`.
