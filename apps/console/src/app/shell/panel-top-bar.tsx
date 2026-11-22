@@ -21,7 +21,7 @@ export function PanelTopBar({ location, pageTitle }: PanelTopBarProps): JSX.Elem
   const router = useRouter()
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-1.5 px-2 sm:px-3">
+    <header className="flex h-14 shrink-0 items-center gap-2 px-2 sm:px-4">
       <MobileNavigation location={location} />
       <AccountMenu />
       <div className="hidden items-center md:flex">

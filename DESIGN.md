@@ -16,10 +16,11 @@ color or a size in a screen.
 
 - Cal Sans (official variable font, `cal-sans`) for the interface, JetBrains Mono (`font-mono`)
   for ids, slugs, hashes, URLs, timestamps in logs, keys, shortcuts, CLI and SQL.
-- Scale: `text-2xs` 10px (meta, kbd, uppercase group labels), `text-xs` 12px (default panel
-  text: labels, buttons, inputs, tables), `text-sm` 13px (body, sidebar), `text-base` 14px
-  `font-medium` (section and card titles), `text-xl` 20px `font-medium` (page titles),
-  `text-2xl` 24px `font-semibold` (stat figures).
+- Scale, one step above the Veloz mockup (the site shows it scaled down, too small to work in
+  all day): `text-2xs` 11px (meta, kbd, uppercase group labels), `text-xs` 13px (labels,
+  meta, table headers), `text-sm` 14px (body, inputs, tables, sidebar), `text-base` 15px
+  `font-medium` (section and card titles), `text-xl` 22px `font-medium` (page titles),
+  `text-2xl` 26px `font-semibold` (stat figures).
 - Every number uses `tabular-nums`. Numbers are formatted the Brazilian way with
   `shared/lib/format-number` (`15,2 mil`, `86,6%`, `33,1 GB`) and times with
   `shared/lib/format-relative` (`há 14h`, `há 2d`).
@@ -40,17 +41,17 @@ color or a size in a screen.
 
 - Radius: 4 (log badges), 6 (pills, kbd), 8 (`rounded-md`: buttons, inputs, menu items),
   10 (rail items, switcher), 12 (`rounded-xl`: cards, sections, dialogs), 16 (the panel).
-- Buttons: `h-8` default, `h-7` sm, `h-9` lg, 12px medium text. Primary = orange fill;
+- Buttons: `h-9` default, `h-8` sm, `h-10` lg, 13px medium text, 16px icons. Primary = orange fill;
   `outline`/`secondary` = `surface` fill; `ghost` = text only; `destructive` = surface with a
-  red 30% border and red text. Inputs: `h-8`, `surface` fill, 3:1 border, orange focus.
-- Tables: header 10px muted on no fill, rows 44px with hover `surface`, numeric columns
+  red 30% border and red text. Inputs: `h-9`, 14px, `surface` fill, 3:1 border, orange focus.
+- Tables: header 13px muted on no fill, rows 48px with hover `surface`, numeric columns
   right-aligned.
 
 ## Layout
 
-- Shell: an icon rail on the frame; a rounded panel with a 48px top bar (account chip with its
+- Shell: an icon rail on the frame; a rounded panel with a 56px top bar (account chip with its
   initial on a square, ←/→, breadcrumb `Projetos › Projeto › Grupo › Página`, "Buscar… ⌘K"
-  and the "IA" button inside a project) and, inside a project, a 224px sidebar: project
+  and the "IA" button inside a project) and, inside a project, a 240px sidebar: project
   switcher (name + slug in mono) and pages in labeled groups (active item: `surface-hover`
   with the icon in `brand`). Below `lg` the sidebar opens in a sheet.
 - A page: `PageHeader` (20px title, one line of context, actions on the right), then a

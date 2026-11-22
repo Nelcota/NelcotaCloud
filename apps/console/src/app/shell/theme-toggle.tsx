@@ -27,7 +27,7 @@ export function ThemeToggle(): JSX.Element {
           aria-label={label}
           onClick={toggleMode}
         >
-          <Glyph aria-hidden className="size-[18px]" />
+          <Glyph aria-hidden className="size-5" />
         </Button>
       </TooltipTrigger>
       <TooltipContent side="right">{label}</TooltipContent>

@@ -8,8 +8,8 @@ import {
 } from '@/shared/ui/primitives/avatar'
 
 const SIZES = {
-  xs: 'size-5 text-2xs',
-  sm: 'size-7 text-xs',
+  xs: 'size-6 text-2xs',
+  sm: 'size-8 text-xs',
   md: 'size-9 text-sm',
   lg: 'size-11 text-base',
   xl: 'size-16 text-xl',

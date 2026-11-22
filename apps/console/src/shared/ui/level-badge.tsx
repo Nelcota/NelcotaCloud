@@ -19,7 +19,7 @@ export function LevelBadge({ level }: { level: LogLevel }): JSX.Element {
     <span
       title={NAMES[level]}
       className={cn(
-        'inline-flex h-4 w-[30px] shrink-0 items-center justify-center rounded-xs font-mono text-[9px] leading-none font-semibold tracking-[0.02em]',
+        'inline-flex h-[18px] w-[34px] shrink-0 items-center justify-center rounded-xs font-mono text-[10px] leading-none font-semibold tracking-[0.02em]',
         TONES[level],
       )}
     >

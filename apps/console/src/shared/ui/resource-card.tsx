@@ -74,7 +74,7 @@ function ResourceMetrics({ metrics }: { metrics?: readonly ResourceMetric[] }): 
     <dl className="grid grid-cols-2 gap-3">
       {metrics.map((metric) => (
         <div key={metric.label} className="grid min-w-0 gap-0.5">
-          <dt className="truncate text-[9px] tracking-[0.025em] text-muted-foreground uppercase">
+          <dt className="truncate text-2xs tracking-[0.025em] text-muted-foreground uppercase">
             {metric.label}
           </dt>
           <dd className="truncate font-mono text-xs font-semibold text-foreground tabular-nums">

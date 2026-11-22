@@ -54,13 +54,13 @@ export function AccountMenu(): JSX.Element | null {
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Conta: ${name}`}
-        className="relative inline-flex h-7 max-w-56 min-w-0 shrink-0 items-center gap-2 rounded-md px-1.5 text-xs text-foreground hover:bg-surface aria-expanded:bg-surface sm:px-2"
+        className="relative inline-flex h-9 max-w-60 min-w-0 shrink-0 items-center gap-2 rounded-md px-1.5 text-sm text-foreground hover:bg-surface aria-expanded:bg-surface sm:px-2"
       >
         <Avatar src={nelcota.auth.avatar.url(user) ?? undefined} name={name} size="xs" isSquare />
         <span className="hidden truncate sm:inline">{name}</span>
         <ChevronsUpDown
           aria-hidden
-          className="hidden size-3 shrink-0 text-muted-foreground sm:block"
+          className="hidden size-3.5 shrink-0 text-muted-foreground sm:block"
         />
         <MfaDot isMfaOff={isMfaOff} />
       </DropdownMenuTrigger>

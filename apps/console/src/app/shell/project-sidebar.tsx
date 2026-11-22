@@ -61,7 +61,7 @@ function SectionLink({ projectId, section, isCurrent }: SectionLinkProps): JSX.E
       href={sectionPath(projectId, section)}
       aria-current={ariaCurrentPage(isCurrent)}
       className={cn(
-        'flex h-8 min-w-0 items-center gap-2 rounded-md px-2 text-sm text-muted-foreground hover:bg-surface hover:text-foreground',
+        'flex h-9 min-w-0 items-center gap-2.5 rounded-md px-2.5 text-sm text-muted-foreground hover:bg-surface hover:text-foreground',
         isCurrent && 'bg-surface-hover font-medium text-foreground hover:bg-surface-hover',
       )}
     >

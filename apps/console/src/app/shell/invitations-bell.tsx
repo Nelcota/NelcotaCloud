@@ -22,7 +22,7 @@ export function InvitationsBell(): JSX.Element {
         aria-label={bellLabel(pending.length)}
         className="relative grid size-10 place-items-center rounded-[10px] text-muted-foreground hover:bg-surface hover:text-foreground"
       >
-        <Bell aria-hidden className="size-[18px]" />
+        <Bell aria-hidden className="size-5" />
         {pending.length > 0 && (
           <span
             aria-hidden

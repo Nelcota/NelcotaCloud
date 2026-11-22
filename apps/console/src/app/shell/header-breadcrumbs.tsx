@@ -23,11 +23,11 @@ type HeaderBreadcrumbsProps = {
 export function HeaderBreadcrumbs({ location, pageTitle }: HeaderBreadcrumbsProps): JSX.Element {
   return (
     <Breadcrumb className="min-w-0">
-      <BreadcrumbList className="flex-nowrap gap-1 text-xs sm:gap-1.5">
+      <BreadcrumbList className="flex-nowrap gap-1 text-sm sm:gap-1.5">
         <BreadcrumbItem className="hidden sm:inline-flex">
           <BreadcrumbLink asChild>
             <RouterLink href="/" className="inline-flex items-center gap-1.5">
-              <Folder aria-hidden className="size-3.5" />
+              <Folder aria-hidden className="size-4" />
               Projetos
             </RouterLink>
           </BreadcrumbLink>
