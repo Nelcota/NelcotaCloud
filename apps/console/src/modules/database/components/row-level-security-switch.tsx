@@ -6,6 +6,7 @@ import { useChangeRowLevelSecurityMutation } from '@/modules/database/queries/us
 import type { components } from '@/shared/api/api-schema'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
 import { ErrorAlert } from '@/shared/ui/error-alert'
+import { SettingsSection } from '@/shared/ui/settings-section'
 import { SwitchField } from '@/shared/ui/switch-field'
 
 type TableOverview = components['schemas']['TableOverview']
@@ -30,14 +31,17 @@ export function RowLevelSecuritySwitch({
   }
 
   return (
-    <div className="bg-card grid gap-3 rounded-xl border p-5">
-      <SwitchField
-        label="Row level security"
-        description="Ligado, os apps só alcançam as linhas que as políticas abaixo liberam."
-        checked={table.rls_enabled}
-        onCheckedChange={toggle}
-      />
-      <ErrorAlert error={enablingError(change.error, change.variables?.isEnabled)} />
+    <>
+      <SettingsSection title="Acesso por linha">
+        <SwitchField
+          label="Row level security"
+          hint="Ligado, os apps só alcançam as linhas que as políticas abaixo liberam."
+          checked={table.rls_enabled}
+          disabled={change.isPending}
+          onCheckedChange={toggle}
+        />
+        <ErrorAlert error={enablingError(change.error, change.variables?.isEnabled)} />
+      </SettingsSection>
       <ConfirmDialog
         isOpen={isConfirming}
         onOpenChange={setIsConfirming}
@@ -53,7 +57,7 @@ export function RowLevelSecuritySwitch({
         isDestructive
         onConfirm={() => change.mutateAsync({ table: table.name, isEnabled: false })}
       />
-    </div>
+    </>
   )
 }
 

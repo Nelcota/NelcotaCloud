@@ -1,11 +1,10 @@
 import type { JSX } from 'react'
 import { useState } from 'react'
 
-import { MfaDisableIllustration } from '@/modules/account/components/mfa-illustrations'
 import { TotpCodeField } from '@/modules/account/components/totp-code-field'
 import { useDisableTotpMutation } from '@/modules/account/queries/use-mfa'
-import { Button } from '@/shared/ui/button'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
+import { Button } from '@/shared/ui/primitives/button'
 
 const TOTP_CODE_DIGITS = 6
 
@@ -25,8 +24,8 @@ export function TotpDisableForm(): JSX.Element {
   }
 
   return (
-    <div>
-      <Button variant="destructive" size="sm" onClick={open}>
+    <>
+      <Button type="button" variant="destructive" size="sm" onClick={open}>
         Desativar MFA
       </Button>
       <ConfirmDialog
@@ -35,14 +34,13 @@ export function TotpDisableForm(): JSX.Element {
         title="Desativar o MFA?"
         description="Sem MFA, quem descobrir sua senha entra no console e em todos os seus projetos."
         confirmLabel="Desativar MFA"
-        illustration={<MfaDisableIllustration />}
         isDestructive
         canConfirm={digitsOf(code).length === TOTP_CODE_DIGITS}
         onConfirm={disable}
       >
-        <TotpCodeField value={code} onChange={setCode} autoFocus />
+        <TotpCodeField value={code} onChange={setCode} hasAutoFocus />
       </ConfirmDialog>
-    </div>
+    </>
   )
 }
 

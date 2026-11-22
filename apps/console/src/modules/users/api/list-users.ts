@@ -19,12 +19,20 @@ export type UserListQuery = {
 }
 
 /** One page of the project's users, newest first, optionally searched and filtered. */
-export async function listUsers(projectId: string, query: UserListQuery): Promise<UserPage> {
+export async function listUsers(
+  projectId: string,
+  query: UserListQuery,
+  signal?: AbortSignal,
+): Promise<UserPage> {
   const filters = { ...emailQuery(query.email), ...statusQuery(query.status) }
   const params = { query: { ...filters, offset: query.offset, limit: query.limit } }
 
   return dataOf(
-    await apiClient.GET('/auth/v1/admin/users', { params, headers: projectHeaders(projectId) }),
+    await apiClient.GET('/auth/v1/admin/users', {
+      params,
+      headers: projectHeaders(projectId),
+      signal,
+    }),
   )
 }
 

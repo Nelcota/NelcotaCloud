@@ -1,12 +1,9 @@
-import { useNavigate } from '@tanstack/react-router'
-import Check from '~icons/solar/check-linear'
-import ChevronsUpDown from '~icons/solar/sort-vertical-linear'
-import FolderKanban from '~icons/solar/folder-with-files-linear'
-import Plus from '~icons/solar/add-linear'
+import { Check, ChevronsUpDown, LayoutGrid, Plus } from 'lucide-react'
 import type { JSX } from 'react'
 
-import { ApiStatusDot } from '@/app/shell/api-status-dot'
+import { ProjectAvatar } from '@/app/shell/project-avatar'
 import { useCurrentProject, useProjectsQuery } from '@/modules/projects/queries/use-projects'
+import { RouterLink } from '@/shared/routing/router-link'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,68 +12,58 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu'
+} from '@/shared/ui/primitives/dropdown-menu'
 
-/** The sidebar's header: the open project, the API status, and a way to any other project. */
+/** The open project, with a menu to switch to another one or start a new one. */
 export function ProjectSwitcher({ projectId }: { projectId: string }): JSX.Element {
-  const navigate = useNavigate()
+  const project = useCurrentProject(projectId)
   const projects = useProjectsQuery()
-  const current = useCurrentProject(projectId)
-  const name = current?.name ?? 'Projeto'
+  const name = project?.name ?? 'Projeto'
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="hover:bg-sidebar-accent aria-expanded:bg-sidebar-accent flex w-full min-w-0 items-center gap-3 rounded-lg p-2 text-left transition-colors">
-        <span className="bg-secondary text-secondary-foreground relative flex size-11 shrink-0 items-center justify-center rounded-lg text-lg font-semibold">
-          <span aria-hidden="true">{initialOf(name)}</span>
-          <ApiStatusDot />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-base leading-tight font-semibold">{name}</span>
-          <span className="text-muted-foreground block truncate font-mono text-xs">
-            {current?.slug}
+      <DropdownMenuTrigger
+        aria-label={`Trocar projeto: ${name}`}
+        className="flex w-full min-w-0 items-center gap-3 rounded-lg px-2.5 py-2 text-start hover:bg-surface-hover"
+      >
+        <ProjectAvatar name={name} mascotId={project?.mascot_id} size="md" />
+        <span className="grid min-w-0 flex-1">
+          <span className="truncate text-sm font-semibold text-heading">{name}</span>
+          <span className="truncate font-mono text-xs text-muted-foreground">
+            {project?.slug ?? ''}
           </span>
         </span>
-        <ChevronsUpDown className="text-muted-foreground size-5 shrink-0" />
+        <ChevronsUpDown aria-hidden className="size-4 shrink-0 text-muted-foreground" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-64">
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>Seus projetos</DropdownMenuLabel>
-          {(projects.data ?? []).map((project) => (
-            <DropdownMenuItem
-              key={project.id}
-              onClick={() =>
-                navigate({ to: '/projects/$projectId', params: { projectId: project.id } })
-              }
-            >
-              <span className="min-w-0 flex-1 truncate">{project.name}</span>
-              <CurrentMark isCurrent={project.id === projectId} />
+      <DropdownMenuContent align="start" className="w-60">
+        <DropdownMenuLabel>Projetos</DropdownMenuLabel>
+        <DropdownMenuGroup className="max-h-72 overflow-y-auto">
+          {(projects.data ?? []).map((candidate) => (
+            <DropdownMenuItem key={candidate.id} asChild>
+              <RouterLink href={`/projects/${candidate.id}`}>
+                <ProjectAvatar name={candidate.name} mascotId={candidate.mascot_id} size="xs" />
+                <span className="truncate">{candidate.name}</span>
+                {candidate.id === projectId && <Check aria-hidden className="ms-auto" />}
+              </RouterLink>
             </DropdownMenuItem>
           ))}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => navigate({ to: '/' })}>
-          <FolderKanban />
-          Todos os projetos
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => navigate({ to: '/projects/new' })}>
-          <Plus />
-          Novo projeto
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuItem asChild>
+            <RouterLink href="/">
+              <LayoutGrid aria-hidden />
+              Todos os projetos
+            </RouterLink>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <RouterLink href="/projects/new">
+              <Plus aria-hidden />
+              Novo projeto
+            </RouterLink>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )
-}
-
-/** The first letter of the project's name, as a stand-in for a project logo. */
-function initialOf(name: string): string {
-  return name.trim().charAt(0).toUpperCase()
-}
-
-function CurrentMark({ isCurrent }: { isCurrent: boolean }): JSX.Element | null {
-  if (isCurrent === false) {
-    return null
-  }
-
-  return <Check aria-label="Projeto atual" className="text-primary-ink size-5" />
 }

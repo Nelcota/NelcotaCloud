@@ -24,16 +24,25 @@ export function useFlash(): Flash | null {
   return useSyncExternalStore(subscribe, () => current)
 }
 
-function restartTimer(): void {
+export function dismissFlash(): void {
+  stopTimer()
+  current = null
+  notify()
+}
+
+function stopTimer(): void {
   if (clearTimer !== null) {
     clearTimeout(clearTimer)
-  }
-
-  clearTimer = setTimeout(() => {
-    current = null
     clearTimer = null
-    notify()
-  }, VISIBLE_MS)
+  }
+}
+
+function restartTimer(): void {
+  stopTimer()
+
+  if (current?.link === undefined) {
+    clearTimer = setTimeout(dismissFlash, VISIBLE_MS)
+  }
 }
 
 function subscribe(listener: () => void): () => void {

@@ -3,9 +3,9 @@ import type { FormEvent, JSX } from 'react'
 import { useState } from 'react'
 
 import { useSignUpMutation } from '@/modules/account/queries/use-sign-up-mutation'
-import { Button } from '@/shared/ui/button'
 import { ErrorAlert } from '@/shared/ui/error-alert'
-import { FormField } from '@/shared/ui/form-field'
+import { PendingButton } from '@/shared/ui/pending-button'
+import { TextField } from '@/shared/ui/text-field'
 
 const MIN_PASSWORD_LENGTH = 8
 
@@ -24,30 +24,39 @@ export function SignUpForm({
   }
 
   return (
-    <form className="grid gap-4" onSubmit={submit}>
-      <FormField
+    <form onSubmit={submit} className="flex flex-col gap-4">
+      <TextField
         label="Email"
         type="email"
         autoComplete="email"
+        spellCheck={false}
         autoFocus
         required
+        className="[&_input]:h-10"
         value={email}
         onChange={(event) => setEmail(event.target.value)}
       />
-      <FormField
+      <TextField
         label="Senha"
         type="password"
         autoComplete="new-password"
         required
         minLength={MIN_PASSWORD_LENGTH}
         hint="Pelo menos 8 caracteres."
+        className="[&_input]:h-10"
         value={password}
         onChange={(event) => setPassword(event.target.value)}
       />
       <ErrorAlert error={signUp.error} />
-      <Button type="submit" size="lg" disabled={signUp.isPending} aria-busy={signUp.isPending}>
+      <PendingButton
+        type="submit"
+        size="lg"
+        className="h-10 w-full"
+        isPending={signUp.isPending}
+        disabled={email.trim() === '' || password.length < MIN_PASSWORD_LENGTH}
+      >
         Criar conta
-      </Button>
+      </PendingButton>
     </form>
   )
 }

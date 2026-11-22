@@ -1,7 +1,7 @@
 import type { JSX } from 'react'
 
-import { Badge } from '@/shared/ui/badge'
 import type { components } from '@/shared/api/api-schema'
+import { StatusBadge } from '@/shared/ui/status-badge'
 
 type ColumnOverview = components['schemas']['ColumnOverview']
 type ForeignKeyOverview = components['schemas']['ForeignKeyOverview']
@@ -28,7 +28,7 @@ function Trait({ isShown, label }: { isShown: boolean; label: string }): JSX.Ele
     return null
   }
 
-  return <Badge>{label}</Badge>
+  return <StatusBadge>{label}</StatusBadge>
 }
 
 function ReferenceNote({ target }: { target: string | null }): JSX.Element | null {
@@ -36,7 +36,7 @@ function ReferenceNote({ target }: { target: string | null }): JSX.Element | nul
     return null
   }
 
-  return <span className="text-muted-foreground font-mono text-xs">→ {target}</span>
+  return <code className="font-mono text-xs text-muted-foreground">→ {target}</code>
 }
 
 /** `posts.id` for a one-column key; `posts(a, b)` when the key spans several columns. */

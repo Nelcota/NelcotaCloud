@@ -1,34 +1,47 @@
 import type { JSX } from 'react'
 
-import { type CodeLanguage, type CodeTokenKind, highlightCode } from '@/shared/lib/highlight-code'
-
-const TOKEN_CLASSES: Record<CodeTokenKind, string> = {
-  keyword: 'text-code-keyword',
-  string: 'text-code-string',
-  function: 'text-code-function',
-  property: 'text-code-property',
-  muted: 'text-code-muted',
-  plain: '',
-}
+import { cn } from '@/shared/lib/utils'
+import { CopyButton } from '@/shared/ui/copy-button'
 
 type CodeBlockProps = {
   code: string
-  language: CodeLanguage
+  /** Shown in the bar above the code: a file name or a language. */
+  title?: string
+  /** What is copied, for screen readers. */
+  copyLabel?: string
+  maxHeight?: number
+  isWrapped?: boolean
+  className?: string
 }
 
-/** A snippet to read and copy, colored by token kind from the theme's code tokens. */
-export function CodeBlock({ code, language }: CodeBlockProps): JSX.Element {
-  const tokens = highlightCode(code, language)
-
+/** A snippet to read and copy, with a bar that names it. */
+export function CodeBlock({
+  code,
+  title,
+  copyLabel,
+  maxHeight,
+  isWrapped,
+  className,
+}: CodeBlockProps): JSX.Element {
   return (
-    <pre className="bg-muted/60 overflow-x-auto rounded-lg border p-4 font-mono text-xs leading-relaxed">
-      <code>
-        {tokens.map((token) => (
-          <span key={token.start} className={TOKEN_CLASSES[token.kind]}>
-            {token.text}
-          </span>
-        ))}
-      </code>
-    </pre>
+    <div className={cn('min-w-0 overflow-hidden rounded-lg border bg-frame/60', className)}>
+      <div className="flex h-10 items-center justify-between gap-2 border-b bg-surface ps-3 pe-1">
+        <span className="truncate font-mono text-sm text-muted-foreground">{title}</span>
+        <CopyButton
+          value={code}
+          description={copyLabel ?? title ?? 'trecho de código'}
+          isIconOnly
+        />
+      </div>
+      <pre
+        className={cn(
+          'scrollbar-thin overflow-auto overscroll-contain p-4 font-mono text-sm leading-relaxed',
+          isWrapped === true && 'whitespace-pre-wrap wrap-anywhere',
+        )}
+        style={{ maxHeight }}
+      >
+        <code>{code}</code>
+      </pre>
+    </div>
   )
 }

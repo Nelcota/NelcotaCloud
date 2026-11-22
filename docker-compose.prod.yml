@@ -2,19 +2,28 @@
 #   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
 # Only Caddy is published; Postgres and the API are reachable inside the compose network only.
 
+x-server-environment: &server-environment
+  CONTROL_PLANE_DATABASE_URL: postgres://nelcota:${POSTGRES_PASSWORD}@postgres:5432/nelcota_control
+  TENANT_DATABASE_BASE_URL: postgres://nelcota:${POSTGRES_PASSWORD}@postgres:5432
+  MASTER_KEY_HEX: ${MASTER_KEY_HEX:?set MASTER_KEY_HEX}
+  RUST_LOG: ${RUST_LOG:-info}
+
 services:
   postgres:
-    image: postgres:17
+    image: postgres:19
     restart: unless-stopped
     # Every project's pools share this server: idle tenant connections close within a minute
     # and Data API sessions are capped per instance, but bursts across many projects need room.
-    command: ["postgres", "-c", "max_connections=300"]
+    command: ["postgres", "-c", "max_connections=300", "-c", "reserved_connections=16"]
     environment:
       POSTGRES_USER: nelcota
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
       POSTGRES_DB: nelcota_control
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      # One volume per major version (Postgres 18+ keeps the cluster in 19/docker under this
+      # mount): a new major cannot read the old files, so data moves with pg_dumpall
+      # (docs/deploy.md, "Postgres major upgrades") and the old volume stays as a fallback.
+      - postgres-data-19:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U nelcota -d nelcota_control"]
       interval: 5s
@@ -22,26 +31,47 @@ services:
       retries: 20
 
   api:
-    build:
+    build: &server-build
       context: .
       dockerfile: crates/server/Dockerfile
     restart: unless-stopped
+    stop_grace_period: 85s
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      CONTROL_PLANE_DATABASE_URL: postgres://nelcota:${POSTGRES_PASSWORD}@postgres:5432/nelcota_control
-      TENANT_DATABASE_BASE_URL: postgres://nelcota:${POSTGRES_PASSWORD}@postgres:5432
+      <<: *server-environment
+      DATABASE_RUNTIME_PASSWORD: ${DATABASE_RUNTIME_PASSWORD:?set DATABASE_RUNTIME_PASSWORD}
       PUBLIC_BASE_URL: https://${API_DOMAIN:?set API_DOMAIN}
-      MASTER_KEY_HEX: ${MASTER_KEY_HEX:?set MASTER_KEY_HEX}
       ADMIN_TOKEN: ${ADMIN_TOKEN:?set ADMIN_TOKEN}
       SMTP_URL: ${SMTP_URL:?set SMTP_URL}
       EMAIL_FROM: ${EMAIL_FROM:?set EMAIL_FROM}
       # Caddy is the only way in, so the address it appends to X-Forwarded-For is trusted.
       CLIENT_IP_HEADER: ${CLIENT_IP_HEADER:-x-forwarded-for}
-      RUST_LOG: ${RUST_LOG:-info}
       # Users of this tenant are the console accounts (see docs/deploy.md).
       PLATFORM_TENANT_SLUG: ${PLATFORM_TENANT_SLUG:-console}
+      CACHE_VALKEY_URL: ${CACHE_VALKEY_URL:-}
+      STORAGE_R2_ENDPOINT: ${STORAGE_R2_ENDPOINT:-}
+      STORAGE_R2_BUCKET: ${STORAGE_R2_BUCKET:-}
+      STORAGE_R2_ACCESS_KEY_ID: ${STORAGE_R2_ACCESS_KEY_ID:-}
+      STORAGE_R2_SECRET_ACCESS_KEY: ${STORAGE_R2_SECRET_ACCESS_KEY:-}
+
+  webhook-worker:
+    build: *server-build
+    command: ["--webhook-worker"]
+    restart: unless-stopped
+    stop_grace_period: 25s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    environment:
+      CONTROL_PLANE_DATABASE_URL: postgres://nelcota_control_runtime:${DATABASE_RUNTIME_PASSWORD:?set DATABASE_RUNTIME_PASSWORD}@postgres:5432/nelcota_control
+      TENANT_DATABASE_BASE_URL: postgres://nelcota_tenant_runtime:${DATABASE_RUNTIME_PASSWORD:?set DATABASE_RUNTIME_PASSWORD}@postgres:5432
+      DATABASE_SCHEMA_MANAGED_EXTERNALLY: "true"
+      MASTER_KEY_HEX: ${MASTER_KEY_HEX:?set MASTER_KEY_HEX}
+      RUST_LOG: ${RUST_LOG:-info}
 
   caddy:
     build:
@@ -67,7 +97,7 @@ services:
 
   # Daily encrypted dumps of every database to Cloudflare R2 (any S3-compatible storage works).
   # List snapshots:  docker compose -f docker-compose.prod.yml --env-file .env.production run --rm --entrypoint restore.sh backup
-  # Restore one:     stop the api service, then run the same command followed by the snapshot name.
+  # Restore one:     stop the API, webhook worker and backup scheduler first.
   backup:
     build:
       context: .
@@ -89,6 +119,8 @@ services:
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
 
 volumes:
+  # Postgres 17 data, kept untouched as the fallback of the 19 upgrade; remove it once checked.
   postgres-data:
+  postgres-data-19:
   caddy-data:
   caddy-config:

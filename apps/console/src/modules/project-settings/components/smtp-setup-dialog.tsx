@@ -2,24 +2,17 @@ import type { JSX } from 'react'
 import { useState } from 'react'
 
 import {
-  cleanHost,
   EMPTY_SMTP_DRAFT,
-  parsePort,
   type SmtpDraft,
   smtpBodyOf,
 } from '@/modules/project-settings/components/smtp-draft'
-import { SmtpOwnServerIllustration } from '@/modules/project-settings/components/smtp-illustrations'
-import { SMTP_PRESETS } from '@/modules/project-settings/components/smtp-presets'
-import { formatSender } from '@/modules/project-settings/components/smtp-sender'
 import { smtpSteps } from '@/modules/project-settings/components/smtp-steps'
 import { useSaveSmtpMutation } from '@/modules/project-settings/queries/use-project-settings'
-import { Button } from '@/shared/ui/button'
-import type { ReviewItem } from '@/shared/ui/review-list'
+import { Button } from '@/shared/ui/primitives/button'
 import { StepDialog } from '@/shared/ui/step-dialog/step-dialog'
 
 type SmtpSetupDialogProps = {
   projectId: string
-  /** "Usar meu servidor SMTP" the first time, "Trocar servidor" after. */
   triggerLabel: string
   triggerVariant: 'default' | 'outline'
 }
@@ -29,8 +22,6 @@ export function SmtpSetupDialog(props: SmtpSetupDialogProps): JSX.Element {
   const [isOpen, setIsOpen] = useState(false)
   const [draft, setDraft] = useState<SmtpDraft>(EMPTY_SMTP_DRAFT)
   const save = useSaveSmtpMutation(props.projectId)
-  const step = { draft, onChange: setDraft }
-  const illustration = <SmtpOwnServerIllustration />
 
   function open(): void {
     setDraft(EMPTY_SMTP_DRAFT)
@@ -49,7 +40,7 @@ export function SmtpSetupDialog(props: SmtpSetupDialogProps): JSX.Element {
 
   return (
     <>
-      <Button variant={props.triggerVariant} size="sm" onClick={open}>
+      <Button type="button" variant={props.triggerVariant} onClick={open}>
         {props.triggerLabel}
       </Button>
       <StepDialog
@@ -59,39 +50,8 @@ export function SmtpSetupDialog(props: SmtpSetupDialogProps): JSX.Element {
         description="Os emails de autenticação passam a sair pelo seu servidor, com o seu domínio."
         finishLabel="Salvar servidor"
         onFinish={finish}
-        workingLabel="Salvando servidor…"
-        summary={smtpSummary(draft)}
-        steps={smtpSteps(step, illustration)}
+        steps={smtpSteps({ draft, onChange: setDraft })}
       />
     </>
   )
-}
-
-/** What the right-hand panel shows as the steps fill in; never the password. */
-function smtpSummary(draft: SmtpDraft): ReviewItem[] {
-  const host = cleanHost(draft.host)
-  const port = parsePort(draft.port)
-
-  return [
-    { label: 'Provedor', value: providerName(draft) },
-    { label: 'Servidor', value: serverText(host, port) },
-    { label: 'Usuário', value: draft.username.trim() },
-    { label: 'Remetente', value: formatSender(draft.senderName, draft.senderEmail) },
-  ]
-}
-
-function providerName(draft: SmtpDraft): string {
-  if (draft.provider === null) {
-    return ''
-  }
-
-  return SMTP_PRESETS[draft.provider].title
-}
-
-function serverText(host: string, port: number | null): string {
-  if (host === '' || port === null) {
-    return ''
-  }
-
-  return `${host}:${port}`
 }

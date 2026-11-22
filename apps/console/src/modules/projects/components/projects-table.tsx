@@ -1,64 +1,42 @@
-import { Link } from '@tanstack/react-router'
-import ArrowRight from '~icons/solar/arrow-right-linear'
-import Calendar from '~icons/solar/calendar-linear'
-import Folder from '~icons/solar/folder-with-files-linear'
-import Global from '~icons/solar/global-linear'
-import UserId from '~icons/solar/user-id-linear'
 import type { JSX } from 'react'
 
-import type { ProjectSort, SortKey } from '@/modules/projects/components/project-query'
-import { siteLabel } from '@/modules/projects/components/site-label'
+import { ProjectAvatar } from '@/app/shell/project-avatar'
 import { RoleBadge } from '@/modules/projects/components/role-badge'
-import { SortableColumn } from '@/modules/projects/components/sortable-column'
+import { siteLabel } from '@/modules/projects/components/site-label'
 import type { components } from '@/shared/api/api-schema'
-import { formatDate } from '@/shared/lib/format-date'
-import { ColumnLabel } from '@/shared/ui/column-label'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/ui/table'
+import { cn } from '@/shared/lib/utils'
+import { RouterLink } from '@/shared/routing/router-link'
+import { CopyButton } from '@/shared/ui/copy-button'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/shared/ui/primitives/table'
+import { Timestamp } from '@/shared/ui/timestamp'
 
 type ProjectSummary = components['schemas']['ProjectSummary']
 
-const CELL = 'px-4 py-4'
+/** On a phone, only the project and the role fit beside each other. */
+const WIDE_ONLY = 'hidden md:table-cell'
+const LARGE_ONLY = 'hidden lg:table-cell'
+/** The first block of a UUID is enough to tell projects apart at a glance. */
+const SHORT_ID_LENGTH = 8
 
-type ProjectsTableProps = {
-  projects: ProjectSummary[]
-  sort: ProjectSort
-  onSort: (key: SortKey) => void
-}
-
-/** One row per project; the name links to it and the whole row is its click target. */
-export function ProjectsTable({ projects, sort, onSort }: ProjectsTableProps): JSX.Element {
+export function ProjectsTable({ projects }: { projects: ProjectSummary[] }): JSX.Element {
   return (
-    <div className="bg-card overflow-hidden rounded-xl border">
+    <div className="overflow-hidden rounded-xl border bg-card">
       <Table>
         <TableHeader>
-          <TableRow>
-            <SortableColumn
-              sortKey="name"
-              sort={sort}
-              icon={Folder}
-              onSort={onSort}
-              className="sm:px-5"
-            >
-              Projeto
-            </SortableColumn>
-            <SortableColumn sortKey="role" sort={sort} icon={UserId} onSort={onSort}>
-              Papel
-            </SortableColumn>
-            <TableHead className="hidden h-11 px-4 md:table-cell">
-              <ColumnLabel icon={Global}>Site</ColumnLabel>
-            </TableHead>
-            <SortableColumn
-              sortKey="created_at"
-              sort={sort}
-              icon={Calendar}
-              onSort={onSort}
-              className="hidden sm:table-cell"
-            >
-              Criado em
-            </SortableColumn>
-            <TableHead className="h-11 w-12 px-4 sm:px-5">
-              <span className="sr-only">Abrir</span>
-            </TableHead>
+          <TableRow className="hover:bg-transparent">
+            <TableHead>Nome</TableHead>
+            <TableHead className={WIDE_ONLY}>Slug</TableHead>
+            <TableHead className={LARGE_ONLY}>Site</TableHead>
+            <TableHead>Papel</TableHead>
+            <TableHead className={WIDE_ONLY}>Criado em</TableHead>
+            <TableHead className={LARGE_ONLY}>ID</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -71,35 +49,49 @@ export function ProjectsTable({ projects, sort, onSort }: ProjectsTableProps): J
   )
 }
 
+/** The name is the row's link, so the keyboard and "open in new tab" reach the project. */
 function ProjectRow({ project }: { project: ProjectSummary }): JSX.Element {
+  const site = siteLabel(project.site_url)
+
   return (
-    <TableRow className="group relative">
-      {/* `w-full max-w-0` lets the name take the free width and truncate inside it. */}
-      <TableCell className={`${CELL} w-full max-w-0 sm:px-5`}>
-        <Link
-          to="/projects/$projectId"
-          params={{ projectId: project.id }}
-          className="block truncate font-medium after:absolute after:inset-0 after:content-['']"
-        >
-          {project.name}
-        </Link>
-        <p className="text-muted-foreground truncate font-mono text-xs">{project.slug}</p>
+    <TableRow>
+      <TableCell>
+        <div className="flex min-w-0 items-center gap-3">
+          <ProjectAvatar name={project.name} mascotId={project.mascot_id} />
+          <RouterLink
+            href={`/projects/${project.id}`}
+            className="truncate font-medium text-heading hover:underline"
+          >
+            {project.name}
+          </RouterLink>
+        </div>
       </TableCell>
-      <TableCell className={CELL}>
+      <TableCell className={cn(WIDE_ONLY, 'font-mono text-xs text-muted-foreground')}>
+        {project.slug}
+      </TableCell>
+      <TableCell className={cn(LARGE_ONLY, 'max-w-56 truncate text-muted-foreground')} title={site}>
+        {site}
+      </TableCell>
+      <TableCell>
         <RoleBadge role={project.role} />
       </TableCell>
-      <TableCell className={`${CELL} text-muted-foreground hidden max-w-64 truncate md:table-cell`}>
-        <span title={project.site_url}>{siteLabel(project.site_url)}</span>
+      <TableCell className={cn(WIDE_ONLY, 'text-muted-foreground')}>
+        <Timestamp value={project.created_at} format="date" />
       </TableCell>
-      <TableCell className={`${CELL} text-muted-foreground hidden sm:table-cell`}>
-        {formatDate(project.created_at)}
-      </TableCell>
-      <TableCell className={`${CELL} text-right sm:px-5`}>
-        <ArrowRight
-          aria-hidden="true"
-          className="text-muted-foreground group-hover:text-foreground inline size-5 transition-[color,transform] group-hover:translate-x-0.5 motion-reduce:transition-none"
-        />
+      <TableCell className={LARGE_ONLY}>
+        <ShortId id={project.id} />
       </TableCell>
     </TableRow>
+  )
+}
+
+function ShortId({ id }: { id: string }): JSX.Element {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <code title={id} className="font-mono text-xs text-muted-foreground">
+        {id.slice(0, SHORT_ID_LENGTH)}
+      </code>
+      <CopyButton value={id} description="ID do projeto" isIconOnly />
+    </span>
   )
 }

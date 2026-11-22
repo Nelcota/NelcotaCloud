@@ -44,7 +44,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** `GET /admin/api-keys`: every key of the tenant, newest first, without the keys themselves. */
+        /**
+         * `GET /admin/api-keys`: active keys and the first page of revoked keys, newest first.
+         *     Pass the response cursor as `before` for the next page of revoked keys.
+         */
         get: operations["list_api_keys"];
         put?: never;
         /**
@@ -103,8 +106,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * `GET /admin/audit-events/export`: the matching events as a CSV file, newest first, up to
-         *     100,000 rows.
+         * `GET /admin/audit-events/export`: streams the matching events as a CSV file, newest first.
          * @description Takes the same filters as the activity log, so the file holds what the console shows.
          */
         get: operations["export_audit_events"];
@@ -244,6 +246,23 @@ export interface paths {
         /** `GET /admin/oauth`: the providers the tenant has its own OAuth app for, without secrets. */
         get: operations["list_oauth_providers"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/oauth/redirects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace the project's registered app callback URLs. */
+        put: operations["configure_oauth_redirects"];
         post?: never;
         delete?: never;
         options?: never;
@@ -413,7 +432,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * `GET /admin/users/export`: the matching users as a CSV file, up to 100,000 rows.
+         * `GET /admin/users/export`: streams the matching users as a CSV file.
          * @description Takes the same filters and order as the user list, so the file holds what the console shows.
          */
         get: operations["export_users"];
@@ -504,7 +523,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** `POST /admin/users/{user_id}/logout`: ends every session; access tokens expire on their own. */
+        /** `POST /admin/users/{user_id}/logout`: ends every session in Auth. */
         post: operations["end_user_sessions"];
         delete?: never;
         options?: never;
@@ -796,8 +815,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * `POST /magic-link`: emails a one-time login link. An unknown email gets a passwordless
-         *     account, so the same call signs people up; the answer never reveals which case it was.
+         * `POST /magic-link`: emails a one-time login link. A new user account is created when
+         *     the recipient opens the link; the answer is the same for every address.
          */
         post: operations["request_magic_link"];
         delete?: never;
@@ -1046,7 +1065,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** `DELETE /sessions/{session_id}`: logs one device out; its access token expires on its own. */
+        /** `DELETE /sessions/{session_id}`: ends one device session in Auth. */
         delete: operations["end_session"];
         options?: never;
         head?: never;
@@ -1452,7 +1471,7 @@ export interface paths {
         put?: never;
         /**
          * `POST /platform/v1/invitations/{invitation_id}/accept`: joins the project. The invitation
-         *     must have been sent to the email of the account's verified token.
+         *     must have been sent to the account's verified email.
          */
         post: operations["accept_invitation"];
         delete?: never;
@@ -1611,6 +1630,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/platform/v1/projects/{project_id}/invitations/{invitation_id}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retries email delivery for the same pending invitation. Owners only. */
+        post: operations["resend_invitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/platform/v1/projects/{project_id}/members/{account_id}": {
         parameters: {
             query?: never;
@@ -1724,7 +1760,8 @@ export interface paths {
          * @description Query: `select=id,title,author(name)`, filters (`age=gte.18`, `or=(a.eq.1,b.eq.2)`),
          *     `order=created_at.desc`, `limit` (at most 1000) and `offset`; embeds take the same with
          *     their name as prefix (`comments.order=id.desc`). `Prefer: count=exact|planned` adds the
-         *     total to `Content-Range`.
+         *     total to `Content-Range`. `Prefer: order=primary-key` uses the complete primary key when
+         *     no root order is specified, leaving relations without a primary key unordered.
          */
         get: operations["read_rows"];
         put?: never;
@@ -1746,6 +1783,118 @@ export interface paths {
          *     least one filter is required.
          */
         patch: operations["update_rows"];
+        trace?: never;
+    };
+    "/storage/v1/buckets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_buckets"];
+        put?: never;
+        post: operations["create_bucket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storage/v1/buckets/{bucket_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_bucket"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storage/v1/buckets/{bucket_id}/objects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_objects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storage/v1/buckets/{bucket_id}/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["start_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storage/v1/objects/{object_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_object"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storage/v1/objects/{object_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["complete_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storage/v1/objects/{object_id}/download-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["download_url"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
 }
@@ -1891,6 +2040,14 @@ export interface components {
             network: string;
             note?: string | null;
         };
+        Bucket: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        BucketInput: {
+            name: string;
+        };
         CacheCredential: {
             /** Format: date-time */
             created_at: string;
@@ -1981,7 +2138,11 @@ export interface components {
             updated_at: string;
         };
         ConfiguredProviders: {
+            /** @description The server callback to register at Google or GitHub. */
+            callback_url: string;
             providers: components["schemas"]["ConfiguredProvider"][];
+            /** @description The exact callbacks registered for the project's app. */
+            redirect_urls: string[];
         };
         CreateApiKeyBody: {
             kind: components["schemas"]["ApiKeyKind"];
@@ -2120,6 +2281,17 @@ export interface components {
             /** Format: date-time */
             last_seen_at: string;
         };
+        FileInput: {
+            content_type: string;
+            name: string;
+            /**
+             * Format: uuid
+             * @description Reuse this ID to retry the same upload in this bucket.
+             */
+            request_id?: string | null;
+            /** Format: int64 */
+            size_bytes: number;
+        };
         ForeignKeyOverview: {
             columns: string[];
             foreign_columns: string[];
@@ -2142,6 +2314,8 @@ export interface components {
         InvitationBody: {
             email: string;
         };
+        /** @enum {string} */
+        InvitationDeliveryStatus: "unknown" | "sending" | "sent" | "failed";
         /** @description A new key. A secret key's plaintext is shown only here; afterwards only its hash exists. */
         IssuedApiKey: {
             hint: string;
@@ -2234,6 +2408,18 @@ export interface components {
             code: string;
             code_verifier: string;
         };
+        OAuthRedirects: {
+            redirect_urls: string[];
+        };
+        OAuthRedirectsBody: {
+            /** @description Exact app callback URLs. An empty list restores the project's site URL. */
+            redirect_urls: string[];
+        };
+        ObjectPage: {
+            items: components["schemas"]["StorageObject"][];
+            /** Format: uuid */
+            next_cursor?: string | null;
+        };
         OneTimeTokenBody: {
             token: string;
         };
@@ -2248,6 +2434,7 @@ export interface components {
         PendingInvitation: {
             /** Format: date-time */
             created_at: string;
+            delivery_status: components["schemas"]["InvitationDeliveryStatus"];
             email: string;
             /** Format: uuid */
             id: string;
@@ -2352,7 +2539,7 @@ export interface components {
             key_id: string;
         };
         RunSqlRequest: {
-            /** @description One or more statements, run in one transaction. */
+            /** @description One or more statements in an editor-managed transaction. Savepoints are supported. */
             query: string;
         };
         /**
@@ -2395,6 +2582,23 @@ export interface components {
         SignUpResponse: components["schemas"]["SessionTokens"] | {
             verification_required: boolean;
         };
+        SignedDownload: {
+            url: string;
+        };
+        SignedUpload: {
+            /** @description Whether the original PUT can still be used. */
+            can_upload: boolean;
+            /** Format: date-time */
+            expires_at: string;
+            headers: {
+                [key: string]: string;
+            };
+            /** Format: uuid */
+            object_id: string;
+            url: string;
+            /** @description Short-lived GET used to compare bytes when resuming an existing upload. */
+            verification_url?: string | null;
+        };
         SmtpSettingsBody: {
             /** @description The sender, e.g. `Acme <no-reply@acme.com>`. */
             email_from: string;
@@ -2429,6 +2633,16 @@ export interface components {
             rows: (string | null)[][];
             /** Format: int64 */
             rows_affected: number;
+        };
+        StorageObject: {
+            /** Format: uuid */
+            bucket_id: string;
+            content_type: string;
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: int64 */
+            size_bytes: number;
         };
         TableOverview: {
             columns: components["schemas"]["ColumnOverview"][];
@@ -2512,6 +2726,14 @@ export interface components {
              *     login or refresh; left as it is when absent.
              */
             app_metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** @description Optional previous contents. Returns 409 if the stored app metadata has changed. */
+            expected_app_metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** @description Optional previous contents. Returns 409 if the stored profile has changed. */
+            expected_user_metadata?: {
                 [key: string]: unknown;
             } | null;
             /** @description Replaces the user's profile data (up to 16 KiB as JSON); left as it is when absent. */
@@ -2722,7 +2944,10 @@ export interface operations {
     };
     list_api_keys: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Cursor for the next page of revoked keys */
+                before?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2732,6 +2957,8 @@ export interface operations {
             /** @description The tenant's API keys */
             200: {
                 headers: {
+                    /** @description Cursor when more revoked keys exist */
+                    "X-Nelcota-Next-Cursor"?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -3343,6 +3570,48 @@ export interface operations {
                 };
             };
             /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    configure_oauth_redirects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OAuthRedirectsBody"];
+            };
+        };
+        responses: {
+            /** @description Effective app callback URLs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthRedirects"];
+                };
+            };
+            /** @description Invalid callback URL */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Project access denied */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3999,6 +4268,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
+            /** @description The account is the last active owner of a project */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
         };
     };
     update_user: {
@@ -4046,6 +4324,15 @@ export interface operations {
             };
             /** @description No such user */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The metadata changed since it was opened */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4909,7 +5196,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description A login link is on its way */
+            /** @description Login link request accepted */
             202: {
                 headers: {
                     [name: string]: unknown;
@@ -5190,6 +5477,7 @@ export interface operations {
             query?: {
                 state?: string;
                 code?: string;
+                error?: string;
             };
             header?: never;
             path?: never;
@@ -5618,6 +5906,15 @@ export interface operations {
             };
             /** @description Missing or invalid access token */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The account is the last active owner of a project */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6726,6 +7023,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Email verification required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             /** @description No pending invitation for this account */
             404: {
                 headers: {
@@ -6756,6 +7062,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AcceptedInvitation"];
+                };
+            };
+            /** @description Email verification required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
                 };
             };
             /** @description No pending invitation for this account */
@@ -7194,7 +7509,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Invitation created and emailed */
+            /** @description Invitation created with the result of the email attempt */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -7273,6 +7588,67 @@ export interface operations {
             };
             /** @description No such pending invitation */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    resend_invitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the project */
+                project_id: string;
+                /** @description Id of the pending invitation */
+                invitation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Result of the email attempt */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendingInvitation"];
+                };
+            };
+            /** @description Not an owner of this project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such pending invitation */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Delivery already in progress */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many invitations */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7584,7 +7960,10 @@ export interface operations {
                 /** @description Rows to skip */
                 offset?: number;
             };
-            header?: never;
+            header?: {
+                /** @description count=exact|planned, order=primary-key */
+                Prefer?: string | null;
+            };
             path: {
                 /** @description Table or view of the public schema */
                 table: string;
@@ -7823,6 +8202,632 @@ export interface operations {
             };
             /** @description No such table */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_buckets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List private buckets */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Bucket"][];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Bucket or file not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_bucket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BucketInput"];
+            };
+        };
+        responses: {
+            /** @description Create a private bucket */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Bucket"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Bucket or file not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_bucket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Bucket ID */
+                bucket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delete a bucket and its files */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Bucket or file not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_objects: {
+        parameters: {
+            query?: {
+                limit?: number;
+                before?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Bucket ID */
+                bucket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List available files */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObjectPage"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Bucket or file not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    start_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Bucket ID */
+                bucket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FileInput"];
+            };
+        };
+        responses: {
+            /** @description Reserve a file and sign a direct PUT */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignedUpload"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Bucket or file not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description File is too large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_object: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Object ID */
+                object_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Remove a file and queue its physical deletion */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Bucket or file not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    complete_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Object ID */
+                object_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Confirm a successful upload */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageObject"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Bucket or file not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    download_url: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Object ID */
+                object_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sign a private GET for a file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignedDownload"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Bucket or file not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

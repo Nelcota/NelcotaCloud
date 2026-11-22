@@ -2,6 +2,7 @@ import { useNavigate } from '@tanstack/react-router'
 
 import { useCurrentProject } from '@/modules/projects/queries/use-projects'
 import type { ActionTarget } from '@/modules/team/components/action-target'
+import { invitationDeliveryMessage } from '@/modules/team/components/invitation-delivery-copy'
 import { doneFor } from '@/modules/team/components/team-action-copy'
 import type { MemberAction } from '@/modules/team/components/team-row-actions'
 import type { InvitationRow, MemberRow } from '@/modules/team/components/team-rows'
@@ -10,6 +11,7 @@ import {
   useChangeRoleMutation,
   useLeaveProjectMutation,
   useRemoveMemberMutation,
+  useResendInvitationMutation,
   useTransferOwnershipMutation,
 } from '@/modules/team/queries/use-team'
 import { type Flash, showFlash } from '@/shared/lib/flash-notice'
@@ -18,6 +20,7 @@ export type TeamActions = {
   /** Settles when the API answers, so the confirmation can wait and show a failure. */
   runMember: (target: ActionTarget, action: MemberAction) => Promise<void>
   cancelInvitation: (invitation: InvitationRow) => Promise<void>
+  resendInvitation: (invitation: InvitationRow) => Promise<void>
 }
 
 /** Every action of the team page, each saying it worked once the API agrees. */
@@ -28,6 +31,7 @@ export function useTeamActions(projectId: string): TeamActions {
   const transfer = useTransferOwnershipMutation(projectId)
   const removal = useRemoveMemberMutation(projectId)
   const cancellation = useCancelInvitationMutation(projectId)
+  const resending = useResendInvitationMutation(projectId)
   const leaving = useLeaveProjectMutation(projectId)
   const runners: Record<MemberAction, (row: MemberRow) => Promise<unknown>> = {
     promote: (row) => roleChange.mutateAsync({ accountId: row.id, role: 'owner' }),
@@ -54,7 +58,12 @@ export function useTeamActions(projectId: string): TeamActions {
     showFlash(`Convite para ${invitation.email} cancelado.`)
   }
 
-  return { runMember, cancelInvitation }
+  async function resendInvitation(invitation: InvitationRow): Promise<void> {
+    const result = await resending.mutateAsync(invitation.id)
+    showFlash(invitationDeliveryMessage(result))
+  }
+
+  return { runMember, cancelInvitation, resendInvitation }
 }
 
 function leftMessage(projectName: string | undefined): string {

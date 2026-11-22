@@ -8,7 +8,9 @@ use crate::modules::oauth::login::oauth_state_repository::{
     PendingAuthorization, pkce_verifier_context,
 };
 use crate::modules::oauth::profile::provider_adapter::ProviderAdapter;
-use crate::modules::oauth::provider::oauth_provider_repository::ProviderKey;
+use crate::modules::oauth::provider::oauth_provider_repository::{
+    ProviderKey, is_current_revision,
+};
 use crate::modules::webhooks::outbox::webhook_recorder::WebhookRecorder;
 
 /// The provider called us back for a pending authorization of `tenant_pool`'s tenant.
@@ -29,6 +31,16 @@ impl OAuthLoginContext<'_> {
         let access_token = self.exchange_code(pending, code).await?;
         let adapter = ProviderAdapter::select(provider, self.endpoints);
         let profile = adapter.profile(self.http_client, &access_token).await?;
+        let key = ProviderKey {
+            tenant_id: pending.tenant_id,
+            provider,
+        };
+
+        if is_current_revision(self.control_plane_pool, key, pending.provider_revision).await?
+            == false
+        {
+            return Err(OAuthLoginError::ProviderChanged);
+        }
 
         let identity = (provider, &profile);
 
@@ -45,7 +57,12 @@ impl OAuthLoginContext<'_> {
             tenant_id: pending.tenant_id,
             provider: pending.provider,
         };
-        let client = self.client_for(key).await?;
+        let (client, revision) = self.client_for(key).await?;
+
+        if revision != pending.provider_revision {
+            return Err(OAuthLoginError::ProviderChanged);
+        }
+
         let verifier_context = pkce_verifier_context(pending.tenant_id, pending.provider);
         let verifier_bytes = self
             .secret_box

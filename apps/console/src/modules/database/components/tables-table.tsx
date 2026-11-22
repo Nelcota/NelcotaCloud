@@ -1,76 +1,87 @@
-import Database from '~icons/solar/database-linear'
-import Hashtag from '~icons/solar/hashtag-linear'
-import List from '~icons/solar/list-linear'
-import { Link } from '@tanstack/react-router'
 import type { JSX } from 'react'
 
-import { RlsOffMarker } from '@/modules/database/components/rls-off-marker'
-import {
-  estimatedRowsLabel,
-  isPlainTable,
-  kindLabel,
-} from '@/modules/database/components/table-kinds'
+import { RlsBadge } from '@/modules/database/components/rls-badge'
+import { TableRowMenu } from '@/modules/database/components/table-row-menu'
+import { isPlainTable, kindLabel } from '@/modules/database/components/table-kinds'
+import { tableHref } from '@/modules/database/components/table-href'
 import type { components } from '@/shared/api/api-schema'
-import { ColumnLabel } from '@/shared/ui/column-label'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/ui/table'
+import { RouterLink } from '@/shared/routing/router-link'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/shared/ui/primitives/table'
 
 type TableOverview = components['schemas']['TableOverview']
 
-type TablesTableProps = { projectId: string; tables: readonly TableOverview[] }
+type TablesTableProps = { projectId: string; tables: TableOverview[] }
 
-/** The project's tables and views, each linking to its page. */
+const NUMBER_CELL = 'text-right tabular-nums text-muted-foreground'
+
+/** One row per table of `public`: its name opens it; size, protection and policies beside it. */
 export function TablesTable({ projectId, tables }: TablesTableProps): JSX.Element {
   return (
-    <div className="bg-card overflow-hidden rounded-xl border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="px-4">
-              <ColumnLabel icon={Database}>Nome</ColumnLabel>
-            </TableHead>
-            <TableHead className="text-right">
-              <ColumnLabel icon={Hashtag}>Linhas (estimativa)</ColumnLabel>
-            </TableHead>
-            <TableHead className="px-4 text-right">
-              <ColumnLabel icon={List}>Colunas</ColumnLabel>
-            </TableHead>
+    <Table aria-label="Tabelas do schema public">
+      <TableHeader>
+        <TableRow>
+          <TableHead>Nome</TableHead>
+          <TableHead>Tipo</TableHead>
+          <TableHead className="text-right">Colunas</TableHead>
+          <TableHead className="text-right">Linhas (est.)</TableHead>
+          <TableHead>RLS</TableHead>
+          <TableHead className="text-right">Políticas</TableHead>
+          <TableHead className="w-12">
+            <span className="sr-only">Ações</span>
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {tables.map((table) => (
+          <TableRow key={table.name}>
+            <TableCell className="max-w-72 py-2.5">
+              <RouterLink
+                href={tableHref(projectId, table.name)}
+                className="block truncate rounded-sm font-mono text-sm font-medium text-heading underline-offset-4 hover:underline"
+              >
+                {table.name}
+              </RouterLink>
+            </TableCell>
+            <TableCell className="text-muted-foreground">{kindLabel(table.kind)}</TableCell>
+            <TableCell className={NUMBER_CELL}>{table.columns.length}</TableCell>
+            <TableCell className={NUMBER_CELL}>{estimatedRows(table)}</TableCell>
+            <TableCell>
+              <RlsBadge table={table} />
+            </TableCell>
+            <TableCell className={NUMBER_CELL}>{policyCount(table)}</TableCell>
+            <TableCell className="py-1.5 text-right">
+              <TableRowMenu table={table.name} />
+            </TableCell>
           </TableRow>
-        </TableHeader>
-        <TableBody>
-          {tables.map((table) => (
-            <TableRow key={table.name}>
-              <TableCell className="w-full max-w-0 px-4 whitespace-normal">
-                <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <Link
-                    to="/projects/$projectId/database/$table"
-                    params={{ projectId, table: table.name }}
-                    className="font-mono font-medium break-all underline-offset-4 hover:underline"
-                  >
-                    {table.name}
-                  </Link>
-                  <KindNote table={table} />
-                  <RlsOffMarker table={table} />
-                </span>
-              </TableCell>
-              <TableCell className="text-muted-foreground text-right tabular-nums">
-                {estimatedRowsLabel(table)}
-              </TableCell>
-              <TableCell className="text-muted-foreground px-4 text-right tabular-nums">
-                {table.columns.length}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+        ))}
+      </TableBody>
+    </Table>
   )
 }
 
-/** Tables are the norm; only views and other kinds are named. */
-function KindNote({ table }: { table: TableOverview }): JSX.Element | null {
-  if (isPlainTable(table)) {
-    return null
+/** The planner's estimate; a dash before the table was ever analyzed. */
+function estimatedRows(table: TableOverview): string {
+  const rows = table.estimated_rows
+
+  if (rows === null || rows === undefined || rows < 0) {
+    return '—'
   }
 
-  return <span className="text-muted-foreground text-xs">{kindLabel(table.kind)}</span>
+  return rows.toLocaleString('pt-BR')
+}
+
+/** Views and other kinds have no policies of their own. */
+function policyCount(table: TableOverview): string {
+  if (isPlainTable(table) === false) {
+    return '—'
+  }
+
+  return table.policies.length.toLocaleString('pt-BR')
 }

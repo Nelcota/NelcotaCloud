@@ -1,4 +1,3 @@
-import ExternalLink from '~icons/solar/square-arrow-right-up-linear'
 import type { JSX } from 'react'
 
 import {
@@ -7,14 +6,14 @@ import {
   withUsername,
 } from '@/modules/project-settings/components/smtp-draft'
 import { SMTP_PRESETS, type SmtpPreset } from '@/modules/project-settings/components/smtp-presets'
-import { FormField } from '@/shared/ui/form-field'
+import { TextField } from '@/shared/ui/text-field'
 
 /** The server's credentials; the password is write-only, like every secret of the project. */
 export function SmtpLoginStep({ draft, onChange }: SmtpStepProps): JSX.Element {
   return (
-    <div className="grid gap-4">
+    <div className="flex flex-col gap-4">
       <ProviderLoginHint preset={presetOf(draft)} />
-      <FormField
+      <TextField
         label="Usuário"
         placeholder="voce@seudominio.com"
         required
@@ -25,7 +24,7 @@ export function SmtpLoginStep({ draft, onChange }: SmtpStepProps): JSX.Element {
         value={draft.username}
         onChange={(event) => onChange(withUsername(draft, event.target.value))}
       />
-      <FormField
+      <TextField
         label="Senha"
         type="password"
         required
@@ -52,7 +51,7 @@ function ProviderLoginHint({ preset }: { preset: SmtpPreset | null }): JSX.Eleme
   }
 
   return (
-    <p className="text-muted-foreground text-sm text-pretty">
+    <p className="rounded-lg border bg-surface px-3.5 py-3 text-sm text-pretty text-muted-foreground">
       {preset.loginHint} <LoginLink link={preset.loginLink} />
     </p>
   )
@@ -68,10 +67,9 @@ function LoginLink({ link }: { link: SmtpPreset['loginLink'] }): JSX.Element | n
       href={link.url}
       target="_blank"
       rel="noreferrer"
-      className="text-primary-ink inline-flex items-center gap-1 font-medium underline-offset-4 hover:underline"
+      className="font-medium text-primary underline-offset-4 hover:underline"
     >
       {link.label}
-      <ExternalLink aria-hidden="true" className="size-4" />
     </a>
   )
 }

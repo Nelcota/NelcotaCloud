@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
+use crate::modules::storage::object_store::r2_config::R2Config;
+
 use crate::startup::config_error::{ConfigError, MASTER_KEY_HEX_LENGTH, MIN_ADMIN_TOKEN_LENGTH};
 use crate::startup::config_urls::{validate_public_base_url, validate_tenant_database_base_url};
 
@@ -25,6 +27,10 @@ pub struct AppConfig {
     pub webhook_allow_private_hosts: Option<bool>,
     pub webhook_worker_replicas: Option<u16>,
     pub cache_valkey_url: Option<String>,
+    pub storage_r2_endpoint: Option<String>,
+    pub storage_r2_bucket: Option<String>,
+    pub storage_r2_access_key_id: Option<String>,
+    pub storage_r2_secret_access_key: Option<String>,
     /// Slug of the tenant whose users are the platform accounts that log into the console.
     /// Unset, the platform API answers 503.
     pub platform_tenant_slug: Option<String>,
@@ -62,6 +68,10 @@ impl AppConfig {
                 .cache_valkey_url
                 .map(|url| url.trim().to_owned())
                 .filter(|url| url.is_empty() == false),
+            storage_r2_endpoint: self.storage_r2_endpoint,
+            storage_r2_bucket: self.storage_r2_bucket,
+            storage_r2_access_key_id: self.storage_r2_access_key_id,
+            storage_r2_secret_access_key: self.storage_r2_secret_access_key,
             platform_tenant_slug: self
                 .platform_tenant_slug
                 .map(|slug| slug.trim().to_owned())
@@ -80,8 +90,18 @@ impl AppConfig {
             return Err(ConfigError::InvalidWebhookWorkerReplicas);
         }
 
+        self.storage_config()?;
         validate_public_base_url(&self.public_base_url)?;
         validate_tenant_database_base_url(&self.tenant_database_base_url)
+    }
+
+    pub fn storage_config(&self) -> Result<Option<R2Config<'_>>, ConfigError> {
+        R2Config::parse([
+            self.storage_r2_endpoint.as_deref(),
+            self.storage_r2_bucket.as_deref(),
+            self.storage_r2_access_key_id.as_deref(),
+            self.storage_r2_secret_access_key.as_deref(),
+        ])
     }
 
     pub fn expected_webhook_workers(&self) -> u16 {
@@ -167,6 +187,10 @@ mod tests {
             webhook_allow_private_hosts: None,
             webhook_worker_replicas: None,
             cache_valkey_url: None,
+            storage_r2_endpoint: None,
+            storage_r2_bucket: None,
+            storage_r2_access_key_id: None,
+            storage_r2_secret_access_key: None,
             platform_tenant_slug: None,
             captcha_verify_url: None,
         }

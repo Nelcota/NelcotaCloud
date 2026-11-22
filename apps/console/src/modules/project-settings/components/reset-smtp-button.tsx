@@ -1,7 +1,6 @@
 import Letter from '~icons/solar/letter-linear'
 import type { JSX } from 'react'
 
-import { SmtpPlatformIllustration } from '@/modules/project-settings/components/smtp-illustrations'
 import { useResetSmtpMutation } from '@/modules/project-settings/queries/use-project-settings'
 import { ConfirmButton } from '@/shared/ui/confirm-button'
 
@@ -17,15 +16,14 @@ export function ResetSmtpButton({ projectId, serverName }: ResetSmtpButtonProps)
 
   return (
     <ConfirmButton
+      label="Voltar ao padrão"
+      size="md"
       title="Voltar ao SMTP da NelcotaCloud?"
       description="Os emails passam a sair pela NelcotaCloud. As credenciais do seu servidor são apagadas."
       confirmLabel="Voltar ao padrão"
       change={{ subject: serverName, icon: Letter, from: 'Seu servidor', to: 'SMTP da plataforma' }}
-      illustration={<SmtpPlatformIllustration />}
       isPending={reset.isPending}
       onConfirm={() => reset.mutateAsync()}
-    >
-      Voltar ao padrão
-    </ConfirmButton>
+    />
   )
 }

@@ -1,140 +1,101 @@
-import Plus from '~icons/solar/add-linear'
-import Globe from '~icons/solar/global-linear'
-import LockKeyhole from '~icons/solar/lock-keyhole-minimalistic-linear'
+import Server from '~icons/solar/server-linear'
+import Smartphone from '~icons/solar/smartphone-linear'
+import { Plus } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
-import { KeyUseIllustration } from '@/modules/api-keys/components/key-illustrations'
 import type { components } from '@/shared/api/api-schema'
-import { Button } from '@/shared/ui/button'
-import { type Choice, ChoiceCards } from '@/shared/ui/choice-cards'
-import { FormField } from '@/shared/ui/form-field'
-import { missingUnless } from '@/shared/ui/step-dialog/missing-unless'
-import { StepDialog } from '@/shared/ui/step-dialog/step-dialog'
+import { ChoiceCards, type Choice } from '@/shared/ui/choice-cards'
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
+import { PendingButton } from '@/shared/ui/pending-button'
+import { TextField } from '@/shared/ui/text-field'
 
 type ApiKeyKind = components['schemas']['ApiKeyKind']
 
 const MAX_NAME_LENGTH = 64
+const NAME_TOO_LONG = `Use até ${MAX_NAME_LENGTH} caracteres.`
 
 const KIND_CHOICES: Choice<ApiKeyKind>[] = [
   {
     value: 'publishable',
-    icon: Globe,
-    title: 'Publishable key',
-    description: 'Vai dentro do app, web ou mobile. Pode ficar visível no código.',
+    icon: Smartphone,
+    title: 'Publicável',
+    description: 'Vai no app, web ou mobile. Pode ficar visível no código.',
   },
   {
     value: 'secret',
-    icon: LockKeyhole,
-    title: 'Secret key',
-    description: 'Fica só no seu servidor. Administra usuários; nunca vai para o app.',
+    icon: Server,
+    title: 'Secreta',
+    description: 'Fica só no servidor e aparece uma vez, logo após criar.',
   },
 ]
 
-const NAME_HINTS: Record<ApiKeyKind, string> = {
-  publishable: 'Por exemplo, o app que vai usá-la.',
-  secret: 'Por exemplo, o serviço que vai usá-la.',
-}
-
-const KIND_NAMES: Record<ApiKeyKind, string> = {
-  publishable: 'Publishable key',
-  secret: 'Secret key',
-}
-
 type CreateKeyDialogProps = {
   isPending: boolean
+  isDisabled: boolean
   /** Resolves once created; the dialog stays open, with the error, when it fails. */
   onCreate: (body: { kind: ApiKeyKind; name: string }) => Promise<void>
 }
 
-/** Creates a key in two steps: what it is for, then a name to tell it apart later. */
-export function CreateKeyDialog({ isPending, onCreate }: CreateKeyDialogProps): JSX.Element {
+/** The page's main action: picks the kind of key and an optional name to tell it apart. */
+export function CreateKeyDialog(props: CreateKeyDialogProps): JSX.Element {
   const [isOpen, setIsOpen] = useState(false)
-  const [kind, setKind] = useState<ApiKeyKind | null>(null)
+  const [kind, setKind] = useState<ApiKeyKind>('publishable')
   const [name, setName] = useState('')
 
   function open(): void {
-    setKind(null)
+    setKind('publishable')
     setName('')
     setIsOpen(true)
   }
 
-  async function create(): Promise<void> {
-    if (kind === null) {
-      return
-    }
-
-    await onCreate({ kind, name: name.trim() })
-  }
-
   return (
     <>
-      <Button disabled={isPending} aria-busy={isPending} onClick={open}>
-        <Plus />
+      <PendingButton
+        type="button"
+        disabled={props.isDisabled}
+        isPending={props.isPending}
+        onClick={open}
+      >
+        <Plus aria-hidden data-icon="inline-start" />
         Nova chave
-      </Button>
-      <StepDialog
+      </PendingButton>
+      <ConfirmDialog
         isOpen={isOpen}
         onOpenChange={setIsOpen}
         title="Nova chave de API"
-        description="Cada app ou servidor usa uma chave para falar com a NelcotaCloud. Você pode revogar uma sem afetar as outras."
-        finishLabel="Criar chave"
-        workingLabel="Criando chave…"
-        onFinish={create}
-        summary={[
-          { label: 'Tipo', value: kindName(kind) },
-          { label: 'Nome', value: name.trim() },
-        ]}
-        steps={[
-          {
-            label: 'Tipo',
-            description: 'Escolha onde a chave vai ser usada.',
-            missing: missingUnless(kind !== null, 'Escolha o tipo da chave'),
-            illustration: <KeyUseIllustration kind={kind} />,
-            content: (
-              <ChoiceCards
-                legend="Onde a chave vai ser usada"
-                choices={KIND_CHOICES}
-                selected={kind}
-                onSelect={setKind}
-              />
-            ),
-          },
-          {
-            label: 'Nome',
-            description: 'Dê um nome para reconhecê-la na lista depois.',
-            missing: null,
-            content: (
-              <FormField
-                label="Nome (opcional)"
-                placeholder="App iOS, Servidor de produção…"
-                hint={nameHint(kind)}
-                maxLength={MAX_NAME_LENGTH}
-                autoComplete="off"
-                autoFocus
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-              />
-            ),
-          },
-        ]}
-      />
+        description="Uma secret key nunca vai para o app."
+        confirmLabel="Criar chave"
+        size="lg"
+        canConfirm={name.trim().length <= MAX_NAME_LENGTH}
+        onConfirm={() => props.onCreate({ kind, name: name.trim() })}
+      >
+        <ChoiceCards
+          legend="Tipo"
+          choices={KIND_CHOICES}
+          selected={kind}
+          onSelect={setKind}
+          columns={2}
+        />
+        <TextField
+          label="Nome"
+          isOptional
+          placeholder="App iOS, Servidor de produção…"
+          autoComplete="off"
+          autoFocus
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          error={nameError(name)}
+        />
+      </ConfirmDialog>
     </>
   )
 }
 
-function kindName(kind: ApiKeyKind | null): string {
-  if (kind === null) {
-    return ''
-  }
-
-  return KIND_NAMES[kind]
-}
-
-function nameHint(kind: ApiKeyKind | null): string | undefined {
-  if (kind === null) {
+function nameError(name: string): string | undefined {
+  if (name.trim().length <= MAX_NAME_LENGTH) {
     return undefined
   }
 
-  return NAME_HINTS[kind]
+  return NAME_TOO_LONG
 }

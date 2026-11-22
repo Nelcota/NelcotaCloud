@@ -17,11 +17,22 @@ pub fn send_tenant_email_in_background(
     tenant_id: Uuid,
     email: OutgoingEmail,
 ) {
-    let delivery = async move {
-        match senders.sender_for(tenant_id).await {
-            Ok(sender) => deliver_and_log(&sender, email).await,
-            Err(error) => tracing::error!(%error, "could not prepare the tenant's email sender"),
+    tokio::spawn(
+        async move { send_tenant_email(&senders, tenant_id, email).await }
+            .instrument(Span::current()),
+    );
+}
+
+pub async fn send_tenant_email(
+    senders: &TenantEmailSenders,
+    tenant_id: Uuid,
+    email: OutgoingEmail,
+) -> bool {
+    match senders.sender_for(tenant_id).await {
+        Ok(sender) => deliver_and_log(&sender, email).await,
+        Err(error) => {
+            tracing::error!(%error, "could not prepare the tenant's email sender");
+            false
         }
-    };
-    tokio::spawn(delivery.instrument(Span::current()));
+    }
 }

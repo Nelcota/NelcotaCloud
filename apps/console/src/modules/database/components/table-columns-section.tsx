@@ -6,9 +6,18 @@ import { DropColumnButton } from '@/modules/database/components/drop-column-butt
 import { referenceTargets } from '@/modules/database/components/reference-targets'
 import { isPlainTable } from '@/modules/database/components/table-kinds'
 import type { components } from '@/shared/api/api-schema'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/ui/table'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/shared/ui/primitives/table'
+import { Section } from '@/shared/ui/section'
 
 type TableOverview = components['schemas']['TableOverview']
+type ColumnOverview = components['schemas']['ColumnOverview']
 
 type TableColumnsSectionProps = {
   projectId: string
@@ -22,48 +31,75 @@ export function TableColumnsSection(props: TableColumnsSectionProps): JSX.Elemen
   const { projectId, table } = props
 
   return (
-    <div className="grid gap-3">
-      <AddColumnAction {...props} />
-      <div className="bg-card overflow-hidden rounded-xl border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="px-4">Nome</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Nulo</TableHead>
-              <TableHead>Padrão</TableHead>
-              <TableHead>Atributos</TableHead>
-              <TableHead className="px-4">
-                <span className="sr-only">Ações</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {table.columns.map((column) => (
-              <TableRow key={column.name}>
-                <TableCell className="px-4 font-mono font-medium">{column.name}</TableCell>
-                <TableCell className="text-muted-foreground font-mono">{column.type}</TableCell>
-                <TableCell className="text-muted-foreground">{yesNo(column.nullable)}</TableCell>
-                <TableCell className="text-muted-foreground font-mono">
-                  {column.default ?? '—'}
-                </TableCell>
-                <TableCell>
-                  <ColumnTraits column={column} foreignKeys={table.foreign_keys} />
-                </TableCell>
-                <TableCell className="px-4 text-right">
-                  <DropAction
-                    isShown={isPlainTable(table)}
-                    projectId={projectId}
-                    table={table.name}
-                    column={column.name}
-                  />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+    <Section
+      title="Colunas"
+      meta={table.columns.length}
+      action={<AddColumnAction {...props} />}
+      isFramed
+    >
+      <Table aria-label="Colunas da tabela">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Nome</TableHead>
+            <TableHead>Tipo</TableHead>
+            <TableHead>Nulo</TableHead>
+            <TableHead>Padrão</TableHead>
+            <TableHead>Atributos</TableHead>
+            <ActionsHead table={table} />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {table.columns.map((column) => (
+            <ColumnRow key={column.name} projectId={projectId} table={table} column={column} />
+          ))}
+        </TableBody>
+      </Table>
+    </Section>
+  )
+}
+
+type ColumnRowProps = { projectId: string; table: TableOverview; column: ColumnOverview }
+
+function ColumnRow({ projectId, table, column }: ColumnRowProps): JSX.Element {
+  return (
+    <TableRow>
+      <TableCell className="py-2.5 font-mono text-sm font-medium">{column.name}</TableCell>
+      <TableCell className="py-2.5 font-mono text-sm text-muted-foreground">
+        {column.type}
+      </TableCell>
+      <TableCell className="py-2.5 text-muted-foreground">{yesNo(column.nullable)}</TableCell>
+      <TableCell className="max-w-56 truncate py-2.5 font-mono text-sm text-muted-foreground">
+        {column.default ?? '—'}
+      </TableCell>
+      <TableCell className="py-2.5">
+        <ColumnTraits column={column} foreignKeys={table.foreign_keys} />
+      </TableCell>
+      <DropCell projectId={projectId} table={table} column={column} />
+    </TableRow>
+  )
+}
+
+function ActionsHead({ table }: { table: TableOverview }): JSX.Element | null {
+  if (isPlainTable(table) === false) {
+    return null
+  }
+
+  return (
+    <TableHead className="w-12">
+      <span className="sr-only">Ações</span>
+    </TableHead>
+  )
+}
+
+function DropCell({ projectId, table, column }: ColumnRowProps): JSX.Element | null {
+  if (isPlainTable(table) === false) {
+    return null
+  }
+
+  return (
+    <TableCell className="py-1.5 text-right">
+      <DropColumnButton projectId={projectId} table={table.name} column={column.name} />
+    </TableCell>
   )
 }
 
@@ -77,24 +113,8 @@ function AddColumnAction({
   }
 
   return (
-    <div className="flex justify-end">
-      <AddColumnDialog
-        projectId={projectId}
-        table={table.name}
-        targets={referenceTargets(tables)}
-      />
-    </div>
+    <AddColumnDialog projectId={projectId} table={table.name} targets={referenceTargets(tables)} />
   )
-}
-
-type DropActionProps = { isShown: boolean; projectId: string; table: string; column: string }
-
-function DropAction({ isShown, ...column }: DropActionProps): JSX.Element | null {
-  if (isShown === false) {
-    return null
-  }
-
-  return <DropColumnButton {...column} />
 }
 
 function yesNo(value: boolean): string {

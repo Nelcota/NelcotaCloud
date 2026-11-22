@@ -1,4 +1,4 @@
-import CircleCheck from '~icons/solar/check-circle-linear'
+import { CircleCheck } from 'lucide-react'
 import type { JSX } from 'react'
 
 /** Confirms that a form was saved, next to its Save button. */
@@ -14,12 +14,9 @@ export function SavedNote({
   }
 
   return (
-    <p
-      role="status"
-      className="mr-auto flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400"
-    >
-      <CircleCheck className="size-5" />
+    <span role="status" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+      <CircleCheck aria-hidden className="size-3.5 text-success" />
       {message}
-    </p>
+    </span>
   )
 }

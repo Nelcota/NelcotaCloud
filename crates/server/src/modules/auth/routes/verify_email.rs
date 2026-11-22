@@ -6,9 +6,6 @@ use crate::modules::auth::email::email_verification::redeem_email_verification;
 use crate::modules::auth::routes::one_time_token_body::OneTimeTokenBody;
 use crate::modules::auth::user::user_response::UserResponse;
 use crate::modules::tenants::access::tenant_context::TenantContext;
-use crate::modules::tenants::audit::audit_action::AuditAction;
-use crate::modules::tenants::audit::audit_entry::NewAuditEvent;
-use crate::modules::tenants::audit::audit_recorder::record_audit_event;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::request_origin::RequestOrigin;
 use crate::shared::http::validated_json::ValidatedJson;
@@ -34,12 +31,11 @@ pub async fn verify_email(
     let client_ip = origin.client_ip;
     state
         .rate_limits
-        .token_redemption
-        .check(tenant.tenant_id, client_ip)?;
+        .auth
+        .check_redemption(tenant.tenant_id, client_ip)
+        .await?;
     let webhooks = state.webhooks.recorder(tenant.tenant_id).await?;
-    let user = redeem_email_verification(&tenant.pool, &webhooks, &body.token).await?;
-    let event = NewAuditEvent::by_user(AuditAction::EmailVerified, user.id, origin);
-    record_audit_event(&tenant.pool, event).await;
+    let user = redeem_email_verification(&tenant.pool, &webhooks, (&body.token, origin)).await?;
 
     Ok(Json(user.into()))
 }

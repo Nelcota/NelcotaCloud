@@ -16,7 +16,10 @@ use crate::modules::auth::one_time_token::one_time_token_repository::{
 use crate::modules::auth::user::user_record::User;
 use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::modules::tenants::settings::loaded_tenant_settings::load_tenant_settings;
-use crate::modules::tenants::smtp::tenant_email_delivery::send_tenant_email_in_background;
+use crate::modules::tenants::smtp::tenant_email_delivery::{
+    send_tenant_email, send_tenant_email_in_background,
+};
+use crate::shared::email::outgoing_email::OutgoingEmail;
 use crate::shared::http::api_error::ApiError;
 
 /// The emails that carry a one-time link; each has its own wording per project.
@@ -46,7 +49,7 @@ pub struct AuthEmailRequest<'a> {
 
 /// An already issued link token to email to its user.
 pub struct AuthEmailLink<'a> {
-    pub user: &'a User,
+    pub address: &'a str,
     pub kind: AuthEmailKind,
     pub token: &'a str,
 }
@@ -57,6 +60,7 @@ impl AuthEmailKind {
             user_id,
             purpose: self.token_purpose(),
             code_challenge: None,
+            oauth_context: None,
         }
     }
 }
@@ -71,7 +75,7 @@ pub async fn send_auth_email(
     let kind = request.kind;
     let token = issue_one_time_token(&tenant.pool, kind.token_request(user.id)).await?;
     let link = AuthEmailLink {
-        user,
+        address: &user.email,
         kind,
         token: &token,
     };
@@ -85,22 +89,39 @@ pub async fn email_auth_link(
     tenant_id: Uuid,
     link: &AuthEmailLink<'_>,
 ) -> Result<(), ApiError> {
-    let user = link.user;
-    let token = link.token;
+    let email = prepare_email(mailer, tenant_id, link.address, (link.kind, link.token)).await?;
+    send_tenant_email_in_background(Arc::clone(&mailer.email_senders), tenant_id, email);
+
+    Ok(())
+}
+
+/// For an existing background job that records delivery only after SMTP accepts it.
+pub async fn deliver_auth_link(
+    mailer: &AuthMailer,
+    tenant_id: Uuid,
+    address: &str,
+    link: (AuthEmailKind, &str),
+) -> Result<bool, ApiError> {
+    let email = prepare_email(mailer, tenant_id, address, link).await?;
+
+    Ok(send_tenant_email(&mailer.email_senders, tenant_id, email).await)
+}
+
+async fn prepare_email(
+    mailer: &AuthMailer,
+    tenant_id: Uuid,
+    address: &str,
+    (kind, token): (AuthEmailKind, &str),
+) -> Result<OutgoingEmail, ApiError> {
     let pool = &mailer.control_plane_pool;
     let settings = load_tenant_settings(pool, tenant_id).await?;
-    let key = TemplateKey {
-        tenant_id,
-        kind: link.kind,
-    };
+    let key = TemplateKey { tenant_id, kind };
     let text = effective_template_text(pool, key).await?;
     let context = AuthEmailContext {
         tenant_name: &settings.name,
         site_url: &settings.site_url,
     };
-    let content = auth_link_email(&context, &text, (link.kind, token));
-    let email = render_auth_email(content, &user.email).map_err(ApiError::internal)?;
-    send_tenant_email_in_background(Arc::clone(&mailer.email_senders), tenant_id, email);
+    let content = auth_link_email(&context, &text, (kind, token));
 
-    Ok(())
+    render_auth_email(content, address).map_err(ApiError::internal)
 }

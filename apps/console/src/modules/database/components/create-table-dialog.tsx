@@ -15,9 +15,9 @@ import { OBJECT_NAME_HINT, isObjectName } from '@/modules/database/components/ob
 import { referenceTargets } from '@/modules/database/components/reference-targets'
 import { useSchemaQuery } from '@/modules/database/queries/use-schema-query'
 import { useCreateTableMutation } from '@/modules/database/queries/use-table-mutations'
-import { Button } from '@/shared/ui/button'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
-import { FormField } from '@/shared/ui/form-field'
+import { Button } from '@/shared/ui/primitives/button'
+import { TextField } from '@/shared/ui/text-field'
 
 /** Creates a table with its columns, then opens it; it starts with row level security on. */
 export function CreateTableDialog({ projectId }: { projectId: string }): JSX.Element {
@@ -43,20 +43,21 @@ export function CreateTableDialog({ projectId }: { projectId: string }): JSX.Ele
 
   return (
     <>
-      <Button onClick={open}>
-        <Plus />
+      <Button type="button" onClick={open}>
+        <Plus aria-hidden data-icon="inline-start" />
         Nova tabela
       </Button>
       <ConfirmDialog
         isOpen={isOpen}
         onOpenChange={setIsOpen}
         title="Nova tabela"
+        size="xl"
         description="Ela começa com row level security ligado: os apps só alcançam as linhas que uma política liberar."
         confirmLabel="Criar tabela"
         canConfirm={isReady(name, columns)}
         onConfirm={create}
       >
-        <FormField
+        <TextField
           label="Nome da tabela"
           required
           autoFocus
@@ -64,7 +65,6 @@ export function CreateTableDialog({ projectId }: { projectId: string }): JSX.Ele
           autoComplete="off"
           placeholder="posts"
           hint={OBJECT_NAME_HINT}
-          className="font-mono"
           value={name}
           onChange={(event) => setName(event.target.value)}
         />

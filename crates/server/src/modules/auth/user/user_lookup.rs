@@ -62,13 +62,14 @@ pub enum PasswordLock {
 /// A password reset or OAuth claim committed meanwhile makes this `Changed`, a ban `Banned`
 /// (read under the lock, so it is never stale); one that runs later waits for the lock and then
 /// sees (and revokes) the session created under it.
+/// Take the lock mode needed by the last-sign-in trigger before inserting a refresh token.
 pub async fn lock_if_password_unchanged(
     connection: &mut PgConnection,
     user_id: Uuid,
     password_hash: &str,
 ) -> Result<PasswordLock, sqlx::Error> {
     let locked: Option<bool> = sqlx::query_scalar(
-        "SELECT banned_at IS NOT NULL FROM users WHERE id = $1 AND password_hash = $2 FOR SHARE",
+        "SELECT banned_at IS NOT NULL FROM users WHERE id = $1 AND password_hash = $2 FOR NO KEY UPDATE",
     )
     .bind(user_id)
     .bind(password_hash)

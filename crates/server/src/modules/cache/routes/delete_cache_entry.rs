@@ -2,7 +2,7 @@ use axum::extract::State;
 use axum::http::StatusCode;
 
 use crate::app_state::AppState;
-use crate::modules::cache::access::CacheAccess;
+use crate::modules::cache::access::cache_access::CacheAccess;
 use crate::modules::cache::entries::cache_payload::CacheKeyRequest;
 use crate::modules::cache::rejection::CacheRejection;
 use crate::shared::http::api_error::{ApiError, ErrorBody};

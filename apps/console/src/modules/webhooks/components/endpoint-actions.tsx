@@ -1,85 +1,75 @@
-import Key from '~icons/solar/key-linear'
-import Pen from '~icons/solar/pen-linear'
-import PlugCircle from '~icons/solar/plug-circle-linear'
+import { Ellipsis, Pencil, Send, Trash2 } from 'lucide-react'
+import Refresh from '~icons/solar/refresh-linear'
 import type { JSX } from 'react'
+import { useState } from 'react'
 
-import { EndpointFormDialog } from '@/modules/webhooks/components/endpoint-form-dialog'
-import { WebhookDeleteIllustration } from '@/modules/webhooks/components/webhook-illustrations'
 import {
-  useDeleteWebhookEndpointMutation,
-  useUpdateWebhookEndpointMutation,
-} from '@/modules/webhooks/queries/use-webhook-endpoints'
-import type { components } from '@/shared/api/api-schema'
-import { ConfirmButton } from '@/shared/ui/confirm-button'
+  EndpointDialogs,
+  type EndpointOverlay,
+} from '@/modules/webhooks/components/endpoint-dialogs'
+import { hostOf } from '@/modules/webhooks/components/endpoint-host'
+import type { EndpointPanel } from '@/modules/webhooks/components/endpoint-panel-types'
+import { Button } from '@/shared/ui/primitives/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/shared/ui/primitives/dropdown-menu'
 
-type WebhookEndpointView = components['schemas']['WebhookEndpointView']
+type EndpointActionsProps = { panel: EndpointPanel; onTest: () => void }
 
-type EndpointActionsProps = {
-  projectId: string
-  endpoint: WebhookEndpointView
-  isRotating: boolean
-  onRotate: () => Promise<void>
-}
+/** The panel's menu; edit, new secret and delete open their dialogs after the menu closes. */
+export function EndpointActions({ panel, onTest }: EndpointActionsProps): JSX.Element {
+  const { endpoint, rotation } = panel
+  const [overlay, setOverlay] = useState<EndpointOverlay>(null)
 
-/** Edit, rotate the secret and delete; the two that cannot be undone ask first. */
-export function EndpointActions(props: EndpointActionsProps): JSX.Element {
-  const { endpoint } = props
-  const update = useUpdateWebhookEndpointMutation(props.projectId)
-  const remove = useDeleteWebhookEndpointMutation(props.projectId)
+  function closeWhenHidden(isOpen: boolean): void {
+    if (isOpen) {
+      return
+    }
+
+    setOverlay(null)
+  }
 
   return (
-    <div className="grid gap-2">
-      <div className="flex flex-wrap gap-2">
-        <EndpointFormDialog
-          title="Editar endpoint"
-          submitLabel="Salvar"
-          initial={{ url: endpoint.url, event_types: endpoint.event_types }}
-          onSubmit={(body) => update.mutateAsync({ endpointId: endpoint.id, body })}
-          trigger={{
-            label: 'Editar',
-            icon: Pen,
-            variant: 'outline',
-            size: 'sm',
-            isDisabled: update.isPending,
-          }}
-        />
-        <ConfirmButton
-          title={`Gerar um novo segredo para ${hostOf(endpoint.url)}?`}
-          description="O segredo atual continua assinando por 24 horas, junto com o novo. Troque no seu servidor dentro desse prazo."
-          confirmLabel="Gerar segredo"
-          change={{
-            subject: 'Segredo atual',
-            icon: Key,
-            from: 'Assinando',
-            to: 'Válido por 24 horas',
-          }}
-          isPending={props.isRotating}
-          onConfirm={props.onRotate}
-        >
-          Novo segredo
-        </ConfirmButton>
-        <ConfirmButton
-          title={`Excluir o endpoint de ${hostOf(endpoint.url)}?`}
-          description="Ele para de receber eventos na hora, e as entregas pendentes são canceladas."
-          confirmLabel="Excluir endpoint"
-          change={{ subject: endpoint.url, icon: PlugCircle, from: 'Recebendo', to: 'Excluído' }}
-          illustration={<WebhookDeleteIllustration />}
-          isDestructive
-          isPending={remove.isPending}
-          onConfirm={() => remove.mutateAsync(endpoint.id)}
-        >
-          Excluir
-        </ConfirmButton>
-      </div>
-    </div>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            aria-label={`Ações de ${hostOf(endpoint.url)}`}
+          >
+            <Ellipsis aria-hidden />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => setOverlay('edit')}>
+            <Pencil aria-hidden />
+            Editar
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={onTest}>
+            <Send aria-hidden />
+            Enviar evento de teste
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            disabled={rotation.canRotate === false}
+            onSelect={() => setOverlay('rotate')}
+          >
+            <Refresh aria-hidden />
+            Novo segredo
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem variant="destructive" onSelect={() => setOverlay('delete')}>
+            <Trash2 aria-hidden />
+            Excluir
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <EndpointDialogs panel={panel} overlay={overlay} onOpenChange={closeWhenHidden} />
+    </>
   )
-}
-
-/** Titles name the endpoint by its host; the full URL, which can be long, is in the change row. */
-function hostOf(url: string): string {
-  try {
-    return new URL(url).host
-  } catch {
-    return url
-  }
 }

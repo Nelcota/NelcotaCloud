@@ -11,6 +11,7 @@ import { changeMemberRole } from '@/modules/team/api/change-member-role'
 import { inviteMember } from '@/modules/team/api/invite-member'
 import { leaveProject } from '@/modules/team/api/leave-project'
 import { readTeam } from '@/modules/team/api/read-team'
+import { resendInvitation } from '@/modules/team/api/resend-invitation'
 import { transferOwnership } from '@/modules/team/api/transfer-ownership'
 import { removeMember } from '@/modules/team/api/remove-member'
 import { PROJECTS_QUERY_KEY } from '@/modules/projects/queries/use-projects'
@@ -26,6 +27,10 @@ export function useTeamQuery(projectId: string): UseQueryResult<Schemas['TeamVie
   return useQuery({
     queryKey: teamKey(projectId),
     queryFn: () => readTeam(projectId),
+    refetchInterval: (query) =>
+      query.state.data?.invitations.some((invitation) => invitation.delivery_status === 'sending')
+        ? 10_000
+        : false,
   })
 }
 
@@ -38,7 +43,7 @@ function useTeamMutation<TVariables, TResult>(
 
   return useMutation({
     mutationFn: action,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: teamKey(projectId) }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: teamKey(projectId) }),
   })
 }
 
@@ -53,6 +58,14 @@ export function useCancelInvitationMutation(
 ): UseMutationResult<void, Error, string> {
   return useTeamMutation(projectId, (invitationId: string) =>
     cancelInvitation(projectId, invitationId),
+  )
+}
+
+export function useResendInvitationMutation(
+  projectId: string,
+): UseMutationResult<Schemas['PendingInvitation'], Error, string> {
+  return useTeamMutation(projectId, (invitationId: string) =>
+    resendInvitation(projectId, invitationId),
   )
 }
 

@@ -1,5 +1,3 @@
-import type { ReactNode } from 'react'
-
 import {
   cleanHost,
   isRegionValid,
@@ -19,13 +17,12 @@ import { missingUnless } from '@/shared/ui/step-dialog/missing-unless'
  * The SMTP steps. The server step only appears for "Outro": every other provider already fills
  * in the server, port and security, so asking to confirm them would be a step that asks nothing.
  */
-export function smtpSteps(step: SmtpStepProps, illustration: ReactNode): DialogStep[] {
+export function smtpSteps(step: SmtpStepProps): DialogStep[] {
   const draft = step.draft
   const providerStep: DialogStep = {
     label: 'Provedor',
     description: 'Escolha quem envia os seus emails. Preenchemos o servidor para você.',
     missing: missingUnless(isProviderComplete(draft), providerMissing(draft)),
-    illustration,
     content: <SmtpProviderStep {...step} />,
   }
   const serverStep: DialogStep = {

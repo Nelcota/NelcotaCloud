@@ -1,8 +1,16 @@
 import type { FormEvent, JSX, ReactNode } from 'react'
 import { useState } from 'react'
 
-import { Button } from '@/shared/ui/button'
-import { type ConfirmChange, ConfirmChangePreview } from '@/shared/ui/confirm-change'
+import { ConfirmChangePreview, type ConfirmChange } from '@/shared/ui/confirm-change'
+import {
+  changesOf,
+  confirmVariant,
+  dialogPurpose,
+  isBlocked,
+} from '@/shared/ui/confirm-dialog-rules'
+import { ErrorAlert } from '@/shared/ui/error-alert'
+import { PendingButton } from '@/shared/ui/pending-button'
+import { Button } from '@/shared/ui/primitives/button'
 import {
   Dialog,
   DialogContent,
@@ -10,9 +18,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/shared/ui/dialog'
-import { ErrorAlert } from '@/shared/ui/error-alert'
-import { changesOf, confirmVariant, dialogRole, isBlocked } from '@/shared/ui/confirm-dialog-rules'
+} from '@/shared/ui/primitives/dialog'
 import { TypedConfirmation } from '@/shared/ui/typed-confirmation'
 
 export type ConfirmDialogProps = {
@@ -31,22 +37,21 @@ export type ConfirmDialogProps = {
   /** "Cancelar" by default; rename it when the action itself is a cancellation. */
   cancelLabel?: string
   isDestructive?: boolean
-  /**
-   * Weighty but not destructive (handing a project over): the confirm button is neutral, so
-   * it does not read as the routine blue "go ahead".
-   */
+  /** Weighty but not destructive (handing a project over): the confirm button stays neutral. */
   isWeighty?: boolean
   /** Text the user must type before confirming, for actions that cannot be undone at all. */
   confirmationText?: string
   /** What the action changes, each shown going from its current state to the new one. */
   change?: ConfirmChange | ConfirmChange[]
-  /** What will happen, as a picture (an `Illustration`), shown above the change. */
-  illustration?: ReactNode
   /** False while something the action needs is missing (a code to type): the button waits. */
   canConfirm?: boolean
   /** Extra choices that shape the action, shown under the change. */
   children?: ReactNode
+  /** Wider for dialogs that hold a form; `md` by default. */
+  size?: 'md' | 'lg' | 'xl'
 }
+
+const SIZES = { md: 'sm:max-w-md', lg: 'sm:max-w-xl', xl: 'sm:max-w-3xl' }
 
 /**
  * Asks before an action runs. Controlled, so a menu item can open it after the menu closes;
@@ -100,22 +105,20 @@ export function ConfirmDialog(props: ConfirmDialogProps): JSX.Element {
 
   return (
     <Dialog open={props.isOpen} onOpenChange={changeOpen}>
-      <DialogContent showCloseButton={false} role={dialogRole(props)}>
-        <form onSubmit={submit} className="grid gap-5">
-          <DialogHeader>
+      <DialogContent
+        className={SIZES[props.size ?? 'md']}
+        onPointerDownOutside={(event) => {
+          if (dialogPurpose(props) === 'form') {
+            event.preventDefault()
+          }
+        }}
+      >
+        <form onSubmit={submit} className="flex flex-col gap-5">
+          <DialogHeader className="pe-8">
             <DialogTitle>{props.title}</DialogTitle>
             <DialogDescription>{props.description}</DialogDescription>
           </DialogHeader>
-          {props.illustration}
-          <div className="grid gap-2">
-            {changesOf(props.change).map((change) => (
-              <ConfirmChangePreview
-                key={change.subject}
-                change={change}
-                isDestructive={props.isDestructive === true}
-              />
-            ))}
-          </div>
+          <ChangeList props={props} />
           {props.children}
           <TypedConfirmation
             expected={props.confirmationText}
@@ -132,19 +135,34 @@ export function ConfirmDialog(props: ConfirmDialogProps): JSX.Element {
             >
               {props.cancelLabel ?? 'Cancelar'}
             </Button>
-            <Button
+            <PendingButton
               type="submit"
               variant={confirmVariant(props)}
-              disabled={isWorking || isBlocked(props, typedText)}
-              aria-busy={isWorking}
-              className="aria-busy:cursor-progress"
+              isPending={isWorking}
+              disabled={isBlocked(props, typedText)}
             >
               {props.confirmLabel}
-            </Button>
+            </PendingButton>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function ChangeList({ props }: { props: ConfirmDialogProps }): JSX.Element | null {
+  const changes = changesOf(props.change)
+
+  if (changes.length === 0) {
+    return null
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {changes.map((change) => (
+        <ConfirmChangePreview key={change.subject} change={change} />
+      ))}
+    </div>
   )
 }
 

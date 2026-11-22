@@ -7,14 +7,15 @@ import {
 } from '@/modules/project-settings/components/smtp-draft'
 import { SMTP_PROVIDER_CHOICES } from '@/modules/project-settings/components/smtp-presets'
 import { ChoiceCards } from '@/shared/ui/choice-cards'
-import { FormField } from '@/shared/ui/form-field'
+import { TextField } from '@/shared/ui/text-field'
 
 /** Picking the provider fills its server, so most people never type a host. */
 export function SmtpProviderStep({ draft, onChange }: SmtpStepProps): JSX.Element {
   return (
-    <div className="grid gap-4">
+    <div className="flex flex-col gap-4">
       <ChoiceCards
         legend="Quem envia os emails"
+        columns={2}
         choices={SMTP_PROVIDER_CHOICES}
         selected={draft.provider}
         onSelect={(provider) => onChange(withProvider(draft, provider))}
@@ -30,7 +31,7 @@ function SesRegionField({ draft, onChange }: SmtpStepProps): JSX.Element | null 
   }
 
   return (
-    <FormField
+    <TextField
       label="Região da AWS"
       required
       autoComplete="off"

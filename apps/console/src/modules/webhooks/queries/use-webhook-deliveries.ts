@@ -34,6 +34,21 @@ export function useWebhookDeliveriesQuery(
   })
 }
 
+/**
+ * The newest delivery, for the endpoints table. It shares the log's cache but does not poll on
+ * its own: only an open log refreshes every few seconds.
+ */
+export function useLastDeliveryQuery(
+  projectId: string,
+  endpointId: string,
+): UseQueryResult<Schemas['DeliveryLogEntry'] | null> {
+  return useQuery({
+    queryKey: deliveriesKey(projectId, endpointId),
+    queryFn: () => listWebhookDeliveries(projectId, endpointId),
+    select: (deliveries) => deliveries.at(0) ?? null,
+  })
+}
+
 export function useRetryWebhookDeliveryMutation(
   projectId: string,
 ): UseMutationResult<void, Error, DeliveryRef> {

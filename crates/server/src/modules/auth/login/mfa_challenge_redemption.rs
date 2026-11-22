@@ -40,7 +40,11 @@ pub async fn redeem_mfa_challenge(
     let outcome = check_code(access, &mut challenge.transaction, attempt).await?;
 
     match outcome {
-        FactorCodeOutcome::Accepted => challenge.start_session(signing, tenant.tenant_id).await,
+        FactorCodeOutcome::Accepted => {
+            challenge
+                .start_session(signing, (tenant.tenant_id, answer.origin))
+                .await
+        }
         // Removed (e.g. by an admin) since the login started: nothing to check against.
         FactorCodeOutcome::NoFactor => Err(ApiError::from(AuthRejection::InvalidToken)),
         FactorCodeOutcome::Rejected => {
@@ -85,7 +89,7 @@ async fn check_code(
         email: &attempt.user.email,
         client_ip: attempt.answer.origin.client_ip,
     };
-    access.limiter.check(&limited)?;
+    access.limiter.check_mfa(&limited).await?;
     let check = FactorCodeCheck {
         tenant_id: attempt.tenant_id,
         user_id: attempt.user.id,

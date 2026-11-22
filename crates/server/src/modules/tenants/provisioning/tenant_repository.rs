@@ -62,21 +62,21 @@ pub async fn tenant_slugs_after(
     pool: &PgPool,
     after: &str,
     limit: i64,
-) -> Result<Vec<String>, sqlx::Error> {
-    sqlx::query_scalar("SELECT slug FROM tenants WHERE slug > $1 ORDER BY slug LIMIT $2")
+) -> Result<Vec<(String, Uuid)>, sqlx::Error> {
+    sqlx::query_as("SELECT slug, id FROM tenants WHERE slug > $1 ORDER BY slug LIMIT $2")
         .bind(after)
         .bind(limit)
         .fetch_all(pool)
         .await
 }
 
-pub async fn find_tenant_id_by_slug(
-    pool: &PgPool,
+pub async fn find_tenant_id_by_slug<'e>(
+    executor: impl PgExecutor<'e>,
     slug: &TenantSlug,
 ) -> Result<Option<Uuid>, sqlx::Error> {
     sqlx::query_scalar("SELECT id FROM tenants WHERE slug = $1")
         .bind(slug.as_str())
-        .fetch_optional(pool)
+        .fetch_optional(executor)
         .await
 }
 
@@ -106,4 +106,14 @@ pub async fn lock_slug(
         .await?;
 
     Ok(())
+}
+
+pub async fn try_lock_slug(
+    connection: &mut PgConnection,
+    slug: &TenantSlug,
+) -> Result<bool, sqlx::Error> {
+    sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(hashtext($1))")
+        .bind(format!("{SLUG_LOCK_PREFIX}{}", slug.as_str()))
+        .fetch_one(connection)
+        .await
 }

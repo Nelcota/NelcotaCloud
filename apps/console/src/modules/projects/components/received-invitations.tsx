@@ -1,13 +1,15 @@
 import { useNavigate } from '@tanstack/react-router'
 import type { JSX } from 'react'
 
+import { InvitationItem } from '@/modules/projects/components/invitation-item'
 import {
   useAcceptInvitationMutation,
   useDeclineInvitationMutation,
   useReceivedInvitationsQuery,
 } from '@/modules/projects/queries/use-received-invitations'
-import { InvitationCard } from '@/modules/projects/components/invitation-card'
 import { ErrorAlert } from '@/shared/ui/error-alert'
+import { LoadError } from '@/shared/ui/load-error'
+import { Section } from '@/shared/ui/section'
 
 /** Invitations to other people's projects, answered right from the projects page. */
 export function ReceivedInvitations(): JSX.Element | null {
@@ -24,23 +26,30 @@ export function ReceivedInvitations(): JSX.Element | null {
     })
   }
 
-  if (received.length === 0) {
+  if (received.length === 0 && invitations.error === null) {
     return null
   }
 
   return (
-    <section aria-label="Convites recebidos" className="grid gap-3">
+    <div className="grid gap-3">
+      <LoadError error={invitations.error} onRetry={() => void invitations.refetch()} />
       <ErrorAlert error={acceptance.error ?? refusal.error} />
-      {received.map((invitation) => (
-        <InvitationCard
-          key={invitation.id}
-          invitation={invitation}
-          isPending={isAnswering(invitation.id, [acceptance, refusal])}
-          onAccept={() => accept(invitation.id)}
-          onDecline={() => refusal.mutate(invitation.id)}
-        />
-      ))}
-    </section>
+      {received.length > 0 && (
+        <Section title="Convites recebidos" meta={received.length} isFramed>
+          <ul className="divide-y">
+            {received.map((invitation) => (
+              <InvitationItem
+                key={invitation.id}
+                invitation={invitation}
+                isPending={isAnswering(invitation.id, [acceptance, refusal])}
+                onAccept={() => accept(invitation.id)}
+                onDecline={() => refusal.mutate(invitation.id)}
+              />
+            ))}
+          </ul>
+        </Section>
+      )}
+    </div>
   )
 }
 

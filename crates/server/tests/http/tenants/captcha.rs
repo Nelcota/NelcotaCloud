@@ -1,7 +1,9 @@
 use reqwest::{Response, StatusCode};
 use serde_json::{Value, json};
 
-use crate::fixtures::fake_turnstile::{SOLVED_TOKEN, TURNSTILE_SECRET, TURNSTILE_SITE_KEY};
+use crate::fixtures::fake_turnstile::{
+    SOLVED_TOKEN, TURNSTILE_SECRET, TURNSTILE_SITE_KEY, UNAVAILABLE_TURNSTILE_SECRET,
+};
 use crate::support::{
     CreatedTenant, TEST_PASSWORD, TestResult, TestServer, error_code, field, unique_email,
 };
@@ -71,6 +73,19 @@ async fn refuses_a_secret_cloudflare_does_not_know() -> TestResult {
     assert_eq!(refused.status(), StatusCode::BAD_REQUEST);
     assert_eq!(error_code(refused).await?, "invalid_captcha_secret");
     assert_eq!(public_site_key(&server, &tenant).await?, Value::Null);
+    server.drop_tenant(&tenant).await
+}
+
+#[tokio::test]
+async fn does_not_enable_captcha_when_the_provider_cannot_verify_settings() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+
+    let refused = configure(&server, &tenant, UNAVAILABLE_TURNSTILE_SECRET).await?;
+    assert_eq!(refused.status(), StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(error_code(refused).await?, "captcha_unavailable");
+    assert_eq!(public_site_key(&server, &tenant).await?, Value::Null);
+
     server.drop_tenant(&tenant).await
 }
 

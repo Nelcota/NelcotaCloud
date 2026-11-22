@@ -5,4 +5,4 @@ mod data_api_security;
 mod data_api_writes;
 mod migration_history;
 mod migrations;
-mod support;
+pub(super) mod support;

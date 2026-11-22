@@ -4,6 +4,7 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 /// The only secret the fake knows; any other is answered as Cloudflare answers unknown ones.
 pub const TURNSTILE_SECRET: &str = "0x4AAAAAAAfake-secret";
+pub const UNAVAILABLE_TURNSTILE_SECRET: &str = "0x4AAAAAAAfake-unavailable";
 pub const TURNSTILE_SITE_KEY: &str = "0x4AAAAAAAfake-site-key";
 /// The only token the fake accepts, as if the user solved the widget.
 pub const SOLVED_TOKEN: &str = "solved-token";
@@ -22,6 +23,11 @@ impl FakeTurnstile {
         let server = MockServer::start().await;
         // Like Cloudflare: an unknown secret is a 400 with the reason in the body.
         let answers = [
+            (
+                json!({ "secret": UNAVAILABLE_TURNSTILE_SECRET }),
+                200,
+                json!({ "success": false, "error-codes": ["internal-error"] }),
+            ),
             (
                 json!({ "secret": TURNSTILE_SECRET, "response": SOLVED_TOKEN }),
                 200,

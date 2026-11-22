@@ -5,7 +5,8 @@ import { ON_DELETE_OPTIONS, isOnDeleteAction } from '@/modules/database/componen
 import { targetLabel } from '@/modules/database/components/reference-targets'
 import { SelectField } from '@/shared/ui/select-field'
 
-const NO_REFERENCE = ''
+/** Target labels always hold a dot (`table.column`), so this can never collide with one. */
+const NO_REFERENCE = 'none'
 
 type ColumnReferenceFieldsProps = {
   draft: ColumnDraft
@@ -26,20 +27,19 @@ export function ColumnReferenceFields(props: ColumnReferenceFieldsProps): JSX.El
     onChange({ reference: target ?? null })
   }
 
+  const options = [
+    { value: NO_REFERENCE, label: 'Nenhuma' },
+    ...targets.map((target) => ({ value: targetLabel(target), label: targetLabel(target) })),
+  ]
+
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       <SelectField
         label="Referência"
+        options={options}
         value={selectedValue(draft.reference)}
-        onChange={(event) => pickTarget(event.target.value)}
-      >
-        <option value={NO_REFERENCE}>Nenhuma</option>
-        {targets.map((target) => (
-          <option key={targetLabel(target)} value={targetLabel(target)}>
-            {targetLabel(target)}
-          </option>
-        ))}
-      </SelectField>
+        onValueChange={pickTarget}
+      />
       <OnDeleteField draft={draft} onChange={onChange} />
     </div>
   )
@@ -71,14 +71,9 @@ function OnDeleteField({ draft, onChange }: OnDeleteFieldProps): JSX.Element | n
   return (
     <SelectField
       label="Se a linha referenciada for excluída"
+      options={ON_DELETE_OPTIONS}
       value={draft.onDelete}
-      onChange={(event) => pick(event.target.value)}
-    >
-      {ON_DELETE_OPTIONS.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </SelectField>
+      onValueChange={pick}
+    />
   )
 }

@@ -2,14 +2,12 @@ import type { TotpEnrollment } from '@nelcota/sdk'
 import type { FormEvent, JSX } from 'react'
 import { useState } from 'react'
 
-import { MfaEnrollIllustration } from '@/modules/account/components/mfa-illustrations'
 import { TotpCodeField } from '@/modules/account/components/totp-code-field'
 import { TotpScanStep } from '@/modules/account/components/totp-scan-step'
 import { useVerifyTotpMutation } from '@/modules/account/queries/use-mfa'
-import { Button } from '@/shared/ui/button'
+import { cn } from '@/shared/lib/utils'
 import { ErrorAlert } from '@/shared/ui/error-alert'
-import { BackButton, ForwardLabel } from '@/shared/ui/step-dialog/step-dialog-buttons'
-import { StepProgress } from '@/shared/ui/step-dialog/step-progress'
+import { BackButton, ForwardButton } from '@/shared/ui/step-dialog/step-dialog-buttons'
 
 const STEP_LABELS = ['Escanear', 'Confirmar']
 const SCAN_STEP = 0
@@ -41,26 +39,67 @@ export function TotpEnrollmentSteps({
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-5 border-t pt-4">
-      <StepProgress labels={STEP_LABELS} current={step} />
-      <MfaEnrollIllustration />
-      <div key={step} className="animate-step-in grid gap-4 motion-reduce:animate-none">
+    <form onSubmit={submit} className="overflow-hidden rounded-lg border">
+      <StepTrail current={step} />
+      <div className="flex flex-col gap-4 p-4">
         <StepContent step={step} enrollment={enrollment} code={code} onCodeChange={setCode} />
+        <ErrorAlert error={verification.error} />
       </div>
-      <ErrorAlert error={verification.error} />
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <div className="flex flex-wrap justify-end gap-2 border-t bg-surface px-4 py-3">
         <BackButton
           index={step}
           isDisabled={verification.isPending}
           onBack={() => setStep(SCAN_STEP)}
           onCancel={onCancel}
         />
-        <Button type="submit" disabled={verification.isPending} aria-busy={verification.isPending}>
-          <ForwardLabel isLast={step !== SCAN_STEP} finishLabel="Ativar MFA" />
-        </Button>
+        <ForwardButton
+          isLast={step !== SCAN_STEP}
+          isWorking={verification.isPending}
+          isDisabled={step !== SCAN_STEP && code.trim() === ''}
+          finishLabel="Ativar MFA"
+        />
       </div>
     </form>
   )
+}
+
+/** The two steps as a header bar, the current one in the brand color. */
+function StepTrail({ current }: { current: number }): JSX.Element {
+  return (
+    <ol
+      aria-label="Passos"
+      className="flex items-center gap-4 border-b bg-surface px-4 py-2.5 text-xs"
+    >
+      {STEP_LABELS.map((label, index) => (
+        <li
+          key={label}
+          aria-current={currentMark(index, current)}
+          className={cn(
+            'flex items-center gap-1.5 text-muted-foreground',
+            index === current && 'font-medium text-heading',
+          )}
+        >
+          <span
+            className={cn(
+              'grid size-5 place-items-center rounded-full border font-mono text-xs',
+              index === current && 'border-primary bg-primary text-primary-foreground',
+            )}
+          >
+            {index + 1}
+          </span>
+          {label}
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+function currentMark(index: number, current: number): 'step' | undefined {
+  if (index !== current) {
+    return undefined
+  }
+
+  return 'step'
 }
 
 type StepContentProps = {
@@ -77,10 +116,10 @@ function StepContent({ step, enrollment, code, onCodeChange }: StepContentProps)
 
   return (
     <>
-      <p className="text-muted-foreground text-sm">
+      <p className="text-sm text-muted-foreground">
         Digite o código de 6 dígitos que o app mostra agora.
       </p>
-      <TotpCodeField value={code} onChange={onCodeChange} autoFocus />
+      <TotpCodeField value={code} onChange={onCodeChange} hasAutoFocus />
     </>
   )
 }

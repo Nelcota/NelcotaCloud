@@ -1,6 +1,6 @@
 import type { HttpMethod } from '../../http/http-client'
 import type { SessionSummary } from '../auth-types'
-import { type AuthorizedContext, authorizedRequest } from '../authorized-request'
+import { type AuthorizedContext, authorizedRequest } from '../../http/authorized-request'
 
 /** Lists and revokes the current user’s sessions. */
 export class SessionsApi {

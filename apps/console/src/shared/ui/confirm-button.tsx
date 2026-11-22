@@ -1,30 +1,33 @@
-import type { JSX, ReactNode } from 'react'
+import type { JSX } from 'react'
 import { useState } from 'react'
 
-import { Button } from '@/shared/ui/button'
 import type { ConfirmChange } from '@/shared/ui/confirm-change'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
+import type { IconComponent } from '@/shared/ui/icon-component'
+import { PendingButton } from '@/shared/ui/pending-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/primitives/tooltip'
 
 type ConfirmButtonProps = {
-  children: ReactNode
+  /** The button's text. */
+  label: string
+  icon?: IconComponent
+  /** Shows only the icon, with `label` as its accessible name and tooltip. */
+  isIconOnly?: boolean
   title: string
   description: string
   confirmLabel: string
   onConfirm: () => void | Promise<void>
   isDestructive?: boolean
+  isDisabled?: boolean
   isPending?: boolean
   /** See `ConfirmDialog`: text to type before an irreversible action. */
   confirmationText?: string
-  /** See `ConfirmDialog`: the change the action makes, played when the dialog opens. */
+  /** See `ConfirmDialog`: the change the action makes. */
   change?: ConfirmChange
-  /** See `ConfirmDialog`: what will happen, as a picture. */
-  illustration?: ReactNode
   /** See `ConfirmDialog`; rename "Cancelar" when the action itself is a cancellation. */
   cancelLabel?: string
-  /** The button's accessible name, when its visible text is shortened (an icon on phones). */
-  triggerLabel?: string
   /** Small by default, to sit in rows and section footers. */
-  size?: 'sm' | 'default'
+  size?: 'sm' | 'md'
 }
 
 /** A button whose action runs only after the user confirms it in a dialog. */
@@ -33,16 +36,7 @@ export function ConfirmButton(props: ConfirmButtonProps): JSX.Element {
 
   return (
     <>
-      <Button
-        variant={triggerVariant(props.isDestructive)}
-        size={props.size ?? 'sm'}
-        disabled={props.isPending}
-        aria-busy={props.isPending}
-        aria-label={props.triggerLabel}
-        onClick={() => setIsOpen(true)}
-      >
-        {props.children}
-      </Button>
+      <Trigger props={props} onOpen={() => setIsOpen(true)} />
       <ConfirmDialog
         isOpen={isOpen}
         onOpenChange={setIsOpen}
@@ -53,17 +47,55 @@ export function ConfirmButton(props: ConfirmButtonProps): JSX.Element {
         confirmationText={props.confirmationText}
         change={props.change}
         cancelLabel={props.cancelLabel}
-        illustration={props.illustration}
         onConfirm={props.onConfirm}
       />
     </>
   )
 }
 
-function triggerVariant(isDestructive: boolean | undefined): 'destructive' | 'outline' {
-  if (isDestructive === true) {
-    return 'destructive'
+function Trigger({
+  props,
+  onOpen,
+}: {
+  props: ConfirmButtonProps
+  onOpen: () => void
+}): JSX.Element {
+  const Glyph = props.icon
+  const variant = props.isDestructive === true ? 'destructive' : 'outline'
+  const glyph = Glyph === undefined ? null : <Glyph aria-hidden data-icon="inline-start" />
+
+  if (props.isIconOnly === true) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PendingButton
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={props.label}
+            disabled={props.isDisabled}
+            isPending={props.isPending}
+            onClick={onOpen}
+          >
+            {glyph}
+          </PendingButton>
+        </TooltipTrigger>
+        <TooltipContent>{props.label}</TooltipContent>
+      </Tooltip>
+    )
   }
 
-  return 'outline'
+  return (
+    <PendingButton
+      type="button"
+      variant={variant}
+      size={props.size === 'md' ? 'default' : 'sm'}
+      disabled={props.isDisabled}
+      isPending={props.isPending}
+      onClick={onOpen}
+    >
+      {glyph}
+      {props.label}
+    </PendingButton>
+  )
 }

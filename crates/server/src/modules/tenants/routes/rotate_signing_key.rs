@@ -8,7 +8,10 @@ use uuid::Uuid;
 use crate::app_state::AppState;
 use crate::modules::tenants::access::tenant_admin::TenantAdmin;
 use crate::modules::tenants::audit::audit_action::AuditAction;
-use crate::modules::tenants::audit::project_change::{ProjectChange, record_project_change};
+use crate::modules::tenants::audit::project_audit_queue::{
+    begin_project_change, commit_project_change,
+};
+use crate::modules::tenants::audit::project_change::ProjectChange;
 use crate::modules::tenants::signing_keys::signing_key_repository::SigningKeyStoreError;
 use crate::modules::tenants::signing_keys::signing_key_rotation::rotate_signing_key as rotate;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
@@ -37,20 +40,20 @@ pub async fn rotate_signing_key(
     admin: TenantAdmin,
 ) -> Result<Json<RotatedSigningKey>, ApiError> {
     let tenant_id = admin.tenant_id;
-    let key_id = rotate(&state.control_plane_pool, tenant_id, &state.secret_box)
+    let mut transaction = begin_project_change(&state.control_plane_pool, admin.tenant_id).await?;
+    let key_id = rotate(&mut transaction, tenant_id, &state.secret_box)
         .await
         .map_err(|error| match error {
             SigningKeyStoreError::TooManyRotations(_) => ApiError::Conflict(error.to_string()),
             other => ApiError::internal(other),
         })?;
-    state.signing_keys.forget(tenant_id);
     let change = ProjectChange {
         tenant_id: admin.tenant_id,
         author: admin.author(),
         action: AuditAction::SettingsChanged,
         details: json!({ "section": "signing_key", "key_id": key_id }),
     };
-    record_project_change(&state.tenant_pools, change).await;
+    commit_project_change(&state, transaction, change).await?;
 
     Ok(Json(RotatedSigningKey { key_id }))
 }

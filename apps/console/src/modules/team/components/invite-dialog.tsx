@@ -1,24 +1,23 @@
-import UserPlus from '~icons/solar/user-plus-linear'
+import { UserPlus } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
-import { InviteIllustration } from '@/modules/team/components/team-illustrations'
 import { useInviteMemberMutation } from '@/modules/team/queries/use-team'
-import { Button } from '@/shared/ui/button'
+import type { components } from '@/shared/api/api-schema'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
-import { FormField } from '@/shared/ui/form-field'
+import { Button } from '@/shared/ui/primitives/button'
+import { TextField } from '@/shared/ui/text-field'
 
 /** Enough to catch a typo before sending; the API checks the address for real. */
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 type InviteDialogProps = {
   projectId: string
-  /** Called with the invited email once the invitation is sent. */
-  onInvited: (email: string) => void
+  onInvited: (invitation: components['schemas']['PendingInvitation']) => void
 }
 
 /**
- * One field, so one step: the email, with what the person will be able to do said under it.
+ * One field, so one step: the email, with what the person will be able to do said above it.
  * They join as a member when they accept.
  */
 export function InviteDialog({ projectId, onInvited }: InviteDialogProps): JSX.Element {
@@ -34,33 +33,32 @@ export function InviteDialog({ projectId, onInvited }: InviteDialogProps): JSX.E
 
   async function invite(): Promise<void> {
     const sent = await invitation.mutateAsync(email.trim())
-    onInvited(sent.email)
+    onInvited(sent)
   }
 
   return (
     <>
-      <Button onClick={open}>
-        <UserPlus />
-        Convidar pessoa
+      <Button type="button" onClick={open}>
+        <UserPlus aria-hidden data-icon="inline-start" />
+        Convidar
       </Button>
       <ConfirmDialog
         isOpen={isOpen}
         onOpenChange={setIsOpen}
         title="Convidar pessoa"
-        description="Ela entra como membro: gerencia o projeto inteiro, inclusive as secret keys, mas não convida nem remove pessoas."
+        description="Ela entra como membro: gerencia o projeto, mas não convida nem remove pessoas."
         confirmLabel="Enviar convite"
-        illustration={<InviteIllustration />}
         canConfirm={EMAIL_SHAPE.test(email.trim())}
         onConfirm={invite}
       >
-        <FormField
+        <TextField
           label="Email da pessoa"
           type="email"
           required
           autoFocus
           autoComplete="email"
           placeholder="pessoa@empresa.com"
-          hint="Ela aceita no console com este email; se não tiver conta, cria uma."
+          hint="Ela aceita no console com este email, criando uma conta se preciso."
           value={email}
           onChange={(event) => setEmail(event.target.value)}
         />

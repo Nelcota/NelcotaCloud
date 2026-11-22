@@ -7,6 +7,50 @@ use crate::support::{
 
 const BLOCKS_PATH: &str = "/auth/v1/admin/blocked-addresses";
 
+#[tokio::test]
+async fn expired_blocks_free_quota_and_updates_still_work_at_capacity() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    let mut connection = server.tenant_database(&tenant).await?;
+    sqlx::query(
+        "INSERT INTO blocked_addresses (id, network, expires_at)
+         SELECT gen_random_uuid(), network(inet '198.18.0.0' + n), now() - interval '1 day'
+         FROM generate_series(1, 500) n",
+    )
+    .execute(&mut connection)
+    .await?;
+    let address = "192.0.2.10";
+    let added = block(&server, &tenant, json!({ "address": address })).await?;
+    assert_eq!(added.status(), StatusCode::CREATED);
+    let added: Value = added.json().await?;
+    sqlx::query(
+        "INSERT INTO blocked_addresses (id, network)
+         SELECT gen_random_uuid(), network(inet '198.18.0.0' + n)
+         FROM generate_series(1, 498) n",
+    )
+    .execute(&mut connection)
+    .await?;
+    let (first, second) = tokio::join!(
+        block(&server, &tenant, json!({ "address": "192.0.2.20" })),
+        block(&server, &tenant, json!({ "address": "192.0.2.30" })),
+    );
+    let statuses = [first?.status(), second?.status()];
+    assert!(statuses.contains(&StatusCode::CREATED));
+    assert!(statuses.contains(&StatusCode::CONFLICT));
+    let edited = block(
+        &server,
+        &tenant,
+        json!({ "address": address, "note": "updated" }),
+    )
+    .await?;
+    assert_eq!(edited.status(), StatusCode::CREATED);
+    let edited: Value = edited.json().await?;
+    assert_eq!(field(&edited, "/id"), field(&added, "/id"));
+    assert_eq!(field(&edited, "/note"), "updated");
+
+    server.drop_tenant(&tenant).await
+}
+
 async fn block(
     server: &TestServer,
     tenant: &CreatedTenant,
@@ -46,12 +90,15 @@ async fn a_blocked_address_cannot_log_in_or_sign_up_until_unblocked() -> TestRes
     let created = block(
         &server,
         &tenant,
-        json!({ "address": "127.0.0.1", "note": "brute force" }),
+        json!({ "address": server.client_ip.to_string(), "note": "brute force" }),
     )
     .await?;
     assert_eq!(created.status(), StatusCode::CREATED);
     let blocked: Value = created.json().await?;
-    assert_eq!(field(&blocked, "/network"), "127.0.0.1/32");
+    assert_eq!(
+        field(&blocked, "/network"),
+        format!("{}/32", server.client_ip).as_str()
+    );
     assert_eq!(field(&blocked, "/expires_at"), &Value::Null);
 
     let refused = log_in(&server, &tenant, &email).await?;
@@ -91,7 +138,10 @@ async fn a_blocked_address_cannot_log_in_or_sign_up_until_unblocked() -> TestRes
         .await?;
     assert_eq!(field(&page, "/events/0/action"), "address_unblocked");
     assert_eq!(field(&page, "/events/1/action"), "address_blocked");
-    assert_eq!(field(&page, "/events/1/details/network"), "127.0.0.1/32");
+    assert_eq!(
+        field(&page, "/events/1/details/network"),
+        format!("{}/32", server.client_ip).as_str()
+    );
     assert_eq!(field(&page, "/events/1/details/note"), "brute force");
     server.drop_tenant(&other).await?;
     server.drop_tenant(&tenant).await

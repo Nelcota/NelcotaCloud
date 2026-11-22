@@ -1,3 +1,4 @@
+pub mod account_removal;
 pub mod owner_actions;
 pub mod ownership_changes;
 pub mod ownership_error;

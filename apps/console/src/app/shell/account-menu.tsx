@@ -1,27 +1,28 @@
+import { CircleUser as UserRound, LogOut, ShieldAlert as ShieldWarning } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
-import ChevronsUpDown from '~icons/solar/sort-vertical-linear'
-import LogOut from '~icons/solar/logout-2-linear'
-import UserRound from '~icons/solar/user-circle-linear'
 import type { JSX } from 'react'
 
-import { queryClient } from '@/app/query-client'
-import { ThemeMenuItem } from '@/app/shell/theme-menu-item'
+import { useIsMfaOff } from '@/app/shell/use-is-mfa-off'
 import { nelcota } from '@/shared/auth/nelcota'
 import { useSession } from '@/shared/auth/use-session'
 import { nameOf } from '@/shared/lib/account-name'
+import { RouterLink } from '@/shared/routing/router-link'
+import { Avatar } from '@/shared/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu'
-import { UserAvatar } from '@/shared/ui/user-avatar'
+} from '@/shared/ui/primitives/dropdown-menu'
 
-/** The logged-in console account at the foot of the sidebar: its page, the theme and the way out. */
-export function AccountMenu(): JSX.Element | null {
+/** The signed-in console account: its page, the second step reminder and the way out. */
+export function AccountMenu({ side = 'right' }: { side?: 'right' | 'bottom' }): JSX.Element | null {
   const session = useSession()
   const navigate = useNavigate()
+  const isMfaOff = useIsMfaOff()
 
   if (session === null) {
     return null
@@ -29,55 +30,81 @@ export function AccountMenu(): JSX.Element | null {
 
   const user = session.user
   const email = user.email
-  const photoUrl = nelcota.auth.avatar.url(user)
+  const name = nameOf(email)
 
   async function signOut(): Promise<void> {
     try {
       await nelcota.auth.signOut()
     } finally {
-      queryClient.clear()
-      await navigate({ to: '/login' })
+      if (nelcota.auth.getSession() === null) {
+        await navigate({ to: '/login' })
+      }
     }
   }
 
   return (
     <DropdownMenu>
-      <AccountTrigger email={email} photoUrl={photoUrl} />
-      {/* Opens upward, as wide as the trigger. */}
-      <DropdownMenuContent side="top" align="start" className="w-(--anchor-width)">
-        <DropdownMenuItem onClick={() => navigate({ to: '/account' })}>
-          <UserRound />
-          Minha conta
-        </DropdownMenuItem>
-        <ThemeMenuItem />
+      <DropdownMenuTrigger
+        aria-label={`Conta: ${name}`}
+        className="relative grid size-10 place-items-center rounded-lg hover:bg-surface-hover"
+      >
+        <Avatar src={nelcota.auth.avatar.url(user) ?? undefined} name={name} size="md" />
+        <MfaDot isMfaOff={isMfaOff} />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent side={side} align="end" className="w-64">
+        <DropdownMenuLabel className="grid gap-0.5">
+          <span className="truncate text-sm font-medium text-foreground">{name}</span>
+          <span className="truncate text-xs font-normal text-muted-foreground">{email}</span>
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={signOut}>
-          <LogOut />
-          Sair
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuItem asChild>
+            <RouterLink href="/account">
+              <UserRound aria-hidden />
+              Minha conta
+            </RouterLink>
+          </DropdownMenuItem>
+          <MfaItem isMfaOff={isMfaOff} />
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuItem onSelect={() => void signOut()}>
+            <LogOut aria-hidden />
+            Sair
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )
 }
 
-function AccountTrigger({
-  email,
-  photoUrl,
-}: {
-  email: string
-  photoUrl: string | null
-}): JSX.Element {
+/** Leads to the account page to turn MFA on; shown only while it is off. */
+function MfaItem({ isMfaOff }: { isMfaOff: boolean }): JSX.Element | null {
+  if (isMfaOff === false) {
+    return null
+  }
+
   return (
-    <DropdownMenuTrigger
-      aria-label={`Conta ${email}`}
-      className="hover:bg-sidebar-accent aria-expanded:bg-sidebar-accent flex w-full min-w-0 items-center gap-3 rounded-lg p-2 text-left transition-colors"
-    >
-      <UserAvatar email={email} photoUrl={photoUrl} className="size-11 text-base" />
-      <span aria-hidden="true" className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-semibold">{nameOf(email)}</span>
-        <span className="text-muted-foreground block truncate text-xs">{email}</span>
-      </span>
-      <ChevronsUpDown className="text-muted-foreground size-5 shrink-0" />
-    </DropdownMenuTrigger>
+    <DropdownMenuItem asChild>
+      <RouterLink href="/account">
+        <ShieldWarning aria-hidden className="text-warning" />
+        Ativar verificação em duas etapas
+      </RouterLink>
+    </DropdownMenuItem>
+  )
+}
+
+/** A dot on the avatar while MFA is off: the account holds the keys of every project. */
+function MfaDot({ isMfaOff }: { isMfaOff: boolean }): JSX.Element | null {
+  if (isMfaOff === false) {
+    return null
+  }
+
+  return (
+    <span
+      role="img"
+      aria-label="Verificação em duas etapas desativada"
+      className="absolute end-1 top-1 size-2 rounded-full bg-warning ring-2 ring-frame"
+    />
   )
 }

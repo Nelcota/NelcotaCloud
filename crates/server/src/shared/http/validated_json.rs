@@ -28,7 +28,7 @@ where
     }
 }
 
-fn map_rejection(rejection: &JsonRejection) -> ApiError {
+pub(crate) fn map_rejection(rejection: &JsonRejection) -> ApiError {
     match rejection.status() {
         StatusCode::UNSUPPORTED_MEDIA_TYPE => ApiError::UnsupportedMediaType,
         StatusCode::PAYLOAD_TOO_LARGE => ApiError::PayloadTooLarge,

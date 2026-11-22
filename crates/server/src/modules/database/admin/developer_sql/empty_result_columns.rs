@@ -15,8 +15,6 @@ pub async fn empty_result_columns(
     connection: &mut PgConnection,
     statement: &str,
 ) -> Result<Vec<String>, sqlx::Error> {
-    // A script that ended the transaction itself (COMMIT) leaves no block for a savepoint:
-    // the header is then simply not looked up.
     if sqlx::raw_sql(SAVEPOINT)
         .execute(&mut *connection)
         .await

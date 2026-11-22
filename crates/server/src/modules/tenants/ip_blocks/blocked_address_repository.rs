@@ -50,21 +50,26 @@ pub async fn list_blocked_addresses(pool: &PgPool) -> Result<Vec<BlockedAddress>
     .await
 }
 
-pub async fn count_blocked_addresses(pool: &PgPool) -> Result<i64, sqlx::Error> {
-    sqlx::query_scalar("SELECT count(*) FROM blocked_addresses")
-        .fetch_one(pool)
-        .await
-}
-
 /// Blocking a range that is already listed replaces its note and expiry, so a block can be
 /// extended or made permanent without removing it first.
 pub async fn insert_blocked_address(
     pool: &PgPool,
     block: NewBlock<'_>,
-) -> Result<BlockedAddress, sqlx::Error> {
-    sqlx::query_as(concat!(
+) -> Result<Option<BlockedAddress>, sqlx::Error> {
+    let mut transaction = pool.begin().await?;
+    // The quota is per database. Serialize concurrent block requests before counting.
+    sqlx::query("SELECT pg_advisory_xact_lock(7120000006)")
+        .execute(&mut *transaction)
+        .await?;
+    sqlx::query("DELETE FROM blocked_addresses WHERE expires_at <= clock_timestamp()")
+        .execute(&mut *transaction)
+        .await?;
+
+    let blocked = sqlx::query_as(concat!(
         "INSERT INTO blocked_addresses (id, network, note, expires_at)",
-        " VALUES ($1, network($2::inet), $3, $4)",
+        " SELECT $1, network($2::inet), $3, $4",
+        " WHERE EXISTS (SELECT 1 FROM blocked_addresses WHERE network = network($2::inet))",
+        " OR (SELECT count(*) FROM blocked_addresses) < $5",
         " ON CONFLICT (network) DO UPDATE",
         " SET note = EXCLUDED.note, expires_at = EXCLUDED.expires_at",
         " RETURNING ",
@@ -74,8 +79,12 @@ pub async fn insert_blocked_address(
     .bind(block.network.to_string())
     .bind(block.note)
     .bind(block.expires_at)
-    .fetch_one(pool)
-    .await
+    .bind(MAX_BLOCKED_ADDRESSES)
+    .fetch_optional(&mut *transaction)
+    .await?;
+    transaction.commit().await?;
+
+    Ok(blocked)
 }
 
 /// The removed range, or `None` when there was no such entry.

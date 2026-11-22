@@ -1,94 +1,83 @@
+import LogOut from '~icons/solar/logout-2-linear'
+import Monitor from '~icons/solar/monitor-smartphone-linear'
 import type { JSX } from 'react'
 
-import { ConfirmedActionButton } from '@/modules/users/components/confirmed-action-button'
-import type { UserActionProps } from '@/modules/users/components/user-account-section'
+import type { UserActionRunner } from '@/modules/users/components/user-action-runner'
+import { UserConfirmButton } from '@/modules/users/components/user-confirm-button'
+import { UserSessionsTable } from '@/modules/users/components/user-sessions-table'
 import { useUserSessionsQuery } from '@/modules/users/queries/use-user-detail'
 import type { components } from '@/shared/api/api-schema'
-import { formatDateTime } from '@/shared/lib/format-date'
+import { EmptyState } from '@/shared/ui/empty-state'
 import { ErrorAlert } from '@/shared/ui/error-alert'
-import { SettingsSection } from '@/shared/ui/settings-section'
-import { Skeleton } from '@/shared/ui/skeleton'
+import { Skeleton } from '@/shared/ui/primitives/skeleton'
+import { Section } from '@/shared/ui/section'
 
-type UserSessions = components['schemas']['UserSessions']
+type User = components['schemas']['User']
+type UserSession = components['schemas']['UserSessions']['sessions'][number]
 
-type UserSessionsSectionProps = UserActionProps & { projectId: string }
+type UserSessionsSectionProps = { projectId: string; user: User; runner: UserActionRunner }
 
-/** Where the user is logged in, when they last logged in, and the way to sign them out. */
-export function UserSessionsSection(props: UserSessionsSectionProps): JSX.Element {
-  const { user } = props
-  const sessions = useUserSessionsQuery({ projectId: props.projectId, userId: user.id })
+/** Where the user is logged in, and the way to sign every device out. */
+export function UserSessionsSection({
+  projectId,
+  user,
+  runner,
+}: UserSessionsSectionProps): JSX.Element {
+  const sessions = useUserSessionsQuery({ projectId, userId: user.id })
+  const list = sessions.data?.sessions
 
   return (
-    <SettingsSection
+    <Section
       title="Sessões ativas"
-      description={<LastSignIn sessions={sessions.data} />}
-      footer={endSessionsFooter({ ...props, sessions: sessions.data })}
+      meta={list?.length}
+      action={<EndSessionsButton user={user} runner={runner} sessions={list} />}
+      isFramed
     >
-      <ErrorAlert error={sessions.error} />
-      <SessionList sessions={sessions.data} hasFailed={sessions.isError} />
-    </SettingsSection>
+      <SessionsBody sessions={list} error={sessions.error} />
+    </Section>
   )
 }
 
-function LastSignIn({ sessions }: { sessions: UserSessions | undefined }): JSX.Element | null {
-  if (sessions === undefined) {
+type EndSessionsButtonProps = {
+  user: User
+  runner: UserActionRunner
+  sessions: UserSession[] | undefined
+}
+
+function EndSessionsButton({ user, runner, sessions }: EndSessionsButtonProps): JSX.Element | null {
+  if (sessions === undefined || sessions.length === 0) {
     return null
   }
 
-  const lastSignIn = sessions.last_sign_in_at
-
-  if (lastSignIn === null || lastSignIn === undefined) {
-    return <>Nunca entrou no app.</>
-  }
-
-  return <>Último login em {formatDateTime(lastSignIn)}.</>
-}
-
-type SessionListProps = { sessions: UserSessions | undefined; hasFailed: boolean }
-
-function SessionList({ sessions, hasFailed }: SessionListProps): JSX.Element | null {
-  if (hasFailed) {
-    return null
-  }
-
-  if (sessions === undefined) {
-    return <Skeleton className="h-16 rounded-lg" />
-  }
-
-  if (sessions.sessions.length === 0) {
-    return <p className="text-muted-foreground text-sm">Nenhuma sessão ativa.</p>
-  }
-
   return (
-    <ul className="divide-y rounded-lg border">
-      {sessions.sessions.map((session) => (
-        <li key={session.id} className="px-4 py-3 text-sm">
-          <p className="font-medium">Entrou em {formatDateTime(session.started_at)}</p>
-          <p className="text-muted-foreground">
-            Ativa pela última vez em {formatDateTime(session.last_refreshed_at)}
-          </p>
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-type EndSessionsProps = UserActionProps & { sessions: UserSessions | undefined }
-
-/** Only offered while there is a session to end; without one the section has no footer. */
-function endSessionsFooter(props: EndSessionsProps): JSX.Element | undefined {
-  const { user, sessions } = props
-
-  if (sessions === undefined || sessions.sessions.length === 0) {
-    return undefined
-  }
-
-  return (
-    <ConfirmedActionButton
+    <UserConfirmButton
       action="end-sessions"
+      label="Encerrar todas"
+      icon={LogOut}
       email={user.email}
-      isPending={props.pendingAction === 'end-sessions'}
-      onConfirm={() => props.onAction('end-sessions')}
+      runner={runner}
     />
   )
+}
+
+type SessionsBodyProps = { sessions: UserSession[] | undefined; error: Error | null }
+
+function SessionsBody({ sessions, error }: SessionsBodyProps): JSX.Element {
+  if (error !== null) {
+    return (
+      <div className="p-4">
+        <ErrorAlert error={error} />
+      </div>
+    )
+  }
+
+  if (sessions === undefined) {
+    return <Skeleton className="m-4 h-16" />
+  }
+
+  if (sessions.length === 0) {
+    return <EmptyState isCompact icon={<Monitor aria-hidden />} title="Nenhuma sessão ativa" />
+  }
+
+  return <UserSessionsTable sessions={sessions} />
 }

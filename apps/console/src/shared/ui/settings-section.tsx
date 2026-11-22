@@ -1,56 +1,90 @@
-import type { JSX, ReactNode } from 'react'
+import { useId, type FormEvent, type JSX, type ReactNode } from 'react'
 
-import { cn } from '@/shared/lib/class-names'
+import { cn } from '@/shared/lib/utils'
 
 type SettingsSectionProps = {
   title: string
   description?: ReactNode
-  children: ReactNode
-  /** Bottom bar for the section's action (usually Save), kept apart from the fields. */
+  /** The fields; a section that is only an action (delete) has none. */
+  children?: ReactNode
+  /** The section's action (usually Save), in the footer bar. */
   footer?: ReactNode
-  tone?: 'default' | 'danger'
-  /** A mark shown before the title, such as a provider's logo. */
+  /** A quiet note at the start of the footer, such as a rule about the value. */
+  footerNote?: ReactNode
+  /** A mark before the title, such as a provider's logo. */
   leading?: ReactNode
+  /** Red border for actions that cannot be undone. */
+  isDanger?: boolean
+  /** Makes the whole panel a form, so the footer's submit button saves it. */
+  onSubmit?: (event: FormEvent<HTMLFormElement>) => void
 }
 
-/** One group of settings: what it is, its fields, and how to apply them. */
+/** One group of settings as a panel: title and description, fields, and a footer bar for the action. */
 export function SettingsSection(props: SettingsSectionProps): JSX.Element {
+  const titleId = useId()
+  const className = cn(
+    'min-w-0 overflow-hidden rounded-xl border bg-card',
+    props.isDanger === true && 'border-destructive/40',
+  )
+  const content = (
+    <>
+      <div className="flex flex-col gap-5 p-6">
+        <div className="grid gap-1">
+          <div className="flex items-center gap-2.5">
+            {props.leading}
+            <h2 id={titleId} className="text-lg font-semibold">
+              {props.title}
+            </h2>
+          </div>
+          {props.description !== undefined && (
+            <div className="max-w-prose text-sm text-muted-foreground">{props.description}</div>
+          )}
+        </div>
+        {props.children !== undefined && (
+          <div className="flex flex-col gap-4">{props.children}</div>
+        )}
+      </div>
+      <SectionFooter footer={props.footer} note={props.footerNote} isDanger={props.isDanger} />
+    </>
+  )
+
+  if (props.onSubmit !== undefined) {
+    return (
+      <form aria-labelledby={titleId} className={className} onSubmit={props.onSubmit} noValidate>
+        {content}
+      </form>
+    )
+  }
+
   return (
-    <section
-      className={cn(
-        'bg-card overflow-hidden rounded-xl border',
-        props.tone === 'danger' && 'border-destructive/40',
-      )}
-    >
-      <header className="px-5 pt-5">
-        <h2 className="flex items-center gap-2">
-          {props.leading}
-          {props.title}
-        </h2>
-        <SectionDescription description={props.description} />
-      </header>
-      <div className="grid gap-4 p-5">{props.children}</div>
-      <SectionFooter footer={props.footer} />
+    <section aria-labelledby={titleId} className={className}>
+      {content}
     </section>
   )
 }
 
-function SectionDescription({ description }: { description?: ReactNode }): JSX.Element | null {
-  if (description === undefined) {
-    return null
-  }
-
-  return <p className="text-muted-foreground mt-1 text-sm text-pretty">{description}</p>
-}
-
-function SectionFooter({ footer }: { footer?: ReactNode }): JSX.Element | null {
+function SectionFooter({
+  footer,
+  note,
+  isDanger,
+}: {
+  footer?: ReactNode
+  note?: ReactNode
+  isDanger?: boolean
+}): JSX.Element | null {
   if (footer === undefined) {
     return null
   }
 
   return (
-    <footer className="bg-muted/30 flex flex-wrap items-center justify-end gap-3 border-t px-5 py-3">
-      {footer}
-    </footer>
+    <div
+      className={cn(
+        'flex flex-wrap items-center justify-between gap-3 border-t bg-surface px-6 py-3.5',
+        isDanger === true && 'border-destructive/30 bg-destructive/5',
+      )}
+    >
+      <div className="min-w-0 text-sm text-muted-foreground">{note}</div>
+      <div className="ms-auto flex flex-wrap items-center gap-2">{footer}</div>
+    </div>
   )
 }

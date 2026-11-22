@@ -1,40 +1,47 @@
-import type { JSX, ReactNode } from 'react'
+import { type JSX, type ReactNode, use } from 'react'
 
-import { LogoMark } from '@/shared/ui/logo-mark'
+import { InsideShellContext } from '@/app/shell/inside-shell-context'
+import { PublicFrame } from '@/modules/account/components/public-frame'
 
 type StatusScreenProps = {
   title: string
   description: ReactNode
   actions: ReactNode
-  /** The evidence beside the message: the error report, the missing status code. */
+  /** The evidence under the message: the error report, the missing status code. */
   aside: ReactNode
 }
 
-const ENTER = 'animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 ease-out'
-
 /**
- * A full-screen message (an error, a missing page). It covers the screen because the router
- * renders it inside whichever layout the route belongs to.
+ * A full-page message (an error, a missing page). Under the signed-in frame it is only the
+ * message: the frame already shows the brand and owns the page's main landmark.
  */
 export function StatusScreen(props: StatusScreenProps): JSX.Element {
+  if (use(InsideShellContext)) {
+    return (
+      <div className="mx-auto w-full max-w-xl rounded-xl border bg-card p-6 sm:p-8">
+        <StatusMessage {...props} />
+      </div>
+    )
+  }
+
   return (
-    <div className="bg-background fixed inset-0 z-50 flex flex-col overflow-y-auto">
-      <header className="flex h-14 shrink-0 items-center gap-2.5 border-b px-4 sm:px-6">
-        <LogoMark className="size-7" />
-        <span className="text-sm font-semibold tracking-tight">NelcotaCloud</span>
-      </header>
-      <main className="mx-auto grid w-full max-w-5xl flex-1 content-center gap-12 px-4 py-12 sm:px-6 lg:grid-cols-[1fr_1.1fr] lg:items-center lg:gap-16">
-        <section className={ENTER}>
-          <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-5xl sm:leading-tight">
-            {props.title}
-          </h1>
-          <p className="text-muted-foreground mt-4 max-w-md text-sm text-pretty">
-            {props.description}
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">{props.actions}</div>
-        </section>
-        <div className={`${ENTER} delay-150`}>{props.aside}</div>
-      </main>
+    <PublicFrame size="md">
+      <StatusMessage {...props} />
+    </PublicFrame>
+  )
+}
+
+function StatusMessage(props: StatusScreenProps): JSX.Element {
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="grid gap-2">
+        <h1 className="text-3xl font-semibold tracking-tight text-balance text-heading">
+          {props.title}
+        </h1>
+        <div className="text-base text-pretty text-muted-foreground">{props.description}</div>
+      </div>
+      <div className="flex flex-wrap gap-2">{props.actions}</div>
+      {props.aside}
     </div>
   )
 }

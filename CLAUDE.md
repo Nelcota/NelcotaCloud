@@ -30,7 +30,8 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   `users.sessions_invalidated_at`), so successors created by a concurrent refresh are refused too.
 - Concurrency: paths that change a user lock its `users` row before its token rows (never the
   reverse), expiries are computed with the database clock (`now() + interval`), and login keeps
-  the checked password hash locked (`FOR SHARE`) while it stores the new session.
+  the checked password hash locked (`FOR NO KEY UPDATE`) while it stores the new session and
+  its last sign-in timestamp.
 - Each tenant has a required `site_url`: email links point to it and OAuth only redirects under it.
 - Auth emails (verification, password reset, magic link) are HTML + text (askama template
   `templates/auth_email.html`, auto-escaped), sent in the background through the tenant's own SMTP
@@ -168,7 +169,7 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   request bodies time out after 30 s and requests after 60 s. Behind Cloudflare set
   `CLIENT_IP_HEADER=cf-connecting-ip`.
 - Signing keys (5 minutes), API key owners (`ApiKeyCache`, 60 s, only keys that exist), SMTP
-  senders and webhook subscriptions are cached with `moka`, tenant pools while in use
+  senders and tenant pools while in use are cached with `moka`
   (`TenantPoolRegistry`): concurrent misses share one load. Caches whose entries a change must
   drop use a per-tenant `CacheGeneration` advanced after the change commits (entries keyed by
   it, or checked against a snapshot taken before loading), so a load in flight never puts a
@@ -184,7 +185,7 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   so the documented path is the served one. The API
   serves it at `/openapi.json`; `crates/server/openapi.json` is the committed copy the console
   and the SDK generate their types from (a test fails when it is stale).
-- Stack: Rust, tokio, axum, sqlx (PostgreSQL 17 in Docker), validator, argon2, jsonwebtoken, oauth2,
+- Stack: Rust, tokio, axum, sqlx (PostgreSQL 19 in Docker), validator, argon2, jsonwebtoken, oauth2,
   reqwest, lettre, askama, totp-rs, image, hmac, base64, thiserror, tracing, tower-http, moka,
   utoipa; tests use wiremock for OAuth providers and webhook receivers.
 - SDK (`packages/sdk`, `@nelcota/sdk`): TypeScript client for tenant apps, no runtime
@@ -196,7 +197,8 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   TypeScript 7; `api:types` runs openapi-typescript with its own TypeScript 5.9 through `npx`
   (it needs the compiler API, which TypeScript 7 does not have), like the console.
 - Console (`apps/console/`): React + TypeScript SPA built with Vite, TanStack Router and TanStack
-  Query, Tailwind CSS and shadcn/ui; see "Console structure". It talks to the API only; the API
+  Query and shadcn/ui with Radix UI; see "Console
+  structure". It talks to the API only; the API
   address is fixed at build time by `VITE_API_URL`. It logs in with the SDK (compiled from
   `packages/sdk/src` through a path alias) using the platform tenant's publishable key
   (`VITE_PLATFORM_PUBLISHABLE_KEY`). Never put a secret key or the admin token in the browser.
@@ -222,6 +224,13 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   http://localhost:8026). Copy `.env.example` to `.env` first. The integration tests need both.
 - `cargo run -p server`: run the API.
 - `cargo test --workspace`: run all tests.
+- With disposable PostgreSQL, authenticated Valkey and Mailpit configured, run the HTTP stress
+  scenarios with `cargo test --release --locked -p server --test http stress:: -- --ignored --nocapture --test-threads=1`.
+- For real R2 staging transfers, set `R2_STRESS_ENDPOINT`, `R2_STRESS_BUCKET`,
+  `R2_STRESS_ACCESS_KEY_ID` and `R2_STRESS_SECRET_ACCESS_KEY` in the process environment. Use a
+  staging-only Object Read & Write key and a disposable local control plane. Run
+  `cargo test --release --locked -p server --test http live_r2::live_storage_ramp -- --ignored --exact --nocapture`.
+  Failed transfers keep their normal deletion grace period in the control plane.
 - `cargo fmt --all` and `cargo clippy --workspace --all-targets --all-features --locked -- -D warnings`.
 - Console, in `apps/console/`: `npm install`, `npm run dev` (http://localhost:5173, API from
   `VITE_API_URL`, default http://localhost:8080), `npm run build` (type check + bundle),
@@ -301,12 +310,11 @@ dependencies. In `apps/console/src/`:
 
 - `main.tsx`: mounts the app with its providers; nothing else.
 - `app/`: composition root. `router.tsx` maps URLs to module pages (only logic: the login guard),
-  `lazy-routes/` one lazy route per page, `shell/` the signed-in layout (project
-  sidebar from `project-sections.ts`, top bar with project switcher and account menu, a sheet on
-  small screens with the same sidebar content; the theme toggle is in the account menu), `auth-layout.tsx` login and email-link
-  pages, `status-screen.tsx` with `route-error-page.tsx` and `not-found-page.tsx` (router defaults), `query-client.ts`, `global.css`
-  (theme tokens: graphite neutrals, one blue accent; dark by default, light via the account menu;
-  font Manrope).
+  `lazy-routes/` has one lazy route per page. `shell/` holds the signed-in layout: an icon rail on
+  the black frame (projects, account, invitations, theme, account menu) and a rounded panel with a
+  top bar (history, breadcrumbs, search) and, inside a project, a sidebar with the project
+  switcher and grouped pages. A sheet holds the navigation on narrow screens. The app also contains auth and router status pages,
+  the query client, and `global.css` for the light and dark themes.
 - `modules/<module>/`: everything one context owns (`account`, `projects`, `overview`, `api-keys`,
   `users`, `project-settings`, `system-status`, `team`, `webhooks`, `activity`, `database`):
   - `pages/`: one file per route; composes components, no fetching or business logic.
@@ -318,14 +326,17 @@ dependencies. In `apps/console/src/`:
 - `shared/`: infrastructure with no business rules: `api` (typed `apiClient` from `openapi-fetch`
   that sends the console session's token, `projectHeaders`, `dataOf`/`ensureSuccess`, generated
   `api-schema.d.ts` that is never edited by hand, base URL, `ApiError`), `auth` (the SDK client
-  and `useSession`), `routing` (route params and search), `theme` (`useTheme`), `ui` (shadcn components, plus
-  `FormField`, `SwitchField`, `ErrorAlert`, `ConfirmButton`/`ConfirmDialog`, `PageHeader` (every page
-  starts with it), `SettingsSection`, `EmptyState`, `Skeleton`, `CopyButton`, `SavedNote`; add shadcn ones with
-  `npx shadcn@latest add`, then move any exported `cva` variants to their own file and swap its
-  `lucide-react` icons for Solar), `lib`.
-- Icons: Solar Linear only, imported per icon (`import Key from '~icons/solar/key-linear'`),
-  compiled at build time by `unplugin-icons` with `icon-compiler.ts`; type `IconComponent`. `shared` never imports from
-  `modules` or `app`.
+  and `useSession`), `routing` (route params, search, and `RouterLink`), `theme` (`ConsoleTheme`
+  and `useThemeMode`), and `ui` (primitives and local compositions: `PageHeader` (every page starts with
+  it), `Section`, `SettingsSection`, `ErrorAlert`, `LoadError`, `ConfirmButton`/`ConfirmDialog`,
+  `StepDialog`, `CopyButton`, `CopyableValue`, `UrlField`, `JsonField`, `SavedNote`,
+  `FlashNotice`, `StatCard`, `Notice`, `StatusBadge`, `PendingButton`, `TextField`,
+  `SwitchField`, `SelectField`, `SearchField`, `SegmentedControl`, `ChoiceCards`, `DataList`,
+  `CodeBlock`, `EmptyState`), `lib`. Layout is plain Tailwind markup over the primitives: no
+  stack, text or wrapper components that restyle primitives. `shared` never imports from `modules` or `app`.
+- Use shadcn/ui primitives from `shared/ui/primitives/` and semantic tokens defined in
+  `app/global.css`. See `DESIGN.md` for the visual and interaction conventions.
+- Existing Solar icons compile at build time through `unplugin-icons`; shadcn/ui primitives use Lucide.
 - Dependencies point one way: `app → modules → shared`. A module may use another module's
   components; never create a cycle (`import/no-cycle` enforces it).
 
@@ -358,13 +369,13 @@ Never ship the generic look of AI-generated UI. Every element must earn its plac
 
 - Copy: say it once, short and concrete. No tips ("Dica: …"), no sentences explaining what
   the UI already shows, no repeating the same information in the description and in the field.
-- No decoration without a job: no icons inside tinted circles, no gradients or glows, no
-  uppercase tracked eyebrow labels ("PRÉ-VISUALIZAÇÃO"), no badges or emojis for flavor.
+- No decoration without a job: no illustrations, gradients, glows, uppercase labels, badges or
+  emojis for flavor.
 - One control per action: no button that duplicates a link or a clickable area next to it.
 - Show only what the user needs to decide or act: no extra readouts (zoom percentages, counters)
   or extra variants (three preview sizes when the app uses two).
-- Follow the existing components and tokens (`SettingsSection`, `Button`, borders, radii) instead
-  of inventing new styles for one screen.
+- Follow the shared UI components and theme tokens (`Section`, `Table`, `Button`) instead of
+  inventing new styles for one screen. Records are rows (`Table`, `List`), not one card each.
 
 ## Tests
 

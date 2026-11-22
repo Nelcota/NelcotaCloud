@@ -1,8 +1,10 @@
-import { Link, useLocation } from '@tanstack/react-router'
+import { useLocation } from '@tanstack/react-router'
 import type { JSX } from 'react'
 
 import { StatusScreen } from '@/app/status-screen'
-import { buttonVariants } from '@/shared/ui/button-variants'
+import { RouterLink } from '@/shared/routing/router-link'
+import { InlineCode } from '@/shared/ui/inline-code'
+import { Button } from '@/shared/ui/primitives/button'
 
 /** Shown for any URL the console does not have, such as an old or mistyped link. */
 export function NotFoundPage(): JSX.Element {
@@ -13,31 +15,15 @@ export function NotFoundPage(): JSX.Element {
       title="Página não encontrada"
       description={
         <>
-          Não existe nada em{' '}
-          <code className="bg-muted text-foreground rounded-md px-1.5 py-0.5 font-mono text-xs break-all">
-            {pathname}
-          </code>
-          . Confira o endereço ou volte aos seus projetos.
+          <InlineCode>{pathname}</InlineCode> não existe.
         </>
       }
       actions={
-        <Link to="/" className={buttonVariants({ size: 'lg' })}>
-          Ir para os projetos
-        </Link>
+        <Button asChild size="lg">
+          <RouterLink href="/">Ir para os projetos</RouterLink>
+        </Button>
       }
-      aside={<StatusCode />}
+      aside={<p className="font-mono text-xs text-muted-foreground">Erro 404</p>}
     />
-  )
-}
-
-/** The HTTP status, set large as the page's one visual anchor. */
-function StatusCode(): JSX.Element {
-  return (
-    <p
-      aria-hidden="true"
-      className="text-muted-foreground/20 hidden text-right text-9xl leading-none font-semibold tracking-tight tabular-nums select-none lg:block"
-    >
-      404
-    </p>
   )
 }

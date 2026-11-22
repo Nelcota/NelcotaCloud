@@ -1,4 +1,4 @@
-use sqlx::{PgConnection, PgPool};
+use sqlx::PgConnection;
 use uuid::Uuid;
 
 use crate::modules::tenants::signing_keys::signing_key::SigningKey;
@@ -16,25 +16,19 @@ const MAX_RETIRED_KEYS: i64 = 5;
 /// Makes a new key sign the tenant's tokens. The previous key stays in the JWKS, so tokens it
 /// signed keep verifying until they expire.
 ///
-/// The tenant row is locked first: concurrent rotations run one after the other instead of
+/// The caller locks the tenant row first: concurrent rotations run one after the other instead of
 /// both trying to insert an active key.
 pub async fn rotate_signing_key(
-    pool: &PgPool,
+    connection: &mut PgConnection,
     tenant_id: Uuid,
     secret_box: &SecretBox,
 ) -> Result<Uuid, SigningKeyStoreError> {
     let signing_key = SigningKey::generate()?;
     let sealed_key = SealedSigningKey::seal(&signing_key, tenant_id, secret_box)?;
-    let mut transaction = pool.begin().await?;
-    sqlx::query("SELECT id FROM tenants WHERE id = $1 FOR UPDATE")
-        .bind(tenant_id)
-        .execute(&mut *transaction)
-        .await?;
-    delete_expired_retired_keys(&mut transaction, tenant_id).await?;
-    ensure_room_for_retired_key(&mut transaction, tenant_id).await?;
-    retire_active_key(&mut transaction, tenant_id).await?;
-    insert_active_signing_key(&mut transaction, tenant_id, &sealed_key).await?;
-    transaction.commit().await?;
+    delete_expired_retired_keys(connection, tenant_id).await?;
+    ensure_room_for_retired_key(connection, tenant_id).await?;
+    retire_active_key(connection, tenant_id).await?;
+    insert_active_signing_key(connection, tenant_id, &sealed_key).await?;
 
     Ok(sealed_key.key_id)
 }

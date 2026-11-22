@@ -27,11 +27,11 @@ impl OAuthLoginContext<'_> {
             tenant_id: start.tenant_id,
             provider,
         };
-        let client = self.client_for(key).await?;
+        let (client, revision) = self.client_for(key).await?;
         let state = generate_state();
         let pkce_verifier = generate_code_verifier();
         let authorize_url = client.authorization_url(&state, &pkce_verifier);
-        let pending = self.pending_authorization(start, &pkce_verifier)?;
+        let pending = self.pending_authorization(start, revision, &pkce_verifier)?;
         let state_hash = hash_opaque_token(&state);
         insert_pending_authorization(self.control_plane_pool, &state_hash, &pending).await?;
 
@@ -42,6 +42,7 @@ impl OAuthLoginContext<'_> {
     fn pending_authorization(
         &self,
         start: AuthorizationStart,
+        provider_revision: Uuid,
         pkce_verifier: &str,
     ) -> Result<PendingAuthorization, OAuthLoginError> {
         let verifier_context = pkce_verifier_context(start.tenant_id, start.provider);
@@ -51,6 +52,7 @@ impl OAuthLoginContext<'_> {
         Ok(PendingAuthorization {
             tenant_id: start.tenant_id,
             provider: start.provider,
+            provider_revision,
             pkce_verifier_ciphertext,
             redirect_to: start.redirect_to.to_string(),
             app_code_challenge: start.app_code_challenge,

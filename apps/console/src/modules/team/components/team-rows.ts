@@ -6,7 +6,12 @@ type TeamView = components['schemas']['TeamView']
 export type MemberRow = { id: string; email: string; role: 'owner' | 'member'; joinedAt: string }
 
 /** Someone invited who has not answered yet. */
-export type InvitationRow = { id: string; email: string; sentAt: string }
+export type InvitationRow = {
+  id: string
+  email: string
+  createdAt: string
+  deliveryStatus: components['schemas']['InvitationDeliveryStatus']
+}
 
 /** Small teams read at a glance; a search only helps once the list no longer fits. */
 export const SEARCH_THRESHOLD = 8
@@ -37,7 +42,8 @@ export function invitationRows(team: TeamView): InvitationRow[] {
     .map((invitation) => ({
       id: invitation.id,
       email: invitation.email,
-      sentAt: invitation.created_at,
+      createdAt: invitation.created_at,
+      deliveryStatus: invitation.delivery_status,
     }))
 }
 

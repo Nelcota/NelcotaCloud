@@ -8,21 +8,25 @@ import {
 import { SMTP_PRESETS } from '@/modules/project-settings/components/smtp-presets'
 import { SECURITY_LABELS } from '@/modules/project-settings/components/smtp-security'
 import { formatSender } from '@/modules/project-settings/components/smtp-sender'
-import { ReviewList } from '@/shared/ui/review-list'
+import { DataList, DataListItem } from '@/shared/ui/data-list'
 
 /** Everything that will be saved, except the password, which never comes back. */
 export function SmtpReview({ draft }: { draft: SmtpDraft }): JSX.Element {
+  const server = `${cleanHost(draft.host)}:${parsePort(draft.port) ?? ''}`
+
   return (
-    <ReviewList
-      items={[
-        { label: 'Provedor', value: providerTitle(draft) },
-        { label: 'Servidor', value: `${cleanHost(draft.host)}:${parsePort(draft.port) ?? ''}` },
-        { label: 'Segurança', value: SECURITY_LABELS[draft.security] },
-        { label: 'Usuário', value: draft.username.trim() },
-        { label: 'Senha', value: 'Guardada cifrada' },
-        { label: 'Remetente', value: formatSender(draft.senderName, draft.senderEmail) },
-      ]}
-    />
+    <DataList className="rounded-xl border bg-card px-4">
+      <DataListItem label="Provedor">{providerTitle(draft)}</DataListItem>
+      <DataListItem label="Servidor">
+        <code className="font-mono text-sm">{server}</code>
+      </DataListItem>
+      <DataListItem label="Segurança">{SECURITY_LABELS[draft.security]}</DataListItem>
+      <DataListItem label="Usuário">{draft.username.trim()}</DataListItem>
+      <DataListItem label="Senha">Guardada cifrada</DataListItem>
+      <DataListItem label="Remetente">
+        {formatSender(draft.senderName, draft.senderEmail)}
+      </DataListItem>
+    </DataList>
   )
 }
 

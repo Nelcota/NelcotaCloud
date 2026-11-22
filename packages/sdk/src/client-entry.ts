@@ -19,6 +19,18 @@ export { TableQuery } from './database/table-query'
 export type { CountOption, UpsertOptions } from './database/table-query'
 export type { ClientOptions, NelcotaClient } from './client/create-client'
 export { NelcotaError } from './http/nelcota-error'
+export { StorageClient } from './storage/storage-client'
+export { putStorageObject, storageFileInput } from './storage/storage-upload'
+export type {
+  StorageBucket,
+  StorageDownload,
+  StorageFile,
+  StorageFileInput,
+  StorageObject,
+  StorageObjectPage,
+  StoragePageOptions,
+  StorageUpload,
+} from './storage/storage-types'
 export type {
   AuthEvent,
   AuthStateListener,

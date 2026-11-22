@@ -15,7 +15,8 @@ use crate::shared::http::api_error::{ApiError, ErrorBody};
 /// Query: `select=id,title,author(name)`, filters (`age=gte.18`, `or=(a.eq.1,b.eq.2)`),
 /// `order=created_at.desc`, `limit` (at most 1000) and `offset`; embeds take the same with
 /// their name as prefix (`comments.order=id.desc`). `Prefer: count=exact|planned` adds the
-/// total to `Content-Range`.
+/// total to `Content-Range`. `Prefer: order=primary-key` uses the complete primary key when
+/// no root order is specified, leaving relations without a primary key unordered.
 #[utoipa::path(
     get,
     path = "/rest/v1/{table}",
@@ -27,6 +28,7 @@ use crate::shared::http::api_error::{ApiError, ErrorBody};
         ("order" = Option<String>, Query, description = "column.asc|desc[.nullsfirst|nullslast],..."),
         ("limit" = Option<u32>, Query, description = "Rows per page (at most 1000)"),
         ("offset" = Option<u32>, Query, description = "Rows to skip"),
+        ("Prefer" = Option<String>, Header, description = "count=exact|planned, order=primary-key"),
     ),
     responses(
         (status = 200, description = "The rows", body = Vec<serde_json::Value>),
@@ -46,7 +48,7 @@ pub async fn read_rows(
     let preferences = Preferences::from_headers(&headers);
     let read = RowRead {
         table_name: &table,
-        query: &query,
+        query,
         preferences: &preferences,
     };
     let result = read_table_rows(&state.database_sessions(), &caller, read).await?;

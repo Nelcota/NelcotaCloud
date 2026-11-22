@@ -34,22 +34,29 @@ export function menuFor(row: MemberRow, viewer: Viewer): RowMenu {
   return { entries: [enabled('promote'), enabled('remove')], note: null }
 }
 
+/** Leaving has its own section at the bottom of the page, so your row only changes your role. */
 function ownMenu(row: MemberRow, viewer: Viewer): RowMenu {
   if (row.role === 'member') {
-    return { entries: [enabled('leave')], note: null }
+    return { entries: [], note: null }
   }
 
   if (viewer.isSoleOwner === false) {
-    return { entries: [enabled('demote'), enabled('leave')], note: null }
+    return { entries: [enabled('demote')], note: null }
   }
 
   return {
-    entries: [
-      { action: 'demote', isDisabled: true },
-      { action: 'leave', isDisabled: true },
-    ],
+    entries: [{ action: 'demote', isDisabled: true }],
     note: soleOwnerNote(viewer.hasOthers),
   }
+}
+
+/** Why the viewer cannot leave yet; `null` when they can. */
+export function leaveBlockedReason(viewer: Omit<Viewer, 'isOwnRow' | 'canManage'>): string | null {
+  if (viewer.isSoleOwner === false) {
+    return null
+  }
+
+  return soleOwnerNote(viewer.hasOthers)
 }
 
 /** The way out depends on whether anyone could take the project over. */

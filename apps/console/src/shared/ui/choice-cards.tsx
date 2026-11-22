@@ -1,105 +1,90 @@
-import Check from '~icons/solar/check-read-linear'
 import type { JSX } from 'react'
-import { useId } from 'react'
 
-import { cn } from '@/shared/lib/class-names'
+import { cn } from '@/shared/lib/utils'
 import type { IconComponent } from '@/shared/ui/icon-component'
+import { FieldLegend, FieldSet } from '@/shared/ui/primitives/field'
+import { RadioGroup, RadioGroupItem } from '@/shared/ui/primitives/radio-group'
 
 export type Choice<Value extends string> = {
   value: Value
   icon: IconComponent
   title: string
   description: string
+  /** Shown at the end of the card ("Recomendado", "Em breve"). */
+  badge?: string
+  disabled?: boolean
 }
 
 type ChoiceCardsProps<Value extends string> = {
-  /** Read by screen readers as the group's name. */
+  /** The group's name. */
   legend: string
-  choices: Choice<Value>[]
+  /** Keeps the name for screen readers where a heading already says it. */
+  isLegendHidden?: boolean
+  choices: readonly Choice<Value>[]
   selected: Value | null
   onSelect: (value: Value) => void
+  /** Lays the cards side by side on wide screens. */
+  columns?: 1 | 2 | 3
 }
 
-/**
- * One choice among a few, each explained in a sentence; native radios, so arrows move between
- * them. Two columns only when its own width allows, whatever the screen.
- */
+const COLUMNS = { 1: '', 2: 'sm:grid-cols-2', 3: 'sm:grid-cols-2 lg:grid-cols-3' }
+
+/** One choice among a few, each a card with an icon and a sentence; arrows move between them. */
 export function ChoiceCards<Value extends string>(props: ChoiceCardsProps<Value>): JSX.Element {
-  const name = useId()
+  function select(value: string): void {
+    const choice = props.choices.find((candidate) => candidate.value === value)
+
+    if (choice === undefined) {
+      return
+    }
+
+    props.onSelect(choice.value)
+  }
 
   return (
-    <div className="@container">
-      <fieldset className="grid gap-3 @lg:grid-cols-2">
-        <legend className="sr-only">{props.legend}</legend>
+    <FieldSet className="min-w-0">
+      <FieldLegend variant="label" className={cn((props.isLegendHidden ?? true) && 'sr-only')}>
+        {props.legend}
+      </FieldLegend>
+      <RadioGroup
+        value={props.selected ?? ''}
+        onValueChange={select}
+        className={cn('grid gap-2.5', COLUMNS[props.columns ?? 1])}
+      >
         {props.choices.map((choice) => (
-          <ChoiceCard
-            key={choice.value}
-            name={name}
-            choice={choice}
-            isSelected={props.selected === choice.value}
-            onSelect={() => props.onSelect(choice.value)}
-          />
+          <ChoiceCard key={choice.value} choice={choice} />
         ))}
-      </fieldset>
-    </div>
+      </RadioGroup>
+    </FieldSet>
   )
 }
 
-type ChoiceCardProps<Value extends string> = {
-  name: string
-  choice: Choice<Value>
-  isSelected: boolean
-  onSelect: () => void
-}
-
-function ChoiceCard<Value extends string>(props: ChoiceCardProps<Value>): JSX.Element {
-  const Icon = props.choice.icon
+function ChoiceCard<Value extends string>({ choice }: { choice: Choice<Value> }): JSX.Element {
+  const Glyph = choice.icon
 
   return (
     <label
       className={cn(
-        'hover:bg-accent/60 has-[:focus-visible]:ring-ring/50 relative flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors has-[:focus-visible]:ring-3',
-        props.isSelected && 'border-foreground/50 bg-accent/60',
+        'group relative flex min-w-0 cursor-pointer items-start gap-3 rounded-xl border bg-card p-5 transition-colors hover:bg-surface',
+        'has-data-checked:border-primary/60 has-data-checked:bg-primary/6',
+        'has-disabled:cursor-not-allowed has-disabled:opacity-60',
       )}
     >
-      <input
-        type="radio"
-        name={props.name}
-        value={props.choice.value}
-        checked={props.isSelected}
-        onChange={props.onSelect}
-        className="sr-only"
-      />
-      <Icon
-        aria-hidden="true"
-        className={cn(
-          'text-muted-foreground mt-0.5 size-5 shrink-0',
-          props.isSelected && 'text-foreground',
-        )}
-      />
-      <span className="grid gap-1">
-        <span className="font-medium">{props.choice.title}</span>
-        <span className="text-muted-foreground text-xs text-pretty">
-          {props.choice.description}
-        </span>
+      <span className="grid size-10 shrink-0 place-items-center rounded-lg border bg-surface text-muted-foreground group-has-data-checked:border-primary/40 group-has-data-checked:text-primary">
+        <Glyph aria-hidden className="size-5" />
       </span>
-      <SelectedMark isSelected={props.isSelected} />
+      <span className="grid min-w-0 flex-1 gap-1">
+        <span className="flex items-center gap-2 text-base font-medium text-heading">
+          {choice.title}
+          {choice.badge !== undefined && (
+            <span className="rounded-md bg-surface px-1.5 py-0.5 text-xs font-normal text-muted-foreground">
+              {choice.badge}
+            </span>
+          )}
+        </span>
+        <span className="text-sm text-muted-foreground">{choice.description}</span>
+      </span>
+      <RadioGroupItem value={choice.value} disabled={choice.disabled} className="mt-0.5" />
     </label>
-  )
-}
-
-/** A filled check in the corner, so the choice reads without relying on the border colour. */
-function SelectedMark({ isSelected }: { isSelected: boolean }): JSX.Element | null {
-  if (isSelected === false) {
-    return null
-  }
-
-  return (
-    <span
-      aria-hidden="true"
-      className="bg-foreground text-background ml-auto flex size-5 shrink-0 items-center justify-center rounded-full"
-    >
-      <Check className="size-3.5" />
-    </span>
   )
 }

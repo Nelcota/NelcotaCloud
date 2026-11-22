@@ -5,18 +5,16 @@ import { CopyButton } from '@/shared/ui/copy-button'
 type CopyableValueProps = {
   label: string
   value: string
-  /** Puts focus on Copy, the one thing to do with a key shown once. */
-  autoFocusCopy?: boolean
 }
 
 /** A value to copy as is (a key shown once, a callback URL), never cut off: it wraps instead. */
-export function CopyableValue({ label, value, autoFocusCopy }: CopyableValueProps): JSX.Element {
+export function CopyableValue({ label, value }: CopyableValueProps): JSX.Element {
   return (
-    <div className="grid gap-1.5">
-      <span className="text-sm font-medium">{label}</span>
-      <div className="bg-muted/60 flex items-start gap-2 rounded-lg border p-1.5 pl-3">
-        <code className="min-w-0 flex-1 self-center py-1 font-mono text-xs break-all">{value}</code>
-        <CopyButton value={value} description={label} autoFocus={autoFocusCopy} />
+    <div className="grid min-w-0 gap-1.5">
+      <span className="text-sm font-medium text-muted-foreground">{label}</span>
+      <div className="flex min-w-0 items-start gap-1 rounded-lg border bg-frame/60 py-1 ps-3 pe-1">
+        <code className="min-w-0 flex-1 py-1 font-mono text-sm wrap-anywhere">{value}</code>
+        <CopyButton value={value} description={label} isIconOnly />
       </div>
     </div>
   )

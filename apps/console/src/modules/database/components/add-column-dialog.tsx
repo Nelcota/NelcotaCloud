@@ -11,8 +11,8 @@ import {
 } from '@/modules/database/components/column-draft'
 import { ColumnDraftFields } from '@/modules/database/components/column-draft-fields'
 import { useAddColumnMutation } from '@/modules/database/queries/use-column-mutations'
-import { Button } from '@/shared/ui/button'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
+import { Button } from '@/shared/ui/primitives/button'
 
 type AddColumnDialogProps = {
   projectId: string
@@ -37,8 +37,8 @@ export function AddColumnDialog({ projectId, table, targets }: AddColumnDialogPr
 
   return (
     <>
-      <Button variant="outline" onClick={open}>
-        <Plus />
+      <Button type="button" size="sm" onClick={open}>
+        <Plus aria-hidden data-icon="inline-start" />
         Adicionar coluna
       </Button>
       <ConfirmDialog
@@ -48,6 +48,7 @@ export function AddColumnDialog({ projectId, table, targets }: AddColumnDialogPr
         description="As linhas que já existem recebem o valor padrão, ou nulo."
         confirmLabel="Adicionar coluna"
         canConfirm={isDraftComplete(draft)}
+        size="lg"
         onConfirm={add}
       >
         <ColumnDraftFields

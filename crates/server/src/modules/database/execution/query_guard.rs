@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use sqlx::PgPool;
 use time::OffsetDateTime;
+use tokio::time::Instant;
 
 use crate::modules::database::execution::database_error_response::database_error_response;
 use crate::modules::database::rejection::database_rejection::DatabaseRejection;
@@ -16,9 +17,9 @@ const GUARD_GRACE: Duration = Duration::from_secs(2);
 /// A project's own function may change `statement_timeout` or catch the cancel signal, so the
 /// guard terminates the backend through the platform's pool, which a project cannot touch.
 pub struct QueryGuard {
-    pub backend: BackendIdentity,
-    pub statement_timeout: Duration,
-    pub admin_pool: PgPool,
+    backend: BackendIdentity,
+    deadline: Instant,
+    admin_pool: PgPool,
 }
 
 /// A backend process: its id, and when it started, since ids are reused by later backends.
@@ -40,6 +41,19 @@ macro_rules! backend_identity_columns {
 pub(crate) use backend_identity_columns;
 
 impl QueryGuard {
+    pub fn new(admin_pool: PgPool, backend: BackendIdentity, timeout: Duration) -> Self {
+        let now = Instant::now();
+        let deadline = now
+            .checked_add(timeout.saturating_add(GUARD_GRACE))
+            .unwrap_or(now);
+
+        Self {
+            backend,
+            deadline,
+            admin_pool,
+        }
+    }
+
     /// Runs a Data API query: Postgres errors become the refusals clients act on.
     pub async fn run<T>(
         &self,
@@ -54,8 +68,14 @@ impl QueryGuard {
         query: impl Future<Output = Result<T, sqlx::Error>>,
         map_error: fn(sqlx::Error) -> ApiError,
     ) -> Result<T, ApiError> {
-        let deadline = self.statement_timeout.saturating_add(GUARD_GRACE);
-        let outcome = match tokio::time::timeout(deadline, query).await {
+        if Instant::now() >= self.deadline {
+            return Err(DatabaseRejection::QueryTimeout.into());
+        }
+
+        // Keep resources owned by the future (such as a committing transaction) checked out
+        // until termination ends, so the backend cannot start a different request in between.
+        let mut query = std::pin::pin!(query);
+        let outcome = match tokio::time::timeout_at(self.deadline, query.as_mut()).await {
             Ok(outcome) => outcome,
             Err(_) => {
                 self.terminate_backend().await;

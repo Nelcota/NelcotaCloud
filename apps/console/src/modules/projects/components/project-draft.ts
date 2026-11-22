@@ -1,6 +1,8 @@
 import { slugFromName } from '@/modules/projects/components/project-slug'
 
-/** What the new-project steps collect before the project is created. */
+export type ProjectPurpose = 'personal' | 'team'
+
+/** What the form collects before the project is created. */
 export type ProjectDraft = {
   name: string
   /** Typed by the user; null while the slug follows the name. */

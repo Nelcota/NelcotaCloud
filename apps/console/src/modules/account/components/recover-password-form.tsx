@@ -2,9 +2,9 @@ import type { FormEvent, JSX } from 'react'
 import { useState } from 'react'
 
 import { useRecoverPasswordMutation } from '@/modules/account/queries/use-recover-password-mutation'
-import { Button } from '@/shared/ui/button'
 import { ErrorAlert } from '@/shared/ui/error-alert'
-import { FormField } from '@/shared/ui/form-field'
+import { PendingButton } from '@/shared/ui/pending-button'
+import { TextField } from '@/shared/ui/text-field'
 
 /** Asks for a reset link; the answer is the same whether or not the email has an account. */
 export function RecoverPasswordForm({ onSent }: { onSent: () => void }): JSX.Element {
@@ -17,20 +17,28 @@ export function RecoverPasswordForm({ onSent }: { onSent: () => void }): JSX.Ele
   }
 
   return (
-    <form className="grid gap-4" onSubmit={submit}>
-      <FormField
+    <form onSubmit={submit} className="flex flex-col gap-4">
+      <TextField
         label="Email"
         type="email"
         autoComplete="email"
+        spellCheck={false}
         autoFocus
         required
+        className="[&_input]:h-10"
         value={email}
         onChange={(event) => setEmail(event.target.value)}
       />
       <ErrorAlert error={recover.error} />
-      <Button type="submit" size="lg" disabled={recover.isPending} aria-busy={recover.isPending}>
+      <PendingButton
+        type="submit"
+        size="lg"
+        className="h-10 w-full"
+        isPending={recover.isPending}
+        disabled={email.trim() === ''}
+      >
         Enviar link de redefinição
-      </Button>
+      </PendingButton>
     </form>
   )
 }

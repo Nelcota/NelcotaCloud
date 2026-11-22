@@ -1,9 +1,11 @@
 use std::time::Duration;
 
+use futures_util::future::try_join_all;
 use reqwest::StatusCode;
 use serde_json::json;
 
-use crate::support::{TEST_PASSWORD, TestResult, TestServer, unique_email};
+use super::mfa::{challenge, log_in, totp_code, user_with_totp};
+use crate::support::{Session, TEST_PASSWORD, TestResult, TestServer, field, unique_email};
 
 const MAIL_POLL_ATTEMPTS: u32 = 50;
 const MAIL_POLL_INTERVAL: Duration = Duration::from_millis(100);
@@ -15,22 +17,62 @@ async fn concurrent_first_requests_of_a_new_tenant_all_succeed() -> TestResult {
     let server = TestServer::start().await?;
     let tenant = server.create_tenant().await?;
     let api_key = &tenant.publishable_key;
-    let sign_up = |prefix: &'static str| {
-        let body = json!({ "email": unique_email(prefix), "password": TEST_PASSWORD.as_str() });
+    let responses = try_join_all((0..8).map(|_| {
+        let body =
+            json!({ "email": unique_email("signup-burst"), "password": TEST_PASSWORD.as_str() });
         server.post_auth("/auth/v1/signup", api_key, body)
-    };
+    }))
+    .await?;
 
-    let (first, second, third, fourth) = tokio::join!(
-        sign_up("first"),
-        sign_up("second"),
-        sign_up("third"),
-        sign_up("fourth")
-    );
-
-    for response in [first?, second?, third?, fourth?] {
+    for response in responses {
+        let response = response.error_for_status()?;
         assert_eq!(response.status(), StatusCode::CREATED);
+        let session = response.json::<Session>().await?;
+        assert!(session.refresh_token.is_empty() == false);
     }
 
+    server.drop_tenant(&tenant).await
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn concurrent_password_logins_issue_independent_sessions() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    let email = unique_email("concurrent-login");
+    server.sign_up(&tenant, &email).await?;
+    let body = json!({ "email": email, "password": TEST_PASSWORD.as_str() });
+    let responses = try_join_all(
+        (0..8).map(|_| server.post_auth("/auth/v1/login", &tenant.publishable_key, body.clone())),
+    )
+    .await?;
+    let mut tokens = std::collections::BTreeSet::new();
+
+    for response in responses {
+        let session = response.error_for_status()?.json::<Session>().await?;
+        assert!(tokens.insert(session.refresh_token));
+    }
+
+    assert_eq!(tokens.len(), 8);
+    server.drop_tenant(&tenant).await
+}
+
+#[tokio::test]
+async fn concurrent_mfa_completions_issue_one_session() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    let email = unique_email("concurrent-mfa");
+    let (_, secret) = user_with_totp(&server, &tenant, &email, 0).await?;
+    let login = log_in(&server, &tenant, &email).await?;
+    let token = field(&login, "/mfa_token")
+        .as_str()
+        .ok_or("missing challenge token")?;
+    let code = totp_code(&secret, 1)?;
+    let complete = || challenge(&server, &tenant, token, &code);
+    let (first, second) = tokio::try_join!(complete(), complete())?;
+    let mut statuses = [first.status(), second.status()];
+    statuses.sort_unstable();
+
+    assert_eq!(statuses, [StatusCode::OK, StatusCode::BAD_REQUEST]);
     server.drop_tenant(&tenant).await
 }
 

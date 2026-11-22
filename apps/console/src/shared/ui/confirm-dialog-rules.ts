@@ -7,15 +7,6 @@ export function isBlocked(props: ConfirmDialogProps, typedText: string): boolean
   return props.canConfirm === false || isConfirmationMissing(props.confirmationText, typedText)
 }
 
-/** Destructive confirmations are announced as alerts, so a screen reader stops on them first. */
-export function dialogRole(props: ConfirmDialogProps): 'alertdialog' | 'dialog' {
-  if (props.isDestructive === true) {
-    return 'alertdialog'
-  }
-
-  return 'dialog'
-}
-
 export function changesOf(change: ConfirmDialogProps['change']): ConfirmChange[] {
   if (change === undefined) {
     return []
@@ -28,14 +19,24 @@ export function changesOf(change: ConfirmDialogProps['change']): ConfirmChange[]
   return [change]
 }
 
-export function confirmVariant(props: ConfirmDialogProps): 'destructive' | 'secondary' | 'default' {
+/** Destructive actions are red; weighty ones (handing a project over) stay neutral. */
+export function confirmVariant(props: ConfirmDialogProps): 'destructive' | 'outline' | 'default' {
   if (props.isDestructive === true) {
     return 'destructive'
   }
 
   if (props.isWeighty === true) {
-    return 'secondary'
+    return 'outline'
   }
 
   return 'default'
+}
+
+/** Destructive dialogs cannot be dismissed by a stray click outside them. */
+export function dialogPurpose(props: ConfirmDialogProps): 'form' | 'info' {
+  if (props.isDestructive === true || props.confirmationText !== undefined) {
+    return 'form'
+  }
+
+  return 'info'
 }

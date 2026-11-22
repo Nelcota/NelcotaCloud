@@ -1,22 +1,21 @@
 import TrashBin from '~icons/solar/trash-bin-trash-linear'
 import type { JSX } from 'react'
-import { useId } from 'react'
 
 import {
   type ColumnDraft,
   type ReferenceTarget,
   normalizedDraft,
 } from '@/modules/database/components/column-draft'
+import { ColumnDefaultField } from '@/modules/database/components/column-default-field'
 import { ColumnDraftFlags } from '@/modules/database/components/column-draft-flags'
 import { ColumnReferenceFields } from '@/modules/database/components/column-reference-fields'
-import {
-  COLUMN_TYPES,
-  DEFAULT_SUGGESTIONS,
-  isColumnType,
-} from '@/modules/database/components/column-types'
-import { Button } from '@/shared/ui/button'
-import { FormField } from '@/shared/ui/form-field'
+import { COLUMN_TYPES, isColumnType } from '@/modules/database/components/column-types'
+import { Button } from '@/shared/ui/primitives/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/primitives/tooltip'
 import { SelectField } from '@/shared/ui/select-field'
+import { TextField } from '@/shared/ui/text-field'
+
+const TYPE_OPTIONS = COLUMN_TYPES.map((value) => ({ label: value, value }))
 
 export type ColumnDraftFieldsProps = {
   draft: ColumnDraft
@@ -30,7 +29,6 @@ export type ColumnDraftFieldsProps = {
 /** Every field of one column: name, type, default, traits and an optional reference. */
 export function ColumnDraftFields(props: ColumnDraftFieldsProps): JSX.Element {
   const { draft } = props
-  const suggestionsId = useId()
 
   function change(update: Partial<ColumnDraft>): void {
     props.onChange(normalizedDraft({ ...draft, ...update }))
@@ -45,49 +43,29 @@ export function ColumnDraftFields(props: ColumnDraftFieldsProps): JSX.Element {
   }
 
   return (
-    <fieldset className="grid gap-3 rounded-lg border p-4">
+    <fieldset className="flex min-w-0 flex-col gap-3 rounded-lg border bg-surface p-3">
       <legend className="sr-only">Coluna {draft.name}</legend>
-      <div className="grid items-end gap-3 sm:grid-cols-[1fr_10rem_1fr_auto]">
-        <FormField
-          label="Nome"
-          required
-          spellCheck={false}
-          autoComplete="off"
-          placeholder="created_at"
-          className="font-mono"
-          value={draft.name}
-          onChange={(event) => change({ name: event.target.value })}
-        />
-        <SelectField
-          label="Tipo"
-          className="font-mono"
-          value={draft.type}
-          onChange={(event) => pickType(event.target.value)}
-        >
-          {COLUMN_TYPES.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </SelectField>
-        <FormField
-          label="Padrão"
-          spellCheck={false}
-          autoComplete="off"
-          placeholder="Nenhum"
-          className="font-mono"
-          list={suggestionsId}
-          disabled={draft.isIdentity}
-          value={draft.defaultValue}
-          onChange={(event) => change({ defaultValue: event.target.value })}
-        />
+      <div className="flex items-end gap-2">
+        <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-3">
+          <TextField
+            label="Nome"
+            required
+            spellCheck={false}
+            autoComplete="off"
+            placeholder="created_at"
+            value={draft.name}
+            onChange={(event) => change({ name: event.target.value })}
+          />
+          <SelectField
+            label="Tipo"
+            options={TYPE_OPTIONS}
+            value={draft.type}
+            onValueChange={pickType}
+          />
+          <ColumnDefaultField draft={draft} onChange={change} />
+        </div>
         <RemoveButton name={draft.name} onRemove={props.onRemove} />
       </div>
-      <datalist id={suggestionsId}>
-        {DEFAULT_SUGGESTIONS.map((suggestion) => (
-          <option key={suggestion} value={suggestion} />
-        ))}
-      </datalist>
       <ColumnDraftFlags draft={draft} canBePrimaryKey={props.canBePrimaryKey} onChange={change} />
       <ColumnReferenceFields draft={draft} targets={props.targets} onChange={change} />
     </fieldset>
@@ -102,14 +80,19 @@ function RemoveButton({ name, onRemove }: RemoveButtonProps): JSX.Element | null
   }
 
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      aria-label={`Remover a coluna ${name}`}
-      onClick={onRemove}
-    >
-      <TrashBin />
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={`Remover a coluna ${name}`}
+          onClick={onRemove}
+        >
+          <TrashBin aria-hidden />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>Remover coluna</TooltipContent>
+    </Tooltip>
   )
 }

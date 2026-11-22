@@ -12,8 +12,8 @@ import { PolicyFields } from '@/modules/database/components/policy-fields'
 import { type PolicyTemplate, templatesFor } from '@/modules/database/components/policy-templates'
 import { useCreatePolicyMutation } from '@/modules/database/queries/use-policy-mutations'
 import type { components } from '@/shared/api/api-schema'
-import { Button } from '@/shared/ui/button'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
+import { Button } from '@/shared/ui/primitives/button'
 
 type TableOverview = components['schemas']['TableOverview']
 
@@ -36,14 +36,15 @@ export function CreatePolicyDialog({ projectId, table }: CreatePolicyDialogProps
 
   return (
     <>
-      <Button onClick={open}>
-        <Plus />
+      <Button type="button" size="sm" onClick={open}>
+        <Plus aria-hidden data-icon="inline-start" />
         Nova política
       </Button>
       <ConfirmDialog
         isOpen={isOpen}
         onOpenChange={setIsOpen}
         title={`Nova política em ${table.name}`}
+        size="lg"
         description="Libera um comando nas linhas que a condição aceita. Várias políticas se somam."
         confirmLabel="Criar política"
         canConfirm={isObjectName(draft.name) && draft.roles.length > 0}
@@ -64,7 +65,7 @@ type TemplatePickerProps = {
 function TemplatePicker({ templates, onPick }: TemplatePickerProps): JSX.Element {
   return (
     <div role="group" aria-label="Modelos" className="flex flex-wrap items-center gap-2">
-      <span className="text-muted-foreground text-sm">Modelos:</span>
+      <span className="text-xs text-muted-foreground">Modelos</span>
       {templates.map((template) => (
         <Button
           key={template.label}

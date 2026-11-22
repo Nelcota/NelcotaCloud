@@ -1,3 +1,4 @@
+mod audit_recovery;
 mod blocked_addresses;
 mod captcha;
 mod deletion_recovery;

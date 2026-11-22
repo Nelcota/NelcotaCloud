@@ -1,11 +1,9 @@
-import { Link } from '@tanstack/react-router'
-import CircleCheck from '~icons/solar/check-circle-linear'
 import type { JSX } from 'react'
 import { useEffect, useState } from 'react'
 
 import { AuthCard } from '@/modules/account/components/auth-card'
+import { LoginLinkButton } from '@/modules/account/components/login-link-button'
 import { ResetPasswordForm } from '@/modules/account/components/reset-password-form'
-import { buttonVariants } from '@/shared/ui/button-variants'
 import { clearTokenFromLocation, tokenFromLocation } from '@/shared/routing/token-search'
 
 /** Opened from the reset email with its one-time token in the URL fragment. */
@@ -19,14 +17,8 @@ export function ResetPasswordPage(): JSX.Element {
 
   if (isDone) {
     return (
-      <AuthCard
-        title="Senha alterada"
-        description="Por segurança, todas as sessões abertas foram encerradas."
-        icon={<CircleCheck aria-hidden="true" className="mb-4 size-10 text-emerald-500" />}
-      >
-        <Link to="/login" className={buttonVariants({ size: 'lg' })}>
-          Entrar com a nova senha
-        </Link>
+      <AuthCard title="Senha alterada" description="Todas as sessões foram encerradas.">
+        <LoginLinkButton label="Entrar com a nova senha" />
       </AuthCard>
     )
   }
@@ -34,19 +26,14 @@ export function ResetPasswordPage(): JSX.Element {
   // The link was cut, or the page reloaded after the token left the URL: nothing to redeem.
   if (token === '') {
     return (
-      <AuthCard
-        title="Link inválido"
-        description="Abra o link do email de novo ou peça outro na tela de login."
-      >
-        <Link to="/login" className={buttonVariants({ size: 'lg' })}>
-          Ir para o login
-        </Link>
+      <AuthCard title="Link inválido" description="Peça outro link na tela de login.">
+        <LoginLinkButton label="Ir para o login" />
       </AuthCard>
     )
   }
 
   return (
-    <AuthCard title="Nova senha" description="Escolha uma senha com pelo menos 8 caracteres.">
+    <AuthCard title="Nova senha" description="Pelo menos 8 caracteres.">
       <ResetPasswordForm token={token} onDone={() => setIsDone(true)} />
     </AuthCard>
   )

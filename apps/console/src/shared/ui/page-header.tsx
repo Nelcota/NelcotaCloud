@@ -3,35 +3,50 @@ import type { JSX, ReactNode } from 'react'
 type PageHeaderProps = {
   title: string
   description?: ReactNode
-  /** Primary actions of the page, aligned right on wide screens and below the title on phones. */
   actions?: ReactNode
+  /** A mark before the title, such as the avatar of the user the page is about. */
+  leading?: ReactNode
+  /** Under the title row: tabs or filters that belong to the whole page. */
+  children?: ReactNode
 }
 
-/** The title every console page starts with, so each one has a single `h1` and the same rhythm. */
-export function PageHeader({ title, description, actions }: PageHeaderProps): JSX.Element {
+/** The top of every page: a compact title, one line of context and the page's primary actions. */
+export function PageHeader({
+  title,
+  description,
+  actions,
+  leading,
+  children,
+}: PageHeaderProps): JSX.Element {
   return (
-    <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div className="min-w-0">
-        <h1 className="text-2xl text-balance [overflow-wrap:anywhere]">{title}</h1>
-        <Description description={description} />
+    <header className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          {leading}
+          <div className="grid min-w-0 gap-0.5">
+            <h1 className="text-3xl font-semibold tracking-tight wrap-anywhere">{title}</h1>
+            <PageDescription description={description} />
+          </div>
+        </div>
+        <PageActions actions={actions} />
       </div>
-      <Actions actions={actions} />
+      {children}
     </header>
   )
 }
 
-function Description({ description }: { description?: ReactNode }): JSX.Element | null {
-  if (description === undefined) {
+function PageDescription({ description }: { description?: ReactNode }): JSX.Element | null {
+  if (description === null || description === undefined) {
     return null
   }
 
-  return <p className="text-muted-foreground mt-1 max-w-2xl text-sm text-pretty">{description}</p>
+  return <div className="text-base text-muted-foreground">{description}</div>
 }
 
-function Actions({ actions }: { actions?: ReactNode }): JSX.Element | null {
-  if (actions === undefined) {
+function PageActions({ actions }: { actions?: ReactNode }): JSX.Element | null {
+  if (actions === null || actions === undefined) {
     return null
   }
 
-  return <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>
+  return <div className="flex flex-wrap items-center gap-2">{actions}</div>
 }

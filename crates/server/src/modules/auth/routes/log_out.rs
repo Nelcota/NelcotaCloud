@@ -8,7 +8,7 @@ use crate::modules::auth::session::refresh_token_repository::revoke_family_of_to
 use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::modules::tenants::audit::audit_action::AuditAction;
 use crate::modules::tenants::audit::audit_entry::NewAuditEvent;
-use crate::modules::tenants::audit::audit_recorder::record_audit_event;
+use crate::modules::tenants::audit::audit_recorder::insert_audit_event;
 use crate::shared::crypto::opaque_token::hash_opaque_token;
 use crate::shared::http::api_error::ApiError;
 use crate::shared::http::request_origin::RequestOrigin;
@@ -34,16 +34,20 @@ pub async fn log_out(
     let client_ip = origin.client_ip;
     state
         .rate_limits
-        .token_redemption
-        .check(tenant.tenant_id, client_ip)?;
+        .auth
+        .check_redemption(tenant.tenant_id, client_ip)
+        .await?;
     let token_hash = hash_opaque_token(body.refresh_token.trim());
-    let owner = revoke_family_of_token(&tenant.pool, &token_hash).await?;
+    let mut transaction = tenant.pool.begin().await?;
+    let owner = revoke_family_of_token(&mut transaction, &token_hash).await?;
 
     // An unknown or already used token still answers 204; only a real logout is recorded.
     if let Some(user_id) = owner {
         let event = NewAuditEvent::by_user(AuditAction::LoggedOut, user_id, origin);
-        record_audit_event(&tenant.pool, event).await;
+        insert_audit_event(&mut *transaction, event).await?;
     }
+
+    transaction.commit().await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

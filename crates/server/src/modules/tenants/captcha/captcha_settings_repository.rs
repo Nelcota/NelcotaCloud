@@ -1,4 +1,4 @@
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
 /// The stored settings, with the secret key still encrypted.
@@ -27,7 +27,7 @@ pub async fn find_captcha_settings(
 }
 
 pub async fn save_captcha_settings(
-    pool: &PgPool,
+    connection: &mut PgConnection,
     settings: NewCaptchaSettings<'_>,
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
@@ -38,16 +38,19 @@ pub async fn save_captcha_settings(
     .bind(settings.tenant_id)
     .bind(settings.site_key)
     .bind(settings.secret_key_ciphertext)
-    .execute(pool)
+    .execute(connection)
     .await?;
 
     Ok(())
 }
 
-pub async fn delete_captcha_settings(pool: &PgPool, tenant_id: Uuid) -> Result<(), sqlx::Error> {
+pub async fn delete_captcha_settings(
+    connection: &mut PgConnection,
+    tenant_id: Uuid,
+) -> Result<(), sqlx::Error> {
     sqlx::query("DELETE FROM tenant_captcha_settings WHERE tenant_id = $1")
         .bind(tenant_id)
-        .execute(pool)
+        .execute(connection)
         .await?;
 
     Ok(())

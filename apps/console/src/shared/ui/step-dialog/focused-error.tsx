@@ -3,11 +3,8 @@ import { useEffect, useRef } from 'react'
 
 import { ErrorAlert } from '@/shared/ui/error-alert'
 
-/**
- * A failure at the end of a long step: scrolled into view and focused, so it is seen and read
- * rather than left below the fold of the scrolling column.
- */
-export function FocusedError({ error }: { error: unknown }): JSX.Element {
+/** A failure at the end of a long step: scrolled into view and focused, so it is seen and read. */
+export function FocusedError({ error }: { error: unknown }): JSX.Element | null {
   const container = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -17,12 +14,16 @@ export function FocusedError({ error }: { error: unknown }): JSX.Element {
       return
     }
 
-    element.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    element.scrollIntoView({ block: 'nearest' })
     element.focus({ preventScroll: true })
   }, [error])
 
+  if (error === null || error === undefined) {
+    return null
+  }
+
   return (
-    <div ref={container} tabIndex={-1} className="outline-none empty:hidden">
+    <div ref={container} tabIndex={-1} className="outline-none">
       <ErrorAlert error={error} />
     </div>
   )

@@ -19,9 +19,25 @@ export RCLONE_CONFIG_BACKUP_TYPE=crypt
 export RCLONE_CONFIG_BACKUP_REMOTE="store:${BACKUP_BUCKET}/postgres"
 RCLONE_CONFIG_BACKUP_PASSWORD="$(rclone obscure "${BACKUP_ENCRYPTION_PASSWORD}")"
 export RCLONE_CONFIG_BACKUP_PASSWORD
+export LC_ALL=C
+
+SNAPSHOT_MANIFEST=snapshot.sha256
+LEGACY_SNAPSHOT_PATTERN='^[0-9]{8}T[0-9]{6}Z$'
+SNAPSHOT_PATTERN='^[0-9]{8}T[0-9]{6}Z(-[a-zA-Z0-9]{10})?$'
+TENANT_DATABASE_PATTERN='^tenant_[a-z][a-z0-9_]{2,39}$'
+
+is_project_database() {
+    [[ "$1" == "nelcota_control" || "$1" =~ ${TENANT_DATABASE_PATTERN} ]]
+}
+
+# Build or verify the manifest using local file names, never paths from the downloaded manifest.
+snapshot_checksums() (
+    cd "$1" || exit 1
+    sha256sum -- globals.sql ./*.dump
+)
 
 # The control plane plus every tenant database (tenant_<slug>).
 list_databases() {
-    psql --no-psqlrc --tuples-only --no-align --dbname=postgres --command \
+    psql --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align --dbname=postgres --command \
         "SELECT datname FROM pg_database WHERE datname = 'nelcota_control' OR datname LIKE 'tenant\_%' ORDER BY datname"
 }

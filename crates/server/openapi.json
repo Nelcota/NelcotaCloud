@@ -130,11 +130,31 @@
         "tags": [
           "tenant-admin"
         ],
-        "summary": "`GET /admin/api-keys`: every key of the tenant, newest first, without the keys themselves.",
+        "summary": "`GET /admin/api-keys`: active keys and the first page of revoked keys, newest first.\nPass the response cursor as `before` for the next page of revoked keys.",
         "operationId": "list_api_keys",
+        "parameters": [
+          {
+            "name": "before",
+            "in": "query",
+            "description": "Cursor for the next page of revoked keys",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "The tenant's API keys",
+            "headers": {
+              "X-Nelcota-Next-Cursor": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Cursor when more revoked keys exist"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -435,7 +455,7 @@
         "tags": [
           "tenant-admin"
         ],
-        "summary": "`GET /admin/audit-events/export`: the matching events as a CSV file, newest first, up to\n100,000 rows.",
+        "summary": "`GET /admin/audit-events/export`: streams the matching events as a CSV file, newest first.",
         "description": "Takes the same filters as the activity log, so the file holds what the console shows.",
         "operationId": "export_audit_events",
         "parameters": [
@@ -1120,6 +1140,66 @@
           },
           "403": {
             "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/oauth/redirects": {
+      "put": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "Replace the project's registered app callback URLs.",
+        "operationId": "configure_oauth_redirects",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OAuthRedirectsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Effective app callback URLs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthRedirects"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid callback URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Project access denied",
             "content": {
               "application/json": {
                 "schema": {
@@ -1832,7 +1912,7 @@
         "tags": [
           "tenant-admin"
         ],
-        "summary": "`GET /admin/users/export`: the matching users as a CSV file, up to 100,000 rows.",
+        "summary": "`GET /admin/users/export`: streams the matching users as a CSV file.",
         "description": "Takes the same filters and order as the user list, so the file holds what the console shows.",
         "operationId": "export_users",
         "parameters": [
@@ -2128,6 +2208,16 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "The account is the last active owner of a project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -2201,6 +2291,16 @@
           },
           "404": {
             "description": "No such user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The metadata changed since it was opened",
             "content": {
               "application/json": {
                 "schema": {
@@ -2350,7 +2450,7 @@
         "tags": [
           "tenant-admin"
         ],
-        "summary": "`POST /admin/users/{user_id}/logout`: ends every session; access tokens expire on their own.",
+        "summary": "`POST /admin/users/{user_id}/logout`: ends every session in Auth.",
         "operationId": "end_user_sessions",
         "parameters": [
           {
@@ -3415,7 +3515,7 @@
         "tags": [
           "auth"
         ],
-        "summary": "`POST /magic-link`: emails a one-time login link. An unknown email gets a passwordless\naccount, so the same call signs people up; the answer never reveals which case it was.",
+        "summary": "`POST /magic-link`: emails a one-time login link. A new user account is created when\nthe recipient opens the link; the answer is the same for every address.",
         "operationId": "request_magic_link",
         "requestBody": {
           "content": {
@@ -3429,7 +3529,7 @@
         },
         "responses": {
           "202": {
-            "description": "A login link is on its way"
+            "description": "Login link request accepted"
           },
           "429": {
             "description": "Too many emails requested",
@@ -3793,6 +3893,14 @@
           },
           {
             "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error",
             "in": "query",
             "required": false,
             "schema": {
@@ -4169,7 +4277,7 @@
         "tags": [
           "sessions"
         ],
-        "summary": "`DELETE /sessions/{session_id}`: logs one device out; its access token expires on its own.",
+        "summary": "`DELETE /sessions/{session_id}`: ends one device session in Auth.",
         "operationId": "end_session",
         "parameters": [
           {
@@ -4339,6 +4447,16 @@
           },
           "401": {
             "description": "Missing or invalid access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The account is the last active owner of a project",
             "content": {
               "application/json": {
                 "schema": {
@@ -5805,6 +5923,16 @@
           "204": {
             "description": "Invitation declined"
           },
+          "403": {
+            "description": "Email verification required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
           "404": {
             "description": "No pending invitation for this account",
             "content": {
@@ -5828,7 +5956,7 @@
         "tags": [
           "platform"
         ],
-        "summary": "`POST /platform/v1/invitations/{invitation_id}/accept`: joins the project. The invitation\nmust have been sent to the email of the account's verified token.",
+        "summary": "`POST /platform/v1/invitations/{invitation_id}/accept`: joins the project. The invitation\nmust have been sent to the account's verified email.",
         "operationId": "accept_invitation",
         "parameters": [
           {
@@ -5849,6 +5977,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AcceptedInvitation"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Email verification required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             }
@@ -6443,7 +6581,7 @@
         },
         "responses": {
           "201": {
-            "description": "Invitation created and emailed",
+            "description": "Invitation created with the result of the email attempt",
             "content": {
               "application/json": {
                 "schema": {
@@ -6545,6 +6683,94 @@
           },
           "404": {
             "description": "No such pending invitation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "platform_account": []
+          }
+        ]
+      }
+    },
+    "/platform/v1/projects/{project_id}/invitations/{invitation_id}/resend": {
+      "post": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "Retries email delivery for the same pending invitation. Owners only.",
+        "operationId": "resend_invitation",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "description": "Id of the project",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "invitation_id",
+            "in": "path",
+            "description": "Id of the pending invitation",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Result of the email attempt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingInvitation"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not an owner of this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such pending invitation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Delivery already in progress",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many invitations",
             "content": {
               "application/json": {
                 "schema": {
@@ -6978,7 +7204,7 @@
           "database"
         ],
         "summary": "`GET /rest/v1/{table}`: rows of a table of the project's `public` schema.",
-        "description": "Query: `select=id,title,author(name)`, filters (`age=gte.18`, `or=(a.eq.1,b.eq.2)`),\n`order=created_at.desc`, `limit` (at most 1000) and `offset`; embeds take the same with\ntheir name as prefix (`comments.order=id.desc`). `Prefer: count=exact|planned` adds the\ntotal to `Content-Range`.",
+        "description": "Query: `select=id,title,author(name)`, filters (`age=gte.18`, `or=(a.eq.1,b.eq.2)`),\n`order=created_at.desc`, `limit` (at most 1000) and `offset`; embeds take the same with\ntheir name as prefix (`comments.order=id.desc`). `Prefer: count=exact|planned` adds the\ntotal to `Content-Range`. `Prefer: order=primary-key` uses the complete primary key when\nno root order is specified, leaving relations without a primary key unordered.",
         "operationId": "read_rows",
         "parameters": [
           {
@@ -7028,6 +7254,18 @@
               "type": "integer",
               "format": "int32",
               "minimum": 0
+            }
+          },
+          {
+            "name": "Prefer",
+            "in": "header",
+            "description": "count=exact|planned, order=primary-key",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           }
         ],
@@ -7389,6 +7627,849 @@
           }
         ]
       }
+    },
+    "/storage/v1/buckets": {
+      "get": {
+        "tags": [
+          "storage"
+        ],
+        "operationId": "list_buckets",
+        "responses": {
+          "200": {
+            "description": "List private buckets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Bucket"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bucket or file not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Storage conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Storage unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": [],
+            "bearer": []
+          },
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "storage"
+        ],
+        "operationId": "create_bucket",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BucketInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Create a private bucket",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Bucket"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bucket or file not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Storage conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Storage unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/storage/v1/buckets/{bucket_id}": {
+      "delete": {
+        "tags": [
+          "storage"
+        ],
+        "operationId": "delete_bucket",
+        "parameters": [
+          {
+            "name": "bucket_id",
+            "in": "path",
+            "description": "Bucket ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Delete a bucket and its files"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bucket or file not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Storage conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Storage unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/storage/v1/buckets/{bucket_id}/objects": {
+      "get": {
+        "tags": [
+          "storage"
+        ],
+        "operationId": "list_objects",
+        "parameters": [
+          {
+            "name": "bucket_id",
+            "in": "path",
+            "description": "Bucket ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List available files",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bucket or file not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Storage conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Storage unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": [],
+            "bearer": []
+          },
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/storage/v1/buckets/{bucket_id}/uploads": {
+      "post": {
+        "tags": [
+          "storage"
+        ],
+        "operationId": "start_upload",
+        "parameters": [
+          {
+            "name": "bucket_id",
+            "in": "path",
+            "description": "Bucket ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Reserve a file and sign a direct PUT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignedUpload"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bucket or file not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Storage conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "File is too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Storage unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": [],
+            "bearer": []
+          },
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/storage/v1/objects/{object_id}": {
+      "delete": {
+        "tags": [
+          "storage"
+        ],
+        "operationId": "delete_object",
+        "parameters": [
+          {
+            "name": "object_id",
+            "in": "path",
+            "description": "Object ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Remove a file and queue its physical deletion"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bucket or file not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Storage conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Storage unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": [],
+            "bearer": []
+          },
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/storage/v1/objects/{object_id}/complete": {
+      "post": {
+        "tags": [
+          "storage"
+        ],
+        "operationId": "complete_upload",
+        "parameters": [
+          {
+            "name": "object_id",
+            "in": "path",
+            "description": "Object ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Confirm a successful upload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageObject"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bucket or file not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Storage conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Storage unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": [],
+            "bearer": []
+          },
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/storage/v1/objects/{object_id}/download-url": {
+      "post": {
+        "tags": [
+          "storage"
+        ],
+        "operationId": "download_url",
+        "parameters": [
+          {
+            "name": "object_id",
+            "in": "path",
+            "description": "Object ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sign a private GET for a file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignedDownload"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bucket or file not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Storage conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Storage unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": [],
+            "bearer": []
+          },
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -7735,6 +8816,34 @@
           }
         }
       },
+      "Bucket": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "BucketInput": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "CacheCredential": {
         "type": "object",
         "required": [
@@ -7993,14 +9102,27 @@
       "ConfiguredProviders": {
         "type": "object",
         "required": [
-          "providers"
+          "providers",
+          "callback_url",
+          "redirect_urls"
         ],
         "properties": {
+          "callback_url": {
+            "type": "string",
+            "description": "The server callback to register at Google or GitHub."
+          },
           "providers": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ConfiguredProvider"
             }
+          },
+          "redirect_urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The exact callbacks registered for the project's app."
           }
         }
       },
@@ -8371,6 +9493,35 @@
           }
         }
       },
+      "FileInput": {
+        "type": "object",
+        "required": [
+          "name",
+          "content_type",
+          "size_bytes"
+        ],
+        "properties": {
+          "content_type": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Reuse this ID to retry the same upload in this bucket."
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
       "ForeignKeyOverview": {
         "type": "object",
         "required": [
@@ -8436,6 +9587,15 @@
             "type": "string"
           }
         }
+      },
+      "InvitationDeliveryStatus": {
+        "type": "string",
+        "enum": [
+          "unknown",
+          "sending",
+          "sent",
+          "failed"
+        ]
       },
       "IssuedApiKey": {
         "type": "object",
@@ -8716,6 +9876,56 @@
           }
         }
       },
+      "OAuthRedirects": {
+        "type": "object",
+        "required": [
+          "redirect_urls"
+        ],
+        "properties": {
+          "redirect_urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "OAuthRedirectsBody": {
+        "type": "object",
+        "required": [
+          "redirect_urls"
+        ],
+        "properties": {
+          "redirect_urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Exact app callback URLs. An empty list restores the project's site URL."
+          }
+        }
+      },
+      "ObjectPage": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StorageObject"
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
       "OneTimeTokenBody": {
         "type": "object",
         "required": [
@@ -8746,12 +9956,16 @@
         "required": [
           "id",
           "email",
-          "created_at"
+          "created_at",
+          "delivery_status"
         ],
         "properties": {
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "delivery_status": {
+            "$ref": "#/components/schemas/InvitationDeliveryStatus"
           },
           "email": {
             "type": "string"
@@ -9042,7 +10256,7 @@
         "properties": {
           "query": {
             "type": "string",
-            "description": "One or more statements, run in one transaction."
+            "description": "One or more statements in an editor-managed transaction. Savepoints are supported."
           }
         }
       },
@@ -9171,6 +10385,60 @@
         ],
         "description": "A session when the tenant lets unverified users in; otherwise only a note to check the inbox."
       },
+      "SignedDownload": {
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "SignedUpload": {
+        "type": "object",
+        "required": [
+          "object_id",
+          "url",
+          "expires_at",
+          "headers",
+          "can_upload"
+        ],
+        "properties": {
+          "can_upload": {
+            "type": "boolean",
+            "description": "Whether the original PUT can still be used."
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "object_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "url": {
+            "type": "string"
+          },
+          "verification_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Short-lived GET used to compare bytes when resuming an existing upload."
+          }
+        }
+      },
       "SmtpSettingsBody": {
         "type": "object",
         "required": [
@@ -9274,6 +10542,36 @@
             "type": "integer",
             "format": "int64",
             "minimum": 0
+          }
+        }
+      },
+      "StorageObject": {
+        "type": "object",
+        "required": [
+          "id",
+          "bucket_id",
+          "name",
+          "content_type",
+          "size_bytes"
+        ],
+        "properties": {
+          "bucket_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "content_type": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -9516,6 +10814,28 @@
               "null"
             ],
             "description": "Replaces the admin-only data (up to 4 KiB as JSON), sent in access tokens from the next\nlogin or refresh; left as it is when absent.",
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "expected_app_metadata": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Optional previous contents. Returns 409 if the stored app metadata has changed.",
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "expected_user_metadata": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Optional previous contents. Returns 409 if the stored profile has changed.",
             "additionalProperties": {},
             "propertyNames": {
               "type": "string"
@@ -9882,6 +11202,10 @@
     {
       "name": "cache",
       "description": "Optional project cache for application backends"
+    },
+    {
+      "name": "storage",
+      "description": "Private project buckets and signed file transfers"
     },
     {
       "name": "webhooks",

@@ -7,7 +7,6 @@ use crate::modules::auth::routes::mfa_code_body::MfaCodeBody;
 use crate::modules::auth::session::authenticated_user::AuthenticatedUser;
 use crate::modules::tenants::audit::audit_action::AuditAction;
 use crate::modules::tenants::audit::audit_entry::NewAuditEvent;
-use crate::modules::tenants::audit::audit_recorder::record_audit_event;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::request_origin::RequestOrigin;
 use crate::shared::http::validated_json::ValidatedJson;
@@ -44,9 +43,8 @@ pub async fn disable_totp(
         .webhooks
         .recorder(request.authenticated.tenant.tenant_id)
         .await?;
-    disable_factor(&state.factor_code_access(), &webhooks, &request).await?;
     let event = NewAuditEvent::by_user(AuditAction::MfaDisabled, user_id, origin);
-    record_audit_event(&authenticated.tenant.pool, event).await;
+    disable_factor(&state.factor_code_access(), &webhooks, &request, event).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

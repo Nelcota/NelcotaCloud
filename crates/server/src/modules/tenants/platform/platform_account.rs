@@ -1,16 +1,13 @@
 use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
-use sqlx::PgPool;
+use sqlx::{Postgres, Transaction};
 use uuid::Uuid;
 
 use crate::app_state::AppState;
-use crate::modules::tenants::platform::platform_account_status::{
-    PlatformAccountStatus, find_platform_account_status,
-};
+use crate::modules::auth::integration::session_token::verify_session_token;
+use crate::modules::auth::session::session_access::require_active_session;
 use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::modules::tenants::settings::email_verification_policy::ensure_email_verified;
-use crate::modules::tenants::signing_keys::access_token::TokenAudience;
-use crate::modules::tenants::signing_keys::access_token_verification::verify_tenant_token;
 use crate::shared::http::api_error::ApiError;
 use crate::shared::http::bearer_token::bearer_token;
 
@@ -18,9 +15,46 @@ use crate::shared::http::bearer_token::bearer_token;
 /// token, which must have been issued by the platform tenant itself.
 pub struct PlatformAccount {
     pub account_id: Uuid,
+    session_id: Uuid,
     pub email: String,
     /// Accepting invitations always needs it, whatever the platform tenant requires.
     pub is_email_verified: bool,
+}
+
+impl PlatformAccount {
+    /// Hold the user row while creating a membership, so account erasure sees every project.
+    pub async fn lock_active(
+        &self,
+        state: &AppState,
+    ) -> Result<(Transaction<'static, Postgres>, Self), ApiError> {
+        let tenant_id = state.platform_tenant.find_id().await?;
+        let pool = state
+            .tenant_pools
+            .pool_for(tenant_id)
+            .await
+            .map_err(ApiError::internal)?;
+        let mut transaction = pool.begin().await?;
+        sqlx::query("SELECT id FROM users WHERE id = $1 FOR SHARE")
+            .bind(self.account_id)
+            .execute(&mut *transaction)
+            .await?;
+        let status =
+            require_active_session(&mut *transaction, self.account_id, self.session_id).await?;
+        ensure_email_verified(
+            &state.control_plane_pool,
+            tenant_id,
+            status.email_verified_at,
+        )
+        .await?;
+        let account = Self {
+            account_id: self.account_id,
+            session_id: self.session_id,
+            email: status.email,
+            is_email_verified: status.email_verified_at.is_some(),
+        };
+
+        Ok((transaction, account))
+    }
 }
 
 impl FromRequestParts<AppState> for PlatformAccount {
@@ -38,54 +72,18 @@ pub async fn verify_platform_token(
     access_token: &str,
 ) -> Result<PlatformAccount, ApiError> {
     let platform_tenant_id = state.platform_tenant.find_id().await?;
-    let audience = TokenAudience {
-        issuer: &state.settings.token_issuer,
-        tenant_id: platform_tenant_id,
-    };
-    let claims = verify_tenant_token(&state.signing_keys, &audience, access_token).await?;
-    let status = account_status(state, platform_tenant_id, claims.sub).await?;
-    let pool = &state.control_plane_pool;
-    ensure_account_allowed(pool, platform_tenant_id, &status).await?;
-
-    Ok(PlatformAccount {
-        account_id: claims.sub,
-        email: status.email,
-        is_email_verified: status.email_verified_at.is_some(),
-    })
-}
-
-/// Distinct errors, so the console can ask the account to confirm its email. Verification
-/// follows the platform tenant's own setting, so an instance without an email provider keeps
-/// working.
-async fn ensure_account_allowed(
-    control_plane_pool: &PgPool,
-    platform_tenant_id: Uuid,
-    status: &PlatformAccountStatus,
-) -> Result<(), ApiError> {
-    if status.banned_at.is_some() {
-        return Err(ApiError::from(TenantsRejection::UserBanned));
-    }
-
+    let (claims, status) = verify_session_token(state, platform_tenant_id, access_token).await?;
     ensure_email_verified(
-        control_plane_pool,
+        &state.control_plane_pool,
         platform_tenant_id,
         status.email_verified_at,
     )
-    .await
-}
+    .await?;
 
-async fn account_status(
-    state: &AppState,
-    platform_tenant_id: Uuid,
-    account_id: Uuid,
-) -> Result<PlatformAccountStatus, ApiError> {
-    let platform_pool = state
-        .tenant_pools
-        .pool_for(platform_tenant_id)
-        .await
-        .map_err(ApiError::internal)?;
-    let status = find_platform_account_status(&platform_pool, account_id).await?;
-    let status = status.ok_or(TenantsRejection::InvalidAccessToken)?;
-
-    Ok(status)
+    Ok(PlatformAccount {
+        account_id: claims.sub,
+        session_id: claims.sid,
+        email: status.email,
+        is_email_verified: status.email_verified_at.is_some(),
+    })
 }

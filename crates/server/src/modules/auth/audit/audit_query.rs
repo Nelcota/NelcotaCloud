@@ -76,8 +76,19 @@ pub fn audit_statement<Row>(
 where
     Row: for<'row> sqlx::FromRow<'row, sqlx::postgres::PgRow>,
 {
+    bind_audit_statement(selection, query, Some(row_limit))
+}
+
+pub fn bind_audit_statement<Row>(
+    selection: &AuditSelection,
+    query: &AuditQuery<'_>,
+    row_limit: Option<i64>,
+) -> QueryAs<'static, Postgres, Row, PgArguments>
+where
+    Row: for<'row> sqlx::FromRow<'row, sqlx::postgres::PgRow>,
+{
     let statement = match query.search {
-        Some(search) if has_search_trigram(search) => {
+        Some(search) if row_limit.is_some() && has_search_trigram(search) => {
             // Both the search's selectivity and the optional scope affect which indexes to use.
             sqlx::query_as(selection.indexed).persistent(false)
         }

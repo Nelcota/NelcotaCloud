@@ -10,6 +10,6 @@ export function useTableCountQuery(
 ): UseQueryResult<number | null> {
   return useQuery({
     queryKey: [...tableRowsKey(projectId, query.table), 'count'],
-    queryFn: () => countRows(projectId, query),
+    queryFn: ({ signal }) => countRows(projectId, query, signal),
   })
 }

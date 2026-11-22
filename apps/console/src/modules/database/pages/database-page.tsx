@@ -1,6 +1,7 @@
 import type { JSX } from 'react'
 
-import { CreateTableDialog } from '@/modules/database/components/create-table-dialog'
+import { DatabaseFacts } from '@/modules/database/components/database-facts'
+import { DatabaseHeaderActions } from '@/modules/database/components/database-header-actions'
 import { TablesBrowser } from '@/modules/database/components/tables-browser'
 import { useProjectId } from '@/shared/routing/use-project-id'
 import { PageHeader } from '@/shared/ui/page-header'
@@ -9,13 +10,15 @@ export function DatabasePage(): JSX.Element {
   const projectId = useProjectId()
 
   return (
-    <div className="grid gap-6">
+    <div className="flex flex-col gap-8">
       <PageHeader
         title="Banco de dados"
-        description="As tabelas do Postgres do projeto. Os apps leem e gravam pela API, dentro das políticas de cada tabela."
-        actions={<CreateTableDialog projectId={projectId} />}
-      />
-      <TablesBrowser projectId={projectId} />
+        description="O Postgres do projeto, servido como API REST sob row level security."
+        actions={<DatabaseHeaderActions projectId={projectId} />}
+      >
+        <DatabaseFacts />
+      </PageHeader>
+      <TablesBrowser key={projectId} projectId={projectId} />
     </div>
   )
 }

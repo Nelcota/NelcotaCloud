@@ -1,56 +1,94 @@
 import type { JSX } from 'react'
+import { useState } from 'react'
 
 import { CellValue } from '@/modules/database/components/cell-value'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/ui/table'
-
-/** A column of the grid; the type, when known, is shown beside its name. */
-export type GridColumn = { name: string; type?: string }
+import { GridHeader } from '@/modules/database/components/grid-header'
+import {
+  type GridColumn,
+  type GridRow,
+  GridRowDetails,
+} from '@/modules/database/components/grid-row-details'
+import { EmptyState } from '@/shared/ui/empty-state'
+import { Button } from '@/shared/ui/primitives/button'
+import { TableBody, TableCell, TableRow } from '@/shared/ui/primitives/table'
 
 type DataGridProps = {
   label: string
   columns: readonly GridColumn[]
   /** Each row's values in the order of `columns`. */
   rows: readonly (readonly unknown[])[]
+  rowOffset?: number
 }
 
 /**
- * Rows as text in a scrolling grid. Positions are the keys: results can repeat a column name
- * (`?column?`) and rows have no identity of their own.
+ * Rows as text in a grid that scrolls both ways under a sticky header. Positions are the keys:
+ * results can repeat a column name (`?column?`) and rows have no identity of their own.
+ * Unframed: the caller's panel draws the border.
  */
-export function DataGrid({ label, columns, rows }: DataGridProps): JSX.Element {
+export function DataGrid({ label, columns, rows, rowOffset = 0 }: DataGridProps): JSX.Element {
+  const [openRow, setOpenRow] = useState<GridRow | null>(null)
+  const [isOpen, setIsOpen] = useState(false)
+  const data = rows.map((cells, index) => ({ number: rowOffset + index + 1, cells }))
+
+  function showRow(row: GridRow): void {
+    setOpenRow(row)
+    setIsOpen(true)
+  }
+
+  if (data.length === 0) {
+    return <EmptyState isCompact title="Nenhuma linha no resultado" />
+  }
+
   return (
-    <div className="bg-card overflow-hidden rounded-xl border">
-      <Table aria-label={label} className="font-mono text-xs">
-        <TableHeader>
-          <TableRow>
-            {columns.map((column, index) => (
-              <TableHead key={index} className="px-3">
-                <span className="text-foreground">{column.name}</span>
-                <ColumnType type={column.type} />
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((cells, rowIndex) => (
-            <TableRow key={rowIndex}>
-              {cells.map((cell, cellIndex) => (
-                <TableCell key={cellIndex} className="px-3">
-                  <CellValue value={cell} />
+    <>
+      <div className="scrollbar-thin max-h-[32rem] min-w-0 overflow-auto overscroll-contain">
+        <table aria-label={label} className="w-full border-separate border-spacing-0 text-sm">
+          <GridHeader columns={columns} />
+          <TableBody>
+            {data.map((row) => (
+              <TableRow key={row.number} className="[&>td]:border-b [&>td]:border-border/60">
+                <TableCell className="sticky left-0 z-[1] w-12 bg-card px-1 py-0.5">
+                  <RowButton row={row} onShow={showRow} />
                 </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+                {row.cells.map((value, index) => (
+                  <TableCell
+                    key={index}
+                    className="max-w-72 border-l border-border/60 px-3 py-1.5 font-mono"
+                  >
+                    <CellValue value={value} />
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </table>
+      </div>
+      <GridRowDetails
+        row={openRow}
+        label={label}
+        columns={columns}
+        isOpen={isOpen}
+        onOpenChange={setIsOpen}
+      />
+    </>
   )
 }
 
-function ColumnType({ type }: { type?: string }): JSX.Element | null {
-  if (type === undefined) {
-    return null
-  }
+type RowButtonProps = { row: GridRow; onShow: (row: GridRow) => void }
 
-  return <span className="text-muted-foreground ml-2 font-normal">{type}</span>
+function RowButton({ row, onShow }: RowButtonProps): JSX.Element {
+  const number = row.number.toLocaleString('pt-BR')
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      aria-label={`Ver linha ${number}`}
+      className="w-full justify-end font-mono text-muted-foreground tabular-nums"
+      onClick={() => onShow(row)}
+    >
+      {number}
+    </Button>
+  )
 }

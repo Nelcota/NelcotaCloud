@@ -6,6 +6,7 @@ use tokio::time::{MissedTickBehavior, interval, timeout};
 use uuid::Uuid;
 
 use crate::app_state::AppState;
+use crate::modules::auth::session::auth_retention::prune_expired_auth;
 use crate::modules::tenants::audit::audit_retention::prune_expired_audit;
 use crate::modules::tenants::postgres::tenant_pool_registry::TenantPoolRegistry;
 use crate::modules::tenants::provisioning::tenant_repository::tenant_ids_after;
@@ -63,9 +64,9 @@ async fn prune_tenant(pools: &TenantPoolRegistry, tenant_id: Uuid) {
             Some(pool) => pool,
             None => return Ok(()),
         };
-        prune_expired_audit(&pool)
-            .await
-            .map_err(|error| error.to_string())
+        let (audit, auth) = tokio::join!(prune_expired_audit(&pool), prune_expired_auth(&pool));
+
+        audit.and(auth).map_err(|error| error.to_string())
     })
     .await;
 

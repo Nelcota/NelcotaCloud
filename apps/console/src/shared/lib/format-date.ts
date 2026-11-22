@@ -1,5 +1,6 @@
 const DATE_TIME = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 const DATE_ONLY = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short' })
+const TIME_ONLY = new Intl.DateTimeFormat('pt-BR', { timeStyle: 'short' })
 const UNKNOWN_DATE = '—'
 
 /** `Intl` throws on invalid dates; a bad value shows a dash instead of breaking the page. */
@@ -9,6 +10,11 @@ export function formatDateTime(isoDate: string): string {
 
 export function formatDate(isoDate: string): string {
   return formatWith(DATE_ONLY, isoDate)
+}
+
+/** The hour alone, for rows already grouped under their day. */
+export function formatTime(isoDate: string): string {
+  return formatWith(TIME_ONLY, isoDate)
 }
 
 function formatWith(format: Intl.DateTimeFormat, isoDate: string): string {

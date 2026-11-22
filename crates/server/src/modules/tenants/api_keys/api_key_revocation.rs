@@ -1,4 +1,4 @@
-use sqlx::{PgConnection, PgPool};
+use sqlx::PgConnection;
 use uuid::Uuid;
 
 use crate::modules::tenants::api_keys::api_key_kind::ApiKeyKind;
@@ -19,22 +19,19 @@ pub enum ApiKeyRevocationError {
 /// The tenant's active secret keys are locked first, so two revocations racing for the last
 /// two secret keys cannot both succeed.
 pub async fn revoke_api_key(
-    pool: &PgPool,
+    connection: &mut PgConnection,
     tenant_id: Uuid,
     key_id: Uuid,
 ) -> Result<(), ApiKeyRevocationError> {
-    let mut transaction = pool.begin().await?;
-    let active_secret_keys = lock_active_secret_keys(&mut transaction, tenant_id).await?;
+    let active_secret_keys = lock_active_secret_keys(connection, tenant_id).await?;
 
     if active_secret_keys.as_slice() == [key_id] {
         return Err(ApiKeyRevocationError::LastSecretKey);
     }
 
-    if mark_revoked(&mut transaction, tenant_id, key_id).await? == false {
+    if mark_revoked(connection, tenant_id, key_id).await? == false {
         return Err(ApiKeyRevocationError::NotFound);
     }
-
-    transaction.commit().await?;
 
     Ok(())
 }
@@ -44,7 +41,7 @@ async fn lock_active_secret_keys(
     tenant_id: Uuid,
 ) -> Result<Vec<Uuid>, sqlx::Error> {
     sqlx::query_scalar(
-        "SELECT id FROM tenant_api_keys WHERE tenant_id = $1 AND kind = $2 AND revoked_at IS NULL FOR UPDATE",
+        "SELECT id FROM tenant_api_keys WHERE tenant_id = $1 AND kind = $2 AND revoked_at IS NULL ORDER BY id FOR UPDATE",
     )
     .bind(tenant_id)
     .bind(ApiKeyKind::Secret.as_str())

@@ -1,5 +1,6 @@
 mod audit;
 pub mod avatar;
+mod csv_stream;
 pub mod email;
 pub(crate) mod integration;
 mod login;

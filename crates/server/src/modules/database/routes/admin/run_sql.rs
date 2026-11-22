@@ -14,7 +14,7 @@ use crate::shared::text::not_blank::check_not_blank;
 
 #[derive(Debug, Deserialize, ToSchema, Validate)]
 pub struct RunSqlRequest {
-    /// One or more statements, run in one transaction.
+    /// One or more statements in an editor-managed transaction. Savepoints are supported.
     #[validate(length(min = 1, max = 100000), custom(function = check_not_blank))]
     pub query: String,
 }

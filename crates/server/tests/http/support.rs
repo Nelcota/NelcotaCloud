@@ -1,7 +1,8 @@
 use std::error::Error;
 use std::future::IntoFuture;
-use std::net::SocketAddr;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
@@ -10,6 +11,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use server::app_config::AppConfig;
 use server::modules::oauth::provider::provider_endpoints::{OAuthEndpoints, ProviderEndpoints};
+use server::modules::storage::object_store::r2_config::R2Config;
 use server::router::build_router;
 use server::shared::crypto::hex_encoding::encode_hex;
 use server::shared::crypto::random_bytes::random_bytes;
@@ -31,6 +33,9 @@ pub type TestResult<T = ()> = Result<T, Box<dyn Error>>;
 const SECRET_BYTES: usize = 32;
 // All fixture APIs and workers share the same control plane and encryption key.
 static MASTER_KEY: LazyLock<String> = LazyLock::new(|| encode_hex(&random_bytes::<SECRET_BYTES>()));
+// Fixture clients share the control plane but should model independent client addresses.
+static NEXT_CLIENT_IP: LazyLock<AtomicU32> =
+    LazyLock::new(|| AtomicU32::new(u32::from_be_bytes(random_bytes::<4>())));
 // Include server-side causes of generic HTTP errors in the failing test's output.
 static TEST_TRACING: LazyLock<()> = LazyLock::new(|| {
     tracing_subscriber::fmt()
@@ -89,6 +94,7 @@ pub struct TestServer {
     _background: server::startup::background_tasks::BackgroundTasks,
     workers: JoinSet<()>,
     pub client: Client,
+    pub client_ip: Ipv4Addr,
     pub fake_github: FakeGitHub,
     /// Kept alive for the whole test: the server checks captcha tokens against it.
     _fake_turnstile: FakeTurnstile,
@@ -155,16 +161,31 @@ impl TestServer {
     }
 
     pub async fn start_with_google(google: Option<ProviderEndpoints>) -> TestResult<Self> {
-        Self::start_with_options(google, None).await
+        Self::start_with_options(google, None, None).await
     }
 
     pub async fn start_with_cache(cache_url: String) -> TestResult<Self> {
-        Self::start_with_options(None, Some(cache_url)).await
+        Self::start_with_options(None, Some(cache_url), None).await
+    }
+
+    pub async fn start_with_storage(endpoint: String) -> TestResult<Self> {
+        Self::start_with_r2(R2Config {
+            endpoint: &endpoint,
+            bucket: "test-files",
+            access_key_id: "test-key",
+            secret_access_key: "test-secret",
+        })
+        .await
+    }
+
+    pub async fn start_with_r2(config: R2Config<'_>) -> TestResult<Self> {
+        Self::start_with_options(None, None, Some(config)).await
     }
 
     async fn start_with_options(
         google: Option<ProviderEndpoints>,
         cache_url: Option<String>,
+        storage: Option<R2Config<'_>>,
     ) -> TestResult<Self> {
         LazyLock::force(&TEST_TRACING);
         let live_slot = Arc::clone(&LIVE_SERVERS).acquire_owned().await?;
@@ -197,6 +218,14 @@ impl TestServer {
                     .ok()
                     .filter(|url| url.trim().is_empty() == false)
             }),
+            storage_r2_bucket: storage.as_ref().map(|config| config.bucket.to_owned()),
+            storage_r2_access_key_id: storage
+                .as_ref()
+                .map(|config| config.access_key_id.to_owned()),
+            storage_r2_secret_access_key: storage
+                .as_ref()
+                .map(|config| config.secret_access_key.to_owned()),
+            storage_r2_endpoint: storage.map(|config| config.endpoint.to_owned()),
             platform_tenant_slug: Some(platform_slug.clone()),
             captcha_verify_url: Some(fake_turnstile.verify_url.clone()),
         };
@@ -214,8 +243,11 @@ impl TestServer {
             .into_future(),
         );
 
+        let [_, high, middle, low] = NEXT_CLIENT_IP.fetch_add(1, Ordering::Relaxed).to_be_bytes();
+        let client_ip = Ipv4Addr::new(127, high, middle, low);
         let client = Client::builder()
             .redirect(reqwest::redirect::Policy::none())
+            .local_address(IpAddr::V4(client_ip))
             .build()?;
 
         Ok(Self {
@@ -223,6 +255,7 @@ impl TestServer {
             _background: background,
             workers: JoinSet::new(),
             client,
+            client_ip,
             fake_github,
             _fake_turnstile: fake_turnstile,
             platform_slug,

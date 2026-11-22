@@ -1,8 +1,9 @@
 import {
   type UseMutationResult,
-  type UseQueryResult,
+  infiniteQueryOptions,
+  useInfiniteQuery,
   useMutation,
-  useQuery,
+  useMutationState,
   useQueryClient,
 } from '@tanstack/react-query'
 
@@ -19,8 +20,27 @@ function apiKeysQueryKey(projectId: string): readonly string[] {
   return ['projects', projectId, 'api-keys']
 }
 
-export function useApiKeysQuery(projectId: string): UseQueryResult<Schemas['ApiKeySummary'][]> {
-  return useQuery({ queryKey: apiKeysQueryKey(projectId), queryFn: () => listApiKeys(projectId) })
+function apiKeyPages(projectId: string) {
+  return infiniteQueryOptions({
+    queryKey: apiKeysQueryKey(projectId),
+    queryFn: ({ pageParam }) => listApiKeys(projectId, pageParam),
+    initialPageParam: null as string | null,
+    getNextPageParam: (page) => page.nextCursor,
+  })
+}
+
+export function useApiKeysQuery(projectId: string) {
+  return useInfiniteQuery({
+    ...apiKeyPages(projectId),
+    select: (data) => data.pages.at(0)?.keys ?? [],
+  })
+}
+
+export function useApiKeysHistoryQuery(projectId: string) {
+  return useInfiniteQuery({
+    ...apiKeyPages(projectId),
+    select: (data) => data.pages.flatMap((page) => page.keys),
+  })
 }
 
 export function useCreateApiKeyMutation(
@@ -46,5 +66,30 @@ export function useRevokeApiKeyMutation(projectId: string): UseMutationResult<vo
 export function useRotateSigningKeyMutation(
   projectId: string,
 ): UseMutationResult<Schemas['RotatedSigningKey'], Error, void> {
-  return useMutation({ mutationFn: () => rotateSigningKey(projectId) })
+  return useMutation({
+    mutationKey: signingKeyRotationKey(projectId),
+    mutationFn: () => rotateSigningKey(projectId),
+  })
+}
+
+function signingKeyRotationKey(projectId: string): readonly string[] {
+  return ['projects', projectId, 'signing-key-rotation']
+}
+
+/**
+ * When the signing key was last rotated from this console session, as an ISO date; the API
+ * does not report rotation dates, so `null` until someone rotates here.
+ */
+export function useLastSigningKeyRotation(projectId: string): string | null {
+  const rotations = useMutationState({
+    filters: { mutationKey: signingKeyRotationKey(projectId), status: 'success' },
+    select: (mutation) => mutation.state.submittedAt,
+  })
+  const latest = Math.max(0, ...rotations)
+
+  if (latest === 0) {
+    return null
+  }
+
+  return new Date(latest).toISOString()
 }

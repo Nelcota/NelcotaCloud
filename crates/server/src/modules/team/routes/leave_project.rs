@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::modules::team::member::ownership_changes::{MembershipTarget, leave_project};
+use crate::modules::team::member::team_access::TeamAccounts;
 use crate::modules::tenants::platform::platform_account::PlatformAccount;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
@@ -30,7 +31,8 @@ pub async fn leave(
         tenant_id: project_id,
         account_id: account.account_id,
     };
-    leave_project(&state.control_plane_pool, target).await?;
+    let mut accounts = TeamAccounts::open(&state).await?;
+    leave_project(&state.control_plane_pool, &mut accounts, target).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

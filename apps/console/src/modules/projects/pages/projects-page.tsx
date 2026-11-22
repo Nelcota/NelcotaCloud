@@ -1,34 +1,25 @@
-import { Link } from '@tanstack/react-router'
-import Plus from '~icons/solar/add-linear'
 import type { JSX } from 'react'
 
+import { NewProjectButton } from '@/modules/projects/components/new-project-button'
 import { ProjectList } from '@/modules/projects/components/project-list'
-import { useProjectsQuery } from '@/modules/projects/queries/use-projects'
+import { ProjectsSkeleton } from '@/modules/projects/components/projects-skeleton'
 import { ReceivedInvitations } from '@/modules/projects/components/received-invitations'
+import { useProjectsQuery } from '@/modules/projects/queries/use-projects'
 import type { components } from '@/shared/api/api-schema'
-import { buttonVariants } from '@/shared/ui/button-variants'
 import { LoadError } from '@/shared/ui/load-error'
 import { PageHeader } from '@/shared/ui/page-header'
-import { Skeleton } from '@/shared/ui/skeleton'
 
 type ProjectSummary = components['schemas']['ProjectSummary']
-
-const SKELETON_ROWS = ['a', 'b', 'c']
 
 export function ProjectsPage(): JSX.Element {
   const projects = useProjectsQuery()
 
   return (
-    <div className="grid gap-6">
+    <div className="flex flex-col gap-8">
       <PageHeader
         title="Projetos"
-        description="Cada projeto é o Auth de um app: usuários, chaves e login social próprios."
-        actions={
-          <Link to="/projects/new" className={buttonVariants()}>
-            <Plus />
-            Novo projeto
-          </Link>
-        }
+        description="Cada projeto tem seu próprio Auth, banco Postgres e chaves de API."
+        actions={<NewProjectButton />}
       />
       <LoadError error={projects.error} onRetry={() => projects.refetch()} />
       <ReceivedInvitations />
@@ -37,28 +28,15 @@ export function ProjectsPage(): JSX.Element {
   )
 }
 
-type ProjectsContentProps = {
+function ProjectsContent({
+  isPending,
+  projects,
+}: {
   isPending: boolean
   projects: ProjectSummary[] | undefined
-}
-
-function ProjectsContent({ isPending, projects }: ProjectsContentProps): JSX.Element | null {
+}): JSX.Element | null {
   if (isPending) {
-    return (
-      <div
-        aria-busy="true"
-        aria-label="Carregando projetos"
-        className="grid gap-px overflow-hidden rounded-xl border"
-      >
-        {SKELETON_ROWS.map((row) => (
-          <div key={row} className="bg-card flex items-center gap-4 px-5 py-5">
-            <Skeleton className="h-5 w-40" />
-            <Skeleton className="h-5 w-16 rounded-full" />
-            <Skeleton className="h-4 flex-1" />
-          </div>
-        ))}
-      </div>
-    )
+    return <ProjectsSkeleton />
   }
 
   if (projects === undefined) {

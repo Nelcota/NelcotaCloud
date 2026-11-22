@@ -1,7 +1,7 @@
 import type { JSX } from 'react'
 
-import { InlineCheckbox } from '@/modules/database/components/inline-checkbox'
 import { type ColumnDraft, canBeIdentity } from '@/modules/database/components/column-draft'
+import { CheckboxField } from '@/shared/ui/switch-field'
 
 type ColumnDraftFlagsProps = {
   draft: ColumnDraft
@@ -10,6 +10,8 @@ type ColumnDraftFlagsProps = {
   onChange: (change: Partial<ColumnDraft>) => void
 }
 
+const FLAG = 'w-auto'
+
 /** The yes-or-no traits of a column; the ones that do not apply are left out or locked. */
 export function ColumnDraftFlags({
   draft,
@@ -17,29 +19,33 @@ export function ColumnDraftFlags({
   onChange,
 }: ColumnDraftFlagsProps): JSX.Element {
   return (
-    <div className="flex flex-wrap gap-x-5 gap-y-1">
-      <InlineCheckbox
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-2.5">
+      <CheckboxField
+        className={FLAG}
         label="Lista ([])"
-        isChecked={draft.isArray}
-        onChange={(isArray) => onChange({ isArray })}
+        checked={draft.isArray}
+        onCheckedChange={(isArray) => onChange({ isArray })}
       />
-      <InlineCheckbox
+      <CheckboxField
+        className={FLAG}
         label="Aceita nulo"
-        isChecked={draft.isNullable}
-        isDisabled={draft.isPrimaryKey || draft.isIdentity}
-        onChange={(isNullable) => onChange({ isNullable })}
+        checked={draft.isNullable}
+        disabled={draft.isPrimaryKey || draft.isIdentity}
+        onCheckedChange={(isNullable) => onChange({ isNullable })}
       />
       <PrimaryKeyFlag draft={draft} canBePrimaryKey={canBePrimaryKey} onChange={onChange} />
-      <InlineCheckbox
+      <CheckboxField
+        className={FLAG}
         label="Numeração automática"
-        isChecked={draft.isIdentity}
-        isDisabled={canBeIdentity(draft) === false}
-        onChange={(isIdentity) => onChange({ isIdentity })}
+        checked={draft.isIdentity}
+        disabled={canBeIdentity(draft) === false}
+        onCheckedChange={(isIdentity) => onChange({ isIdentity })}
       />
-      <InlineCheckbox
+      <CheckboxField
+        className={FLAG}
         label="Único"
-        isChecked={draft.isUnique}
-        onChange={(isUnique) => onChange({ isUnique })}
+        checked={draft.isUnique}
+        onCheckedChange={(isUnique) => onChange({ isUnique })}
       />
     </div>
   )
@@ -55,10 +61,11 @@ function PrimaryKeyFlag({
   }
 
   return (
-    <InlineCheckbox
+    <CheckboxField
+      className={FLAG}
       label="Chave primária"
-      isChecked={draft.isPrimaryKey}
-      onChange={(isPrimaryKey) => onChange({ isPrimaryKey })}
+      checked={draft.isPrimaryKey}
+      onCheckedChange={(isPrimaryKey) => onChange({ isPrimaryKey })}
     />
   )
 }

@@ -3,11 +3,12 @@ use std::time::Duration;
 use reqwest::{Method, StatusCode};
 use serde_json::{Value, json};
 
-use super::support::{CACHE_KEY, CacheProject, cache_request};
+use super::support::{CACHE_KEY, CREDENTIAL_QUERY_TESTS, CacheProject, cache_request};
 use crate::support::{TestResult, TestServer, error_code, unique_email};
 
 #[tokio::test]
 async fn projects_opt_in_and_keep_values_and_credentials_isolated() -> TestResult {
+    let _guard = CREDENTIAL_QUERY_TESTS.read().await;
     let server = TestServer::start().await?;
     let (platform, owner) = server
         .create_platform_account(&unique_email("cache-owner"))
@@ -83,6 +84,41 @@ async fn projects_opt_in_and_keep_values_and_credentials_isolated() -> TestResul
     .await?;
     assert_eq!(deleted.status(), StatusCode::UNAUTHORIZED);
     first.drop().await?;
+    server.drop_tenant(&platform).await
+}
+
+#[tokio::test]
+async fn preserves_json_number_precision_on_write_and_read() -> TestResult {
+    const VALUE: &str = r#"{"decimal":25.234517478384078,"integer":100000000000000000001}"#;
+
+    let _guard = CREDENTIAL_QUERY_TESTS.read().await;
+    let server = TestServer::start().await?;
+    let (platform, owner) = server
+        .create_platform_account(&unique_email("cache-number"))
+        .await?;
+    let project = CacheProject::create(&server, &owner).await?;
+    project.set_enabled(true).await?;
+    let credential = project.issue().await?;
+
+    server
+        .client
+        .post(server.url("/cache/v1/set"))
+        .bearer_auth(&credential.token)
+        .header(reqwest::header::CONTENT_TYPE, "application/json")
+        .body(format!(r#"{{"key":"{CACHE_KEY}","value":{VALUE}}}"#))
+        .send()
+        .await?
+        .error_for_status()?;
+    let response = cache_request(
+        &server,
+        &credential.token,
+        ("get", json!({ "key": CACHE_KEY })),
+    )
+    .await?
+    .error_for_status()?;
+
+    assert_eq!(response.text().await?, format!(r#"{{"value":{VALUE}}}"#));
+    project.drop().await?;
     server.drop_tenant(&platform).await
 }
 

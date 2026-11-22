@@ -1,3 +1,4 @@
+import { countLabel } from '@/modules/database/components/count-label'
 import type { components } from '@/shared/api/api-schema'
 
 type TableOverview = components['schemas']['TableOverview']
@@ -18,13 +19,17 @@ export function isPlainTable(table: TableOverview): boolean {
   return table.kind === 'table'
 }
 
-/** The planner's estimate, or a dash before the table was ever analyzed. */
-export function estimatedRowsLabel(table: TableOverview): string {
+export function isRlsOff(table: TableOverview): boolean {
+  return isPlainTable(table) && table.rls_enabled === false
+}
+
+/** The planner's estimate, or `null` before the table was ever analyzed. */
+export function estimatedRowsLabel(table: TableOverview): string | null {
   const rows = table.estimated_rows
 
   if (rows === null || rows === undefined || rows < 0) {
-    return '—'
+    return null
   }
 
-  return rows.toLocaleString('pt-BR')
+  return `≈ ${countLabel(rows, 'linha', 'linhas')}`
 }

@@ -1,77 +1,80 @@
 import type { JSX } from 'react'
 
-import type { OAuthProviderName } from '@/modules/project-settings/api/configure-provider'
-import { ProviderCard } from '@/modules/project-settings/components/provider-card'
-import { useOAuthProvidersQuery } from '@/modules/project-settings/queries/use-oauth-providers'
+import { OAuthRedirectsPanel } from '@/modules/project-settings/components/oauth-redirects-panel'
+import { providersApiSnippets } from '@/modules/project-settings/components/providers-api-snippets'
+import { ProvidersTable } from '@/modules/project-settings/components/providers-table'
+import { useOAuthSettingsQuery } from '@/modules/project-settings/queries/use-oauth-providers'
+import { usePublishableKey } from '@/modules/project-settings/queries/use-publishable-key'
+import { API_BASE_URL } from '@/shared/api/api-base-url'
 import type { components } from '@/shared/api/api-schema'
 import { useProjectId } from '@/shared/routing/use-project-id'
+import { ApiSheet } from '@/shared/ui/api-sheet'
+import { IdChip } from '@/shared/ui/id-chip'
 import { LoadError } from '@/shared/ui/load-error'
 import { PageHeader } from '@/shared/ui/page-header'
-import { Skeleton } from '@/shared/ui/skeleton'
+import { Skeleton } from '@/shared/ui/primitives/skeleton'
 
-type ConfiguredProvider = components['schemas']['ConfiguredProvider']
+type ConfiguredProviders = components['schemas']['ConfiguredProviders']
 
-const PROVIDERS: readonly OAuthProviderName[] = ['google', 'github']
+const AUTHORIZE_URL = `${API_BASE_URL}/auth/v1/oauth/{provider}/authorize`
 
 export function ProvidersPage(): JSX.Element {
   const projectId = useProjectId()
-  const providers = useOAuthProvidersQuery(projectId)
+  const settings = useOAuthSettingsQuery(projectId)
+  const publishableKey = usePublishableKey(projectId)
 
   return (
-    <div className="grid max-w-5xl gap-6">
+    <div className="flex flex-col gap-8">
       <PageHeader
         title="Login social"
-        description="Deixe seus usuários entrarem com Google ou GitHub, usando os OAuth apps da sua conta. A URL de callback aparece ao configurar cada um."
-      />
-      <LoadError error={providers.error} onRetry={() => providers.refetch()} />
-      <ProviderCards
+        description="Google e GitHub com o app OAuth do próprio projeto, sempre com PKCE."
+        actions={
+          <ApiSheet
+            title="Login social pela API"
+            description="Abra o provedor e troque o code de volta pela sessão."
+            snippets={providersApiSnippets(publishableKey)}
+          />
+        }
+      >
+        <div className="flex flex-wrap gap-2">
+          <IdChip label="Authorize" value={AUTHORIZE_URL} isLabelVisible />
+          <IdChip label="Token" value={`${API_BASE_URL}/auth/v1/oauth/token`} isLabelVisible />
+        </div>
+      </PageHeader>
+      <LoadError error={settings.error} onRetry={() => settings.refetch()} />
+      <ProvidersBody
         projectId={projectId}
-        configured={providers.data}
-        hasFailed={providers.isError}
+        configured={settings.data}
+        hasFailed={settings.isError}
       />
     </div>
   )
 }
 
-type ProviderCardsProps = {
+type ProvidersBodyProps = {
   projectId: string
   /** `undefined` while loading. */
-  configured: ConfiguredProvider[] | undefined
+  configured: ConfiguredProviders | undefined
   hasFailed: boolean
 }
 
-function ProviderCards({
+function ProvidersBody({
   projectId,
   configured,
   hasFailed,
-}: ProviderCardsProps): JSX.Element | null {
+}: ProvidersBodyProps): JSX.Element | null {
   if (configured === undefined && hasFailed) {
     return null
   }
 
   if (configured === undefined) {
-    return (
-      <div
-        aria-busy="true"
-        aria-label="Carregando provedores"
-        className="grid gap-6 lg:grid-cols-2"
-      >
-        <Skeleton className="h-48 rounded-xl" />
-        <Skeleton className="h-48 rounded-xl" />
-      </div>
-    )
+    return <Skeleton className="h-48 rounded-xl" />
   }
 
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-2">
-      {PROVIDERS.map((provider) => (
-        <ProviderCard
-          key={provider}
-          projectId={projectId}
-          provider={provider}
-          configured={configured.find((entry) => entry.provider === provider) ?? null}
-        />
-      ))}
-    </div>
+    <>
+      <ProvidersTable projectId={projectId} configured={configured} />
+      <OAuthRedirectsPanel key={projectId} projectId={projectId} urls={configured.redirect_urls} />
+    </>
   )
 }

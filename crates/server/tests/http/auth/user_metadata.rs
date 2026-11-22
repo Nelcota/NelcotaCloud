@@ -50,6 +50,32 @@ fn token_claims(access_token: &str) -> TestResult<Value> {
 }
 
 #[tokio::test]
+async fn a_stale_metadata_update_preserves_the_current_document() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    let session = server
+        .sign_up(&tenant, &unique_email("metadata-conflict"))
+        .await?;
+    let body = json!({ "user_metadata": { "locale": "pt-BR" } });
+    let updated = update_own(&server, (&tenant, &session), body).await?;
+    assert_eq!(updated.status(), StatusCode::OK);
+
+    let outdated = json!({
+        "user_metadata": { "locale": "en-US" },
+        "expected_user_metadata": {}
+    });
+    let rejected = admin_update(&server, (&tenant, session.user.id), outdated).await?;
+    assert_eq!(rejected.status(), StatusCode::CONFLICT);
+
+    let current = server
+        .current_user(&tenant.publishable_key, &session.access_token)
+        .await?;
+    let body: Value = current.json().await?;
+    assert_eq!(field(&body, "/user_metadata/locale"), "pt-BR");
+    server.drop_tenant(&tenant).await
+}
+
+#[tokio::test]
 async fn users_replace_their_own_metadata_only() -> TestResult {
     let server = TestServer::start().await?;
     let tenant = server.create_tenant().await?;

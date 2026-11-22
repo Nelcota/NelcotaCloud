@@ -2,12 +2,12 @@ import User from '~icons/solar/user-linear'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
-import { ACTION_COPY, titleFor } from '@/modules/team/components/team-action-copy'
-import { MemberActionIllustration } from '@/modules/team/components/team-illustrations'
-import type { MemberAction } from '@/modules/team/components/team-row-actions'
 import type { ActionTarget } from '@/modules/team/components/action-target'
+import { ACTION_COPY, titleFor } from '@/modules/team/components/team-action-copy'
+import type { MemberAction } from '@/modules/team/components/team-row-actions'
 import type { ConfirmChange } from '@/shared/ui/confirm-change'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
+import { CheckboxField } from '@/shared/ui/switch-field'
 
 type MemberActionConfirmationProps = {
   action: MemberAction | null
@@ -18,7 +18,8 @@ type MemberActionConfirmationProps = {
 
 /**
  * Confirms one member action. "Tornar dono" offers "e deixar de ser dono": ticked, it becomes
- * a handover, shows both changes (theirs and yours) and confirms with a neutral button.
+ * a handover, whose title and description then say what you give up, shows both changes
+ * (theirs and yours) and confirms with a neutral button.
  */
 export function MemberActionConfirmation(props: MemberActionConfirmationProps): JSX.Element | null {
   const [isSteppingDown, setIsSteppingDown] = useState(false)
@@ -41,7 +42,6 @@ export function MemberActionConfirmation(props: MemberActionConfirmationProps): 
       isDestructive={copy.isDestructive}
       isWeighty={copy.isWeighty}
       change={changesFor(action, target)}
-      illustration={illustrationFor(action)}
       onConfirm={() => props.onConfirm(target, action)}
     >
       <StepDownChoice
@@ -65,20 +65,11 @@ function StepDownChoice({ isShown, isChecked, onChange }: StepDownChoiceProps): 
   }
 
   return (
-    <label className="hover:bg-muted/40 flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 text-sm transition-colors">
-      <input
-        type="checkbox"
-        checked={isChecked}
-        onChange={(event) => onChange(event.currentTarget.checked)}
-        className="accent-foreground mt-0.5 size-4 shrink-0 cursor-pointer"
-      />
-      <span className="grid gap-0.5">
-        <span className="font-medium">E deixar de ser dono (transferir o projeto)</span>
-        <span className="text-muted-foreground text-pretty">
-          Você vira membro na mesma hora. Só um dono pode devolver a propriedade a você.
-        </span>
-      </span>
-    </label>
+    <CheckboxField
+      label="E deixar de ser dono (transferir o projeto)"
+      checked={isChecked}
+      onCheckedChange={onChange}
+    />
   )
 }
 
@@ -105,13 +96,4 @@ function changesFor(action: MemberAction, target: ActionTarget): ConfirmChange[]
   }
 
   return [theirs, { subject: 'você', icon: User, from: 'Dono', to: 'Membro' }]
-}
-
-/** Role changes stay light; the picture is for what takes access away or hands the project over. */
-function illustrationFor(action: MemberAction): JSX.Element | undefined {
-  if (action === 'promote' || action === 'demote') {
-    return undefined
-  }
-
-  return <MemberActionIllustration action={action} />
 }

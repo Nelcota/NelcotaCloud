@@ -1,13 +1,13 @@
 import SearchX from '~icons/solar/magnifier-close-linear'
-import { Link } from '@tanstack/react-router'
 import type { JSX } from 'react'
 
 import { LoadedTable } from '@/modules/database/components/loaded-table'
 import { useSchemaQuery } from '@/modules/database/queries/use-schema-query'
-import { buttonVariants } from '@/shared/ui/button-variants'
+import { RouterLink } from '@/shared/routing/router-link'
 import { EmptyState } from '@/shared/ui/empty-state'
 import { LoadError } from '@/shared/ui/load-error'
-import { Skeleton } from '@/shared/ui/skeleton'
+import { Button } from '@/shared/ui/primitives/button'
+import { Skeleton } from '@/shared/ui/primitives/skeleton'
 
 type TableRef = { projectId: string; tableName: string }
 
@@ -26,25 +26,32 @@ export function TableDetail({ projectId, tableName }: TableRef): JSX.Element {
     return <TableNotFound projectId={projectId} />
   }
 
-  return <LoadedTable key={table.name} projectId={projectId} table={table} tables={tables} />
+  return (
+    <LoadedTable
+      key={`${projectId}:${table.name}`}
+      projectId={projectId}
+      table={table}
+      tables={tables}
+    />
+  )
 }
 
 function TableNotFound({ projectId }: { projectId: string }): JSX.Element {
   return (
-    <EmptyState
-      icon={SearchX}
-      title="Tabela não encontrada"
-      description="Ela foi excluída ou o link está errado."
-      action={
-        <Link
-          to="/projects/$projectId/database"
-          params={{ projectId }}
-          className={buttonVariants({ variant: 'outline' })}
-        >
-          Ver tabelas
-        </Link>
-      }
-    />
+    <div className="flex flex-col gap-6">
+      <h1 className="sr-only">Tabela não encontrada</h1>
+      <EmptyState
+        isFramed
+        icon={<SearchX aria-hidden />}
+        title="Tabela não encontrada"
+        description="Ela foi excluída ou o link está errado."
+        actions={
+          <Button asChild variant="outline" size="sm">
+            <RouterLink href={`/projects/${projectId}/database`}>Ver tabelas</RouterLink>
+          </Button>
+        }
+      />
+    </div>
   )
 }
 
@@ -56,9 +63,11 @@ function TableLoading({ error, onRetry }: TableLoadingProps): JSX.Element {
   }
 
   return (
-    <div aria-busy="true" aria-label="Carregando tabela" className="grid gap-6">
-      <Skeleton className="h-10 w-72 max-w-full" />
-      <Skeleton className="h-64 rounded-xl" />
+    <div role="status" aria-label="Carregando tabela" className="flex flex-col gap-5">
+      <Skeleton className="h-4 w-20" />
+      <Skeleton className="h-8 w-72" />
+      <Skeleton className="h-9 w-full max-w-sm" />
+      <Skeleton className="h-72 rounded-xl" />
     </div>
   )
 }

@@ -1,12 +1,10 @@
-import ExternalLink from '~icons/solar/square-arrow-right-up-linear'
+import { ArrowUpRight } from 'lucide-react'
 import type { JSX } from 'react'
 
-import { Skeleton } from '@/shared/ui/skeleton'
-
-/** The app this project serves; opens in a new tab, since the console stays where it is. */
-export function SiteUrl({ url }: { url: string | undefined }): JSX.Element {
+/** The app this project serves, as a chip of the facts bar; opens in a new tab. */
+export function SiteUrl({ url }: { url: string | undefined }): JSX.Element | null {
   if (url === undefined) {
-    return <Skeleton className="h-4 w-48" />
+    return null
   }
 
   return (
@@ -14,10 +12,12 @@ export function SiteUrl({ url }: { url: string | undefined }): JSX.Element {
       href={url}
       target="_blank"
       rel="noreferrer"
-      className="hover:text-foreground inline-flex items-center gap-1 underline-offset-4 transition-colors hover:underline"
+      className="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-md border bg-surface px-2 py-1 text-xs transition-colors hover:border-foreground/30 hover:text-foreground"
     >
-      {url}
-      <ExternalLink className="size-4" />
+      <span className="shrink-0 text-muted-foreground">Site</span>
+      <span className="min-w-0 truncate font-mono">{url}</span>
+      <ArrowUpRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+      <span className="sr-only">(abre em nova aba)</span>
     </a>
   )
 }

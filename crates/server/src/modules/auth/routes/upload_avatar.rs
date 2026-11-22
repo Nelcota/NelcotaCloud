@@ -43,8 +43,9 @@ pub async fn upload_avatar(
     let tenant = &authenticated.tenant;
     state
         .rate_limits
-        .avatar_change
-        .check(tenant.tenant_id, authenticated.claims.sub)?;
+        .auth
+        .check_avatar(tenant.tenant_id, authenticated.claims.sub)
+        .await?;
     let user_id = authenticated.claims.sub;
     let user = find_user_by_id(&tenant.pool, user_id).await?;
     let mut user = user.ok_or(TenantsRejection::InvalidAccessToken)?;

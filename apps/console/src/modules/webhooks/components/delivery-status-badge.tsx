@@ -1,21 +1,13 @@
 import type { JSX } from 'react'
 
+import { DELIVERY_STATUS } from '@/modules/webhooks/components/delivery-status'
 import type { components } from '@/shared/api/api-schema'
-import { Badge } from '@/shared/ui/badge'
+import { StatusBadge } from '@/shared/ui/status-badge'
 
 type DeliveryStatus = components['schemas']['DeliveryStatus']
 
-const STATUS_BADGES: Record<
-  DeliveryStatus,
-  { label: string; variant: 'success' | 'warning' | 'destructive' }
-> = {
-  delivered: { label: 'Entregue', variant: 'success' },
-  pending: { label: 'Tentando de novo', variant: 'warning' },
-  failed: { label: 'Falhou', variant: 'destructive' },
-}
-
 export function DeliveryStatusBadge({ status }: { status: DeliveryStatus }): JSX.Element {
-  const badge = STATUS_BADGES[status]
+  const badge = DELIVERY_STATUS[status]
 
-  return <Badge variant={badge.variant}>{badge.label}</Badge>
+  return <StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>
 }

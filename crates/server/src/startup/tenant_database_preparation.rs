@@ -1,5 +1,6 @@
 use futures_util::stream::{self, StreamExt, TryStreamExt};
 use sqlx::PgPool;
+use uuid::Uuid;
 
 use crate::modules::tenants::postgres::tenant_database_server::TenantDatabaseServer;
 use crate::modules::tenants::provisioning::tenant_repository::tenant_slugs_after;
@@ -18,12 +19,12 @@ pub(super) async fn prepare_existing_tenants(
     loop {
         let slugs = tenant_slugs_after(pool, &after, PAGE_SIZE).await?;
         let last = match slugs.last() {
-            Some(last) => last.clone(),
+            Some((slug, _)) => slug.clone(),
             None => return Ok(()),
         };
 
         stream::iter(slugs)
-            .map(|slug| prepare_tenant(server, slug))
+            .map(|tenant| prepare_tenant(pool, server, tenant))
             .buffer_unordered(PARALLEL_MIGRATIONS)
             .try_for_each(|()| std::future::ready(Ok(())))
             .await?;
@@ -32,12 +33,14 @@ pub(super) async fn prepare_existing_tenants(
 }
 
 async fn prepare_tenant(
+    pool: &PgPool,
     server: &TenantDatabaseServer<'_>,
-    slug: String,
+    (slug, id): (String, Uuid),
 ) -> Result<(), StartupError> {
     let tenant_slug = TenantSlug::parse(&slug)?;
     server
-        .migrate_database(&tenant_slug)
+        .prepare_registered_database(pool, &tenant_slug, id)
         .await
+        .map(|_| ())
         .map_err(|source| StartupError::TenantMigration { slug, source })
 }

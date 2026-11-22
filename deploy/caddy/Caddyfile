@@ -27,10 +27,24 @@
 		Strict-Transport-Security "max-age=31536000"
 		-Server
 	}
-	# Vite fingerprints asset names, so they never change under the same URL.
-	header /assets/* Cache-Control "public, max-age=31536000, immutable"
-	header / Cache-Control "no-cache"
+	handle /assets/* {
+		# Only existing, fingerprinted assets get the long cache lifetime.
+		header {
+			Cache-Control "public, max-age=31536000, immutable"
+			match status 2xx 304
+		}
+		file_server
+	}
 
-	try_files {path} /index.html
-	file_server
+	handle {
+		# A direct visit to a nested console route must revalidate the HTML too.
+		header Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+
+	handle_errors {
+		header Cache-Control "no-store"
+		respond "{err.status_text}" {err.status_code}
+	}
 }

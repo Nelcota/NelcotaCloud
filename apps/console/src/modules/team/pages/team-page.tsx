@@ -1,52 +1,86 @@
 import type { JSX } from 'react'
 
+import { invitationDeliveryMessage } from '@/modules/team/components/invitation-delivery-copy'
 import { InviteDialog } from '@/modules/team/components/invite-dialog'
+import { teamApiSnippets } from '@/modules/team/components/team-api-snippets'
 import { TeamBrowser } from '@/modules/team/components/team-browser'
+import { TeamFacts } from '@/modules/team/components/team-facts'
+import { TeamSkeleton } from '@/modules/team/components/team-skeleton'
 import { useTeamQuery } from '@/modules/team/queries/use-team'
 import type { components } from '@/shared/api/api-schema'
 import { showFlash } from '@/shared/lib/flash-notice'
 import { useProjectId } from '@/shared/routing/use-project-id'
+import { ApiSheet } from '@/shared/ui/api-sheet'
 import { LoadError } from '@/shared/ui/load-error'
 import { PageHeader } from '@/shared/ui/page-header'
-import { Skeleton } from '@/shared/ui/skeleton'
 
 type TeamView = components['schemas']['TeamView']
-
-const SKELETON_ROWS = ['a', 'b']
 
 export function TeamPage(): JSX.Element {
   const projectId = useProjectId()
   const team = useTeamQuery(projectId)
 
   return (
-    <div className="grid gap-6">
+    <div className="flex flex-col gap-8">
       <PageHeader
         title="Equipe"
-        description="As pessoas que gerenciam este projeto no console."
-        actions={<InviteAction team={team.data} projectId={projectId} />}
-      />
+        description={<TeamCount team={team.data} />}
+        actions={
+          <>
+            <ApiSheet title="Equipe pela API" snippets={teamApiSnippets(projectId)} />
+            <InviteAction projectId={projectId} team={team.data} />
+          </>
+        }
+      >
+        <TeamFacts projectId={projectId} />
+      </PageHeader>
       <LoadError error={team.error} onRetry={() => team.refetch()} />
       <TeamContent projectId={projectId} team={team.data} hasFailed={team.isError} />
     </div>
   )
 }
 
+function TeamCount({ team }: { team: TeamView | undefined }): JSX.Element {
+  if (team === undefined) {
+    return <span>Quem gerencia este projeto no console.</span>
+  }
+
+  return (
+    <span className="tabular-nums">
+      {peopleLabel(team.members.length)} com acesso · {invitationsLabel(team.invitations.length)}
+    </span>
+  )
+}
+
+function peopleLabel(count: number): string {
+  if (count === 1) {
+    return '1 pessoa'
+  }
+
+  return `${count} pessoas`
+}
+
+function invitationsLabel(count: number): string {
+  if (count === 1) {
+    return '1 convite pendente'
+  }
+
+  return `${count} convites pendentes`
+}
+
 /** Only owners invite; members see the team without the button. */
-function InviteAction({
-  team,
-  projectId,
-}: {
-  team: TeamView | undefined
+function InviteAction(props: {
   projectId: string
+  team: TeamView | undefined
 }): JSX.Element | null {
-  if (team?.can_manage !== true) {
+  if (props.team === undefined || props.team.can_manage === false) {
     return null
   }
 
   return (
     <InviteDialog
-      projectId={projectId}
-      onInvited={(email) => showFlash(`Convite enviado para ${email}.`)}
+      projectId={props.projectId}
+      onInvited={(invitation) => showFlash(invitationDeliveryMessage(invitation))}
     />
   )
 }
@@ -67,24 +101,4 @@ function TeamContent({ projectId, team, hasFailed }: TeamContentProps): JSX.Elem
   }
 
   return <TeamBrowser projectId={projectId} team={team} />
-}
-
-/** Shaped like the table it stands for, header row included, so nothing jumps on load. */
-function TeamSkeleton(): JSX.Element {
-  return (
-    <div
-      aria-busy="true"
-      aria-label="Carregando equipe"
-      className="grid gap-px overflow-hidden rounded-xl border"
-    >
-      <div className="bg-foreground/10 h-12" />
-      {SKELETON_ROWS.map((row) => (
-        <div key={row} className="bg-card flex items-center gap-4 px-5 py-4">
-          <Skeleton className="size-10 rounded-full" />
-          <Skeleton className="h-5 w-56" />
-          <Skeleton className="ml-auto size-10 rounded-md" />
-        </div>
-      ))}
-    </div>
-  )
 }

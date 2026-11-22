@@ -1,27 +1,33 @@
 import type { JSX } from 'react'
 
-import { FormField } from '@/shared/ui/form-field'
+import { TextField } from '@/shared/ui/text-field'
+
+/** Six digits, plus the space some apps show in the middle ("123 456"). */
+const MAX_CODE_LENGTH = 7
+const NOT_CODE_CHARACTERS = /[^0-9 ]/g
 
 type TotpCodeFieldProps = {
   value: string
   onChange: (value: string) => void
-  autoFocus?: boolean
+  hasAutoFocus?: boolean
 }
 
 /** The six digits from an authenticator app. */
-export function TotpCodeField({ value, onChange, autoFocus }: TotpCodeFieldProps): JSX.Element {
+export function TotpCodeField({ value, onChange, hasAutoFocus }: TotpCodeFieldProps): JSX.Element {
   return (
-    <FormField
+    <TextField
       label="Código do autenticador"
       inputMode="numeric"
       autoComplete="one-time-code"
-      pattern="[0-9 ]{6,7}"
       required
-      autoFocus={autoFocus}
-      maxLength={7}
-      className="max-w-48 font-mono tracking-[0.3em]"
+      autoFocus={hasAutoFocus}
+      className="max-w-52 [&_input]:h-10 [&_input]:font-mono [&_input]:tracking-[0.2em]"
       value={value}
-      onChange={(event) => onChange(event.target.value)}
+      onChange={(event) => onChange(codeOf(event.target.value))}
     />
   )
+}
+
+function codeOf(typed: string): string {
+  return typed.replace(NOT_CODE_CHARACTERS, '').slice(0, MAX_CODE_LENGTH)
 }

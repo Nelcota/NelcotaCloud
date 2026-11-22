@@ -1,36 +1,50 @@
-import type { IconComponent } from '@/shared/ui/icon-component'
 import type { JSX, ReactNode } from 'react'
 
+import { cn } from '@/shared/lib/utils'
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/shared/ui/primitives/empty'
+
 type EmptyStateProps = {
-  icon: IconComponent
-  title: string
-  description: string
-  action?: ReactNode
+  title: ReactNode
+  description?: ReactNode
+  icon?: ReactNode
+  actions?: ReactNode
+  isCompact?: boolean
+  /** A dashed frame, for an empty list that stands alone on the page. */
+  isFramed?: boolean
 }
 
-/** What a list shows when it has nothing yet: what would be here, and how to add the first one. */
+/** What an empty list means and the action that fills it. */
 export function EmptyState({
-  icon: Icon,
   title,
   description,
-  action,
+  icon,
+  actions,
+  isCompact,
+  isFramed,
 }: EmptyStateProps): JSX.Element {
   return (
-    <div className="flex flex-col items-center rounded-xl border border-dashed px-6 py-12 text-center">
-      <h2 className="flex items-center gap-2 text-sm">
-        <Icon aria-hidden="true" className="text-muted-foreground size-5" />
-        {title}
-      </h2>
-      <p className="text-muted-foreground mt-1 max-w-sm text-sm text-pretty">{description}</p>
-      <EmptyAction action={action} />
-    </div>
+    <Empty
+      className={cn(
+        'gap-4',
+        isCompact === true && 'p-6 md:p-6',
+        isFramed === true && 'border border-dashed border-muted-foreground/30 bg-card/40',
+      )}
+    >
+      <EmptyHeader>
+        {icon !== undefined && <EmptyMedia variant="icon">{icon}</EmptyMedia>}
+        <EmptyTitle>{title}</EmptyTitle>
+        {description !== undefined && <EmptyDescription>{description}</EmptyDescription>}
+      </EmptyHeader>
+      {actions !== undefined && (
+        <EmptyContent className="flex-row flex-wrap justify-center">{actions}</EmptyContent>
+      )}
+    </Empty>
   )
-}
-
-function EmptyAction({ action }: { action?: ReactNode }): JSX.Element | null {
-  if (action === undefined) {
-    return null
-  }
-
-  return <div className="mt-5">{action}</div>
 }

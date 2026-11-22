@@ -1,20 +1,8 @@
 import type { JSX } from 'react'
 
-import { cn } from '@/shared/lib/class-names'
-
 /**
- * The NelcotaCloud mark. The logo is white, so it sits on a dark tile that keeps it readable
- * in the light theme too (the same tile as the favicon).
+ * The favicon doubles as a decorative brand mark next to the product name.
  */
-export function LogoMark({ className }: { className?: string }): JSX.Element {
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center justify-center rounded-lg bg-[#18181b] p-1.5',
-        className,
-      )}
-    >
-      <img src="/nelcota-logo.png" alt="" width={256} height={256} className="size-full" />
-    </span>
-  )
+export function LogoMark({ size = 32 }: { size?: 24 | 32 | 48 }): JSX.Element {
+  return <img src="/favicon.png" alt="" width={size} height={size} className="rounded-md" />
 }

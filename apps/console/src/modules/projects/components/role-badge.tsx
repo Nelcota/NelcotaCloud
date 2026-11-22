@@ -1,18 +1,13 @@
 import Crown from '~icons/solar/crown-minimalistic-linear'
 import type { JSX } from 'react'
 
-import { Badge } from '@/shared/ui/badge'
+import { StatusBadge } from '@/shared/ui/status-badge'
 
-/** A role is what someone is, not a state: neutral, with the crown that "Tornar dono" uses. */
+/** The account's role on a project card or row; the owner keeps the crown of the transfer action. */
 export function RoleBadge({ role }: { role: 'owner' | 'member' }): JSX.Element {
   if (role === 'owner') {
-    return (
-      <Badge>
-        <Crown aria-hidden="true" />
-        Dono
-      </Badge>
-    )
+    return <StatusBadge icon={<Crown aria-hidden />}>Dono</StatusBadge>
   }
 
-  return <Badge>Membro</Badge>
+  return <StatusBadge>Membro</StatusBadge>
 }

@@ -9,7 +9,11 @@ use crate::modules::auth::mfa::factor_code_check::{
 use crate::modules::auth::mfa::mfa_factor_repository::delete_mfa_factor;
 use crate::modules::auth::rejection::auth_rejection::AuthRejection;
 use crate::modules::auth::session::authenticated_user::AuthenticatedUser;
+use crate::modules::auth::session::session_access::require_active_session;
 use crate::modules::auth::user::user_events::{UserChange, record_user_change};
+use crate::modules::auth::user::user_locks::lock_user_by_id;
+use crate::modules::tenants::audit::audit_entry::NewAuditEvent;
+use crate::modules::tenants::audit::audit_recorder::insert_audit_event;
 use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
 use crate::modules::webhooks::outbox::webhook_recorder::WebhookRecorder;
 use crate::shared::http::api_error::ApiError;
@@ -27,12 +31,14 @@ pub async fn activate_factor(
     access: &FactorCodeAccess<'_>,
     webhooks: &WebhookRecorder,
     request: &FactorCodeRequest<'_>,
+    audit: NewAuditEvent,
 ) -> Result<(), ApiError> {
     let tenant = &request.authenticated.tenant;
     let mut transaction = tenant.pool.begin().await?;
     require_code(access, &mut transaction, (request, FactorState::Pending)).await?;
     let change = mfa_change(request);
     record_user_change(&mut transaction, webhooks, change).await?;
+    insert_audit_event(&mut *transaction, audit).await?;
     transaction.commit().await?;
 
     Ok(())
@@ -43,6 +49,7 @@ pub async fn disable_factor(
     access: &FactorCodeAccess<'_>,
     webhooks: &WebhookRecorder,
     request: &FactorCodeRequest<'_>,
+    audit: NewAuditEvent,
 ) -> Result<(), ApiError> {
     let authenticated = request.authenticated;
     let tenant = &authenticated.tenant;
@@ -50,6 +57,7 @@ pub async fn disable_factor(
     require_code(access, &mut transaction, (request, FactorState::Verified)).await?;
     delete_mfa_factor(&mut *transaction, authenticated.claims.sub).await?;
     record_user_change(&mut transaction, webhooks, mfa_change(request)).await?;
+    insert_audit_event(&mut *transaction, audit).await?;
     transaction.commit().await?;
 
     Ok(())
@@ -77,7 +85,9 @@ async fn require_code(
         email: &claims.email,
         client_ip: request.client_ip,
     };
-    access.limiter.check(&attempt)?;
+    access.limiter.check_mfa(&attempt).await?;
+    lock_user_by_id(connection, claims.sub).await?;
+    require_active_session(&mut *connection, claims.sub, claims.sid).await?;
     let check = FactorCodeCheck {
         tenant_id,
         user_id: claims.sub,

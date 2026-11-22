@@ -7,6 +7,16 @@ const DEFAULT_MESSAGE = 'The OAuth login failed'
 const MESSAGES: ReadonlyMap<string, string> = new Map([
   ['access_denied', 'The login was cancelled at the provider'],
   ['email_not_verified', 'The provider account has no verified email'],
+  [
+    'email_confirmation_required',
+    'The provider cannot confirm current ownership of this email. Sign in using an email-based method.',
+  ],
+  ['oauth_provider_changed', 'The OAuth provider settings changed. Start a new sign-in.'],
+  [
+    'temporarily_unavailable',
+    'The OAuth provider is temporarily unavailable. Try signing in again.',
+  ],
+  ['server_error', 'The OAuth sign-in could not be completed. Try signing in again.'],
   ['account_conflict', 'This email is already linked to another account of this provider'],
   ['missing_oauth_code', 'The callback URL has neither a code nor an error'],
   ['missing_pkce_verifier', 'No OAuth login was started in this browser'],

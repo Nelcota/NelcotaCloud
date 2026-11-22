@@ -1,10 +1,13 @@
-import Plus from '~icons/solar/add-linear'
-import PlugCircle from '~icons/solar/plug-circle-linear'
 import type { JSX } from 'react'
+import { useState } from 'react'
 
-import { EndpointCard } from '@/modules/webhooks/components/endpoint-card'
-import { EndpointFormDialog } from '@/modules/webhooks/components/endpoint-form-dialog'
+import { CreateEndpointButton } from '@/modules/webhooks/components/create-endpoint-button'
+import type { EndpointFormValues } from '@/modules/webhooks/components/endpoint-form-dialog'
+import type { LastRotation } from '@/modules/webhooks/components/endpoint-panel-types'
+import { useEndpointSelection } from '@/modules/webhooks/components/use-endpoint-selection'
 import { WebhookSecretNotice } from '@/modules/webhooks/components/webhook-secret-notice'
+import { webhookApiSnippets } from '@/modules/webhooks/components/webhook-api-snippets'
+import { WebhooksContent } from '@/modules/webhooks/components/webhooks-content'
 import {
   useCreateWebhookEndpointMutation,
   useRotateWebhookSecretMutation,
@@ -12,12 +15,10 @@ import {
 } from '@/modules/webhooks/queries/use-webhook-endpoints'
 import type { components } from '@/shared/api/api-schema'
 import { useProjectId } from '@/shared/routing/use-project-id'
-import { EmptyState } from '@/shared/ui/empty-state'
+import { ApiSheet } from '@/shared/ui/api-sheet'
 import { LoadError } from '@/shared/ui/load-error'
 import { PageHeader } from '@/shared/ui/page-header'
-import { Skeleton } from '@/shared/ui/skeleton'
 
-type WebhookEndpointView = components['schemas']['WebhookEndpointView']
 type WithSecret = components['schemas']['WebhookEndpointWithSecret']
 
 /** Most projects have at most a few receivers; the API allows five. */
@@ -28,47 +29,61 @@ export function WebhooksPage(): JSX.Element {
   const endpoints = useWebhookEndpointsQuery(projectId)
   const creation = useCreateWebhookEndpointMutation(projectId)
   const rotation = useRotateWebhookSecretMutation(projectId)
+  const selection = useEndpointSelection(endpoints.data)
+  const [lastRotation, setLastRotation] = useState<LastRotation | null>(null)
+  const secret = revealedSecret(creation.data ?? rotation.data)
+  const canIssueSecret =
+    secret === undefined && creation.isPending === false && rotation.isPending === false
   const count = endpoints.data?.length ?? 0
-  const createButton = (
-    <EndpointFormDialog
-      title="Novo endpoint"
-      submitLabel="Criar endpoint"
-      initial={{ url: '', event_types: ['user.created'] }}
-      onSubmit={(body) => creation.mutateAsync(body)}
-      trigger={{
-        label: 'Novo endpoint',
-        icon: Plus,
-        variant: 'default',
-        size: 'default',
-        isDisabled: creation.isPending || count >= MAX_ENDPOINTS,
-      }}
-    />
-  )
+
+  // The new endpoint opens at once, so its secret and its panel are seen together.
+  async function create(values: EndpointFormValues): Promise<void> {
+    const created = await creation.mutateAsync(values)
+    selection.select(created.endpoint.id)
+  }
+
+  async function rotate(endpointId: string): Promise<void> {
+    await rotation.mutateAsync(endpointId)
+    setLastRotation({ endpointId, rotatedAt: Date.now() })
+  }
 
   return (
-    <div className="grid max-w-3xl gap-6">
+    <div className="flex flex-col gap-8">
       <PageHeader
         title="Webhooks"
-        description="Seu servidor recebe um POST assinado quando um usuário é criado, alterado, bloqueado ou excluído. Falhas são reenviadas por até 36 horas."
-        actions={createButton}
+        description="Eventos assinados para o seu servidor, no formato Standard Webhooks."
+        actions={
+          <>
+            <ApiSheet title="Webhooks pela API" snippets={webhookApiSnippets()} />
+            <CreateEndpointButton
+              creator={{
+                isDisabled: canIssueSecret === false || count >= MAX_ENDPOINTS,
+                onCreate: create,
+              }}
+            />
+          </>
+        }
       />
       <LoadError error={endpoints.error} onRetry={() => endpoints.refetch()} />
       <WebhookSecretNotice
-        revealed={revealedSecret(creation.data ?? rotation.data)}
+        revealed={secret}
         onDismiss={() => {
           creation.reset()
           rotation.reset()
         }}
       />
-      <EndpointList
+      <WebhooksContent
         projectId={projectId}
         endpoints={endpoints.data}
         hasFailed={endpoints.isError}
-        isRotating={rotation.isPending}
-        onRotate={async (endpointId) => {
-          await rotation.mutateAsync(endpointId)
+        limit={MAX_ENDPOINTS}
+        selection={selection}
+        rotation={{
+          canRotate: canIssueSecret,
+          isRotating: rotation.isPending,
+          lastRotation,
+          onRotate: rotate,
         }}
-        emptyAction={createButton}
       />
     </div>
   )
@@ -82,48 +97,4 @@ function revealedSecret(
   }
 
   return { url: created.endpoint.url, secret: created.secret }
-}
-
-type EndpointListProps = {
-  projectId: string
-  endpoints: WebhookEndpointView[] | undefined
-  hasFailed: boolean
-  isRotating: boolean
-  onRotate: (endpointId: string) => Promise<void>
-  emptyAction: JSX.Element
-}
-
-function EndpointList(props: EndpointListProps): JSX.Element | null {
-  if (props.endpoints === undefined && props.hasFailed) {
-    return null
-  }
-
-  if (props.endpoints === undefined) {
-    return <Skeleton className="h-40 rounded-xl" />
-  }
-
-  if (props.endpoints.length === 0) {
-    return (
-      <EmptyState
-        icon={PlugCircle}
-        title="Nenhum endpoint"
-        description="Adicione a URL do seu servidor para receber os eventos dos usuários deste projeto."
-        action={props.emptyAction}
-      />
-    )
-  }
-
-  return (
-    <div className="grid gap-4">
-      {props.endpoints.map((endpoint) => (
-        <EndpointCard
-          key={endpoint.id}
-          projectId={props.projectId}
-          endpoint={endpoint}
-          isRotating={props.isRotating}
-          onRotate={() => props.onRotate(endpoint.id)}
-        />
-      ))}
-    </div>
-  )
 }

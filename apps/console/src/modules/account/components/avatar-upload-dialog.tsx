@@ -7,18 +7,17 @@ import { AvatarFilePicker } from '@/modules/account/components/avatar-file-picke
 import { useUploadAvatarMutation } from '@/modules/account/queries/use-avatar'
 import type { PixelArea } from '@/shared/lib/crop-image'
 import { usePickedImage } from '@/shared/lib/use-picked-image'
-import { Button } from '@/shared/ui/button'
+import { ErrorAlert } from '@/shared/ui/error-alert'
+import { PendingButton } from '@/shared/ui/pending-button'
+import { Button } from '@/shared/ui/primitives/button'
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-} from '@/shared/ui/dialog'
-import { ErrorAlert } from '@/shared/ui/error-alert'
+} from '@/shared/ui/primitives/dialog'
 
 /** Opens the modal to choose an image, frame it in the circle and save it as the photo. */
 export function AvatarUploadDialog({ triggerLabel }: { triggerLabel: string }): JSX.Element {
@@ -27,15 +26,11 @@ export function AvatarUploadDialog({ triggerLabel }: { triggerLabel: string }): 
   const [area, setArea] = useState<PixelArea | null>(null)
   const upload = useUploadAvatarMutation()
 
-  /** Cleared after the closing animation, so the dialog does not flash back to the picker. */
-  function resetWhenClosed(open: boolean): void {
-    if (open) {
-      return
-    }
-
-    pick(null)
-    setArea(null)
+  /** Cleared on opening rather than closing, so the closing dialog does not flash the picker. */
+  function open(): void {
+    chooseAnother()
     upload.reset()
+    setIsOpen(true)
   }
 
   function chooseAnother(): void {
@@ -52,32 +47,41 @@ export function AvatarUploadDialog({ triggerLabel }: { triggerLabel: string }): 
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen} onOpenChangeComplete={resetWhenClosed}>
-      <DialogTrigger render={<Button size="sm" variant="outline" />}>
-        <Camera />
+    <>
+      <Button type="button" onClick={open}>
+        <Camera aria-hidden data-icon="inline-start" />
         {triggerLabel}
-      </DialogTrigger>
-      <DialogContent className="gap-6 sm:max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>Foto de perfil</DialogTitle>
-          <DialogDescription>Arraste a foto para enquadrá-la no círculo.</DialogDescription>
-        </DialogHeader>
-        <DialogBody imageUrl={picked?.url ?? null} onPick={pick} onAreaChange={setArea} />
-        <ErrorAlert error={upload.error} />
-        <DialogFooter>
-          <ChooseAnotherButton isVisible={picked !== null} onClick={() => chooseAnother()} />
-          <DialogClose render={<Button variant="outline" />}>Cancelar</DialogClose>
-          <Button
-            onClick={save}
-            disabled={area === null || upload.isPending}
-            aria-busy={upload.isPending}
-            className="aria-busy:cursor-progress"
-          >
-            <SaveLabel isSaving={upload.isPending} />
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </Button>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent
+          className="sm:max-w-xl"
+          onPointerDownOutside={(event) => event.preventDefault()}
+        >
+          <DialogHeader className="pe-8">
+            <DialogTitle>Foto de perfil</DialogTitle>
+            <DialogDescription>
+              Escolha uma imagem e ajuste o enquadramento arrastando ou usando os botões de posição.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody imageUrl={picked?.url ?? null} onPick={pick} onAreaChange={setArea} />
+          <ErrorAlert error={upload.error} />
+          <DialogFooter>
+            <ChooseAnotherButton isVisible={picked !== null} onClick={chooseAnother} />
+            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
+              Cancelar
+            </Button>
+            <PendingButton
+              type="button"
+              isPending={upload.isPending}
+              disabled={area === null}
+              onClick={save}
+            >
+              Salvar foto
+            </PendingButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
@@ -103,16 +107,8 @@ function ChooseAnotherButton({ isVisible, onClick }: ChooseAnotherButtonProps): 
   }
 
   return (
-    <Button variant="ghost" onClick={onClick} className="sm:mr-auto">
+    <Button type="button" variant="ghost" className="sm:me-auto" onClick={onClick}>
       Trocar imagem
     </Button>
   )
-}
-
-function SaveLabel({ isSaving }: { isSaving: boolean }): JSX.Element {
-  if (isSaving) {
-    return <>Salvando…</>
-  }
-
-  return <>Salvar foto</>
 }

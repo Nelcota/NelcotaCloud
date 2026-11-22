@@ -5,13 +5,12 @@ use utoipa::ToSchema;
 use validator::Validate;
 
 use crate::app_state::AppState;
-use crate::modules::auth::audit::login_audit::{record_failed_password_login, record_login};
+use crate::modules::auth::audit::login_audit::record_failed_password_login;
 use crate::modules::auth::login::login_completion::LoginResponse;
 use crate::modules::auth::login::password_login::{
     PasswordLogin, PasswordLoginServices, log_in_with_password,
 };
 use crate::modules::tenants::access::tenant_context::TenantContext;
-use crate::modules::tenants::audit::login_method::LoginMethod;
 use crate::modules::tenants::captcha::captcha_requirement::{CaptchaAnswer, require_captcha};
 use crate::modules::tenants::ip_blocks::address_guard::ensure_address_allowed;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
@@ -59,8 +58,7 @@ pub async fn log_in(
     };
 
     // Checked before hashing, so rejected attempts cost no Argon2 work.
-    if let Err(rejected) = state.rate_limits.check_login(&attempt) {
-        let error = ApiError::from(rejected);
+    if let Err(error) = state.rate_limits.auth.check_login(&attempt).await {
         let refused = (body.email.as_str(), origin);
         record_failed_password_login(&tenant.pool, &error, refused).await;
         return Err(error);
@@ -81,7 +79,7 @@ pub async fn log_in(
         signing: state.token_signing(),
         dummy_password_hash: &state.settings.dummy_password_hash,
     };
-    let result = log_in_with_password(&services, &tenant, login).await;
+    let result = log_in_with_password(&services, &tenant, (login, origin.clone())).await;
 
     if let Err(error) = &result {
         let attempt = (body.email.as_str(), origin.clone());
@@ -89,8 +87,6 @@ pub async fn log_in(
     }
 
     let response = result?;
-    let login = (LoginMethod::Password, origin);
-    record_login(&tenant.pool, &response, login).await;
 
     Ok(Json(response))
 }

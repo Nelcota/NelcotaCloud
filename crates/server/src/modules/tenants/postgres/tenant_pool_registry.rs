@@ -2,15 +2,12 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use moka::future::Cache;
-use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
+use sqlx::{Connection, PgConnection, PgPool};
 use uuid::Uuid;
 
 use crate::modules::tenants::postgres::tenant_database_server::{
-    TenantDatabaseError, TenantDatabaseServer,
-};
-use crate::modules::tenants::postgres::tenant_migration::{
-    TenantMigrationError, migrate_tenant_database,
+    TenantDatabaseError, TenantDatabaseServer, ensure_database_identity,
 };
 use crate::modules::tenants::postgres::tenant_pool_limits::TenantPoolLimits;
 use crate::modules::tenants::provisioning::tenant_repository::find_tenant_slug;
@@ -21,6 +18,7 @@ use crate::modules::tenants::provisioning::tenant_slug::{InvalidTenantSlug, Tena
 const TENANT_POOL_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
 /// Data API connections are given back sooner: project traffic comes in bursts.
 const DATA_API_POOL_IDLE_TIMEOUT: Duration = Duration::from_secs(5);
+const DATA_API_POOL_RESET_TIMEOUT: Duration = Duration::from_secs(2);
 /// A tenant database that does not answer fails its own requests quickly.
 const TENANT_POOL_ACQUIRE_TIMEOUT: Duration = Duration::from_secs(5);
 /// Pools of tenants without requests for this long are dropped, closing their connections.
@@ -32,8 +30,6 @@ pub enum TenantPoolError {
     TenantNotFound(Uuid),
     #[error("database error while opening tenant pool: {0}")]
     Database(#[from] sqlx::Error),
-    #[error(transparent)]
-    Migration(#[from] TenantMigrationError),
     #[error(transparent)]
     TenantDatabase(#[from] TenantDatabaseError),
     #[error("stored tenant slug is invalid: {0}")]
@@ -126,12 +122,20 @@ impl TenantPoolRegistry {
             }
             _ => server.auth_options(&slug)?,
         };
-        let pool = tenant_pool_options(self.limits).connect_lazy_with(options);
-        if matches!(self.mode, TenantPoolMode::Legacy) {
-            migrate_tenant_database(&pool).await?;
+        if matches!(self.mode, TenantPoolMode::Legacy)
+            && server
+                .prepare_registered_database(&self.control_plane_pool, &slug, tenant_id)
+                .await?
+                == false
+        {
+            return Err(TenantPoolError::TenantNotFound(tenant_id));
         }
 
-        Ok(pool)
+        Ok(tenant_pool_options(self.limits)
+            .after_connect(move |connection, _| {
+                Box::pin(ensure_database_identity(connection, tenant_id))
+            })
+            .connect_lazy_with(options))
     }
 
     async fn open_data_api_pool(&self, tenant_id: Uuid) -> Result<PgPool, TenantPoolError> {
@@ -144,6 +148,10 @@ impl TenantPoolRegistry {
 
         Ok(tenant_pool_options(TenantPoolLimits::DATA_API)
             .idle_timeout(DATA_API_POOL_IDLE_TIMEOUT)
+            .after_connect(move |connection, _| {
+                Box::pin(ensure_database_identity(connection, tenant_id))
+            })
+            .after_release(|connection, _| Box::pin(reset_data_api_connection(connection)))
             .connect_lazy_with(options))
     }
 
@@ -197,6 +205,20 @@ fn pool_cache(limits: TenantPoolLimits) -> Cache<Uuid, PgPool> {
         .max_capacity(limits.open_pools)
         .time_to_idle(POOL_TIME_TO_IDLE)
         .build()
+}
+
+async fn reset_data_api_connection(connection: &mut PgConnection) -> Result<bool, sqlx::Error> {
+    let reset = async {
+        // Flush a pending rollback and clear the driver's cache before DISCARD deallocates it.
+        connection.clear_cached_statements().await?;
+        sqlx::raw_sql("DISCARD ALL").execute(connection).await?;
+        Ok(())
+    };
+
+    match tokio::time::timeout(DATA_API_POOL_RESET_TIMEOUT, reset).await {
+        Ok(result) => result.map(|()| true),
+        Err(_) => Ok(false),
+    }
 }
 
 fn tenant_pool_options(limits: TenantPoolLimits) -> PgPoolOptions {

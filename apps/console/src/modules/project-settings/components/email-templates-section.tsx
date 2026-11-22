@@ -1,77 +1,77 @@
-import Letter from '~icons/solar/letter-linear'
-import LockPassword from '~icons/solar/lock-password-linear'
-import MagicStick from '~icons/solar/magic-stick-3-linear'
+import { Tabs as TabsPrimitive } from 'radix-ui'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
 import type { EmailKind } from '@/modules/project-settings/api/save-email-template'
-import { EmailTemplateForm } from '@/modules/project-settings/components/email-template-form'
+import { EmailTemplateEditor } from '@/modules/project-settings/components/email-template-editor'
 import { useEmailTemplatesQuery } from '@/modules/project-settings/queries/use-email-templates'
-import type { components } from '@/shared/api/api-schema'
-import { type Choice, ChoiceCards } from '@/shared/ui/choice-cards'
+import { useSettingsQuery } from '@/modules/project-settings/queries/use-project-settings'
 import { LoadError } from '@/shared/ui/load-error'
-import { SettingsSection } from '@/shared/ui/settings-section'
-import { Skeleton } from '@/shared/ui/skeleton'
+import { Tabs, TabsList, TabsTrigger } from '@/shared/ui/primitives/tabs'
+import { Section } from '@/shared/ui/section'
 
-const EMAIL_CHOICES: Choice<EmailKind>[] = [
-  {
-    value: 'verification',
-    icon: Letter,
-    title: 'Confirmação de email',
-    description: 'Enviado no cadastro.',
-  },
-  {
-    value: 'password_reset',
-    icon: LockPassword,
-    title: 'Redefinição de senha',
-    description: 'Enviado quando alguém esquece a senha.',
-  },
-  {
-    value: 'magic_link',
-    icon: MagicStick,
-    title: 'Magic link',
-    description: 'Enviado no login sem senha.',
-  },
+type EmailChoice = { value: EmailKind; label: string }
+
+const EMAIL_CHOICES: readonly EmailChoice[] = [
+  { value: 'verification', label: 'Verificação' },
+  { value: 'password_reset', label: 'Redefinição de senha' },
+  { value: 'magic_link', label: 'Link mágico' },
 ]
 
-/** The wording of the auth emails, one email at a time. */
+/** Stands in for the project name in the preview until the settings load. */
+const APP_NAME_FALLBACK = 'Seu app'
+
+/** The wording of the auth emails, one email per tab, each with a live preview. */
 export function EmailTemplatesSection({ projectId }: { projectId: string }): JSX.Element {
   const templates = useEmailTemplatesQuery(projectId)
+  const settings = useSettingsQuery(projectId)
   const [kind, setKind] = useState<EmailKind>('verification')
-  const template = templates.data?.find((candidate) => candidate.kind === kind)
+  const appName = settings.data?.name ?? APP_NAME_FALLBACK
+
+  function select(value: string): void {
+    const choice = EMAIL_CHOICES.find((candidate) => candidate.value === value)
+
+    if (choice === undefined) {
+      return
+    }
+
+    setKind(choice.value)
+  }
 
   return (
-    <SettingsSection
+    <Section
       title="Textos dos emails"
-      description="Texto simples; {app_name} vira o nome do projeto. O botão sempre abre o link do seu site."
+      description="O layout e o link são da plataforma; {app_name} vira o nome do projeto."
     >
-      <ChoiceCards legend="Email" choices={EMAIL_CHOICES} selected={kind} onSelect={setKind} />
       <LoadError error={templates.error} onRetry={() => templates.refetch()} />
-      <TemplateEditor projectId={projectId} template={template} hasFailed={templates.isError} />
-    </SettingsSection>
+      <Tabs value={kind} onValueChange={select} className="gap-4">
+        <TabsList
+          variant="line"
+          aria-label="Modelo de email"
+          className="w-full justify-start border-b pb-1"
+        >
+          {EMAIL_CHOICES.map((choice) => (
+            <TabsTrigger key={choice.value} value={choice.value} className="flex-none px-2.5">
+              {choice.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        {EMAIL_CHOICES.map((choice) => (
+          <TabsPrimitive.Content key={choice.value} value={choice.value} className="outline-none">
+            <EmailTemplateEditor
+              projectId={projectId}
+              title={choice.label}
+              appName={appName}
+              template={templates.data?.find((candidate) => candidate.kind === choice.value)}
+              state={{
+                isPending: templates.isPending,
+                hasFailed: templates.isError,
+                onRetry: () => templates.refetch(),
+              }}
+            />
+          </TabsPrimitive.Content>
+        ))}
+      </Tabs>
+    </Section>
   )
-}
-
-type TemplateEditorProps = {
-  projectId: string
-  template: components['schemas']['EmailTemplateView'] | undefined
-  hasFailed: boolean
-}
-
-function TemplateEditor({
-  projectId,
-  template,
-  hasFailed,
-}: TemplateEditorProps): JSX.Element | null {
-  if (hasFailed) {
-    return null
-  }
-
-  if (template === undefined) {
-    return <Skeleton className="h-96 rounded-lg" />
-  }
-
-  const version = `${template.kind}-${JSON.stringify(template.text)}`
-
-  return <EmailTemplateForm key={version} projectId={projectId} template={template} />
 }

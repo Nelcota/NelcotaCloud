@@ -1,4 +1,5 @@
 use reqwest::{Response, StatusCode};
+use serde_json::json;
 use sqlx::PgConnection;
 use uuid::Uuid;
 
@@ -91,4 +92,34 @@ async fn verified_or_banned_users_get_no_new_verification_email() -> TestResult 
     assert_eq!(banned_user.status(), StatusCode::FORBIDDEN);
     assert_eq!(error_code(banned_user).await?, "user_banned");
     server.drop_tenant(&tenant).await
+}
+#[tokio::test]
+async fn verification_email_quota_is_shared_between_replicas() -> TestResult {
+    let first = TestServer::start().await?;
+    let second = TestServer::start().await?;
+    let tenant = first.create_tenant().await?;
+    let email = unique_email("shared-email-quota");
+
+    for server in [&first, &second, &first] {
+        let body = json!({ "email": email });
+        let response = server
+            .post_auth(
+                "/auth/v1/verify-email/resend",
+                &tenant.publishable_key,
+                body,
+            )
+            .await?;
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
+    }
+
+    let body = json!({ "email": email });
+    let response = second
+        .post_auth(
+            "/auth/v1/verify-email/resend",
+            &tenant.publishable_key,
+            body,
+        )
+        .await?;
+    assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+    first.drop_tenant(&tenant).await
 }

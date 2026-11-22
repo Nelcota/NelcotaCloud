@@ -4,12 +4,12 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
+use crate::modules::auth::integration::session_token::verify_session_token;
 use crate::modules::database::access::request_role::RequestRole;
 use crate::modules::tenants::access::api_key_tenant::{API_KEY_HEADER, ApiKeyTenant};
 use crate::modules::tenants::access::tenant_admin::TenantAdmin;
 use crate::modules::tenants::api_keys::api_key_kind::ApiKeyKind;
-use crate::modules::tenants::signing_keys::access_token::{AccessTokenClaims, TokenAudience};
-use crate::modules::tenants::signing_keys::access_token_verification::verify_tenant_token;
+use crate::modules::tenants::signing_keys::access_token::AccessTokenClaims;
 use crate::shared::http::api_error::ApiError;
 use crate::shared::http::bearer_token::bearer_token;
 use crate::shared::http::client_ip::ClientIp;
@@ -93,12 +93,7 @@ impl DataApiCaller {
     }
 
     async fn user(state: &AppState, tenant_id: Uuid, access_token: &str) -> Result<Self, ApiError> {
-        let audience = TokenAudience {
-            issuer: &state.settings.token_issuer,
-            tenant_id,
-        };
-        let token_claims =
-            verify_tenant_token(&state.signing_keys, &audience, access_token).await?;
+        let (token_claims, _) = verify_session_token(state, tenant_id, access_token).await?;
         let role = RequestRole::Authenticated;
         let user_claims = UserClaims {
             token: &token_claims,

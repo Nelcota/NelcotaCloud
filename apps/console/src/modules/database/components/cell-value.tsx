@@ -1,28 +1,21 @@
 import type { JSX } from 'react'
 
-/** One value of a row as text: JSON stringified, null as a muted `NULL`, long values cut. */
+import { cellText } from '@/modules/database/components/cell-text'
+
+/** Compact preview. The row inspector shows the complete value. */
 export function CellValue({ value }: { value: unknown }): JSX.Element {
   if (value === null || value === undefined) {
-    return <span className="text-muted-foreground">NULL</span>
+    return <span className="text-muted-foreground/70">NULL</span>
   }
 
-  const text = cellText(value)
-
-  return (
-    <span title={text} className="block max-w-xs truncate">
-      {text}
-    </span>
-  )
-}
-
-function cellText(value: unknown): string {
-  if (typeof value === 'string') {
-    return value
+  if (value === '') {
+    return (
+      <span className="text-muted-foreground/70">
+        <span aria-hidden="true">''</span>
+        <span className="sr-only">Texto vazio</span>
+      </span>
+    )
   }
 
-  if (typeof value === 'object') {
-    return JSON.stringify(value)
-  }
-
-  return String(value)
+  return <span className="block truncate">{cellText(value)}</span>
 }

@@ -12,8 +12,8 @@ use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::request_origin::RequestOrigin;
 use crate::shared::http::validated_json::ValidatedJson;
 
-/// `POST /magic-link`: emails a one-time login link. An unknown email gets a passwordless
-/// account, so the same call signs people up; the answer never reveals which case it was.
+/// `POST /magic-link`: emails a one-time login link. A new user account is created when
+/// the recipient opens the link; the answer is the same for every address.
 #[utoipa::path(
     post,
     path = "/auth/v1/magic-link",
@@ -21,7 +21,7 @@ use crate::shared::http::validated_json::ValidatedJson;
     security(("api_key" = [])),
     request_body = EmailBody,
     responses(
-        (status = 202, description = "A login link is on its way"),
+        (status = 202, description = "Login link request accepted"),
         (status = 429, description = "Too many emails requested", body = ErrorBody),
     )
 )]

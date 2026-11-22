@@ -1,7 +1,8 @@
+import { type AuthorizedContext, authorizedRequest } from '../http/authorized-request'
 import type { HttpClient } from '../http/http-client'
 import type { User } from './auth-types'
-import { type AuthorizedContext, authorizedRequest } from './authorized-request'
 import type { SessionManager } from './session/session-manager'
+
 type AvatarOwner = Pick<User, 'id' | 'avatar_updated_at'>
 
 const AVATAR_PATH = '/auth/v1/user/avatar'
@@ -12,7 +13,7 @@ export class AvatarApi {
   private readonly http: HttpClient
   private readonly manager: SessionManager
 
-  constructor(context: AuthorizedContext) {
+  constructor(context: AuthorizedContext & { manager: SessionManager }) {
     this.context = context
     this.http = context.http
     this.manager = context.manager

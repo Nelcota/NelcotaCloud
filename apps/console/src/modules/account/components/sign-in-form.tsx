@@ -3,9 +3,10 @@ import type { FormEvent, JSX } from 'react'
 import { useState } from 'react'
 
 import { useSignInMutation } from '@/modules/account/queries/use-sign-in-mutation'
-import { Button } from '@/shared/ui/button'
 import { ErrorAlert } from '@/shared/ui/error-alert'
-import { FormField } from '@/shared/ui/form-field'
+import { PendingButton } from '@/shared/ui/pending-button'
+import { Button } from '@/shared/ui/primitives/button'
+import { TextField } from '@/shared/ui/text-field'
 
 type SignInFormProps = {
   onResult: (result: SignInResult) => void
@@ -23,38 +24,46 @@ export function SignInForm({ onResult, onForgotPassword }: SignInFormProps): JSX
   }
 
   return (
-    <form className="grid gap-4" onSubmit={submit}>
-      <FormField
+    <form onSubmit={submit} className="flex flex-col gap-4">
+      <TextField
         label="Email"
         type="email"
-        autoComplete="email"
+        name="email"
+        autoComplete="username"
+        spellCheck={false}
         autoFocus
         required
+        className="[&_input]:h-10"
         value={email}
         onChange={(event) => setEmail(event.target.value)}
       />
-      <div className="grid gap-2">
-        <FormField
+      <div className="flex flex-col gap-1">
+        <TextField
           label="Senha"
           type="password"
+          name="password"
           autoComplete="current-password"
           required
+          className="[&_input]:h-10"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
-        <Button
-          type="button"
-          variant="link"
-          className="h-auto justify-self-end p-0 text-base"
-          onClick={onForgotPassword}
-        >
-          Esqueci minha senha
-        </Button>
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="link"
+            size="sm"
+            className="px-0 text-muted-foreground hover:text-foreground"
+            onClick={onForgotPassword}
+          >
+            Esqueci minha senha
+          </Button>
+        </div>
       </div>
       <ErrorAlert error={signIn.error} />
-      <Button type="submit" size="lg" disabled={signIn.isPending} aria-busy={signIn.isPending}>
+      <PendingButton type="submit" size="lg" className="h-10 w-full" isPending={signIn.isPending}>
         Entrar
-      </Button>
+      </PendingButton>
     </form>
   )
 }

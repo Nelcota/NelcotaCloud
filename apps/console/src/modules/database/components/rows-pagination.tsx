@@ -1,8 +1,6 @@
-import ChevronLeft from '~icons/solar/alt-arrow-left-linear'
-import ChevronRight from '~icons/solar/alt-arrow-right-linear'
 import type { JSX } from 'react'
 
-import { Button } from '@/shared/ui/button'
+import { Pagination } from '@/shared/ui/pagination'
 
 type RowsPaginationProps = {
   offset: number
@@ -13,44 +11,36 @@ type RowsPaginationProps = {
   total: number | null
   /** An estimate only rules nothing out: a full page may still have more after it. */
   isTotalEstimated: boolean
+  /** The next page is loading: the controls wait so a double click never skips a page. */
+  isChangingPage: boolean
   onOffsetChange: (offset: number) => void
 }
 
-/** Which slice of the rows is on screen, and the way to the previous or next one. */
-export function RowsPagination(props: RowsPaginationProps): JSX.Element | null {
-  const { offset, pageSize, shown, total } = props
-
-  if (offset === 0 && shown < pageSize) {
-    return null
-  }
-
+/** The grid's footer bar: which slice of the rows is on screen, and the way to the others. */
+export function RowsPagination(props: RowsPaginationProps): JSX.Element {
+  const { offset, shown } = props
   const lastShown = offset + shown
 
   return (
-    <nav aria-label="Páginas de linhas" className="flex items-center justify-end gap-3">
-      <p className="text-muted-foreground text-sm">
-        {(offset + 1).toLocaleString('pt-BR')}–{lastShown.toLocaleString('pt-BR')}
-        <TotalLabel total={total} />
-      </p>
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={offset === 0}
-        onClick={() => props.onOffsetChange(Math.max(offset - pageSize, 0))}
-      >
-        <ChevronLeft />
-        Anterior
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={hasMore(lastShown, props) === false}
-        onClick={() => props.onOffsetChange(offset + pageSize)}
-      >
-        Próxima
-        <ChevronRight />
-      </Button>
-    </nav>
+    <div className="flex min-h-11 flex-wrap items-center justify-between gap-3 border-t bg-surface px-4 py-1.5">
+      <span className="text-xs text-muted-foreground tabular-nums">
+        <RangeLabel offset={offset} lastShown={lastShown} />
+        <TotalLabel total={props.total} />
+      </span>
+      <PageControls {...props} />
+    </div>
+  )
+}
+
+function RangeLabel({ offset, lastShown }: { offset: number; lastShown: number }): JSX.Element {
+  if (lastShown === offset) {
+    return <>Nenhuma linha nesta página</>
+  }
+
+  return (
+    <>
+      Linhas {(offset + 1).toLocaleString('pt-BR')}–{lastShown.toLocaleString('pt-BR')}
+    </>
   )
 }
 
@@ -62,8 +52,26 @@ function TotalLabel({ total }: { total: number | null }): JSX.Element | null {
   return <> de {total.toLocaleString('pt-BR')}</>
 }
 
+function PageControls(props: RowsPaginationProps): JSX.Element | null {
+  const { offset, pageSize } = props
+
+  if (offset === 0 && props.shown < pageSize) {
+    return null
+  }
+
+  return (
+    <Pagination
+      label="Páginas de linhas"
+      page={Math.floor(offset / pageSize) + 1}
+      hasMore={hasMore(props)}
+      isDisabled={props.isChangingPage}
+      onChange={(page) => props.onOffsetChange(Math.max(page - 1, 0) * pageSize)}
+    />
+  )
+}
+
 /** Only a full page may have more after it; an exact count can rule it out. */
-function hasMore(lastShown: number, props: RowsPaginationProps): boolean {
+function hasMore(props: RowsPaginationProps): boolean {
   if (props.shown < props.pageSize) {
     return false
   }
@@ -72,5 +80,5 @@ function hasMore(lastShown: number, props: RowsPaginationProps): boolean {
     return true
   }
 
-  return lastShown < props.total
+  return props.offset + props.shown < props.total
 }

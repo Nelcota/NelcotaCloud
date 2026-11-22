@@ -70,7 +70,7 @@ pub async fn sign_up(
         client_ip,
     };
     // Before hashing: every signup costs an Argon2 run and may send an email.
-    state.rate_limits.check_signup(&attempt)?;
+    state.rate_limits.auth.check_signup(&attempt).await?;
     let captcha = CaptchaAnswer {
         token: body.captcha_token.as_deref(),
         client_ip,

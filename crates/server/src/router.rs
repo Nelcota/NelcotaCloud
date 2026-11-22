@@ -1,13 +1,14 @@
-use std::future::ready;
-use std::sync::Arc;
 use std::time::Duration;
 
+use axum::Router;
+use axum::body::Bytes;
 use axum::http::StatusCode;
-use axum::http::header::{ACCEPT, AUTHORIZATION, CACHE_CONTROL, CONTENT_RANGE, CONTENT_TYPE};
+use axum::http::header::{
+    ACCEPT, AUTHORIZATION, CACHE_CONTROL, CONTENT_RANGE, CONTENT_TYPE, RETRY_AFTER,
+};
 use axum::http::{HeaderName, HeaderValue, Method};
 use axum::middleware;
 use axum::routing::get;
-use axum::{Json, Router};
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::request_id::PropagateRequestIdLayer;
 use tower_http::set_header::{SetRequestHeaderLayer, SetResponseHeaderLayer};
@@ -26,9 +27,11 @@ use crate::modules::cache::routes::cache_routes::cache_routes;
 use crate::modules::database::query::preferences::PREFER_HEADER;
 use crate::modules::database::routes::database_routes::database_routes;
 use crate::modules::oauth::routes::oauth_routes::oauth_routes;
+use crate::modules::storage::routes::storage_routes::storage_routes;
 use crate::modules::team::routes::team_routes::team_routes;
 use crate::modules::tenants::access::api_key_tenant::API_KEY_HEADER;
 use crate::modules::tenants::access::tenant_admin::PROJECT_HEADER;
+use crate::modules::tenants::routes::list_api_keys::NEXT_API_KEY_CURSOR;
 use crate::modules::tenants::routes::tenants_routes::tenants_routes;
 use crate::modules::webhooks::routes::webhooks_routes::webhooks_routes;
 use crate::shared::http::request_id::{REQUEST_ID_HEADER, generate_request_id};
@@ -44,17 +47,13 @@ const REQUEST_BODY_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Public: SDK generators and the console read the API description here.
 const OPENAPI_PATH: &str = "/openapi.json";
+const OPENAPI_JSON: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/openapi.json"));
 
 pub fn build_router(state: AppState) -> Router {
-    let (router, document) = api_routes().split_for_parts();
-    // Built once and shared by every request; only the pointer is cloned.
-    let document = Arc::new(document);
+    let (router, _) = api_routes().split_for_parts();
 
     let router = router
-        .route(
-            OPENAPI_PATH,
-            get(move || ready(Json(Arc::clone(&document)))),
-        )
+        .route(OPENAPI_PATH, get(openapi_document))
         .route("/ready", get(health::readiness))
         .route(
             "/ops/webhooks/worker-health",
@@ -62,6 +61,13 @@ pub fn build_router(state: AppState) -> Router {
         );
 
     with_http_layers(router, state.clone()).with_state(state)
+}
+
+async fn openapi_document() -> ([(HeaderName, &'static str); 1], Bytes) {
+    (
+        [(CONTENT_TYPE, "application/json")],
+        Bytes::from_static(OPENAPI_JSON),
+    )
 }
 
 /// Limits, timeouts, caching, access log, request ids and CORS, around every route. The limit
@@ -108,6 +114,7 @@ pub fn api_routes() -> OpenApiRouter<AppState> {
         .merge(oauth_routes())
         .merge(database_routes())
         .merge(cache_routes())
+        .merge(storage_routes())
 }
 
 /// Browser apps of any origin call the API with the publishable key; no cookies are used,
@@ -130,6 +137,11 @@ fn cors_layer() -> CorsLayer {
             HeaderName::from_static(PREFER_HEADER),
             ACCEPT,
         ])
-        .expose_headers([REQUEST_ID_HEADER, CONTENT_RANGE])
+        .expose_headers([
+            REQUEST_ID_HEADER,
+            CONTENT_RANGE,
+            NEXT_API_KEY_CURSOR,
+            RETRY_AFTER,
+        ])
         .max_age(CORS_PREFLIGHT_MAX_AGE)
 }

@@ -1,5 +1,4 @@
 pub mod email_address;
-pub mod passwordless_signup;
 pub mod signup;
 pub mod signup_registration;
 pub mod status_change;

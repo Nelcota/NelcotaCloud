@@ -56,7 +56,7 @@ pub async fn send_smtp_test(
         email: recipient.as_str(),
         client_ip,
     };
-    state.rate_limits.email.check(&attempt)?;
+    state.rate_limits.auth.check_email(&attempt).await?;
 
     deliver_smtp_test(&state.auth_mailer(), tenant_id, &recipient).await?;
 

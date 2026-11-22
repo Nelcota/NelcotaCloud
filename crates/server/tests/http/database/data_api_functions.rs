@@ -127,3 +127,93 @@ async fn refuses_responses_larger_than_the_limit() -> TestResult {
 
     server.drop_tenant(&tenant).await
 }
+
+#[tokio::test]
+async fn definer_routines_need_an_explicit_grant_to_app_roles() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    developer_sql(
+        &server,
+        &tenant,
+        "CREATE FUNCTION public.private_value() RETURNS INT LANGUAGE sql SECURITY DEFINER
+             AS $$ SELECT 42 $$;
+         CREATE FUNCTION public.public_value() RETURNS INT LANGUAGE sql AS $$ SELECT 7 $$;",
+    )
+    .await?;
+
+    let anonymous = Credentials::anonymous(&tenant);
+    let denied = call(&server, anonymous, "/rpc/private_value", json!({})).await?;
+    assert_eq!(denied.status(), StatusCode::FORBIDDEN);
+    assert_eq!(error_code(denied).await?, "permission_denied");
+    let public: i32 = call(&server, anonymous, "/rpc/public_value", json!({}))
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+    assert_eq!(public, 7);
+
+    developer_sql(
+        &server,
+        &tenant,
+        "GRANT EXECUTE ON FUNCTION public.private_value() TO nelcota_anon;
+         ALTER FUNCTION public.public_value() SECURITY DEFINER;",
+    )
+    .await?;
+    let explicitly_public: i32 = call(&server, anonymous, "/rpc/private_value", json!({}))
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+    assert_eq!(explicitly_public, 42);
+    let converted = call(&server, anonymous, "/rpc/public_value", json!({})).await?;
+    assert_eq!(converted.status(), StatusCode::FORBIDDEN);
+
+    server.drop_tenant(&tenant).await
+}
+
+#[tokio::test]
+async fn pooled_connections_restore_session_settings_between_requests() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    developer_sql(
+        &server,
+        &tenant,
+        "CREATE FUNCTION public.annotate_connection() RETURNS int LANGUAGE plpgsql AS $$
+         BEGIN
+             PERFORM set_config('application_name', 'database test annotation', false);
+             RETURN pg_backend_pid();
+         END $$;
+         CREATE FUNCTION public.connection_info() RETURNS json LANGUAGE sql AS $$
+             SELECT json_build_object('pid', pg_backend_pid(), 'name', current_setting('application_name'))
+         $$;",
+    )
+    .await?;
+    let service = Credentials::service(&tenant);
+    let pid: i32 = call(&server, service, "/rpc/annotate_connection", json!({}))
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+
+    let mut reused = false;
+    for _ in 0..10 {
+        let info: Value = call(&server, service, "/rpc/connection_info", json!({}))
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+
+        if info.get("pid") == Some(&json!(pid)) {
+            assert_eq!(info.get("name"), Some(&json!("nelcota-data-api")));
+            reused = true;
+            break;
+        }
+    }
+
+    assert!(
+        reused,
+        "the test should observe the same physical connection"
+    );
+
+    server.drop_tenant(&tenant).await
+}

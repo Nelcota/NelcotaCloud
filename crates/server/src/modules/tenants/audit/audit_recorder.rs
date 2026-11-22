@@ -1,5 +1,5 @@
-use sqlx::PgPool;
 use sqlx::types::Json;
+use sqlx::{PgExecutor, PgPool};
 use uuid::Uuid;
 
 use crate::modules::tenants::audit::audit_entry::NewAuditEvent;
@@ -31,7 +31,10 @@ pub async fn record_project_event(
     }
 }
 
-async fn insert_audit_event(pool: &PgPool, event: NewAuditEvent) -> Result<(), sqlx::Error> {
+pub async fn insert_audit_event<'e>(
+    executor: impl PgExecutor<'e>,
+    event: NewAuditEvent,
+) -> Result<(), sqlx::Error> {
     let origin = event.origin;
     let ip_address = origin.as_ref().map(|origin| origin.client_ip.to_string());
     let (user_agent, request_id) = match origin {
@@ -53,7 +56,7 @@ async fn insert_audit_event(pool: &PgPool, event: NewAuditEvent) -> Result<(), s
     .bind(user_agent)
     .bind(request_id)
     .bind(event.details.map(Json))
-    .execute(pool)
+    .execute(executor)
     .await?;
 
     Ok(())

@@ -2,7 +2,8 @@ use std::str::FromStr;
 
 use sqlx::error::DatabaseError;
 use sqlx::postgres::{PgConnectOptions, PgConnection, PgPoolOptions};
-use sqlx::{AssertSqlSafe, Connection};
+use sqlx::{AssertSqlSafe, Connection, PgPool};
+use uuid::Uuid;
 
 use crate::modules::tenants::postgres::authenticator_password::{
     MissingServerPassword, authenticator_password,
@@ -17,7 +18,8 @@ use crate::modules::tenants::postgres::runtime_roles::{
 use crate::modules::tenants::postgres::tenant_migration::{
     TenantMigrationError, migrate_tenant_database,
 };
-use crate::modules::tenants::provisioning::tenant_slug::TenantSlug;
+use crate::modules::tenants::provisioning::tenant_repository::{find_tenant_id_by_slug, lock_slug};
+use crate::modules::tenants::provisioning::tenant_slug::{InvalidTenantSlug, TenantSlug};
 
 const MAINTENANCE_DATABASE: &str = "postgres";
 const DUPLICATE_DATABASE_ERROR_CODE: &str = "42P04";
@@ -31,6 +33,8 @@ const DATA_API_SEARCH_PATH: &str = "public";
 
 #[derive(Debug, thiserror::Error)]
 pub enum TenantDatabaseError {
+    #[error(transparent)]
+    InvalidSlug(#[from] InvalidTenantSlug),
     #[error("a database for this tenant slug already exists")]
     AlreadyExists,
     #[error("database error while managing a tenant database: {0}")]
@@ -128,13 +132,37 @@ impl<'a> TenantDatabaseServer<'a> {
         Ok(())
     }
 
-    pub async fn migrate_database(&self, slug: &TenantSlug) -> Result<(), TenantDatabaseError> {
+    /// Backfills existing databases only while the slug still belongs to the expected project.
+    pub async fn prepare_registered_database(
+        &self,
+        control: &PgPool,
+        slug: &TenantSlug,
+        tenant_id: Uuid,
+    ) -> Result<bool, TenantDatabaseError> {
+        let mut transaction = control.begin().await?;
+        lock_slug(&mut transaction, slug).await?;
+
+        if find_tenant_id_by_slug(&mut *transaction, slug).await? != Some(tenant_id) {
+            return Ok(false);
+        }
+
+        self.migrate_database(slug, tenant_id).await?;
+        transaction.commit().await?;
+
+        Ok(true)
+    }
+
+    pub async fn migrate_database(
+        &self,
+        slug: &TenantSlug,
+        tenant_id: Uuid,
+    ) -> Result<(), TenantDatabaseError> {
         // Through a pool: `Migrator::run` on a bare connection yields a non-Send future.
         let tenant_pool = PgPoolOptions::new()
             .max_connections(MIGRATION_CONNECTIONS)
             .connect_with(self.auth_options(slug)?)
             .await?;
-        let migration = self.migrate_with_pool(&tenant_pool).await;
+        let migration = self.migrate_with_pool(&tenant_pool, tenant_id).await;
         tenant_pool.close().await;
         migration?;
 
@@ -145,8 +173,21 @@ impl<'a> TenantDatabaseServer<'a> {
         Ok(())
     }
 
-    async fn migrate_with_pool(&self, pool: &sqlx::PgPool) -> Result<(), TenantDatabaseError> {
+    async fn migrate_with_pool(
+        &self,
+        pool: &PgPool,
+        tenant_id: Uuid,
+    ) -> Result<(), TenantDatabaseError> {
         migrate_tenant_database(pool).await?;
+        let mut connection = pool.acquire().await?;
+        sqlx::query(
+            "INSERT INTO auth.tenant_identity (tenant_id) VALUES ($1) ON CONFLICT DO NOTHING",
+        )
+        .bind(tenant_id)
+        .execute(&mut *connection)
+        .await?;
+        ensure_database_identity(&mut connection, tenant_id).await?;
+        drop(connection);
 
         if self.uses_runtime_role {
             grant_tenant_runtime(pool).await?;
@@ -192,6 +233,25 @@ impl<'a> TenantDatabaseServer<'a> {
 
         Ok(())
     }
+}
+
+/// A pool can reconnect after its original database was dropped and the slug reused.
+pub async fn ensure_database_identity(
+    connection: &mut PgConnection,
+    tenant_id: Uuid,
+) -> Result<(), sqlx::Error> {
+    let actual: Option<Uuid> =
+        sqlx::query_scalar("SELECT tenant_id FROM auth.tenant_identity WHERE singleton")
+            .fetch_optional(connection)
+            .await?;
+
+    if actual != Some(tenant_id) {
+        return Err(sqlx::Error::Protocol(
+            "database does not belong to the requested project".to_owned(),
+        ));
+    }
+
+    Ok(())
 }
 
 fn map_duplicate_database(error: sqlx::Error) -> TenantDatabaseError {

@@ -1,4 +1,5 @@
 use axum::extract::{Path, Query, State};
+use axum::http::header::REFERRER_POLICY;
 use axum::response::Redirect;
 use serde::Deserialize;
 use url::Url;
@@ -10,10 +11,11 @@ use crate::app_state::AppState;
 use crate::modules::oauth::login::app_pkce::parse_code_challenge;
 use crate::modules::oauth::login::authorization_start::AuthorizationStart;
 use crate::modules::oauth::login::oauth_login_error::OAuthLoginError;
+use crate::modules::oauth::login::redirects::require_registered_redirect;
 use crate::modules::oauth::provider::oauth_provider::OAuthProvider;
 use crate::modules::oauth::rejection::oauth_rejection::OAuthRejection;
 use crate::modules::tenants::access::api_key_tenant::ApiKeyTenant;
-use crate::modules::tenants::settings::loaded_tenant_settings::load_tenant_settings;
+use crate::modules::tenants::ip_blocks::address_guard::ensure_address_allowed;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::client_ip::ClientIp;
 
@@ -52,9 +54,15 @@ pub async fn authorize_oauth(
     Path(provider_name): Path<String>,
     ClientIp(client_ip): ClientIp,
     Query(query): Query<AuthorizeQuery>,
-) -> Result<Redirect, ApiError> {
+) -> Result<([(axum::http::HeaderName, &'static str); 1], Redirect), ApiError> {
     query.validate().map_err(ApiError::invalid_request)?;
     let tenant = ApiKeyTenant::resolve_publishable(&state, &query.apikey).await?;
+    let pool = state
+        .tenant_pools
+        .pool_for(tenant.tenant_id)
+        .await
+        .map_err(ApiError::internal)?;
+    ensure_address_allowed(&pool, client_ip).await?;
     state
         .rate_limits
         .oauth_authorization
@@ -71,7 +79,10 @@ pub async fn authorize_oauth(
         .await
         .map_err(map_start_error)?;
 
-    Ok(Redirect::to(authorize_url.as_str()))
+    Ok((
+        [(REFERRER_POLICY, "no-referrer")],
+        Redirect::to(authorize_url.as_str()),
+    ))
 }
 
 fn app_code_challenge(query: &AuthorizeQuery) -> Result<String, ApiError> {
@@ -86,20 +97,14 @@ fn app_code_challenge(query: &AuthorizeQuery) -> Result<String, ApiError> {
     parse_code_challenge(&query.code_challenge).map_err(ApiError::invalid_request)
 }
 
-/// Only URLs under the tenant's site URL are accepted, so the flow is not an open redirect.
+/// The app must use one of the project's registered callback URLs.
 async fn allowed_redirect(
     state: &AppState,
     tenant_id: Uuid,
     raw_redirect_to: &str,
 ) -> Result<Url, ApiError> {
     let redirect_to = Url::parse(raw_redirect_to.trim()).map_err(ApiError::invalid_request)?;
-    let settings = load_tenant_settings(&state.control_plane_pool, tenant_id).await?;
-
-    if settings.site_url.allows_redirect_to(&redirect_to) == false {
-        return Err(ApiError::InvalidRequest(
-            "redirect_to must be under the tenant's site_url".to_owned(),
-        ));
-    }
+    require_registered_redirect(&state.control_plane_pool, tenant_id, &redirect_to).await?;
 
     Ok(redirect_to)
 }

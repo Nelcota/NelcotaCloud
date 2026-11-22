@@ -10,12 +10,20 @@ export type OrderOptions = {
 /** Filters plus order, page and shape of the result. */
 export class QueryBuilder<Row, T> extends FilterBuilder<T> {
   order(column: string, options: OrderOptions = {}): this {
+    const key = pathed(options.referencedTable, 'order')
     const direction = directionOf(options.ascending)
     const nulls = nullsModifier(options.nullsFirst)
-    this.request.params.push([
-      pathed(options.referencedTable, 'order'),
-      `${column}.${direction}${nulls}`,
-    ])
+    const term = `${column}.${direction}${nulls}`
+    const previous = this.request.params.find(([name]) => name === key)
+
+    if (previous !== undefined) {
+      this.request.params = this.request.params.map((parameter) =>
+        parameter === previous ? [key, `${previous[1]},${term}`] : parameter,
+      )
+      return this
+    }
+
+    this.request.params.push([key, term])
 
     return this
   }
@@ -42,8 +50,13 @@ export class QueryBuilder<Row, T> extends FilterBuilder<T> {
 
   /** Answers one object; fails (`not_single_row`) unless exactly one row matches. */
   single(): QueryBuilder<Row, Row> {
-    this.request.single = true
-    return new QueryBuilder<Row, Row>(this.sender, this.request)
+    const request = {
+      ...this.request,
+      params: [...this.request.params],
+      single: true,
+    }
+
+    return new QueryBuilder<Row, Row>(this.sender, request)
   }
 
   /**
@@ -51,10 +64,14 @@ export class QueryBuilder<Row, T> extends FilterBuilder<T> {
    * read (`select('id, author:authors(name)')`).
    */
   select(columns = '*'): QueryBuilder<Row, Row[]> {
-    this.request.params.push(['select', compact(columns)])
-    this.request.prefer.push('return=representation')
+    const request = {
+      ...this.request,
+      params: this.request.params.concat([['select', compact(columns)]]),
+      prefer: [...this.request.prefer, 'return=representation'],
+      single: false,
+    }
 
-    return new QueryBuilder<Row, Row[]>(this.sender, this.request)
+    return new QueryBuilder<Row, Row[]>(this.sender, request)
   }
 }
 

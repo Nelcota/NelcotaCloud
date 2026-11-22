@@ -1,8 +1,6 @@
-import ChevronLeft from '~icons/solar/alt-arrow-left-linear'
-import ChevronRight from '~icons/solar/alt-arrow-right-linear'
 import type { JSX } from 'react'
 
-import { Button } from '@/shared/ui/button'
+import { Pagination } from '@/shared/ui/pagination'
 
 /** The API's largest `offset`: pages past it cannot be read. */
 const MAX_OFFSET = 100_000
@@ -15,11 +13,11 @@ type UsersPaginationProps = {
   onOffsetChange: (offset: number) => void
 }
 
-/** Which slice of the users is on screen, and the way to the newer or older ones. */
+/** The way through the pages of users, newest first. */
 export function UsersPagination(props: UsersPaginationProps): JSX.Element | null {
   const { offset, pageSize, total } = props
 
-  if (total === undefined) {
+  if (total === undefined || pageSize <= 0) {
     return null
   }
 
@@ -28,33 +26,25 @@ export function UsersPagination(props: UsersPaginationProps): JSX.Element | null
     return null
   }
 
-  const lastShown = Math.min(offset + pageSize, total)
-  const nextOffset = offset + pageSize
+  const page = Math.floor(offset / pageSize) + 1
 
   return (
-    <nav aria-label="Páginas de usuários" className="flex items-center justify-end gap-3">
-      <p className="text-muted-foreground text-sm">
-        {Math.min(offset + 1, lastShown).toLocaleString('pt-BR')}–
-        {lastShown.toLocaleString('pt-BR')} de {total.toLocaleString('pt-BR')}
-      </p>
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={offset === 0}
-        onClick={() => props.onOffsetChange(Math.max(offset - pageSize, 0))}
-      >
-        <ChevronLeft />
-        Mais novos
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={lastShown >= total || nextOffset > MAX_OFFSET}
-        onClick={() => props.onOffsetChange(nextOffset)}
-      >
-        Mais antigos
-        <ChevronRight />
-      </Button>
-    </nav>
+    <Pagination
+      label="Páginas de usuários"
+      page={page}
+      pageSize={pageSize}
+      totalPages={pageCount({ page, pageSize, total })}
+      onChange={(next) => props.onOffsetChange((next - 1) * pageSize)}
+    />
   )
+}
+
+type PageCountInput = { page: number; pageSize: number; total: number }
+
+/** Never fewer pages than the one on screen, and none past the API's largest offset. */
+function pageCount({ page, pageSize, total }: PageCountInput): number {
+  const readablePages = Math.floor(MAX_OFFSET / pageSize) + 1
+  const pages = Math.min(Math.ceil(total / pageSize), readablePages)
+
+  return Math.max(pages, page, 1)
 }

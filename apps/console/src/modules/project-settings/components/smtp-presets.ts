@@ -1,9 +1,9 @@
-import Buildings from '~icons/solar/buildings-linear'
-import Letter from '~icons/solar/letter-linear'
-import Plain from '~icons/solar/plain-linear'
+import AmazonSesLogo from '~icons/logos/aws-ses'
+import GmailLogo from '~icons/logos/google-gmail'
+import MicrosoftLogo from '~icons/logos/microsoft-icon'
 import Server from '~icons/solar/server-linear'
-import ServerCloud from '~icons/solar/server-square-cloud-linear'
 
+import { ResendLogo } from '@/modules/project-settings/components/resend-logo'
 import type { SmtpSecurity } from '@/modules/project-settings/components/smtp-url'
 import type { Choice } from '@/shared/ui/choice-cards'
 
@@ -65,20 +65,20 @@ export const SMTP_PRESETS: Record<SmtpProviderId, SmtpPreset> = {
 }
 
 export const SMTP_PROVIDER_CHOICES: Choice<SmtpProviderId>[] = [
-  { value: 'gmail', icon: Letter, title: 'Gmail', description: 'Com uma senha de app.' },
+  { value: 'gmail', icon: GmailLogo, title: 'Gmail', description: 'Com uma senha de app.' },
   {
     value: 'outlook',
-    icon: Buildings,
+    icon: MicrosoftLogo,
     title: 'Outlook / Microsoft 365',
     description: 'Com a sua conta Microsoft.',
   },
   {
     value: 'ses',
-    icon: ServerCloud,
+    icon: AmazonSesLogo,
     title: 'Amazon SES',
     description: 'Na região da sua conta AWS.',
   },
-  { value: 'resend', icon: Plain, title: 'Resend', description: 'Com uma API key do Resend.' },
+  { value: 'resend', icon: ResendLogo, title: 'Resend', description: 'Com uma API key do Resend.' },
   { value: 'other', icon: Server, title: 'Outro', description: 'Qualquer servidor SMTP com TLS.' },
 ]
 

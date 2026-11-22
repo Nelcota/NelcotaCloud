@@ -3,21 +3,21 @@ import { useState } from 'react'
 
 import type { OAuthProviderName } from '@/modules/project-settings/api/configure-provider'
 import { ProviderAppGuide } from '@/modules/project-settings/components/provider-app-guide'
-import { ProviderLoginIllustration } from '@/modules/project-settings/components/provider-illustrations'
 import { PROVIDER_NAMES } from '@/modules/project-settings/components/provider-names'
 import { useConfigureProviderMutation } from '@/modules/project-settings/queries/use-oauth-providers'
-import { Button } from '@/shared/ui/button'
-import { FormField } from '@/shared/ui/form-field'
-import { ReviewList } from '@/shared/ui/review-list'
-import { CheckField } from '@/shared/ui/check-field'
+import { DataList, DataListItem } from '@/shared/ui/data-list'
+import { Button } from '@/shared/ui/primitives/button'
 import { missingUnless } from '@/shared/ui/step-dialog/missing-unless'
 import { StepDialog } from '@/shared/ui/step-dialog/step-dialog'
+import { CheckboxField } from '@/shared/ui/switch-field'
+import { TextField } from '@/shared/ui/text-field'
 
 const STORED_SECRET = 'Guardado cifrado'
 
 type ConfigureProviderDialogProps = {
   projectId: string
   provider: OAuthProviderName
+  callbackUrl: string
   /** "Configurar" the first time, "Trocar credenciais" after. */
   triggerLabel: string
 }
@@ -34,7 +34,6 @@ export function ConfigureProviderDialog(props: ConfigureProviderDialogProps): JS
   const [isAppCreated, setIsAppCreated] = useState(false)
   const save = useConfigureProviderMutation({ projectId, provider })
   const providerName = PROVIDER_NAMES[provider]
-  const illustration = <ProviderLoginIllustration provider={provider} />
 
   function open(): void {
     setClientId('')
@@ -49,7 +48,7 @@ export function ConfigureProviderDialog(props: ConfigureProviderDialogProps): JS
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={open}>
+      <Button type="button" variant="outline" onClick={open}>
         {props.triggerLabel}
       </Button>
       <StepDialog
@@ -58,26 +57,19 @@ export function ConfigureProviderDialog(props: ConfigureProviderDialogProps): JS
         title={`Login com ${providerName}`}
         description={`Seus usuários entram no app com a conta ${providerName}, sem criar senha.`}
         finishLabel="Salvar e ativar"
-        workingLabel="Ativando…"
         onFinish={finish}
-        summary={[
-          { label: 'Provedor', value: providerName },
-          { label: 'App criado', value: appCreatedText(isAppCreated) },
-          { label: 'Client ID', value: clientId.trim() },
-        ]}
         steps={[
           {
             label: 'Criar o app',
             description: 'Crie um app de login no provedor e cole nele a URL de callback.',
             missing: missingUnless(isAppCreated, 'Confirme que o app foi criado'),
-            illustration,
             content: (
-              <div className="grid gap-5">
-                <ProviderAppGuide provider={provider} />
-                <CheckField
+              <div className="flex flex-col gap-5">
+                <ProviderAppGuide provider={provider} callbackUrl={props.callbackUrl} />
+                <CheckboxField
                   label={`Já criei o app no ${providerName} e colei a URL de callback`}
-                  isChecked={isAppCreated}
-                  onChange={setIsAppCreated}
+                  checked={isAppCreated}
+                  onCheckedChange={setIsAppCreated}
                 />
               </div>
             ),
@@ -90,8 +82,8 @@ export function ConfigureProviderDialog(props: ConfigureProviderDialogProps): JS
               'Cole o Client ID e o Client secret',
             ),
             content: (
-              <div className="grid gap-4">
-                <FormField
+              <div className="flex flex-col gap-4">
+                <TextField
                   label="Client ID"
                   required
                   autoComplete="off"
@@ -100,7 +92,7 @@ export function ConfigureProviderDialog(props: ConfigureProviderDialogProps): JS
                   value={clientId}
                   onChange={(event) => setClientId(event.target.value)}
                 />
-                <FormField
+                <TextField
                   label="Client secret"
                   type="password"
                   required
@@ -116,30 +108,18 @@ export function ConfigureProviderDialog(props: ConfigureProviderDialogProps): JS
             label: 'Revisar',
             description: 'Confira antes de ativar o login.',
             missing: null,
-            illustration,
             content: (
-              <ReviewList
-                items={[
-                  { label: 'Provedor', value: providerName },
-                  {
-                    label: 'Client ID',
-                    value: <code className="font-mono text-xs break-all">{clientId.trim()}</code>,
-                  },
-                  { label: 'Client secret', value: STORED_SECRET },
-                ]}
-              />
+              <DataList className="rounded-xl border bg-card px-4">
+                <DataListItem label="Provedor">{providerName}</DataListItem>
+                <DataListItem label="Client ID">
+                  <code className="font-mono text-sm wrap-anywhere">{clientId.trim()}</code>
+                </DataListItem>
+                <DataListItem label="Client secret">{STORED_SECRET}</DataListItem>
+              </DataList>
             ),
           },
         ]}
       />
     </>
   )
-}
-
-function appCreatedText(isAppCreated: boolean): string {
-  if (isAppCreated) {
-    return 'Sim'
-  }
-
-  return ''
 }

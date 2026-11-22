@@ -21,7 +21,9 @@ function shouldRetry(failureCount: number, error: Error): boolean {
  */
 const FRESH_FOR_MILLISECONDS = 30_000
 
-/** One cache for the whole console. */
-export const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: shouldRetry, staleTime: FRESH_FOR_MILLISECONDS } },
-})
+/** Each signed-in account gets a separate cache. */
+export function createQueryClient(): QueryClient {
+  return new QueryClient({
+    defaultOptions: { queries: { retry: shouldRetry, staleTime: FRESH_FOR_MILLISECONDS } },
+  })
+}

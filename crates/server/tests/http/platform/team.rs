@@ -1,5 +1,7 @@
 use reqwest::{Method, Response, StatusCode};
 use serde_json::{Value, json};
+use tokio::io::AsyncWriteExt;
+use tokio::net::TcpListener;
 
 use crate::support::{
     Session, TEST_SITE_URL, TestResult, TestServer, error_code, field, random_slug, unique_email,
@@ -291,6 +293,28 @@ async fn owners_promote_members_who_can_then_manage_the_team() -> TestResult {
     assert_eq!(by_member.status(), StatusCode::FORBIDDEN);
     let promoted = change_role(&server, &owner, (&project_id, &member), "owner").await?;
     assert_eq!(promoted.status(), StatusCode::NO_CONTENT);
+    let unchanged = change_role(&server, &owner, (&project_id, &member), "owner").await?;
+    assert_eq!(unchanged.status(), StatusCode::NO_CONTENT);
+    let audit: Value = server
+        .client
+        .get(server.url("/auth/v1/admin/audit-events"))
+        .bearer_auth(&owner.access_token)
+        .header("x-nelcota-project", &project_id)
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+    let events = field(&audit, "/events")
+        .as_array()
+        .ok_or("expected audit events")?;
+    assert_eq!(
+        events
+            .iter()
+            .filter(|event| field(event, "/action") == "member_role_changed")
+            .count(),
+        1
+    );
 
     let team = read_team(&server, &member, &project_id).await?;
     assert_eq!(field(&team, "/can_manage"), true);
@@ -328,6 +352,148 @@ async fn a_project_always_keeps_an_owner() -> TestResult {
     assert_eq!(last_owner_leaves.status(), StatusCode::CONFLICT);
 
     delete_project(&server, &member, &project_id).await?;
+    server.drop_tenant(&platform).await
+}
+
+#[tokio::test]
+async fn account_deletion_preserves_the_last_active_project_owner() -> TestResult {
+    let server = TestServer::start().await?;
+    let (platform, owner) = server
+        .create_platform_account(&unique_email("owner"))
+        .await?;
+    let project_id = create_project(&server, &owner).await?;
+    let member = join_as_member(&server, &platform, &owner, &project_id).await?;
+    let delete_self = || {
+        server
+            .client
+            .delete(server.url("/auth/v1/user"))
+            .header("apikey", &platform.publishable_key)
+            .bearer_auth(&owner.access_token)
+            .send()
+    };
+    let refused = delete_self().await?;
+    assert_eq!(refused.status(), StatusCode::CONFLICT);
+    assert_eq!(error_code(refused).await?, "last_owner");
+
+    let admin = server
+        .client
+        .delete(server.url(&format!("/auth/v1/admin/users/{}", owner.user.id)))
+        .header("apikey", &platform.secret_key)
+        .send()
+        .await?;
+    assert_eq!(admin.status(), StatusCode::CONFLICT);
+    assert_eq!(error_code(admin).await?, "last_owner");
+
+    change_role(&server, &owner, (&project_id, &member), "owner")
+        .await?
+        .error_for_status()?;
+    assert_eq!(delete_self().await?.status(), StatusCode::NO_CONTENT);
+    let team = read_team(&server, &member, &project_id).await?;
+    assert_eq!(field(&team, "/members").as_array().map(Vec::len), Some(1));
+    assert_eq!(
+        text_at(&team, "/members/0/account_id"),
+        member.user.id.to_string()
+    );
+    assert_eq!(
+        leave(&server, &member, &project_id).await?.status(),
+        StatusCode::CONFLICT
+    );
+
+    delete_project(&server, &member, &project_id).await?;
+    server.drop_tenant(&platform).await
+}
+
+#[tokio::test]
+async fn accepting_an_invitation_concurrently_with_a_new_invite_leaves_one_membership() -> TestResult
+{
+    let server = TestServer::start().await?;
+    let (platform, owner) = server
+        .create_platform_account(&unique_email("owner"))
+        .await?;
+    let project_id = create_project(&server, &owner).await?;
+    let email = unique_email("guest");
+    let member = server.sign_up_console_account(&platform, &email).await?;
+    let initial: Value = invite(&server, &owner, &project_id, &email)
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+    let accept = format!(
+        "/platform/v1/invitations/{}/accept",
+        text_at(&initial, "/id")
+    );
+    let (accepted, duplicate) = tokio::try_join!(
+        as_account(&server, &member, (Method::POST, &accept, None)),
+        invite(&server, &owner, &project_id, &email),
+    )?;
+    assert_eq!(accepted.status(), StatusCode::OK);
+    assert_eq!(duplicate.status(), StatusCode::CONFLICT);
+    let team = read_team(&server, &owner, &project_id).await?;
+    assert_eq!(field(&team, "/invitations"), &json!([]));
+    assert_eq!(field(&team, "/members").as_array().map(Vec::len), Some(2));
+
+    delete_project(&server, &owner, &project_id).await?;
+    server.drop_tenant(&platform).await
+}
+
+#[tokio::test]
+async fn failed_invitation_mail_can_be_resent_without_creating_another_invitation() -> TestResult {
+    let server = TestServer::start().await?;
+    let (platform, owner) = server
+        .create_platform_account(&unique_email("owner"))
+        .await?;
+    let project_id = create_project(&server, &owner).await?;
+    let listener = TcpListener::bind("127.0.0.1:0").await?;
+    let smtp = format!("smtp://{}", listener.local_addr()?);
+    let reject_mail = tokio::spawn(async move {
+        while let Ok((mut stream, _)) = listener.accept().await {
+            // The sender's TCP probe may close before reading the greeting.
+            let _greeting = stream.write_all(b"421 Test SMTP unavailable\r\n").await;
+        }
+    });
+    let settings = server.url("/auth/v1/admin/smtp");
+    server
+        .client
+        .put(&settings)
+        .header("apikey", &platform.secret_key)
+        .json(&json!({ "smtp_url": smtp, "email_from": "platform@example.test" }))
+        .send()
+        .await?
+        .error_for_status()?;
+    let email = unique_email("retry-invitation");
+    let initial: Value = invite(&server, &owner, &project_id, &email)
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+    assert_eq!(field(&initial, "/delivery_status"), "failed");
+    let id = text_at(&initial, "/id");
+    let team = read_team(&server, &owner, &project_id).await?;
+    assert_eq!(field(&team, "/invitations/0/delivery_status"), "failed");
+
+    server
+        .client
+        .delete(&settings)
+        .header("apikey", &platform.secret_key)
+        .send()
+        .await?
+        .error_for_status()?;
+    reject_mail.abort();
+    let path = format!("/platform/v1/projects/{project_id}/invitations/{id}/resend");
+    let resent: Value = as_account(&server, &owner, (Method::POST, &path, None))
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+    assert_eq!(text_at(&resent, "/id"), id);
+    assert_eq!(field(&resent, "/delivery_status"), "sent");
+    let team = read_team(&server, &owner, &project_id).await?;
+    assert_eq!(
+        field(&team, "/invitations").as_array().map(Vec::len),
+        Some(1)
+    );
+
+    delete_project(&server, &owner, &project_id).await?;
     server.drop_tenant(&platform).await
 }
 

@@ -7,7 +7,7 @@ import {
   blankColumnDraft,
 } from '@/modules/database/components/column-draft'
 import { ColumnDraftFields } from '@/modules/database/components/column-draft-fields'
-import { Button } from '@/shared/ui/button'
+import { Button } from '@/shared/ui/primitives/button'
 
 type ColumnsEditorProps = {
   columns: readonly ColumnDraft[]
@@ -26,8 +26,8 @@ export function ColumnsEditor({ columns, targets, onChange }: ColumnsEditorProps
   }
 
   return (
-    <div className="grid gap-3">
-      <h3 className="text-sm font-medium">Colunas</h3>
+    <div className="flex flex-col gap-3">
+      <h3 className="text-sm font-semibold">Colunas</h3>
       {columns.map((column) => (
         <ColumnDraftFields
           key={column.key}
@@ -38,15 +38,17 @@ export function ColumnsEditor({ columns, targets, onChange }: ColumnsEditorProps
           onRemove={removal(columns.length, () => remove(column.key))}
         />
       ))}
-      <Button
-        type="button"
-        variant="outline"
-        className="w-fit"
-        onClick={() => onChange([...columns, blankColumnDraft()])}
-      >
-        <Plus />
-        Adicionar coluna
-      </Button>
+      <div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => onChange([...columns, blankColumnDraft()])}
+        >
+          <Plus aria-hidden data-icon="inline-start" />
+          Adicionar coluna
+        </Button>
+      </div>
     </div>
   )
 }

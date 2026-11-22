@@ -24,12 +24,15 @@ impl PlatformTenantDirectory {
     /// The tenant whose users are platform accounts. Until the operator creates it the platform
     /// API answers 503.
     pub async fn find_id(&self) -> Result<Uuid, ApiError> {
-        let slug = self
-            .slug
-            .as_ref()
-            .ok_or(TenantsRejection::PlatformNotConfigured)?;
-        let tenant_id = find_tenant_id_by_slug(&self.control_plane_pool, slug).await?;
-
+        let tenant_id = self.find_optional_id().await?;
         Ok(tenant_id.ok_or(TenantsRejection::PlatformNotConfigured)?)
+    }
+
+    pub async fn find_optional_id(&self) -> Result<Option<Uuid>, sqlx::Error> {
+        let Some(slug) = &self.slug else {
+            return Ok(None);
+        };
+
+        find_tenant_id_by_slug(&self.control_plane_pool, slug).await
     }
 }

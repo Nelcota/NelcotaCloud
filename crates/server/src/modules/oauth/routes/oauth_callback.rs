@@ -1,4 +1,5 @@
 use axum::extract::{Query, State};
+use axum::http::header::REFERRER_POLICY;
 use axum::response::Redirect;
 use serde::Deserialize;
 use url::Url;
@@ -9,18 +10,18 @@ use crate::modules::oauth::login::callback_completion::{
     CallbackServices, issue_login_code, take_pending,
 };
 use crate::modules::oauth::login::oauth_login_error::OAuthLoginError;
+use crate::modules::oauth::login::redirects::{RESPONSE_PARAMETERS, require_registered_redirect};
+use crate::modules::tenants::ip_blocks::address_guard::ensure_address_allowed;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
+use crate::shared::http::client_ip::ClientIp;
 use crate::shared::http::request_span::record_tenant;
-
-/// Parameters this endpoint sets on the app's redirect; copies already in it are removed so
-/// nobody can plant a code of their own in front of the real one.
-const RESERVED_REDIRECT_PARAMETERS: [&str; 3] = ["code", "error", "state"];
 
 #[derive(Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
 pub struct CallbackQuery {
     pub state: Option<String>,
     pub code: Option<String>,
+    pub error: Option<String>,
 }
 
 /// `GET /oauth/callback`: the provider sends the browser here.
@@ -40,18 +41,41 @@ pub struct CallbackQuery {
 )]
 pub async fn oauth_callback(
     State(state): State<AppState>,
+    ClientIp(client_ip): ClientIp,
     Query(query): Query<CallbackQuery>,
-) -> Result<Redirect, ApiError> {
+) -> Result<([(axum::http::HeaderName, &'static str); 1], Redirect), ApiError> {
     let pending = take_pending(&state.control_plane_pool, query.state).await?;
     // No API key reaches this endpoint: the tenant comes from the pending authorization.
     record_tenant(pending.tenant_id);
     let redirect_to = Url::parse(&pending.redirect_to).map_err(ApiError::internal)?;
+    require_registered_redirect(&state.control_plane_pool, pending.tenant_id, &redirect_to).await?;
+    let pool = state
+        .tenant_pools
+        .pool_for(pending.tenant_id)
+        .await
+        .map_err(ApiError::internal)?;
+    ensure_address_allowed(&pool, client_ip).await?;
+
+    if let Some(error) = query.error {
+        let code = match error.as_str() {
+            "access_denied" => "access_denied",
+            "temporarily_unavailable" => "temporarily_unavailable",
+            _ => "server_error",
+        };
+        let target = redirect_with(redirect_to, "error", code);
+        return Ok((
+            [(REFERRER_POLICY, "no-referrer")],
+            Redirect::to(target.as_str()),
+        ));
+    }
+
     let services = CallbackServices {
-        tenant_pools: &state.tenant_pools,
+        tenant_pool: &pool,
         webhooks: &state.webhooks,
         login: state.oauth_login_context(),
     };
     let login = issue_login_code(&services, &pending, query.code).await;
+    require_registered_redirect(&state.control_plane_pool, pending.tenant_id, &redirect_to).await?;
     let target = match login {
         Ok(login_code) => redirect_with(redirect_to, "code", &login_code),
         Err(error) => {
@@ -60,7 +84,10 @@ pub async fn oauth_callback(
         }
     };
 
-    Ok(Redirect::to(target.as_str()))
+    Ok((
+        [(REFERRER_POLICY, "no-referrer")],
+        Redirect::to(target.as_str()),
+    ))
 }
 
 /// Refusals (denied access, unverified or conflicting accounts) are expected outcomes; only
@@ -77,7 +104,7 @@ fn log_failed_login(error: &OAuthLoginError) {
 fn redirect_with(redirect_to: Url, name: &str, value: &str) -> Url {
     let kept_pairs: Vec<(String, String)> = redirect_to
         .query_pairs()
-        .filter(|(key, _)| RESERVED_REDIRECT_PARAMETERS.contains(&key.as_ref()) == false)
+        .filter(|(key, _)| RESPONSE_PARAMETERS.contains(&key.as_ref()) == false)
         .map(|(key, value)| (key.into_owned(), value.into_owned()))
         .collect();
     let mut target = redirect_to;

@@ -15,6 +15,9 @@ use crate::modules::database::execution::session_slots::SessionSlots;
 use crate::modules::database::schema::schema_cache::SchemaCache;
 use crate::modules::oauth::login::oauth_login_context::OAuthLoginContext;
 use crate::modules::oauth::provider::provider_endpoints::OAuthEndpoints;
+use crate::modules::storage::object_store::r2_store::R2Store;
+use crate::modules::storage::rejection::storage_error::StorageError;
+use crate::modules::storage::transfer::storage_transfer::StorageTransfer;
 use crate::modules::tenants::api_keys::api_key_usage::ApiKeyUsage;
 use crate::modules::tenants::captcha::captcha_requirement::CaptchaRequirement;
 use crate::modules::tenants::captcha::captcha_site_verify::SiteVerifier;
@@ -30,12 +33,14 @@ use crate::modules::webhooks::runtime::webhook_runtime::WebhookRuntime;
 use crate::rate_limits::RateLimits;
 use crate::shared::crypto::opaque_token::TokenHash;
 use crate::shared::crypto::secret_box::SecretBox;
+use crate::shared::http::api_error::ApiError;
 use crate::shared::http::client_ip::ClientIpSource;
 
 #[derive(Clone)]
 pub struct AppState {
     pub control_plane_pool: PgPool,
     pub cache_store: Option<CacheStore>,
+    pub storage_store: Option<R2Store>,
     pub cache_authentication_pool: PgPool,
     pub project_usage: ProjectUsageCache,
     pub tenant_pools: Arc<TenantPoolRegistry>,
@@ -66,6 +71,18 @@ impl FromRef<AppState> for ClientIpSource {
 }
 
 impl AppState {
+    pub(crate) fn require_storage(&self) -> Result<&R2Store, ApiError> {
+        self.storage_store
+            .as_ref()
+            .ok_or_else(|| StorageError::Unavailable.into())
+    }
+
+    pub fn storage_transfer(&self) -> Result<StorageTransfer<'_>, ApiError> {
+        let store = self.require_storage()?;
+
+        Ok(StorageTransfer::new(&self.control_plane_pool, store))
+    }
+
     pub fn database_sessions(&self) -> DatabaseSessions<'_> {
         DatabaseSessions {
             tenant_pools: &self.tenant_pools,
@@ -78,7 +95,6 @@ impl AppState {
         TenantRemoval {
             control_plane_pool: &self.control_plane_pool,
             tenant_pools: &self.tenant_pools,
-            signing_keys: &self.signing_keys,
         }
     }
 
@@ -92,8 +108,7 @@ impl AppState {
     pub fn auth_email_links(&self) -> EmailLinkDelivery<'_> {
         EmailLinkDelivery {
             mailer: self.auth_mailer(),
-            webhooks: Arc::clone(&self.webhooks),
-            limiter: &self.rate_limits.email,
+            limiter: &self.rate_limits.auth,
             captcha: self.captcha_requirement(),
         }
     }
@@ -122,7 +137,7 @@ impl AppState {
 
     pub fn factor_code_access(&self) -> FactorCodeAccess<'_> {
         FactorCodeAccess {
-            limiter: &self.rate_limits.mfa,
+            limiter: &self.rate_limits.auth,
             secret_box: &self.secret_box,
         }
     }
@@ -138,7 +153,6 @@ impl AppState {
 
     pub fn smtp_settings_store(&self) -> SmtpSettingsStore<'_> {
         SmtpSettingsStore {
-            control_plane_pool: &self.control_plane_pool,
             secret_box: &self.secret_box,
             email_senders: &self.email_senders,
         }
@@ -150,7 +164,6 @@ impl AppState {
         WebhookEndpointStore {
             control_plane_pool: &self.control_plane_pool,
             secret_box: &self.secret_box,
-            subscriptions: &webhooks.subscriptions,
             policy: webhooks.transport.policy(),
         }
     }

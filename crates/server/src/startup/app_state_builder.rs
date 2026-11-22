@@ -9,6 +9,7 @@ use crate::modules::cache::entries::cache_store::CacheStore;
 use crate::modules::database::execution::session_slots::SessionSlots;
 use crate::modules::database::schema::schema_cache::SchemaCache;
 use crate::modules::oauth::provider::provider_endpoints::OAuthEndpoints;
+use crate::modules::storage::object_store::r2_store::R2Store;
 use crate::modules::tenants::api_keys::api_key_usage::ApiKeyUsage;
 use crate::modules::tenants::platform::platform_tenant::PlatformTenantDirectory;
 use crate::modules::tenants::postgres::tenant_pool_registry::TenantPoolRegistry;
@@ -51,7 +52,7 @@ pub async fn build_app_state_with_endpoints(
     let control_plane_pool =
         prepare_control_plane(&config.control_plane_database_url, runtime_password).await?;
     let settings = build_settings(config, oauth_endpoints).await?;
-    let rate_limits = Arc::new(RateLimits::new()?);
+    let rate_limits = Arc::new(RateLimits::new(control_plane_pool.clone())?);
     let email_senders = email_senders(config, &control_plane_pool, &secret_box)?;
 
     let registry = TenantPoolRegistry::new(
@@ -79,6 +80,7 @@ pub async fn build_app_state_with_endpoints(
 
     let state = AppState {
         project_usage: Default::default(),
+        storage_store: config.storage_config()?.as_ref().map(R2Store::new),
         cache_authentication_pool: cache_authentication_pool(&control_plane_pool),
         cache_store: config
             .cache_valkey_url

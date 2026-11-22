@@ -1,7 +1,8 @@
 # Deploying NelcotaCloud
 
-One VPS runs everything with `docker-compose.prod.yml`: Postgres, the API, Caddy (console, API
-proxy and TLS) and the backup job. A staging environment is the same stack on its own domains.
+One VPS runs everything with `docker-compose.prod.yml`. It includes Postgres, the API, the
+webhook worker, Caddy (console, API proxy and TLS) and the backup job. A staging environment
+uses the same stack on its own domains.
 
 ## 1. Prerequisites
 
@@ -29,6 +30,20 @@ Keep `MASTER_KEY_HEX` and `BACKUP_ENCRYPTION_PASSWORD` in a password manager out
 without the first, tenant secrets cannot be decrypted; without the second, backups cannot be
 restored.
 
+### Project Cache
+
+To offer [Project Cache](project-cache.md), run a password-protected Valkey instance on a private
+network that the API container can reach. Set `CACHE_VALKEY_URL` in `.env.production` to an
+authenticated URL such as `redis://:password@valkey.internal:6379`. Percent-encode reserved
+characters in the password. Restrict access to Valkey's port to the private network, as the
+`redis://` connection is unencrypted.
+
+After changing the URL, recreate the API container:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d api
+```
+
 ## 3. Create the platform tenant (console accounts)
 
 Console users are users of a regular tenant, named by `PLATFORM_TENANT_SLUG` (default `console`).
@@ -54,28 +69,69 @@ git pull
 docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
 ```
 
-Migrations run when the API starts: the control plane at boot, each tenant database when the
-tenant is first used.
+Before upgrading a deployment that predates the restricted runtime roles, add a separate
+`DATABASE_RUNTIME_PASSWORD` to the production environment with `openssl rand -hex 32`.
+The API uses the administration credential for provisioning and migrations. Its request pools
+and the webhook worker use restricted roles. On startup the API migrates the control plane
+and prepares existing tenant databases. The worker leaves schema changes to the API.
+
+### Postgres major upgrades
+
+A new Postgres major cannot read the previous one's files, so each major has its own volume
+(`postgres-data-19` for Postgres 19) and the data moves with `pg_dumpall`. The previous volume is
+never touched, so going back is checking out the previous commit and starting it again.
+
+To go from Postgres 17 to 19, run these **before** `git pull`, while the old stack still runs:
+
+```bash
+C="docker compose -f docker-compose.prod.yml --env-file .env.production"
+# 1. Stop everything that writes, then dump every database, role and grant of the old server.
+$C stop api webhook-worker backup
+$C exec -T postgres pg_dumpall -U nelcota > nelcota-pg17.sql
+tail -n 3 nelcota-pg17.sql   # must end with "PostgreSQL database cluster dump complete"
+```
+
+Then update and restore into the new, empty Postgres 19:
+
+```bash
+git pull
+$C up -d postgres
+$C exec -T postgres psql -U nelcota -d postgres -q -v ON_ERROR_STOP=0 < nelcota-pg17.sql
+# Expected: only 'role "nelcota" already exists' and 'database "nelcota_control" already exists'.
+$C exec -T postgres psql -U nelcota -d nelcota_control -Atc "select count(*) from tenants"
+$C up -d --build
+```
+
+Sign in to the console and open a project before deleting anything. The dump holds password
+hashes and encrypted secrets: keep it only until the upgrade is checked, then delete it and the
+old volume (`docker volume rm <project>_postgres-data`). The backup image follows the server's
+major version (`deploy/backup/Dockerfile`), since `pg_dump` must not be older than the server.
 
 ## 5. Backups
 
 The `backup` service dumps the control plane and every `tenant_*` database daily, encrypts them
-and uploads them to R2, keeping `BACKUP_RETENTION_DAYS` (30) days.
+and uploads them to R2. It publishes the checksum manifest after every dump has uploaded and
+keeps complete snapshot directories for `BACKUP_RETENTION_DAYS` (30) days.
 
 ```bash
 # List snapshots
 docker compose -f docker-compose.prod.yml --env-file .env.production run --rm --entrypoint restore.sh backup
 # Restore one (replaces the current databases)
-docker compose -f docker-compose.prod.yml --env-file .env.production stop api
+docker compose -f docker-compose.prod.yml --env-file .env.production stop api webhook-worker backup
 docker compose -f docker-compose.prod.yml --env-file .env.production run --rm --entrypoint restore.sh backup <snapshot>
-docker compose -f docker-compose.prod.yml --env-file .env.production start api
+docker compose -f docker-compose.prod.yml --env-file .env.production start api webhook-worker backup
 ```
 
-`restore.sh` restores each database with its owners (a project's tables must stay owned by
-`nelcota_developer`), so the server-wide `nelcota_*` roles must exist: the API creates them when
-it starts, so on a new server start it once before restoring. Each project's own login role and
-connect privilege are recreated by the API the first time the project is used. Restore with the
-same `POSTGRES_USER` the dumps were taken with.
+`restore.sh` verifies the manifest and restores into temporary databases. It checks that every
+project in the restored control plane has a dump with the expected identity before replacing
+any database name. The
+renames commit together. All database clients must be disconnected during the rename. Allow
+enough disk space for the original databases, the restored copies and the downloaded archives.
+Older snapshots without a manifest still go through the staging restore and inventory check.
+
+Restore with the original `POSTGRES_USER`. On a fresh cluster, start and stop the API before
+restoring so the roles referenced in the archives exist. The API repairs project authenticator
+roles when it prepares the restored tenants.
 
 Rehearse a restore on staging every few months; an untested backup is not a backup.
 
@@ -96,6 +152,7 @@ deploy the same commit to production.
 
 ```bash
 docker compose -f docker-compose.prod.yml --env-file .env.production logs -f api
+docker compose -f docker-compose.prod.yml --env-file .env.production logs -f webhook-worker
 ```
 
 Every line carries the request id returned in the `x-request-id` header and, once known, the

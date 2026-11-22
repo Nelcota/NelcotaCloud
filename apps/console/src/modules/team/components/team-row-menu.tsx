@@ -1,7 +1,8 @@
-import MoreHorizontal from '~icons/solar/menu-dots-linear'
+import { Ellipsis } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
+import type { ActionTarget } from '@/modules/team/components/action-target'
 import { MemberActionConfirmation } from '@/modules/team/components/member-action-confirmation'
 import { ACTION_COPY, labelFor } from '@/modules/team/components/team-action-copy'
 import {
@@ -11,13 +12,14 @@ import {
   menuFor,
 } from '@/modules/team/components/team-row-actions'
 import type { MemberRow } from '@/modules/team/components/team-rows'
-import type { ActionTarget } from '@/modules/team/components/action-target'
+import { Button } from '@/shared/ui/primitives/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu'
+} from '@/shared/ui/primitives/dropdown-menu'
 
 type TeamRowMenuProps = {
   row: MemberRow
@@ -38,13 +40,12 @@ export function TeamRowMenu({ row, viewer, onAction }: TeamRowMenuProps): JSX.El
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger
-          aria-label={`Ações para ${name}`}
-          className="hover:bg-accent aria-expanded:bg-accent text-muted-foreground hover:text-foreground flex size-10 items-center justify-center rounded-md transition-colors"
-        >
-          <MoreHorizontal className="size-5" />
+        <DropdownMenuTrigger asChild>
+          <Button type="button" variant="ghost" size="icon-sm" aria-label={`Ações para ${name}`}>
+            <Ellipsis aria-hidden />
+          </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-72">
+        <DropdownMenuContent align="end" className="w-64">
           {menu.entries.map((entry) => (
             <MenuItem
               key={entry.action}
@@ -71,29 +72,31 @@ type MenuItemProps = { entry: MenuEntry; isOwnRow: boolean; onSelect: () => void
 
 function MenuItem({ entry, isOwnRow, onSelect }: MenuItemProps): JSX.Element {
   const copy = ACTION_COPY[entry.action]
-  const Icon = copy.icon
+  const Glyph = copy.icon
 
   return (
     <DropdownMenuItem
       disabled={entry.isDisabled}
       variant={itemVariant(copy.isDestructive)}
-      onClick={onSelect}
-      className="min-h-11"
+      onSelect={onSelect}
     >
-      <Icon />
+      <Glyph aria-hidden />
       {labelFor(entry.action, isOwnRow)}
     </DropdownMenuItem>
   )
 }
 
-/** Outside the disabled items, so the reason keeps full contrast instead of their 50% fade. */
+/** Outside the disabled items, so the reason keeps full contrast instead of their fade. */
 function MenuNote({ note }: { note: string | null }): JSX.Element | null {
   if (note === null) {
     return null
   }
 
   return (
-    <p className="text-muted-foreground border-t px-2 pt-2 pb-1.5 text-sm text-pretty">{note}</p>
+    <>
+      <DropdownMenuSeparator />
+      <p className="px-2 py-1.5 text-xs text-pretty text-muted-foreground">{note}</p>
+    </>
   )
 }
 

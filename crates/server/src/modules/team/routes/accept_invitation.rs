@@ -10,7 +10,6 @@ use crate::modules::team::invitation::received_invitation::{
 };
 use crate::modules::team::member::team_access::invited_email_of;
 use crate::modules::tenants::platform::platform_account::PlatformAccount;
-use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
 #[derive(Serialize, ToSchema)]
@@ -20,7 +19,7 @@ pub struct AcceptedInvitation {
 }
 
 /// `POST /platform/v1/invitations/{invitation_id}/accept`: joins the project. The invitation
-/// must have been sent to the email of the account's verified token.
+/// must have been sent to the account's verified email.
 #[utoipa::path(
     post,
     path = "/platform/v1/invitations/{invitation_id}/accept",
@@ -29,6 +28,7 @@ pub struct AcceptedInvitation {
     params(("invitation_id" = Uuid, Path, description = "Id of the invitation")),
     responses(
         (status = 200, description = "Joined the project", body = AcceptedInvitation),
+        (status = 403, description = "Email verification required", body = ErrorBody),
         (status = 404, description = "No pending invitation for this account", body = ErrorBody),
     )
 )]
@@ -37,12 +37,8 @@ pub async fn accept_invitation(
     account: PlatformAccount,
     Path(invitation_id): Path<Uuid>,
 ) -> Result<Json<AcceptedInvitation>, ApiError> {
+    let (_account_lock, account) = account.lock_active(&state).await?;
     let email = invited_email_of(&account)?;
-
-    if account.is_email_verified == false {
-        return Err(ApiError::from(TenantsRejection::EmailNotVerified));
-    }
-
     let answer = InvitationAnswer {
         invitation_id,
         account_id: account.account_id,

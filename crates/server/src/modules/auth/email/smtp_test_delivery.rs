@@ -25,9 +25,12 @@ pub async fn deliver_smtp_test(
         .map_err(ApiError::internal)?;
     let sender = mailer
         .email_senders
-        .sender_for(tenant_id)
+        .custom_sender_for(tenant_id)
         .await
-        .map_err(|error| map_sender_error(&error))?;
+        .map_err(|error| map_sender_error(&error))?
+        .ok_or_else(|| {
+            ApiError::Conflict("configure your own SMTP server before sending a test".to_owned())
+        })?;
 
     if let Err(error) = sender.send(email).await {
         tracing::warn!(%error, "SMTP test email was not delivered");

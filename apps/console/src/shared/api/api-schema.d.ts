@@ -44,7 +44,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** `GET /admin/api-keys`: every key of the tenant, newest first, without the keys themselves. */
+        /**
+         * `GET /admin/api-keys`: active keys and the first page of revoked keys, newest first.
+         *     Pass the response cursor as `before` for the next page of revoked keys.
+         */
         get: operations["list_api_keys"];
         put?: never;
         /**
@@ -82,11 +85,92 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** `GET /admin/audit-events`: the project's activity log, newest first, kept for 90 days. */
+        /**
+         * `GET /admin/audit-events`: the project's activity log, newest first, kept for 90 days.
+         * @description Optionally narrowed to one kind of event and searched by email or IP address.
+         */
         get: operations["list_audit_events"];
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/audit-events/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * `GET /admin/audit-events/export`: streams the matching events as a CSV file, newest first.
+         * @description Takes the same filters as the activity log, so the file holds what the console shows.
+         */
+        get: operations["export_audit_events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/audit-events/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /admin/audit-events/summary`: counts and the most refused IP addresses over a period. */
+        get: operations["read_audit_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/blocked-addresses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * `GET /admin/blocked-addresses`: the addresses and ranges refused by the public auth routes,
+         *     newest first. Expired blocks are left out.
+         */
+        get: operations["list_blocked_addresses"];
+        put?: never;
+        /**
+         * `POST /admin/blocked-addresses`: refuses logins, signups and emailed links from the address.
+         *     Blocking a listed range again replaces its note and expiry.
+         */
+        post: operations["block_address"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/blocked-addresses/{block_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** `DELETE /admin/blocked-addresses/{block_id}`: the address may log in again at once. */
+        delete: operations["unblock_address"];
         options?: never;
         head?: never;
         patch?: never;
@@ -169,6 +253,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/v1/admin/oauth/redirects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace the project's registered app callback URLs. */
+        put: operations["configure_oauth_redirects"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/v1/admin/oauth/{provider}": {
         parameters: {
             query?: never;
@@ -201,7 +302,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** `PATCH /admin/settings` (secret key only): changes only the fields that are sent. */
+        /** Changes only the fields that are sent for the resolved project. */
         patch: operations["change_tenant_settings"];
         trace?: never;
     };
@@ -286,6 +387,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/v1/admin/usage/daily": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /admin/usage/daily`: logins and sign-ups per UTC day, for the console's chart. */
+        get: operations["read_daily_usage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/v1/admin/users": {
         parameters: {
             query?: never;
@@ -298,6 +416,43 @@ export interface paths {
          *     and narrowed to one status.
          */
         get: operations["list_users"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/users/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * `GET /admin/users/export`: streams the matching users as a CSV file.
+         * @description Takes the same filters and order as the user list, so the file holds what the console shows.
+         */
+        get: operations["export_users"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/users/page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists users newest first, or by most recent login, using a continuation cursor. */
+        get: operations["list_users_page"];
         put?: never;
         post?: never;
         delete?: never;
@@ -368,7 +523,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** `POST /admin/users/{user_id}/logout`: ends every session; access tokens expire on their own. */
+        /** `POST /admin/users/{user_id}/logout`: ends every session in Auth. */
         post: operations["end_user_sessions"];
         delete?: never;
         options?: never;
@@ -462,6 +617,22 @@ export interface paths {
         put?: never;
         /** `POST /admin/webhooks`: a new endpoint and its signing secret, shown only in this answer. */
         post: operations["create_webhook_endpoint"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/webhooks/queue-health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["read_webhook_queue_health"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -644,8 +815,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * `POST /magic-link`: emails a one-time login link. An unknown email gets a passwordless
-         *     account, so the same call signs people up; the answer never reveals which case it was.
+         * `POST /magic-link`: emails a one-time login link. A new user account is created when
+         *     the recipient opens the link; the answer is the same for every address.
          */
         post: operations["request_magic_link"];
         delete?: never;
@@ -894,7 +1065,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** `DELETE /sessions/{session_id}`: logs one device out; its access token expires on its own. */
+        /** `DELETE /sessions/{session_id}`: ends one device session in Auth. */
         delete: operations["end_session"];
         options?: never;
         head?: never;
@@ -1008,6 +1179,75 @@ export interface paths {
         put?: never;
         /** `POST /verify-email/resend`: emails a new verification link to an unverified account. */
         post: operations["resend_verification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cache/v1/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Removes a cache entry, including when it is already absent. */
+        post: operations["delete_cache_entry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cache/v1/get": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reads a cached JSON value. */
+        post: operations["get_cache_entry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cache/v1/set": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Writes a JSON value with mandatory expiration. */
+        post: operations["set_cache_entry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/database/v1/migrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists applied SQL migrations, newest version first. */
+        get: operations["list"];
+        put?: never;
+        /** Applies one versioned SQL file atomically, or returns its existing history entry on replay. */
+        post: operations["apply"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1231,7 +1471,7 @@ export interface paths {
         put?: never;
         /**
          * `POST /platform/v1/invitations/{invitation_id}/accept`: joins the project. The invitation
-         *     must have been sent to the email of the account's verified token.
+         *     must have been sent to the account's verified email.
          */
         post: operations["accept_invitation"];
         delete?: never;
@@ -1281,6 +1521,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/platform/v1/projects/{project_id}/cache": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reads the project's cache configuration and credential metadata. */
+        get: operations["read_cache_settings"];
+        /** Enables or disables cache for the project. */
+        put: operations["change_cache_settings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/v1/projects/{project_id}/cache/clear": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Invalidates the active cache entries of this project. */
+        post: operations["clear_cache"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/v1/projects/{project_id}/cache/credentials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issues a cache-only credential and returns its token once. */
+        post: operations["create_cache_credential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/v1/projects/{project_id}/cache/credentials/{credential_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revokes a credential belonging to the project. */
+        delete: operations["revoke_cache_credential"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/platform/v1/projects/{project_id}/invitations": {
         parameters: {
             query?: never;
@@ -1316,6 +1625,23 @@ export interface paths {
          *     pending invitation. Owners only.
          */
         delete: operations["cancel_invitation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/v1/projects/{project_id}/invitations/{invitation_id}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retries email delivery for the same pending invitation. Owners only. */
+        post: operations["resend_invitation"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1434,7 +1760,8 @@ export interface paths {
          * @description Query: `select=id,title,author(name)`, filters (`age=gte.18`, `or=(a.eq.1,b.eq.2)`),
          *     `order=created_at.desc`, `limit` (at most 1000) and `offset`; embeds take the same with
          *     their name as prefix (`comments.order=id.desc`). `Prefer: count=exact|planned` adds the
-         *     total to `Content-Range`.
+         *     total to `Content-Range`. `Prefer: order=primary-key` uses the complete primary key when
+         *     no root order is specified, leaving relations without a primary key unordered.
          */
         get: operations["read_rows"];
         put?: never;
@@ -1456,6 +1783,118 @@ export interface paths {
          *     least one filter is required.
          */
         patch: operations["update_rows"];
+        trace?: never;
+    };
+    "/storage/v1/buckets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_buckets"];
+        put?: never;
+        post: operations["create_bucket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storage/v1/buckets/{bucket_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_bucket"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storage/v1/buckets/{bucket_id}/objects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_objects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storage/v1/buckets/{bucket_id}/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["start_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storage/v1/objects/{object_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_object"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storage/v1/objects/{object_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["complete_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storage/v1/objects/{object_id}/download-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["download_url"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
 }
@@ -1486,6 +1925,12 @@ export interface components {
             key?: string | null;
             /** @description `publishable` or `secret`. */
             kind: string;
+            /**
+             * Format: date-time
+             * @description The last request made with the key, to within a few minutes; empty when it has not been
+             *     used since use started being recorded.
+             */
+            last_used_at?: string | null;
             /** @description The owner's label for the key; empty for keys created without one. */
             name: string;
             /** Format: date-time */
@@ -1495,7 +1940,7 @@ export interface components {
          * @description What an audit event records. Stored as text; renaming one is a breaking change.
          * @enum {string}
          */
-        AuditAction: "logged_in" | "login_failed" | "password_reset" | "user_updated" | "user_banned" | "user_unbanned" | "user_deleted" | "sessions_revoked" | "mfa_reset";
+        AuditAction: "logged_in" | "login_failed" | "password_reset" | "user_updated" | "user_banned" | "user_unbanned" | "user_deleted" | "sessions_revoked" | "mfa_reset" | "login_rate_limited" | "mfa_code_failed" | "refresh_token_reused" | "signed_up" | "email_verified" | "logged_out" | "magic_link_sent" | "password_reset_requested" | "mfa_enabled" | "mfa_disabled" | "api_key_created" | "api_key_revoked" | "settings_changed" | "member_invited" | "member_removed" | "member_role_changed" | "ownership_transferred" | "migration_applied" | "schema_changed" | "address_blocked" | "address_unblocked";
         /**
          * @description Who did what an audit event records.
          * @enum {string}
@@ -1507,6 +1952,8 @@ export interface components {
             actor: components["schemas"]["AuditActorKind"];
             /** Format: uuid */
             actor_account_id?: string | null;
+            /** @description A few facts about the change: `section`, `operation`, `table`, `name` or `role`. */
+            details?: Record<string, never> | null;
             /**
              * @description The user's current email; on a failed login, the address that was typed. `null` once
              *     the user is deleted.
@@ -1521,6 +1968,10 @@ export interface components {
             login_method?: components["schemas"]["LoginMethod"] | null;
             /** Format: date-time */
             occurred_at: string;
+            /** @description The id the server gave the request, also sent back in `x-request-id`. */
+            request_id?: string | null;
+            /** @description As the client sent it; a description, never proof. */
+            user_agent?: string | null;
             /** Format: uuid */
             user_id?: string | null;
         };
@@ -1533,11 +1984,95 @@ export interface components {
              */
             next_before?: number | null;
         };
+        /** @description What happened in the project over a period, so the log answers "anything unusual?" first. */
+        AuditSummary: {
+            /**
+             * Format: int64
+             * @description Distinct accounts that logged in.
+             */
+            active_users: number;
+            /**
+             * Format: int64
+             * @description Changes to users: password, data, ban, deletion, sessions, authenticator.
+             */
+            changes: number;
+            /** @description The IP addresses with the most refused logins, most first. */
+            failing_addresses: components["schemas"]["FailingAddress"][];
+            /**
+             * Format: int64
+             * @description Refused logins (wrong email or password).
+             */
+            failures: number;
+            /**
+             * Format: int64
+             * @description Successful logins.
+             */
+            logins: number;
+        };
         /**
          * @description The emails that carry a one-time link; each has its own wording per project.
          * @enum {string}
          */
         AuthEmailKind: "verification" | "password_reset" | "magic_link";
+        BlockAddressBody: {
+            /** @description An address (`203.0.113.7`) or a range (`203.0.113.0/24`, at most /16, or /48 for IPv6). */
+            address: string;
+            /**
+             * Format: int64
+             * @description Lifts the block after this many hours; without it, the block lasts until removed.
+             */
+            expires_in_hours?: number | null;
+            /** @description Why it was blocked, for the team. */
+            note?: string | null;
+        };
+        /** @description One blocked address or range. */
+        BlockedAddress: {
+            /** Format: date-time */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description When the block lapses; `null` blocks until removed.
+             */
+            expires_at?: string | null;
+            /** Format: uuid */
+            id: string;
+            /** @description The address or range, such as `203.0.113.7/32` or `203.0.113.0/24`. */
+            network: string;
+            note?: string | null;
+        };
+        Bucket: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        BucketInput: {
+            name: string;
+        };
+        CacheCredential: {
+            /** Format: date-time */
+            created_at: string;
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        CacheEntry: {
+            value: unknown;
+        };
+        CacheKeyRequest: {
+            /** @description Nonblank key of up to 256 UTF-8 bytes. */
+            key: string;
+        };
+        CacheWriteRequest: {
+            /** @description Nonblank key of up to 256 UTF-8 bytes. */
+            key: string;
+            /**
+             * Format: int64
+             * @default 300
+             */
+            ttl_seconds: number | null;
+            /** @description JSON value. Its serialized representation can be up to 64 KiB. */
+            value: unknown;
+        };
         /** @description The keys of a Turnstile widget created in the project's Cloudflare account. */
         CaptchaSettingsBody: {
             secret_key: string;
@@ -1547,6 +2082,9 @@ export interface components {
         CaptchaSettingsView: {
             /** @description The Cloudflare Turnstile site key; `null` while the project asks for no captcha. */
             site_key?: string | null;
+        };
+        ChangeCacheSettings: {
+            enabled: boolean;
         };
         /** @description What can change on an existing table from the console. */
         ChangeTableRequest: {
@@ -1600,12 +2138,19 @@ export interface components {
             updated_at: string;
         };
         ConfiguredProviders: {
+            /** @description The server callback to register at Google or GitHub. */
+            callback_url: string;
             providers: components["schemas"]["ConfiguredProvider"][];
+            /** @description The exact callbacks registered for the project's app. */
+            redirect_urls: string[];
         };
         CreateApiKeyBody: {
             kind: components["schemas"]["ApiKeyKind"];
             /** @description A label to tell the key apart ("App iOS"); optional, up to 64 characters. */
             name?: string;
+        };
+        CreateCacheCredential: {
+            name: string;
         };
         /** @description A row level security policy: which requests (`roles`) may run `command` on which rows. */
         CreatePolicyRequest: {
@@ -1640,6 +2185,28 @@ export interface components {
             slug: string;
             /** Format: uuid */
             tenant_id: string;
+        };
+        /** @description Logins and sign-ups in one UTC calendar day. */
+        DailyActivity: {
+            /**
+             * Format: date
+             * @description The UTC day, as `YYYY-MM-DD`.
+             */
+            date: string;
+            /**
+             * Format: int64
+             * @description Successful logins by any method (several by one user count apart); renewals are not logins.
+             */
+            logins: number;
+            /**
+             * Format: int64
+             * @description Accounts created that day and not deleted since.
+             */
+            sign_ups: number;
+        };
+        /** @description The last days up to today (UTC), oldest first, with every day present even when empty. */
+        DailyUsage: {
+            days: components["schemas"]["DailyActivity"][];
         };
         /**
          * @description One delivery as the delivery log shows it. The payload is not included: it has personal
@@ -1701,6 +2268,30 @@ export interface components {
             error: string;
             message: string;
         };
+        /** @description One IP address and the refused logins that came from it. */
+        FailingAddress: {
+            /**
+             * Format: int64
+             * @description Distinct emails it tried; many means one source guessing across accounts.
+             */
+            accounts: number;
+            /** Format: int64 */
+            failures: number;
+            ip_address: string;
+            /** Format: date-time */
+            last_seen_at: string;
+        };
+        FileInput: {
+            content_type: string;
+            name: string;
+            /**
+             * Format: uuid
+             * @description Reuse this ID to retry the same upload in this bucket.
+             */
+            request_id?: string | null;
+            /** Format: int64 */
+            size_bytes: number;
+        };
         ForeignKeyOverview: {
             columns: string[];
             foreign_columns: string[];
@@ -1723,6 +2314,8 @@ export interface components {
         InvitationBody: {
             email: string;
         };
+        /** @enum {string} */
+        InvitationDeliveryStatus: "unknown" | "sending" | "sent" | "failed";
         /** @description A new key. A secret key's plaintext is shown only here; afterwards only its hash exists. */
         IssuedApiKey: {
             hint: string;
@@ -1732,6 +2325,9 @@ export interface components {
             /** @description `publishable` or `secret`. */
             kind: string;
             name: string;
+        };
+        IssuedCacheCredential: components["schemas"]["CacheCredential"] & {
+            token: string;
         };
         /** @description An external account linked to a user, without the provider's user id. */
         LinkedIdentity: {
@@ -1777,9 +2373,52 @@ export interface components {
             /** @description An authenticator was added but its first code was not verified yet. */
             totp_pending: boolean;
         };
+        MigrationHistory: {
+            migrations: components["schemas"]["MigrationRecord"][];
+            /**
+             * Format: int64
+             * @description Use as before to read the next page, or null when there are no older entries.
+             */
+            next_before?: number | null;
+        };
+        MigrationRecord: {
+            /**
+             * Format: uuid
+             * @description Console account that applied the migration, or null for a secret API key.
+             */
+            actor_account_id?: string | null;
+            /** Format: date-time */
+            applied_at: string;
+            name: string;
+            /** Format: int64 */
+            version: number;
+        };
+        MigrationRequest: {
+            /** @description File name without its version prefix or extension. */
+            name: string;
+            /** @description Exact file contents. The checksum includes whitespace and line endings. */
+            sql: string;
+            /**
+             * Format: int64
+             * @description Positive integer prefix of the SQL file, unique in the project.
+             */
+            version: number;
+        };
         OAuthCodeBody: {
             code: string;
             code_verifier: string;
+        };
+        OAuthRedirects: {
+            redirect_urls: string[];
+        };
+        OAuthRedirectsBody: {
+            /** @description Exact app callback URLs. An empty list restores the project's site URL. */
+            redirect_urls: string[];
+        };
+        ObjectPage: {
+            items: components["schemas"]["StorageObject"][];
+            /** Format: uuid */
+            next_cursor?: string | null;
         };
         OneTimeTokenBody: {
             token: string;
@@ -1795,6 +2434,7 @@ export interface components {
         PendingInvitation: {
             /** Format: date-time */
             created_at: string;
+            delivery_status: components["schemas"]["InvitationDeliveryStatus"];
             email: string;
             /** Format: uuid */
             id: string;
@@ -1810,6 +2450,11 @@ export interface components {
             /** @description Rows the policy lets be written (`WITH CHECK`). */
             with_check?: string | null;
         };
+        ProjectCacheSettings: {
+            configured: boolean;
+            credentials: components["schemas"]["CacheCredential"][];
+            enabled: boolean;
+        };
         /**
          * @description What a platform account may do in a project: owners can also delete it.
          * @enum {string}
@@ -1821,7 +2466,13 @@ export interface components {
             created_at: string;
             /** Format: uuid */
             id: string;
+            /**
+             * Format: int32
+             * @description Zero selects the automatic mascot. Values 1 through 32 select a catalog entry.
+             */
+            mascot_id: number;
             name: string;
+            require_email_verification: boolean;
             role: components["schemas"]["ProjectRole"];
             site_url: string;
             slug: string;
@@ -1846,6 +2497,22 @@ export interface components {
         ProviderCredentialsBody: {
             client_id: string;
             client_secret: string;
+        };
+        QueueCount: {
+            /** @description When true, the actual count exceeds `value`. */
+            is_capped: boolean;
+            /** Format: int64 */
+            value: number;
+        };
+        QueueHealth: {
+            active_endpoints: number;
+            failed_last_day: components["schemas"]["QueueCount"];
+            /** Format: date-time */
+            observed_at: string;
+            /** Format: int64 */
+            oldest_overdue_seconds?: number | null;
+            overdue: components["schemas"]["QueueCount"];
+            pending: components["schemas"]["QueueCount"];
         };
         /** @description An invitation as the invited console account sees it. */
         ReceivedInvitation: {
@@ -1872,7 +2539,7 @@ export interface components {
             key_id: string;
         };
         RunSqlRequest: {
-            /** @description One or more statements, run in one transaction. */
+            /** @description One or more statements in an editor-managed transaction. Savepoints are supported. */
             query: string;
         };
         /**
@@ -1915,6 +2582,23 @@ export interface components {
         SignUpResponse: components["schemas"]["SessionTokens"] | {
             verification_required: boolean;
         };
+        SignedDownload: {
+            url: string;
+        };
+        SignedUpload: {
+            /** @description Whether the original PUT can still be used. */
+            can_upload: boolean;
+            /** Format: date-time */
+            expires_at: string;
+            headers: {
+                [key: string]: string;
+            };
+            /** Format: uuid */
+            object_id: string;
+            url: string;
+            /** @description Short-lived GET used to compare bytes when resuming an existing upload. */
+            verification_url?: string | null;
+        };
         SmtpSettingsBody: {
             /** @description The sender, e.g. `Acme <no-reply@acme.com>`. */
             email_from: string;
@@ -1950,6 +2634,16 @@ export interface components {
             /** Format: int64 */
             rows_affected: number;
         };
+        StorageObject: {
+            /** Format: uuid */
+            bucket_id: string;
+            content_type: string;
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: int64 */
+            size_bytes: number;
+        };
         TableOverview: {
             columns: components["schemas"]["ColumnOverview"][];
             /**
@@ -1982,11 +2676,21 @@ export interface components {
         };
         /** @description Settings a tenant manages itself with its secret key. */
         TenantSettings: {
+            /**
+             * Format: int32
+             * @description Zero selects the automatic mascot. Values 1 through 32 select a catalog entry.
+             */
+            mascot_id: number;
             name: string;
             require_email_verification: boolean;
             site_url: string;
         };
         TenantSettingsBody: {
+            /**
+             * Format: int32
+             * @description Zero selects the automatic mascot. Omit the field to keep the current setting.
+             */
+            mascot_id?: number | null;
             name?: string | null;
             require_email_verification?: boolean | null;
             site_url?: string | null;
@@ -2024,6 +2728,14 @@ export interface components {
             app_metadata?: {
                 [key: string]: unknown;
             } | null;
+            /** @description Optional previous contents. Returns 409 if the stored app metadata has changed. */
+            expected_app_metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** @description Optional previous contents. Returns 409 if the stored profile has changed. */
+            expected_user_metadata?: {
+                [key: string]: unknown;
+            } | null;
             /** @description Replaces the user's profile data (up to 16 KiB as JSON); left as it is when absent. */
             user_metadata?: {
                 [key: string]: unknown;
@@ -2053,14 +2765,28 @@ export interface components {
             email: string;
             /** Format: date-time */
             email_verified_at?: string | null;
+            /** @description The user can log in with email and password; passwordless accounts cannot. */
+            has_password: boolean;
             /** Format: uuid */
             id: string;
+            /**
+             * Format: date-time
+             * @description When the user last logged in, by any method, even if that session has ended; `null` if
+             *     they never did.
+             */
+            last_sign_in_at?: string | null;
             /** @description A verified TOTP authenticator is required at login. */
             mfa_enabled: boolean;
+            /** @description The social providers linked to the account (`google`, `github`), in name order. */
+            providers: string[];
             /** @description Profile data the user writes themself (`PATCH /auth/v1/user`). */
             user_metadata: {
                 [key: string]: unknown;
             };
+        };
+        UserCursorPageResponse: {
+            next_cursor?: string | null;
+            users: components["schemas"]["User"][];
         };
         UserIdentities: {
             identities: components["schemas"]["LinkedIdentity"][];
@@ -2116,7 +2842,7 @@ export interface components {
          * @description What happened, as receivers see it in `type`. Renaming one is a breaking change.
          * @enum {string}
          */
-        WebhookEventType: "user.created" | "user.updated" | "user.deleted" | "user.banned" | "user.unbanned" | "session.revoked";
+        WebhookEventType: "user.created" | "user.updated" | "user.deleted" | "user.banned" | "user.unbanned" | "session.revoked" | "audit.event";
     };
     responses: never;
     parameters: never;
@@ -2218,7 +2944,10 @@ export interface operations {
     };
     list_api_keys: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Cursor for the next page of revoked keys */
+                before?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2228,6 +2957,8 @@ export interface operations {
             /** @description The tenant's API keys */
             200: {
                 headers: {
+                    /** @description Cursor when more revoked keys exist */
+                    "X-Nelcota-Next-Cursor"?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -2340,6 +3071,16 @@ export interface operations {
             query?: {
                 /** @description Only events about this user. */
                 user_id?: string;
+                /** @description Only events of this kind. */
+                kind?: "logins" | "failures" | "changes" | "security" | "account" | "project";
+                /** @description Part of the email or IP address to search for. */
+                search?: string;
+                /** @description Only events of the last this many days. The log keeps 90. */
+                days?: number;
+                /** @description Only events at or after this instant (RFC 3339). Pass with `to`, instead of `days`. */
+                from?: string;
+                /** @description Only events before this instant (RFC 3339), at most 92 days after `from`. */
+                to?: string;
                 /** @description Only events older than this id (the previous page's `next_before`). */
                 before?: number;
                 limit?: number;
@@ -2359,7 +3100,7 @@ export interface operations {
                     "application/json": components["schemas"]["AuditPage"];
                 };
             };
-            /** @description Invalid user, cursor or limit */
+            /** @description Invalid user, kind, search, period, cursor or limit */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -2370,6 +3111,224 @@ export interface operations {
             };
             /** @description Requires the secret API key, or membership in the project */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    export_audit_events: {
+        parameters: {
+            query?: {
+                /** @description Only events about this user. */
+                user_id?: string;
+                /** @description Only events of this kind. */
+                kind?: "logins" | "failures" | "changes" | "security" | "account" | "project";
+                /** @description Part of the email or IP address to search for. */
+                search?: string;
+                /** @description Only events of the last this many days. The log keeps 90. */
+                days?: number;
+                /** @description Only events at or after this instant (RFC 3339). Pass with `to`, instead of `days`. */
+                from?: string;
+                /** @description Only events before this instant (RFC 3339), at most 92 days after `from`. */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The events as CSV */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            /** @description Invalid user, kind, search or period */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    read_audit_summary: {
+        parameters: {
+            query?: {
+                /**
+                 * @description How many days back from now. The activity log keeps 90 days. Without a period, the
+                 *     last 7 days.
+                 */
+                days?: number;
+                /** @description Only events at or after this instant (RFC 3339). Pass with `to`, instead of `days`. */
+                from?: string;
+                /** @description Only events before this instant (RFC 3339), at most 92 days after `from`. */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The period's summary */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditSummary"];
+                };
+            };
+            /** @description Days outside 1 to 90, or an invalid range */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_blocked_addresses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Blocks in force */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlockedAddress"][];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    block_address: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BlockAddressBody"];
+            };
+        };
+        responses: {
+            /** @description Address blocked */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlockedAddress"];
+                };
+            };
+            /** @description Not an address, or a range wider than /16 (/48 for IPv6) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The project already blocks 500 addresses */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    unblock_address: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the block */
+                block_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Block removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No block with this id */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2621,6 +3580,48 @@ export interface operations {
             };
         };
     };
+    configure_oauth_redirects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OAuthRedirectsBody"];
+            };
+        };
+        responses: {
+            /** @description Effective app callback URLs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthRedirects"];
+                };
+            };
+            /** @description Invalid callback URL */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Project access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     configure_oauth_provider: {
         parameters: {
             query?: never;
@@ -2754,7 +3755,7 @@ export interface operations {
                     "application/json": components["schemas"]["TenantSettings"];
                 };
             };
-            /** @description Invalid name or site URL */
+            /** @description Invalid project settings */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -2979,7 +3980,10 @@ export interface operations {
     };
     read_project_usage: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Allow a cached snapshot up to 30 seconds old. */
+                cached?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3006,6 +4010,47 @@ export interface operations {
             };
         };
     };
+    read_daily_usage: {
+        parameters: {
+            query?: {
+                /** @description How many days, ending today (UTC). The activity log keeps logins for 90 days. */
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One entry per day, oldest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyUsage"];
+                };
+            };
+            /** @description Days outside 1 to 90 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     list_users: {
         parameters: {
             query?: {
@@ -3013,6 +4058,7 @@ export interface operations {
                 email?: string;
                 /** @description Only users in this state; every user without it. */
                 status?: "unverified" | "banned";
+                /** @description Set to zero to return only the total. */
                 limit?: number;
                 offset?: number;
             };
@@ -3032,6 +4078,99 @@ export interface operations {
                 };
             };
             /** @description Invalid search, status, limit or offset */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    export_users: {
+        parameters: {
+            query?: {
+                /** @description Part of the email to search for. */
+                email?: string;
+                /** @description Only users in this state; every user without it. */
+                status?: "unverified" | "banned";
+                /** @description The order of the rows, as in the list. */
+                order?: "created_at" | "last_sign_in";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The users as CSV */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            /** @description Invalid search, status or order */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_users_page: {
+        parameters: {
+            query?: {
+                /** @description Part of the email to search for. */
+                email?: string;
+                /** @description Only users in this state; every user without it. */
+                status?: "unverified" | "banned";
+                limit?: number;
+                /** @description The previous response's `next_cursor`. Omit for the first page. */
+                before?: string;
+                /** @description The order of the list; a `before` cursor only continues the order it came from. */
+                order?: "created_at" | "last_sign_in";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of users without a total count */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserCursorPageResponse"];
+                };
+            };
+            /** @description Invalid search, status, order, limit or cursor */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -3129,6 +4268,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
+            /** @description The account is the last active owner of a project */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
         };
     };
     update_user: {
@@ -3176,6 +4324,15 @@ export interface operations {
             };
             /** @description No such user */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The metadata changed since it was opened */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3555,6 +4712,62 @@ export interface operations {
             };
             /** @description The project already has 5 endpoints */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    read_webhook_queue_health: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delivery queue health for the authorized project */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueueHealth"];
+                };
+            };
+            /** @description Missing or invalid credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Project access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many queue reads for this project */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Queue health is unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3983,7 +5196,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description A login link is on its way */
+            /** @description Login link request accepted */
             202: {
                 headers: {
                     [name: string]: unknown;
@@ -4264,6 +5477,7 @@ export interface operations {
             query?: {
                 state?: string;
                 code?: string;
+                error?: string;
             };
             header?: never;
             path?: never;
@@ -4699,6 +5913,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
+            /** @description The account is the last active owner of a project */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
         };
     };
     update_current_user: {
@@ -4959,6 +6182,400 @@ export interface operations {
             };
             /** @description Too many emails requested */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_cache_entry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CacheKeyRequest"];
+            };
+        };
+        responses: {
+            /** @description Cache entry removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid cache request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid cache credential */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Project cache is disabled */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Cache payload is too large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Project quota reached */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Cache is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_cache_entry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CacheKeyRequest"];
+            };
+        };
+        responses: {
+            /** @description Cache hit */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CacheEntry"];
+                };
+            };
+            /** @description Invalid cache request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid cache credential */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Cache miss */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Project cache is disabled */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Cache payload is too large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Project quota reached */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Cache is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    set_cache_entry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CacheWriteRequest"];
+            };
+        };
+        responses: {
+            /** @description Cache entry written */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid cache request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid cache credential */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Project cache is disabled */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Cache payload is too large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Project quota reached */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Cache is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list: {
+        parameters: {
+            query?: {
+                /** @description Pass the previous page's `next_before` to fetch older versions. */
+                before?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Applied migrations for the project */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MigrationHistory"];
+                };
+            };
+            /** @description Invalid history cursor */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing or invalid credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires a secret API key or project membership */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    apply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MigrationRequest"];
+            };
+        };
+        responses: {
+            /** @description The same migration was already applied */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MigrationRecord"];
+                };
+            };
+            /** @description Migration applied */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MigrationRecord"];
+                };
+            };
+            /** @description Invalid request or SQL */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing or invalid credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires a secret API key or project membership */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Applied version differs or a newer version exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Request body is too large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Expected a JSON body */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Database is busy */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Migration timed out */
+            504: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5406,6 +7023,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Email verification required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             /** @description No pending invitation for this account */
             404: {
                 headers: {
@@ -5436,6 +7062,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AcceptedInvitation"];
+                };
+            };
+            /** @description Email verification required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
                 };
             };
             /** @description No pending invitation for this account */
@@ -5586,6 +7221,278 @@ export interface operations {
             };
         };
     };
+    read_cache_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project ID */
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Project cache settings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectCacheSettings"];
+                };
+            };
+            /** @description Invalid platform token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Project ownership required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    change_cache_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project ID */
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeCacheSettings"];
+            };
+        };
+        responses: {
+            /** @description Cache settings updated */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid cache settings */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid platform token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Project ownership required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Cache is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    clear_cache: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project ID */
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Project cache cleared */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid platform token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Project ownership required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Project cache is disabled */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_cache_credential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project ID */
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCacheCredential"];
+            };
+        };
+        responses: {
+            /** @description Issued cache credential */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssuedCacheCredential"];
+                };
+            };
+            /** @description Invalid credential name */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid platform token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Project ownership required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Project cache is disabled or credential limit reached */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Cache is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    revoke_cache_credential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project ID */
+                project_id: string;
+                /** @description Credential ID */
+                credential_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cache credential revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid platform token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Project ownership required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Credential not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     invite_member: {
         parameters: {
             query?: never;
@@ -5602,7 +7509,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Invitation created and emailed */
+            /** @description Invitation created with the result of the email attempt */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -5681,6 +7588,67 @@ export interface operations {
             };
             /** @description No such pending invitation */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    resend_invitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the project */
+                project_id: string;
+                /** @description Id of the pending invitation */
+                invitation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Result of the email attempt */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendingInvitation"];
+                };
+            };
+            /** @description Not an owner of this project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such pending invitation */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Delivery already in progress */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many invitations */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5992,7 +7960,10 @@ export interface operations {
                 /** @description Rows to skip */
                 offset?: number;
             };
-            header?: never;
+            header?: {
+                /** @description count=exact|planned, order=primary-key */
+                Prefer?: string | null;
+            };
             path: {
                 /** @description Table or view of the public schema */
                 table: string;
@@ -6231,6 +8202,632 @@ export interface operations {
             };
             /** @description No such table */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_buckets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List private buckets */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Bucket"][];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Bucket or file not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_bucket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BucketInput"];
+            };
+        };
+        responses: {
+            /** @description Create a private bucket */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Bucket"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Bucket or file not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_bucket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Bucket ID */
+                bucket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delete a bucket and its files */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Bucket or file not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_objects: {
+        parameters: {
+            query?: {
+                limit?: number;
+                before?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Bucket ID */
+                bucket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List available files */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObjectPage"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Bucket or file not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    start_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Bucket ID */
+                bucket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FileInput"];
+            };
+        };
+        responses: {
+            /** @description Reserve a file and sign a direct PUT */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignedUpload"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Bucket or file not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description File is too large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_object: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Object ID */
+                object_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Remove a file and queue its physical deletion */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Bucket or file not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    complete_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Object ID */
+                object_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Confirm a successful upload */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageObject"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Bucket or file not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    download_url: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Object ID */
+                object_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sign a private GET for a file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignedDownload"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid credentials */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Access denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Bucket or file not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Storage unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

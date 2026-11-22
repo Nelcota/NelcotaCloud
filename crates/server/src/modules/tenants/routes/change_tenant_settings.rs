@@ -8,7 +8,10 @@ use validator::Validate;
 use crate::app_state::AppState;
 use crate::modules::tenants::access::tenant_admin::TenantAdmin;
 use crate::modules::tenants::audit::audit_action::AuditAction;
-use crate::modules::tenants::audit::project_change::{ProjectChange, record_project_change};
+use crate::modules::tenants::audit::project_audit_queue::{
+    begin_project_change, commit_project_change,
+};
+use crate::modules::tenants::audit::project_change::ProjectChange;
 use crate::modules::tenants::settings::tenant_settings::TenantSettings;
 use crate::modules::tenants::settings::tenant_settings_update::{
     TenantSettingsUpdate, update_settings,
@@ -55,15 +58,15 @@ pub async fn change_tenant_settings(
         mascot_id: body.mascot_id,
     };
     let fields = changed_fields(&body);
-    let pool = &state.control_plane_pool;
-    let settings = update_settings(pool, admin.tenant_id, update).await?;
+    let mut transaction = begin_project_change(&state.control_plane_pool, admin.tenant_id).await?;
+    let settings = update_settings(&mut transaction, admin.tenant_id, update).await?;
     let change = ProjectChange {
         tenant_id: admin.tenant_id,
         author: admin.author(),
         action: AuditAction::SettingsChanged,
         details: json!({ "section": "project", "fields": fields }),
     };
-    record_project_change(&state.tenant_pools, change).await;
+    commit_project_change(&state, transaction, change).await?;
 
     Ok(Json(settings))
 }

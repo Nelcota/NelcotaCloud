@@ -1,5 +1,6 @@
 import type { JSX } from 'react'
 
+import { OBJECT_NAME_HINT } from '@/modules/database/components/object-name'
 import {
   COMMAND_OPTIONS,
   type PolicyDraft,
@@ -8,10 +9,8 @@ import {
   isPolicyCommand,
 } from '@/modules/database/components/policy-draft'
 import { PolicyRolePicker } from '@/modules/database/components/policy-role-picker'
-import { OBJECT_NAME_HINT } from '@/modules/database/components/object-name'
-import { FormField } from '@/shared/ui/form-field'
 import { SelectField } from '@/shared/ui/select-field'
-import { TextAreaField } from '@/shared/ui/text-area-field'
+import { TextAreaField, TextField } from '@/shared/ui/text-field'
 
 type PolicyFieldsProps = {
   draft: PolicyDraft
@@ -29,30 +28,24 @@ export function PolicyFields({ draft, onChange }: PolicyFieldsProps): JSX.Elemen
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="flex flex-col gap-4">
       <div className="grid gap-3 sm:grid-cols-2">
-        <FormField
+        <TextField
           label="Nome"
           required
           spellCheck={false}
           autoComplete="off"
           placeholder="own_rows"
           hint={OBJECT_NAME_HINT}
-          className="font-mono"
           value={draft.name}
           onChange={(event) => onChange({ name: event.target.value })}
         />
         <SelectField
           label="Comando"
+          options={COMMAND_OPTIONS}
           value={draft.command}
-          onChange={(event) => pickCommand(event.target.value)}
-        >
-          {COMMAND_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </SelectField>
+          onValueChange={pickCommand}
+        />
       </div>
       <PolicyRolePicker selected={draft.roles} onChange={(roles) => onChange({ roles })} />
       <ConditionField
@@ -91,8 +84,9 @@ function ConditionField(props: ConditionFieldProps): JSX.Element | null {
       label={props.label}
       hint={props.hint}
       rows={2}
+      isCode
       spellCheck={false}
-      className="border-input focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 w-full resize-y rounded-lg border bg-transparent px-3 py-2 font-mono text-sm outline-none focus-visible:ring-3"
+      autoCapitalize="none"
       value={props.value}
       onChange={(event) => props.onChange(event.target.value)}
     />

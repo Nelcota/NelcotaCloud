@@ -1,48 +1,82 @@
 import type { JSX } from 'react'
 
-import { ApiKeysTable } from '@/modules/api-keys/components/api-keys-table'
+import { ConnectAppPanel } from '@/modules/api-keys/components/connect-app-panel'
 import { CreateKeyDialog } from '@/modules/api-keys/components/create-key-dialog'
+import { keyApiSnippets } from '@/modules/api-keys/components/key-api-snippets'
+import { firstVisiblePublishable } from '@/modules/api-keys/components/key-activity'
+import { KeyFacts } from '@/modules/api-keys/components/key-facts'
+import { KeyLists } from '@/modules/api-keys/components/key-lists'
+import { KeyStats } from '@/modules/api-keys/components/key-stats'
 import { NewKeyNotice } from '@/modules/api-keys/components/new-key-notice'
-import { SigningKeyCard } from '@/modules/api-keys/components/signing-key-card'
-import { useApiKeysQuery, useCreateApiKeyMutation } from '@/modules/api-keys/queries/use-api-keys'
+import { SigningKeySection } from '@/modules/api-keys/components/signing-key-section'
+import {
+  useApiKeysHistoryQuery,
+  useCreateApiKeyMutation,
+} from '@/modules/api-keys/queries/use-api-keys'
 import type { components } from '@/shared/api/api-schema'
-import { useProjectId } from '@/shared/routing/use-project-id'
 import { showFlash } from '@/shared/lib/flash-notice'
+import { useProjectId } from '@/shared/routing/use-project-id'
+import { ApiSheet } from '@/shared/ui/api-sheet'
 import { LoadError } from '@/shared/ui/load-error'
 import { PageHeader } from '@/shared/ui/page-header'
 
 export function ApiKeysPage(): JSX.Element {
   const projectId = useProjectId()
-  const keys = useApiKeysQuery(projectId)
+
+  return <ProjectKeys key={projectId} projectId={projectId} />
+}
+
+function ProjectKeys({ projectId }: { projectId: string }): JSX.Element {
+  const keys = useApiKeysHistoryQuery(projectId)
   const creation = useCreateApiKeyMutation(projectId)
+  const publishableKey = firstVisiblePublishable(keys.data)
 
   return (
-    <div className="grid gap-6">
+    <div className="flex flex-col gap-8">
       <PageHeader
         title="Chaves de API"
-        description="A publishable vai no app; a secret fica só no seu servidor. Para trocar uma chave sem parar o app, crie a nova, publique o app com ela e só então revogue a antiga."
+        description="Identificam o projeto em cada requisição, no header apikey."
         actions={
-          <CreateKeyDialog
-            isPending={creation.isPending}
-            onCreate={async (body) => {
-              announcePublishable(await creation.mutateAsync(body))
-            }}
-          />
+          <>
+            <ApiSheet title="Chaves pela API" snippets={keyApiSnippets(publishableKey)} />
+            <CreateKeyDialog
+              isPending={creation.isPending}
+              isDisabled={creation.data?.kind === 'secret'}
+              onCreate={async (body) => {
+                announcePublishable(await creation.mutateAsync(body))
+              }}
+            />
+          </>
         }
-      />
-      <LoadError error={keys.error} onRetry={() => keys.refetch()} />
+      >
+        <KeyFacts projectId={projectId} />
+      </PageHeader>
       <NewKeyNotice apiKey={creation.data} onDismiss={() => creation.reset()} />
-      <ApiKeysTable projectId={projectId} keys={keys.data} hasFailed={keys.isError} />
-      <SigningKeyCard projectId={projectId} />
+      <LoadError error={keys.error} onRetry={() => keys.refetch()} />
+      <KeyStats keys={keys.data} hasFailed={keys.isError} />
+      <KeyLists
+        projectId={projectId}
+        keys={keys.data}
+        hasFailed={keys.isError}
+        more={{
+          hasMore: keys.hasNextPage,
+          isLoading: keys.isFetchingNextPage,
+          onLoad: () => void keys.fetchNextPage(),
+        }}
+      />
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <ConnectAppPanel publishableKey={publishableKey} projectId={projectId} />
+        <SigningKeySection projectId={projectId} />
+      </div>
     </div>
   )
 }
 
-/** A publishable key is not shown once: it lands in the list, which this sentence points to. */
+/** A publishable key is not shown once: it lands in its table, in full. */
 function announcePublishable(created: components['schemas']['IssuedApiKey']): void {
   if (created.kind !== 'publishable') {
     return
   }
 
-  showFlash('Publishable key criada. Copie-a na lista quando precisar.')
+  showFlash('Chave publicável criada.')
 }

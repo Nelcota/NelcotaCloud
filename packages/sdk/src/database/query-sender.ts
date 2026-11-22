@@ -26,14 +26,14 @@ export class QuerySender {
   }
 
   async send<T>(request: QueryRequest): Promise<QueryResult<T>> {
-    const accessToken = await this.accessToken()
-    const response = await this.http.send<T>({
+    const snapshot = {
       method: request.method,
       path: `${REST_PATH}${request.path}${queryString(request.params)}`,
-      body: request.body,
-      accessToken,
+      jsonBody: JSON.stringify(request.body),
       headers: headersOf(request),
-    })
+    }
+    const accessToken = await this.accessToken()
+    const response = await this.http.send<T>({ ...snapshot, accessToken })
 
     return {
       data: response.data,

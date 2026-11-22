@@ -1,8 +1,4 @@
 import type { OAuthProviderName } from '@/modules/project-settings/api/configure-provider'
-import { API_BASE_URL } from '@/shared/api/api-base-url'
-
-/** Where the provider sends users back to; it points at this environment's API. */
-export const OAUTH_CALLBACK_URL = `${API_BASE_URL}/auth/v1/oauth/callback`
 
 export type ProviderGuide = {
   /** The page where the OAuth app is created, opened in a new tab. */

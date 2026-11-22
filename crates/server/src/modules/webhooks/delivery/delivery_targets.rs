@@ -69,8 +69,13 @@ pub fn delivery_target(
     let mut secrets = vec![WebhookSecret::from_key(current)];
 
     if let Some(previous_ciphertext) = &endpoint.active_previous_secret_ciphertext {
-        let previous = secret_box.open(previous_ciphertext, &context)?;
-        secrets.push(WebhookSecret::from_key(previous));
+        match secret_box.open(previous_ciphertext, &context) {
+            Ok(previous) => secrets.push(WebhookSecret::from_key(previous)),
+            Err(error) => {
+                let endpoint_id = endpoint.id;
+                tracing::warn!(%error, %endpoint_id, "could not open the previous webhook secret");
+            }
+        }
     }
 
     Ok(DeliveryTarget {

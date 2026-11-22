@@ -8,6 +8,7 @@ use validator::Validate;
 
 use crate::app_state::AppState;
 use crate::modules::team::member::ownership_transfer::{OwnershipTransfer, transfer_ownership};
+use crate::modules::team::member::team_access::TeamAccounts;
 use crate::modules::tenants::access::admin_actor::AdminActor;
 use crate::modules::tenants::audit::audit_action::AuditAction;
 use crate::modules::tenants::audit::project_change::{ProjectChange, record_project_change};
@@ -53,7 +54,8 @@ pub async fn transfer(
         from_account_id: account.account_id,
         to_account_id: body.account_id,
     };
-    transfer_ownership(&state.control_plane_pool, transfer).await?;
+    let mut accounts = TeamAccounts::open(&state).await?;
+    transfer_ownership(&state.control_plane_pool, &mut accounts, transfer).await?;
     let change = ProjectChange {
         tenant_id: project_id,
         author: (AdminActor::ConsoleAccount(account.account_id), &origin),

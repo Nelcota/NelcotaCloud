@@ -2,6 +2,7 @@ use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
 
 use crate::app_state::AppState;
+use crate::modules::auth::session::session_access::require_active_session;
 use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::modules::tenants::signing_keys::access_token::{AccessTokenClaims, TokenAudience};
@@ -26,6 +27,7 @@ impl FromRequestParts<AppState> for AuthenticatedUser {
             tenant_id: tenant.tenant_id,
         };
         let claims = verify_tenant_token(&state.signing_keys, &audience, access_token).await?;
+        require_active_session(&tenant.pool, claims.sub, claims.sid).await?;
 
         Ok(Self { tenant, claims })
     }

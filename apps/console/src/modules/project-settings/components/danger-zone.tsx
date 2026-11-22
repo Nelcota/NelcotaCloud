@@ -1,62 +1,44 @@
-import Database from '~icons/solar/database-linear'
-import { useNavigate } from '@tanstack/react-router'
 import type { JSX } from 'react'
 
-import {
-  useCurrentProject,
-  useDeleteProjectMutation,
-} from '@/modules/projects/queries/use-projects'
-import { ProjectDeletionIllustration } from '@/modules/project-settings/components/project-deletion-illustration'
-import { ConfirmButton } from '@/shared/ui/confirm-button'
-import { SettingsSection } from '@/shared/ui/settings-section'
+import { DeleteProjectButton } from '@/modules/project-settings/components/delete-project-button'
+import { RowLink } from '@/modules/project-settings/components/row-link'
+import { SettingsGroup } from '@/modules/project-settings/components/settings-group'
+import { SettingsRow } from '@/modules/project-settings/components/settings-row'
+import { useCurrentProject } from '@/modules/projects/queries/use-projects'
+import { Skeleton } from '@/shared/ui/primitives/skeleton'
 
 type DangerZoneProps = {
   projectId: string
   projectName: string
 }
 
-export function DangerZone({ projectId, projectName }: DangerZoneProps): JSX.Element | null {
-  const navigate = useNavigate()
-  const deletion = useDeleteProjectMutation()
-  // The slug is what the user types to confirm; the name is the fallback while it loads.
+/** Handing the project over and deleting it; only owners can do either. */
+export function DangerZone({ projectId, projectName }: DangerZoneProps): JSX.Element {
   const project = useCurrentProject(projectId)
-  const confirmationText = project?.slug ?? projectName
 
-  async function deleteProject(): Promise<void> {
-    await deletion.mutateAsync(projectId)
-    await navigate({ to: '/' })
+  if (project === undefined) {
+    return <Skeleton className="h-40 rounded-xl" />
   }
 
-  // Only owners can delete; members would find out only after confirming.
-  if (project?.role !== 'owner') {
-    return null
+  // Members would find out only after confirming, so they see why the actions are missing.
+  if (project.role !== 'owner') {
+    return (
+      <SettingsGroup title="Ações do dono" isDanger>
+        <p className="px-6 py-5 text-sm text-muted-foreground">
+          Só os donos do projeto podem transferi-lo ou excluí-lo.
+        </p>
+      </SettingsGroup>
+    )
   }
 
   return (
-    <SettingsSection title="Zona de perigo" tone="danger">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-medium">Excluir este projeto</p>
-          <p className="text-muted-foreground mt-1 text-sm text-pretty">
-            Apaga os usuários, as chaves e o banco de dados.
-          </p>
-        </div>
-        <div className="shrink-0">
-          <ConfirmButton
-            title={`Excluir ${projectName} para sempre?`}
-            description="O banco de dados do projeto, seus usuários e suas chaves são apagados e não há como recuperar. Apps que usam este projeto param de funcionar na hora."
-            confirmLabel="Excluir projeto"
-            change={{ subject: projectName, icon: Database, from: 'Ativo', to: 'Excluído' }}
-            illustration={<ProjectDeletionIllustration />}
-            confirmationText={confirmationText}
-            isDestructive
-            isPending={deletion.isPending}
-            onConfirm={deleteProject}
-          >
-            Excluir projeto
-          </ConfirmButton>
-        </div>
-      </div>
-    </SettingsSection>
+    <SettingsGroup title="Ações do dono" isDanger>
+      <SettingsRow title="Transferir propriedade" description="Você continua como membro.">
+        <RowLink href={`/projects/${projectId}/team`} label="Abrir equipe" />
+      </SettingsRow>
+      <SettingsRow title="Excluir projeto" description="Apaga usuários, chaves e banco.">
+        <DeleteProjectButton projectId={projectId} projectName={projectName} slug={project.slug} />
+      </SettingsRow>
+    </SettingsGroup>
   )
 }

@@ -3,8 +3,7 @@ import type { JSX } from 'react'
 
 import { ErrorReport } from '@/app/error-report'
 import { StatusScreen } from '@/app/status-screen'
-import { Button } from '@/shared/ui/button'
-import { buttonVariants } from '@/shared/ui/button-variants'
+import { Button } from '@/shared/ui/primitives/button'
 
 /**
  * Shown when a page throws while rendering or loading. "Ir para os projetos" is a full page
@@ -22,15 +21,15 @@ export function RouteErrorPage({ error, reset }: ErrorComponentProps): JSX.Eleme
   return (
     <StatusScreen
       title="Esta página não carregou"
-      description="Tente de novo. Se o erro se repetir, copie o relatório do erro e envie para nós."
+      description="Tente de novo. Se repetir, envie o relatório abaixo para nós."
       actions={
         <>
-          <Button size="lg" onClick={retry}>
+          <Button type="button" size="lg" onClick={() => void retry()}>
             Tentar de novo
           </Button>
-          <a href="/" className={buttonVariants({ variant: 'outline', size: 'lg' })}>
-            Ir para os projetos
-          </a>
+          <Button asChild variant="outline" size="lg">
+            <a href="/">Ir para os projetos</a>
+          </Button>
         </>
       }
       aside={<ErrorReport error={error} />}

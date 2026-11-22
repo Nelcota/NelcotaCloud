@@ -1,27 +1,19 @@
-import Ban from '~icons/solar/forbidden-circle-linear'
-import LogOut from '~icons/solar/logout-2-linear'
-import MoreHorizontal from '~icons/solar/menu-dots-linear'
-import ShieldOff from '~icons/solar/shield-cross-linear'
-import Trash2 from '~icons/solar/trash-bin-trash-linear'
-import UserCheck from '~icons/solar/user-check-linear'
+import { Ellipsis } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
-import {
-  CONFIRMATIONS,
-  type ConfirmedAction,
-} from '@/modules/users/components/user-action-confirmations'
-import { UserActionIllustration } from '@/modules/users/components/user-action-illustration'
+import { ActionConfirmation } from '@/modules/users/components/action-confirmation'
+import type { ConfirmedAction } from '@/modules/users/components/user-action-confirmations'
+import { UserMenuEntries } from '@/modules/users/components/user-menu-entries'
+import { userMenuItems } from '@/modules/users/components/user-menu-items'
 import type { UserAction } from '@/modules/users/queries/use-users'
 import type { components } from '@/shared/api/api-schema'
-import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
+import { Button } from '@/shared/ui/primitives/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu'
+} from '@/shared/ui/primitives/dropdown-menu'
 
 type User = components['schemas']['User']
 
@@ -29,39 +21,35 @@ type UserActionsMenuProps = {
   user: User
   isPending: boolean
   onAction: (action: UserAction) => Promise<void>
+  /** Actions already shown as their own buttons next to the menu, so the menu leaves them out. */
+  excludedActions?: readonly UserAction[]
 }
 
-/** Every admin action on a user behind one button, so rows stay one line high on any screen. */
-export function UserActionsMenu({ user, isPending, onAction }: UserActionsMenuProps): JSX.Element {
+/** Every admin action on a user behind one `…` button, at the end of a row or a header. */
+export function UserActionsMenu(props: UserActionsMenuProps): JSX.Element {
+  const { user, isPending, onAction } = props
   const [confirming, setConfirming] = useState<ConfirmedAction | null>(null)
+  const items = userMenuItems(user, {
+    onConfirm: setConfirming,
+    onRun: (action) => void onAction(action).catch(shownAbove),
+  }).filter((item) => props.excludedActions?.includes(item.action) !== true)
 
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger
-          disabled={isPending}
-          aria-busy={isPending}
-          aria-label={`Ações para ${user.email}`}
-          className="hover:bg-accent aria-expanded:bg-accent text-muted-foreground hover:text-foreground flex size-9 items-center justify-center rounded-md transition-colors"
-        >
-          <MoreHorizontal className="size-5" />
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Ações para ${user.email}`}
+            disabled={isPending}
+          >
+            <Ellipsis aria-hidden />
+          </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-52">
-          <BanItem
-            isBanned={user.banned_at !== null && user.banned_at !== undefined}
-            onUnban={() => void onAction('unban').catch(ignoreShownError)}
-            onBan={() => setConfirming('ban')}
-          />
-          <DropdownMenuItem onClick={() => setConfirming('end-sessions')}>
-            <LogOut />
-            Encerrar sessões
-          </DropdownMenuItem>
-          <ResetMfaItem isShown={user.mfa_enabled} onSelect={() => setConfirming('reset-mfa')} />
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive" onClick={() => setConfirming('delete')}>
-            <Trash2 />
-            Excluir usuário
-          </DropdownMenuItem>
+        <DropdownMenuContent align="end" className="min-w-48">
+          <UserMenuEntries items={items} />
         </DropdownMenuContent>
       </DropdownMenu>
       <ActionConfirmation
@@ -74,80 +62,7 @@ export function UserActionsMenu({ user, isPending, onAction }: UserActionsMenuPr
   )
 }
 
-type BanItemProps = { isBanned: boolean; onBan: () => void; onUnban: () => void }
-
-function BanItem({ isBanned, onBan, onUnban }: BanItemProps): JSX.Element {
-  if (isBanned) {
-    return (
-      <DropdownMenuItem onClick={onUnban}>
-        <UserCheck />
-        Desbloquear
-      </DropdownMenuItem>
-    )
-  }
-
-  return (
-    <DropdownMenuItem onClick={onBan}>
-      <Ban />
-      Bloquear
-    </DropdownMenuItem>
-  )
-}
-
-function ResetMfaItem({
-  isShown,
-  onSelect,
-}: {
-  isShown: boolean
-  onSelect: () => void
-}): JSX.Element | null {
-  if (isShown === false) {
-    return null
-  }
-
-  return (
-    <DropdownMenuItem onClick={onSelect}>
-      <ShieldOff />
-      Remover MFA
-    </DropdownMenuItem>
-  )
-}
-
-type ActionConfirmationProps = {
-  action: ConfirmedAction | null
-  email: string
-  onClose: () => void
-  onConfirm: (action: UserAction) => Promise<void>
-}
-
-function ActionConfirmation({
-  action,
-  email,
-  onClose,
-  onConfirm,
-}: ActionConfirmationProps): JSX.Element | null {
-  if (action === null) {
-    return null
-  }
-
-  const confirmation = CONFIRMATIONS[action]
-
-  return (
-    <ConfirmDialog
-      isOpen
-      onClose={onClose}
-      title={confirmation.title(email)}
-      description={confirmation.description}
-      confirmLabel={confirmation.confirmLabel}
-      isDestructive={confirmation.isDestructive}
-      change={confirmation.change(email)}
-      illustration={<UserActionIllustration action={action} />}
-      onConfirm={() => onConfirm(action)}
-    />
-  )
-}
-
-/** Unblocking needs no dialog; its failure is shown above the list, where the page reads it. */
-function ignoreShownError(): void {
+/** Actions without a dialog show their failure above the list or the page, where it is read. */
+function shownAbove(): void {
   return undefined
 }

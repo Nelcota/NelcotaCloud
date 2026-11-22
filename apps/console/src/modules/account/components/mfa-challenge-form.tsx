@@ -1,10 +1,10 @@
 import type { FormEvent, JSX } from 'react'
 import { useState } from 'react'
 
+import { TotpCodeField } from '@/modules/account/components/totp-code-field'
 import { useVerifyMfaMutation } from '@/modules/account/queries/use-verify-mfa-mutation'
-import { Button } from '@/shared/ui/button'
 import { ErrorAlert } from '@/shared/ui/error-alert'
-import { FormField } from '@/shared/ui/form-field'
+import { PendingButton } from '@/shared/ui/pending-button'
 
 type MfaChallengeFormProps = {
   mfaToken: string
@@ -22,23 +22,18 @@ export function MfaChallengeForm({ mfaToken, onSignedIn }: MfaChallengeFormProps
   }
 
   return (
-    <form className="grid gap-4" onSubmit={submit}>
-      <FormField
-        label="Código do autenticador"
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        pattern="[0-9 ]{6,7}"
-        required
-        autoFocus
-        maxLength={7}
-        className="h-12 text-center font-mono text-xl tracking-[0.4em] md:text-xl"
-        value={code}
-        onChange={(event) => setCode(event.target.value)}
-      />
+    <form onSubmit={submit} className="flex flex-col gap-4">
+      <TotpCodeField value={code} onChange={setCode} hasAutoFocus />
       <ErrorAlert error={verify.error} />
-      <Button type="submit" size="lg" disabled={verify.isPending} aria-busy={verify.isPending}>
+      <PendingButton
+        type="submit"
+        size="lg"
+        className="h-10 w-full"
+        isPending={verify.isPending}
+        disabled={code.trim() === ''}
+      >
         Confirmar
-      </Button>
+      </PendingButton>
     </form>
   )
 }

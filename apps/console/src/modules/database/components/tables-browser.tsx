@@ -1,28 +1,24 @@
-import Database from '~icons/solar/database-linear'
 import type { JSX } from 'react'
 
-import { TablesTable } from '@/modules/database/components/tables-table'
+import { DatabaseStats } from '@/modules/database/components/database-stats'
+import { FilteredTables } from '@/modules/database/components/filtered-tables'
+import { TablesEmptyState } from '@/modules/database/components/tables-empty-state'
 import { useSchemaQuery } from '@/modules/database/queries/use-schema-query'
 import type { components } from '@/shared/api/api-schema'
-import { EmptyState } from '@/shared/ui/empty-state'
 import { LoadError } from '@/shared/ui/load-error'
-import { Skeleton } from '@/shared/ui/skeleton'
+import { Skeleton } from '@/shared/ui/primitives/skeleton'
 
 type TableOverview = components['schemas']['TableOverview']
 
-/** The project's tables, with their loading, error and empty states. */
 export function TablesBrowser({ projectId }: { projectId: string }): JSX.Element {
   const schema = useSchemaQuery(projectId)
+  const tables = schema.data?.tables
 
   return (
-    <>
+    <div className="flex flex-col gap-8">
       <LoadError error={schema.error} onRetry={() => schema.refetch()} />
-      <TablesContent
-        projectId={projectId}
-        tables={schema.data?.tables}
-        hasFailed={schema.isError}
-      />
-    </>
+      <TablesContent projectId={projectId} tables={tables} hasFailed={schema.isError} />
+    </div>
   )
 }
 
@@ -38,18 +34,31 @@ function TablesContent({ projectId, tables, hasFailed }: TablesContentProps): JS
   }
 
   if (tables === undefined) {
-    return <Skeleton className="h-40 rounded-xl" />
+    return <TablesLoading />
   }
 
   if (tables.length === 0) {
-    return (
-      <EmptyState
-        icon={Database}
-        title="Nenhuma tabela"
-        description="Crie a primeira tabela aqui ou pelo editor SQL."
-      />
-    )
+    return <TablesEmptyState />
   }
 
-  return <TablesTable projectId={projectId} tables={tables} />
+  return (
+    <>
+      <DatabaseStats tables={tables} />
+      <FilteredTables projectId={projectId} tables={tables} />
+    </>
+  )
+}
+
+function TablesLoading(): JSX.Element {
+  return (
+    <div role="status" aria-label="Carregando tabelas" className="flex flex-col gap-8">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Skeleton className="h-32 rounded-xl" />
+        <Skeleton className="h-32 rounded-xl" />
+        <Skeleton className="h-32 rounded-xl" />
+        <Skeleton className="h-32 rounded-xl" />
+      </div>
+      <Skeleton className="h-64 rounded-xl" />
+    </div>
+  )
 }

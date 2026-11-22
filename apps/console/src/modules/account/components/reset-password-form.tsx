@@ -2,9 +2,9 @@ import type { FormEvent, JSX } from 'react'
 import { useState } from 'react'
 
 import { useResetPasswordMutation } from '@/modules/account/queries/use-reset-password-mutation'
-import { Button } from '@/shared/ui/button'
 import { ErrorAlert } from '@/shared/ui/error-alert'
-import { FormField } from '@/shared/ui/form-field'
+import { PendingButton } from '@/shared/ui/pending-button'
+import { TextField } from '@/shared/ui/text-field'
 
 const MIN_PASSWORD_LENGTH = 8
 
@@ -23,21 +23,28 @@ export function ResetPasswordForm({ token, onDone }: ResetPasswordFormProps): JS
   }
 
   return (
-    <form className="grid gap-4" onSubmit={submit}>
-      <FormField
+    <form onSubmit={submit} className="flex flex-col gap-4">
+      <TextField
         label="Nova senha"
         type="password"
         autoComplete="new-password"
         autoFocus
         required
         minLength={MIN_PASSWORD_LENGTH}
+        className="[&_input]:h-10"
         value={password}
         onChange={(event) => setPassword(event.target.value)}
       />
       <ErrorAlert error={reset.error} />
-      <Button type="submit" size="lg" disabled={reset.isPending} aria-busy={reset.isPending}>
+      <PendingButton
+        type="submit"
+        size="lg"
+        className="h-10 w-full"
+        isPending={reset.isPending}
+        disabled={password.length < MIN_PASSWORD_LENGTH}
+      >
         Salvar senha
-      </Button>
+      </PendingButton>
     </form>
   )
 }

@@ -1,9 +1,13 @@
-import Search from '~icons/solar/magnifier-linear'
 import type { JSX } from 'react'
 
-import type { ProjectQuery, RoleFilter } from '@/modules/projects/components/project-query'
-import { cn } from '@/shared/lib/class-names'
-import { Input } from '@/shared/ui/input'
+import type {
+  ProjectQuery,
+  ProjectView,
+  RoleFilter,
+} from '@/modules/projects/components/project-query'
+import { ProjectViewToggle } from '@/modules/projects/components/project-view-toggle'
+import { SearchField } from '@/shared/ui/search-field'
+import { SegmentedControl } from '@/shared/ui/segmented-control'
 
 const ROLE_OPTIONS: { value: RoleFilter; label: string }[] = [
   { value: 'all', label: 'Todos' },
@@ -15,57 +19,41 @@ type ProjectsToolbarProps = {
   query: ProjectQuery
   shown: number
   total: number
+  view: ProjectView
+  onViewChange: (view: ProjectView) => void
   onChange: (query: ProjectQuery) => void
 }
 
-/** Search by name, slug or site; filter by role; and how many projects match. */
-export function ProjectsToolbar({
-  query,
-  shown,
-  total,
-  onChange,
-}: ProjectsToolbarProps): JSX.Element {
+/** Search by name, slug or site; filter by role; how many projects match; cards or table. */
+export function ProjectsToolbar(props: ProjectsToolbarProps): JSX.Element {
+  const { query, onChange } = props
+
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <div className="relative w-full sm:max-w-xs">
-        <Search
-          aria-hidden="true"
-          className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-5 -translate-y-1/2"
-        />
-        <Input
-          type="search"
-          aria-label="Buscar projetos"
-          placeholder="Buscar por nome, slug ou site"
-          className="pl-9"
-          value={query.search}
-          onChange={(event) => onChange({ ...query, search: event.target.value })}
-        />
+    <div className="flex flex-wrap items-center gap-2">
+      <SearchField
+        label="Buscar por nome, slug ou site"
+        className="sm:max-w-80"
+        value={query.search}
+        onValueChange={(search) => onChange({ ...query, search })}
+      />
+      <SegmentedControl
+        label="Filtrar por papel"
+        options={ROLE_OPTIONS}
+        value={query.role}
+        onValueChange={(role) => onChange({ ...query, role: roleFilterOf(role) })}
+      />
+      <span role="status" className="text-xs text-muted-foreground tabular-nums">
+        {countLabel(props.shown, props.total)}
+      </span>
+      <div className="ms-auto">
+        <ProjectViewToggle view={props.view} onViewChange={props.onViewChange} />
       </div>
-      <div
-        role="group"
-        aria-label="Filtrar por papel"
-        className="bg-muted/40 flex w-fit rounded-lg border p-0.5"
-      >
-        {ROLE_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            aria-pressed={query.role === option.value}
-            onClick={() => onChange({ ...query, role: option.value })}
-            className={cn(
-              'text-muted-foreground hover:text-foreground rounded-md px-3 py-1.5 text-sm font-medium transition-[color,background-color,transform] active:scale-[0.97] motion-reduce:active:scale-100',
-              query.role === option.value && 'bg-accent text-foreground',
-            )}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-      <p role="status" className="text-muted-foreground text-sm sm:ml-auto">
-        {countLabel(shown, total)}
-      </p>
     </div>
   )
+}
+
+function roleFilterOf(value: string): RoleFilter {
+  return ROLE_OPTIONS.find((option) => option.value === value)?.value ?? 'all'
 }
 
 function countLabel(shown: number, total: number): string {

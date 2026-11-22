@@ -6,7 +6,7 @@ const VIEW_BOX_PATTERN = /viewBox="([^"]+)"/
  * extra SVG-to-JSX tooling. Icons are decorative by default (`aria-hidden`) unless the caller
  * names them with `aria-label`; size and color come from CSS (`size-4`, `currentColor`).
  */
-export function compileReactIcon(svg: string): string {
+export function compileReactIcon(svg: string, collection: string, icon: string): string {
   const match = SVG_PATTERN.exec(svg.trim())
   const attributes = match?.[1]
   const body = match?.[2]
@@ -16,6 +16,7 @@ export function compileReactIcon(svg: string): string {
   }
 
   const viewBox = VIEW_BOX_PATTERN.exec(attributes)?.[1] ?? '0 0 24 24'
+  const isOutline = collection === 'solar' && icon.endsWith('-linear')
 
   return [
     "import { createElement, forwardRef } from 'react'",
@@ -27,6 +28,7 @@ export function compileReactIcon(svg: string): string {
     `    viewBox: ${JSON.stringify(viewBox)},`,
     "    width: '1em',",
     "    height: '1em',",
+    ...(isOutline ? ["    'data-icon-style': 'outline',"] : []),
     "    focusable: 'false',",
     "    'aria-hidden': isNamed ? undefined : true,",
     "    role: isNamed ? 'img' : undefined,",

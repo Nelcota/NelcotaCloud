@@ -83,10 +83,12 @@ impl LockedProjectMemberships {
         parse_role(role.map(|(_, role)| role.as_str()))
     }
 
-    pub fn has_other_owner(&self, account_id: Uuid) -> bool {
+    pub fn other_owners(&self, account_id: Uuid) -> Vec<Uuid> {
         self.0
             .iter()
-            .any(|(id, role)| *id != account_id && role == ProjectRole::Owner.as_str())
+            .filter(|(id, role)| *id != account_id && role == ProjectRole::Owner.as_str())
+            .map(|(id, _)| *id)
+            .collect()
     }
 }
 
@@ -95,6 +97,7 @@ pub async fn lock_project_memberships(
     connection: &mut PgConnection,
     tenant_id: Uuid,
 ) -> Result<LockedProjectMemberships, MembershipError> {
+    lock_team_project(connection, tenant_id).await?;
     let roles = sqlx::query_as(
         "SELECT account_id, role FROM tenant_members WHERE tenant_id = $1 ORDER BY account_id FOR UPDATE",
     )
@@ -103,6 +106,19 @@ pub async fn lock_project_memberships(
     .await?;
 
     Ok(LockedProjectMemberships(roles))
+}
+
+/// Acquire before touching any membership or invitation in the project.
+pub async fn lock_team_project(
+    connection: &mut PgConnection,
+    tenant_id: Uuid,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended('team-project:' || $1::text, 0))")
+        .bind(tenant_id)
+        .execute(connection)
+        .await?;
+
+    Ok(())
 }
 
 fn parse_role(raw_role: Option<&str>) -> Result<Option<ProjectRole>, MembershipError> {

@@ -87,7 +87,10 @@ async fn records_the_account_life_and_a_reused_refresh_token() -> TestResult {
     let security = events_of_kind(&server, &tenant, "security").await?;
     assert_eq!(actions(&security), ["refresh_token_reused"]);
     assert_eq!(field(&security, "/events/0/user_id"), &json!(first.user.id));
-    assert_eq!(field(&security, "/events/0/ip_address"), "127.0.0.1");
+    assert_eq!(
+        field(&security, "/events/0/ip_address"),
+        server.client_ip.to_string().as_str()
+    );
 
     let logins = events_of_kind(&server, &tenant, "logins").await?;
     assert_eq!(actions(&logins), ["logged_in"]);

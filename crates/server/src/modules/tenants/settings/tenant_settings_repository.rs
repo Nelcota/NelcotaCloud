@@ -1,4 +1,4 @@
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
 use crate::modules::tenants::settings::site_url::SiteUrl;
@@ -35,7 +35,7 @@ pub async fn find_tenant_settings(
 }
 
 pub async fn update_tenant_settings(
-    pool: &PgPool,
+    connection: &mut PgConnection,
     tenant_id: Uuid,
     change: TenantSettingsChange<'_>,
 ) -> Result<Option<TenantSettings>, sqlx::Error> {
@@ -51,7 +51,7 @@ pub async fn update_tenant_settings(
     .bind(change.site_url.map(SiteUrl::as_str))
     .bind(change.require_email_verification)
     .bind(change.mascot_id)
-    .fetch_optional(pool)
+    .fetch_optional(connection)
     .await
 }
 

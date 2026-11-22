@@ -12,6 +12,7 @@ path = "src/bin/export_openapi.rs"
 aes-gcm = "0.11.1"
 argon2 = "0.6.0"
 askama = { version = "0.16.1", default-features = false, features = ["derive", "std", "urlencode"] }
+aws-sdk-s3 = { version = "1.161.0", default-features = false, features = ["default-https-client", "rt-tokio"] }
 axum = "0.8.9"
 base16ct = { version = "1.0.0", features = ["alloc"] }
 base64 = "0.23.1"
@@ -33,7 +34,7 @@ rand = "0.10.4"
 redis = { version = "1.8.2", default-features = false, features = ["tokio-comp", "connection-manager"] }
 reqwest = { version = "0.13.5", default-features = false, features = ["json", "query", "rustls"] }
 serde = { version = "1.0.229", features = ["derive"] }
-serde_json = "1.0.154"
+serde_json = { version = "1.0.154", features = ["raw_value"] }
 sha2 = "0.11.1"
 sqlx = { version = "0.9.1", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "time", "json", "migrate", "macros"] }
 thiserror = "2.0.21"
@@ -43,7 +44,7 @@ totp-rs = { version = "6.0.0", features = ["otpauth"] }
 tower-http = { version = "0.7.1", features = ["trace", "cors", "set-header", "request-id", "timeout"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
-url = "2.5.8"
+url = "2.5.9"
 utoipa = { version = "6.0.0", features = ["axum_extras", "uuid", "time"] }
 utoipa-axum = "0.3.0"
 uuid = { version = "1.29.3", features = ["v4", "serde"] }

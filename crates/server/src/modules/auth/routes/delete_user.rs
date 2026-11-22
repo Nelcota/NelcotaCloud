@@ -7,7 +7,6 @@ use crate::modules::auth::user::user_administration::delete_user as delete;
 use crate::modules::tenants::access::tenant_admin_context::TenantAdminContext;
 use crate::modules::tenants::audit::audit_action::AuditAction;
 use crate::modules::tenants::audit::audit_entry::NewAuditEvent;
-use crate::modules::tenants::audit::audit_recorder::record_audit_event;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
 /// `DELETE /admin/users/{user_id}`: removes the user with their identities and sessions.
@@ -21,6 +20,7 @@ use crate::shared::http::api_error::{ApiError, ErrorBody};
         (status = 204, description = "User deleted"),
         (status = 403, description = "Requires the secret API key, or membership in the project", body = ErrorBody),
         (status = 404, description = "No such user", body = ErrorBody),
+        (status = 409, description = "The account is the last active owner of a project", body = ErrorBody),
     )
 )]
 pub async fn delete_user(
@@ -29,14 +29,20 @@ pub async fn delete_user(
     Path(user_id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
     let webhooks = state.webhooks.recorder(admin.tenant_id).await?;
-    let deleted = delete(&admin.pool, user_id, &webhooks).await?;
+    let event = NewAuditEvent::by_admin(AuditAction::UserDeleted, user_id, admin.author());
+    let deleted = delete(
+        &state,
+        &admin.pool,
+        (admin.tenant_id, user_id),
+        None,
+        &webhooks,
+        event,
+    )
+    .await?;
 
     if deleted == false {
         return Err(ApiError::NotFound("user"));
     }
-
-    let event = NewAuditEvent::by_admin(AuditAction::UserDeleted, user_id, admin.author());
-    record_audit_event(&admin.pool, event).await;
 
     Ok(StatusCode::NO_CONTENT)
 }

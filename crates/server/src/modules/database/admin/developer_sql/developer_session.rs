@@ -19,16 +19,18 @@ use crate::shared::http::api_error::ApiError;
 const DEVELOPER_STATEMENT_TIMEOUT: Duration = Duration::from_secs(15);
 
 /// Switches the transaction to the developer role. The session itself is the project's own
-/// authenticator, so SQL that falls back to it (`RESET ROLE`, `COMMIT`) stays in the project.
+/// authenticator, so SQL that falls back to it (`RESET ROLE`) stays in the project.
+/// Use the same string literal mode as the parser that validates the script.
 const PREPARE_DEVELOPER: &str = concat!(
     "SELECT ",
     backend_identity_columns!(),
     ", set_config('role', $1, true), set_config('statement_timeout', $2, true), ",
-    "set_config('search_path', 'public', true)"
+    "set_config('search_path', 'public', true), ",
+    "set_config('standard_conforming_strings', 'on', true)"
 );
 
-/// Backend id and start, then the three `set_config` results.
-type PreparedRow = (i32, OffsetDateTime, String, String, String);
+/// Backend id and start, then the four `set_config` results.
+type PreparedRow = (i32, OffsetDateTime, String, String, String, String);
 
 /// A transaction on a project's database as its developer role: the console's table editor
 /// and SQL editor run here.
@@ -58,11 +60,11 @@ impl DeveloperSession {
 
         Ok(Self {
             transaction,
-            guard: QueryGuard {
-                backend: BackendIdentity { pid, started_at },
-                statement_timeout: DEVELOPER_STATEMENT_TIMEOUT,
+            guard: QueryGuard::new(
                 admin_pool,
-            },
+                BackendIdentity { pid, started_at },
+                DEVELOPER_STATEMENT_TIMEOUT,
+            ),
             _slot: slot,
         })
     }
@@ -77,6 +79,8 @@ impl DeveloperSession {
     }
 
     pub async fn commit(self) -> Result<(), ApiError> {
-        self.transaction.commit().await.map_err(sql_error_response)
+        self.guard
+            .run_mapped(self.transaction.commit(), sql_error_response)
+            .await
     }
 }

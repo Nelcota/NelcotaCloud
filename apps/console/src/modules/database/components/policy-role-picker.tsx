@@ -1,7 +1,8 @@
 import type { JSX } from 'react'
 
 import { type PolicyRole, ROLE_OPTIONS } from '@/modules/database/components/policy-draft'
-import { CheckField } from '@/shared/ui/check-field'
+import { FieldLegend, FieldSet } from '@/shared/ui/primitives/field'
+import { CheckboxField } from '@/shared/ui/switch-field'
 
 type PolicyRolePickerProps = {
   selected: readonly PolicyRole[]
@@ -11,29 +12,30 @@ type PolicyRolePickerProps = {
 /** Who the policy applies to: requests with only the publishable key, logged-in users, or both. */
 export function PolicyRolePicker({ selected, onChange }: PolicyRolePickerProps): JSX.Element {
   function toggle(role: PolicyRole, isChecked: boolean): void {
-    const others = selected.filter((current) => current !== role)
+    const roles = ROLE_OPTIONS.map((option) => option.value).filter((candidate) => {
+      if (candidate === role) {
+        return isChecked
+      }
 
-    if (isChecked) {
-      onChange([...others, role])
-      return
-    }
+      return selected.includes(candidate)
+    })
 
-    onChange(others)
+    onChange(roles)
   }
 
   return (
-    <fieldset className="grid gap-1.5">
-      <legend className="mb-1.5 text-sm font-medium">Para quem</legend>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {ROLE_OPTIONS.map((option) => (
-          <CheckField
-            key={option.value}
-            label={option.label}
-            isChecked={selected.includes(option.value)}
-            onChange={(isChecked) => toggle(option.value, isChecked)}
-          />
-        ))}
-      </div>
-    </fieldset>
+    <FieldSet className="gap-2.5">
+      <FieldLegend variant="label" className="mb-0">
+        Para quem
+      </FieldLegend>
+      {ROLE_OPTIONS.map((option) => (
+        <CheckboxField
+          key={option.value}
+          label={option.label}
+          checked={selected.includes(option.value)}
+          onCheckedChange={(isChecked) => toggle(option.value, isChecked)}
+        />
+      ))}
+    </FieldSet>
   )
 }

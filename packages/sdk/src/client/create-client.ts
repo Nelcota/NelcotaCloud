@@ -7,6 +7,7 @@ import { DatabaseClient } from '../database/database-client'
 import type { TableQuery } from '../database/table-query'
 import type { QueryResult } from '../database/query-request'
 import { HttpClient } from '../http/http-client'
+import { StorageClient } from '../storage/storage-client'
 
 const DEFAULT_STORAGE_KEY = 'nelcota-session'
 
@@ -29,6 +30,8 @@ export type NelcotaClient = {
   auth: AuthClient
   /** The project's database: `from('posts').select('id, title').eq('published', true)`. */
   database: DatabaseClient
+  /** Private file storage for the project. */
+  storage: StorageClient
   /** Shortcut for `database.from`. */
   from<Row extends Record<string, unknown> = Record<string, unknown>>(
     table: string,
@@ -46,10 +49,11 @@ export function createClient(options: ClientOptions): NelcotaClient {
     )
   }
 
+  const fetchFunction = options.fetch ?? globalThis.fetch.bind(globalThis)
   const http = new HttpClient({
     url: options.url,
     publishableKey: options.publishableKey,
-    fetch: options.fetch ?? globalThis.fetch.bind(globalThis),
+    fetch: fetchFunction,
   })
   const store = new SessionStore(
     options.storage ?? defaultStorage(),
@@ -62,6 +66,7 @@ export function createClient(options: ClientOptions): NelcotaClient {
   return {
     auth: new AuthClient({ http, manager, store, now }),
     database,
+    storage: new StorageClient(http, manager, fetchFunction),
     from: (table) => database.from(table),
     rpc: (name, args) => database.rpc(name, args),
     dispose: () => manager.dispose(),

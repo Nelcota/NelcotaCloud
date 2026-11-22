@@ -5,7 +5,6 @@ use serde::Deserialize;
 use utoipa::IntoParams;
 use validator::Validate;
 
-use crate::modules::auth::user::user_csv::user_csv;
 use crate::modules::auth::user::user_export::export_users as find_users;
 use crate::modules::auth::user::user_listing::UserFilters;
 use crate::modules::auth::user::user_page_order::UserOrder;
@@ -31,7 +30,7 @@ pub struct UsersExportQuery {
     pub order: Option<UserOrder>,
 }
 
-/// `GET /admin/users/export`: the matching users as a CSV file, up to 100,000 rows.
+/// `GET /admin/users/export`: streams the matching users as a CSV file.
 ///
 /// Takes the same filters and order as the user list, so the file holds what the console shows.
 #[utoipa::path(
@@ -53,8 +52,7 @@ pub async fn export_users(
     query.validate().map_err(ApiError::invalid_request)?;
     let filters = UserFilters::new(query.email.as_deref(), query.status)
         .map_err(ApiError::invalid_request)?;
-    let users = find_users(&admin.pool, &filters, query.order.unwrap_or_default()).await?;
-    let csv = user_csv(&users).map_err(ApiError::internal)?;
+    let csv = find_users(admin.pool, &filters, query.order.unwrap_or_default());
     let headers = [
         (CONTENT_TYPE, CSV_CONTENT_TYPE),
         (CONTENT_DISPOSITION, CSV_DISPOSITION),

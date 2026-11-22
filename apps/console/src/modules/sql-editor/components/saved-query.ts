@@ -4,7 +4,8 @@ const STORAGE_PREFIX = 'nelcota.sql-editor.'
 /** Anything longer was not typed in this editor; ignore it rather than load it. */
 const MAX_SAVED_LENGTH = 100_000
 
-export const STARTER_QUERY = 'select * from '
+/** A first visit starts empty, so the box shows its placeholder and the examples beside it. */
+export const STARTER_QUERY = ''
 
 export function loadSavedQuery(projectId: string): string {
   try {

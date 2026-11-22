@@ -1,95 +1,112 @@
-import CodeBold from '~icons/solar/code-square-bold'
-import Code from '~icons/solar/code-square-linear'
-import DatabaseBold from '~icons/solar/database-bold'
-import Database from '~icons/solar/database-linear'
-import HistoryBold from '~icons/solar/history-bold'
-import History from '~icons/solar/history-linear'
-import KeyRoundBold from '~icons/solar/key-bold'
-import KeyRound from '~icons/solar/key-linear'
-import LayoutGridBold from '~icons/solar/widget-2-bold'
-import LayoutGrid from '~icons/solar/widget-2-linear'
-import LogInBold from '~icons/solar/login-3-bold'
-import LogIn from '~icons/solar/login-3-linear'
-import MailBold from '~icons/solar/letter-bold'
-import Mail from '~icons/solar/letter-linear'
-import SettingsBold from '~icons/solar/settings-bold'
-import Settings from '~icons/solar/settings-linear'
-import PlugBold from '~icons/solar/plug-circle-bold'
-import Plug from '~icons/solar/plug-circle-linear'
-import TeamBold from '~icons/solar/users-group-two-rounded-bold'
-import Team from '~icons/solar/users-group-two-rounded-linear'
-import UsersBold from '~icons/solar/users-group-rounded-bold'
-import Users from '~icons/solar/users-group-rounded-linear'
+import {
+  Database,
+  Database as DatabaseActive,
+  Folder,
+  Folder as FolderActive,
+  History,
+  History as HistoryActive,
+  KeyRound as Key,
+  KeyRound as KeyActive,
+  LayoutGrid as Overview,
+  LayoutGrid as OverviewActive,
+  Link2 as Link,
+  Link2 as LinkActive,
+  Mail as Letter,
+  Mail as LetterActive,
+  Settings,
+  Settings as SettingsActive,
+  SquareCode as Code,
+  SquareCode as CodeActive,
+  User,
+  User as UserActive,
+  Users as Team,
+  Users as TeamActive,
+  Webhook as Webhooks,
+  Webhook as WebhooksActive,
+} from 'lucide-react'
 import type { IconComponent } from '@/shared/ui/icon-component'
 
+export type ProjectGroupId = 'home' | 'auth' | 'data' | 'project'
+
+/** A group of pages in the sidebar; the first one has no name. */
+export type ProjectGroup = {
+  id: ProjectGroupId
+  label: string | null
+}
+
+/** One page of a project. */
 export type ProjectSection = {
   /** Path below `/projects/$projectId`; empty for the overview. */
   segment: string
   label: string
+  group: ProjectGroupId
   icon: IconComponent
-  /** Solar's filled variant, shown while the section is the current page. */
-  currentIcon: IconComponent
-  /** Daily work sits at the top of the sidebar; project settings sit at its foot. */
-  group: 'main' | 'footer'
+  activeIcon: IconComponent
 }
 
-/** Every page of a project, in sidebar order: connecting the app comes before running it. */
+/** The sidebar, in order: running the app first, managing the project last. */
+export const PROJECT_GROUPS: readonly ProjectGroup[] = [
+  { id: 'home', label: null },
+  { id: 'auth', label: 'Autenticação' },
+  { id: 'data', label: 'Dados' },
+  { id: 'project', label: 'Projeto' },
+]
+
 export const PROJECT_SECTIONS: readonly ProjectSection[] = [
-  {
-    segment: '',
-    label: 'Visão geral',
-    icon: LayoutGrid,
-    currentIcon: LayoutGridBold,
-    group: 'main',
-  },
-  {
-    segment: 'keys',
-    label: 'Chaves de API',
-    icon: KeyRound,
-    currentIcon: KeyRoundBold,
-    group: 'main',
-  },
-  { segment: 'users', label: 'Usuários', icon: Users, currentIcon: UsersBold, group: 'main' },
-  {
-    segment: 'providers',
-    label: 'Login social',
-    icon: LogIn,
-    currentIcon: LogInBold,
-    group: 'main',
-  },
-  { segment: 'email', label: 'Email', icon: Mail, currentIcon: MailBold, group: 'main' },
-  { segment: 'webhooks', label: 'Webhooks', icon: Plug, currentIcon: PlugBold, group: 'main' },
-  {
-    segment: 'database',
-    label: 'Banco de dados',
-    icon: Database,
-    currentIcon: DatabaseBold,
-    group: 'main',
-  },
-  { segment: 'sql', label: 'SQL', icon: Code, currentIcon: CodeBold, group: 'main' },
+  { segment: '', label: 'Visão geral', group: 'home', icon: Overview, activeIcon: OverviewActive },
+  { segment: 'keys', label: 'Chaves de API', group: 'home', icon: Key, activeIcon: KeyActive },
   {
     segment: 'activity',
     label: 'Atividade',
+    group: 'home',
     icon: History,
-    currentIcon: HistoryBold,
-    group: 'main',
+    activeIcon: HistoryActive,
   },
-  { segment: 'team', label: 'Equipe', icon: Team, currentIcon: TeamBold, group: 'footer' },
+  { segment: 'users', label: 'Usuários', group: 'auth', icon: User, activeIcon: UserActive },
+  {
+    segment: 'providers',
+    label: 'Login social',
+    group: 'auth',
+    icon: Link,
+    activeIcon: LinkActive,
+  },
+  { segment: 'email', label: 'Email', group: 'auth', icon: Letter, activeIcon: LetterActive },
+  {
+    segment: 'database',
+    label: 'Banco de dados',
+    group: 'data',
+    icon: Database,
+    activeIcon: DatabaseActive,
+  },
+  { segment: 'sql', label: 'Editor SQL', group: 'data', icon: Code, activeIcon: CodeActive },
+  { segment: 'storage', label: 'Arquivos', group: 'data', icon: Folder, activeIcon: FolderActive },
+  {
+    segment: 'webhooks',
+    label: 'Webhooks',
+    group: 'project',
+    icon: Webhooks,
+    activeIcon: WebhooksActive,
+  },
+  { segment: 'team', label: 'Equipe', group: 'project', icon: Team, activeIcon: TeamActive },
   {
     segment: 'settings',
     label: 'Configurações',
+    group: 'project',
     icon: Settings,
-    currentIcon: SettingsBold,
-    group: 'footer',
+    activeIcon: SettingsActive,
   },
 ]
 
 const PROJECT_PATH = /^\/projects\/([^/]+)(?:\/([^/]+))?/
 
-/** The project and section of a URL, or `null` outside a project. */
-export function projectLocation(
-  pathname: string,
-): { projectId: string; section: ProjectSection } | null {
+export type ProjectLocation = {
+  projectId: string
+  section: ProjectSection
+  group: ProjectGroup
+}
+
+/** The project, page and group of a URL, or `null` outside a project. */
+export function projectLocation(pathname: string): ProjectLocation | null {
   const match = PROJECT_PATH.exec(pathname)
   const projectId = match?.[1]
 
@@ -104,7 +121,22 @@ export function projectLocation(
     return null
   }
 
-  return { projectId, section }
+  const group = PROJECT_GROUPS.find((candidate) => candidate.id === section.group)
+
+  if (group === undefined) {
+    return null
+  }
+
+  return { projectId, section, group }
+}
+
+/** The pages of one group, in sidebar order. */
+export function sectionsOf(groupId: ProjectGroupId): readonly ProjectSection[] {
+  return PROJECT_SECTIONS.filter((section) => section.group === groupId)
+}
+
+export function sectionTitle(section: ProjectSection): string {
+  return section.label
 }
 
 export function sectionPath(projectId: string, section: ProjectSection): string {

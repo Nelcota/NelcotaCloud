@@ -1,59 +1,79 @@
 import type { JSX } from 'react'
 
-import { CaptchaSection } from '@/modules/project-settings/components/captcha-section'
-import { DangerZone } from '@/modules/project-settings/components/danger-zone'
-import { GeneralSettingsForm } from '@/modules/project-settings/components/general-settings-form'
+import { settingsApiSnippets } from '@/modules/project-settings/components/settings-api-snippets'
+import { SettingsNav } from '@/modules/project-settings/components/settings-nav'
+import { SettingsPaneContent } from '@/modules/project-settings/components/settings-pane-content'
+import type { SettingsPaneId } from '@/modules/project-settings/components/settings-panes'
+import { SettingsPaneView } from '@/modules/project-settings/components/settings-pane-view'
+import { useSettingsPane } from '@/modules/project-settings/components/use-settings-pane'
 import { useSettingsQuery } from '@/modules/project-settings/queries/use-project-settings'
+import { usePublishableKey } from '@/modules/project-settings/queries/use-publishable-key'
 import type { components } from '@/shared/api/api-schema'
 import { useProjectId } from '@/shared/routing/use-project-id'
+import { ApiSheet } from '@/shared/ui/api-sheet'
 import { LoadError } from '@/shared/ui/load-error'
 import { PageHeader } from '@/shared/ui/page-header'
-import { Skeleton } from '@/shared/ui/skeleton'
+import { Skeleton } from '@/shared/ui/primitives/skeleton'
 
 export function SettingsPage(): JSX.Element {
   const projectId = useProjectId()
   const settings = useSettingsQuery(projectId)
+  const pane = useSettingsPane()
+  const publishableKey = usePublishableKey(projectId)
 
   return (
-    <div className="grid max-w-3xl gap-6">
+    <>
       <PageHeader
         title="Configurações"
-        description="Nome, site do app, regras de login e proteção contra bots."
+        description="Identidade, endpoints, acesso e segurança do projeto."
+        actions={
+          <ApiSheet
+            title="Conectar pela API"
+            description="O cliente do SDK e uma checagem rápida da API."
+            snippets={settingsApiSnippets(publishableKey)}
+          />
+        }
       />
-      <LoadError error={settings.error} onRetry={() => settings.refetch()} />
-      <SettingsContent
-        projectId={projectId}
-        settings={settings.data}
-        hasFailed={settings.isError}
-      />
-    </div>
+      <div className="grid gap-6 lg:grid-cols-[13.75rem_minmax(0,1fr)] lg:gap-10">
+        <SettingsNav projectId={projectId} current={pane} />
+        <SettingsPaneView pane={pane}>
+          <LoadError error={settings.error} onRetry={() => settings.refetch()} />
+          <PaneBody
+            projectId={projectId}
+            paneId={pane.id}
+            settings={settings.data}
+            hasFailed={settings.isError}
+          />
+        </SettingsPaneView>
+      </div>
+    </>
   )
 }
 
-type SettingsContentProps = {
+type PaneBodyProps = {
   projectId: string
+  paneId: SettingsPaneId
   settings: components['schemas']['TenantSettings'] | undefined
   hasFailed: boolean
 }
 
-function SettingsContent({
-  projectId,
-  settings,
-  hasFailed,
-}: SettingsContentProps): JSX.Element | null {
+function PaneBody({ projectId, paneId, settings, hasFailed }: PaneBodyProps): JSX.Element | null {
   if (settings === undefined && hasFailed) {
     return null
   }
 
   if (settings === undefined) {
-    return <Skeleton className="h-80 rounded-xl" />
+    return <PaneSkeleton />
   }
 
+  return <SettingsPaneContent paneId={paneId} projectId={projectId} settings={settings} />
+}
+
+function PaneSkeleton(): JSX.Element {
   return (
-    <>
-      <GeneralSettingsForm projectId={projectId} settings={settings} />
-      <CaptchaSection projectId={projectId} />
-      <DangerZone projectId={projectId} projectName={settings.name} />
-    </>
+    <div className="grid gap-5" aria-hidden>
+      <Skeleton className="h-36 rounded-xl" />
+      <Skeleton className="h-56 rounded-xl" />
+    </div>
   )
 }

@@ -1,21 +1,16 @@
-import FolderBold from '~icons/solar/folder-with-files-bold'
-import Folder from '~icons/solar/folder-with-files-linear'
-import UserRoundBold from '~icons/solar/user-circle-bold'
-import UserRound from '~icons/solar/user-circle-linear'
+import { CircleUser as UserRound, LayoutGrid as Folder } from 'lucide-react'
 import type { IconComponent } from '@/shared/ui/icon-component'
 
 export type ConsoleSection = {
   path: '/' | '/account'
   label: string
   icon: IconComponent
-  /** Solar's filled variant, shown while the section is the current page. */
-  currentIcon: IconComponent
 }
 
-/** The pages outside a project, in sidebar order. */
+/** The places outside a project, in rail order. */
 export const CONSOLE_SECTIONS: readonly ConsoleSection[] = [
-  { path: '/', label: 'Projetos', icon: Folder, currentIcon: FolderBold },
-  { path: '/account', label: 'Minha conta', icon: UserRound, currentIcon: UserRoundBold },
+  { path: '/', label: 'Projetos', icon: Folder },
+  { path: '/account', label: 'Minha conta', icon: UserRound },
 ]
 
 const PAGE_TITLES: Record<string, string> = {
@@ -24,9 +19,12 @@ const PAGE_TITLES: Record<string, string> = {
   '/account': 'Minha conta',
 }
 
-/** The sidebar section a console URL belongs to: creating a project sits under Projetos. */
-export function consoleSectionOf(pathname: string): ConsoleSection | undefined {
-  if (pathname === '/projects/new') {
+/** The rail place a URL belongs to: creating a project and every project page sit under Projetos. */
+export function consoleSectionOf(
+  pathname: string,
+  isInsideProject: boolean,
+): ConsoleSection | undefined {
+  if (pathname === '/projects/new' || isInsideProject) {
     return CONSOLE_SECTIONS.find((section) => section.path === '/')
   }
 

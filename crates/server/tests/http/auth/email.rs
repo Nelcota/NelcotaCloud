@@ -2,7 +2,8 @@ use reqwest::StatusCode;
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::support::{TEST_PASSWORD, TestResult, TestServer, error_code, unique_email};
+use super::mfa::user_with_totp;
+use crate::support::{Session, TEST_PASSWORD, TestResult, TestServer, error_code, unique_email};
 
 #[derive(Deserialize)]
 struct VerifiedUser {
@@ -38,12 +39,12 @@ async fn signup_sends_a_verification_link_that_works_once() -> TestResult {
 }
 
 #[tokio::test]
-async fn password_reset_changes_the_password_and_ends_sessions() -> TestResult {
+async fn first_inbox_recovery_changes_password_and_clears_unverified_mfa() -> TestResult {
     let server = TestServer::start().await?;
     let tenant = server.create_tenant().await?;
     let api_key = &tenant.publishable_key;
     let email = unique_email("reset");
-    let session = server.sign_up(&tenant, &email).await?;
+    let (session, _) = user_with_totp(&server, &tenant, &email, 0).await?;
     // Wait for the signup email first, so the reset email is the newest one afterwards.
     server.wait_for_email_token(&email).await?;
 
@@ -74,6 +75,8 @@ async fn password_reset_changes_the_password_and_ends_sessions() -> TestResult {
         .post_auth("/auth/v1/login", api_key, new_login)
         .await?;
     assert_eq!(new_password_login.status(), StatusCode::OK);
+    let recovered: Session = new_password_login.json().await?;
+    assert_eq!(recovered.user.id, session.user.id);
 
     server.drop_tenant(&tenant).await
 }

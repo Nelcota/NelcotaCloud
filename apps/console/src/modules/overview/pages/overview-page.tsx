@@ -1,29 +1,21 @@
 import type { JSX } from 'react'
+import { useState } from 'react'
 
-import { ActiveUsersCard } from '@/modules/overview/components/active-users-card'
-import { IsolationPanel } from '@/modules/overview/components/isolation-panel'
-import { KeysCard } from '@/modules/overview/components/keys-card'
-import { ProjectConnectPanel } from '@/modules/overview/components/project-connect-panel'
+import { OverviewDashboard } from '@/modules/overview/components/overview-dashboard'
 import { OverviewHeader } from '@/modules/overview/components/overview-header'
-import { SmtpCard } from '@/modules/overview/components/smtp-card'
-import { UsersCard } from '@/modules/overview/components/users-card'
 import { useProjectId } from '@/shared/routing/use-project-id'
 
-/** The project at a glance, from live data only, and how to plug it into an app. */
+const DEFAULT_DAYS = 30
+
+/** The project's dashboard: health, metrics, activity, connection values and services. */
 export function OverviewPage(): JSX.Element {
   const projectId = useProjectId()
+  const [days, setDays] = useState(DEFAULT_DAYS)
 
   return (
-    <div className="grid gap-8">
-      <OverviewHeader projectId={projectId} />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <UsersCard projectId={projectId} />
-        <ActiveUsersCard projectId={projectId} />
-        <KeysCard projectId={projectId} />
-        <SmtpCard projectId={projectId} />
-      </div>
-      <ProjectConnectPanel projectId={projectId} />
-      <IsolationPanel projectId={projectId} />
+    <div className="@container flex flex-col gap-6">
+      <OverviewHeader projectId={projectId} days={days} onDaysChange={setDays} />
+      <OverviewDashboard projectId={projectId} days={days} />
     </div>
   )
 }

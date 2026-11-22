@@ -1,6 +1,9 @@
 services:
   postgres:
-    image: postgres:17
+    image: postgres:19
+    # Like production: every project's pools share this server, and the HTTP tests run many
+    # projects at once (one per test thread).
+    command: ["postgres", "-c", "max_connections=300"]
     environment:
       POSTGRES_USER: nelcota
       POSTGRES_PASSWORD: nelcota
@@ -8,7 +11,8 @@ services:
     ports:
       - "127.0.0.1:5434:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      # Postgres 18+ images keep the cluster under a versioned folder (19/docker) of this mount.
+      - postgres-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U nelcota -d nelcota_control"]
       interval: 2s
@@ -28,3 +32,6 @@ services:
 
 volumes:
   postgres-data:
+    # One volume per major version: a new major cannot read the previous one's files, so data
+    # moves with pg_dumpall and the old volume stays as a fallback.
+    name: nelcotacloud_postgres-data-v19

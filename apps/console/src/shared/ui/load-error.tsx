@@ -1,10 +1,10 @@
-import { Link } from '@tanstack/react-router'
 import type { JSX } from 'react'
 
 import { ApiError } from '@/shared/api/api-error'
-import { Button } from '@/shared/ui/button'
-import { buttonVariants } from '@/shared/ui/button-variants'
-import { ErrorAlert } from '@/shared/ui/error-alert'
+import { describeError } from '@/shared/api/describe-error'
+import { RouterLink } from '@/shared/routing/router-link'
+import { Notice } from '@/shared/ui/notice'
+import { Button } from '@/shared/ui/primitives/button'
 
 const ACCESS_LOST = 'project_access_denied'
 
@@ -17,26 +17,25 @@ export function LoadError({ error, onRetry }: LoadErrorProps): JSX.Element | nul
   }
 
   return (
-    <div className="grid gap-3">
-      <ErrorAlert error={error} />
-      <div className="flex flex-wrap gap-2">
-        <NextStep error={error} onRetry={onRetry} />
-      </div>
-    </div>
+    <Notice
+      tone="error"
+      title={describeError(error)}
+      action={<NextStep error={error} onRetry={onRetry} />}
+    />
   )
 }
 
 function NextStep({ error, onRetry }: { error: Error; onRetry: () => void }): JSX.Element {
   if (error instanceof ApiError && error.code === ACCESS_LOST) {
     return (
-      <Link to="/" className={buttonVariants({ variant: 'outline' })}>
-        Ver meus projetos
-      </Link>
+      <Button asChild variant="outline" size="sm">
+        <RouterLink href="/">Ver meus projetos</RouterLink>
+      </Button>
     )
   }
 
   return (
-    <Button variant="outline" onClick={onRetry}>
+    <Button type="button" variant="outline" size="sm" onClick={onRetry}>
       Tentar de novo
     </Button>
   )

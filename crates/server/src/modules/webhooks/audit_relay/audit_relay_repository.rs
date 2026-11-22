@@ -28,6 +28,9 @@ pub struct EventWindow {
     /// Older events are skipped: a receiver that subscribes late, or a relay that was down,
     /// never gets a flood of the past.
     pub max_age_minutes: i32,
+    pub earliest_start: OffsetDateTime,
+    /// Events newer than the subscription snapshot wait for the next relay round.
+    pub observed_at: OffsetDateTime,
 }
 
 /// Claims only committed events, each independently of the sequence's allocation order.
@@ -42,11 +45,14 @@ pub async fn claim_events(
         " FROM audit_webhook_pending pending JOIN audit_events ON audit_events.id = pending.event_id",
         " LEFT JOIN users ON users.id = audit_events.user_id",
         " WHERE pending.occurred_at > now() - make_interval(mins => $2)",
+        " AND pending.occurred_at >= $3 AND pending.occurred_at <= $4",
         " ORDER BY pending.occurred_at, pending.event_id LIMIT $1",
         " FOR UPDATE OF pending SKIP LOCKED",
     ))
     .bind(window.limit)
     .bind(window.max_age_minutes)
+    .bind(window.earliest_start)
+    .bind(window.observed_at)
     .fetch_all(connection)
     .await
 }

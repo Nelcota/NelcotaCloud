@@ -55,7 +55,7 @@ export function useUsersQuery(
       String(query.offset),
       String(query.limit),
     ],
-    queryFn: () => listUsers(projectId, query),
+    queryFn: ({ signal }) => listUsers(projectId, query, signal),
     // Keeps the current rows on screen while a new search loads, instead of flashing empty.
     placeholderData: keepPreviousData,
   })

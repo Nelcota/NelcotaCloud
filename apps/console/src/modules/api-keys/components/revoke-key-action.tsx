@@ -1,10 +1,18 @@
 import Key from '~icons/solar/key-linear'
-import TrashBin from '~icons/solar/trash-bin-trash-linear'
+import { Ellipsis, Trash2 } from 'lucide-react'
 import type { JSX } from 'react'
+import { useState } from 'react'
 
-import { KeyRevokeIllustration } from '@/modules/api-keys/components/key-illustrations'
+import { isLastSecret } from '@/modules/api-keys/components/key-activity'
 import type { components } from '@/shared/api/api-schema'
-import { ConfirmButton } from '@/shared/ui/confirm-button'
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
+import { PendingButton } from '@/shared/ui/pending-button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/shared/ui/primitives/dropdown-menu'
 
 type ApiKeySummary = components['schemas']['ApiKeySummary']
 
@@ -17,37 +25,55 @@ type RevokeKeyActionProps = {
 }
 
 /**
- * Revokes one key after naming it, and says what breaks when it is the last of its kind.
- * The last secret key cannot be revoked at all (the API refuses), so it is never offered.
+ * The row's menu: revokes one key after naming it, and says what breaks when it is the last of
+ * its kind. The last secret key cannot be revoked at all (the API refuses), so its item stays
+ * disabled; the list says why below its rows.
  */
-export function RevokeKeyAction(props: RevokeKeyActionProps): JSX.Element | null {
+export function RevokeKeyAction(props: RevokeKeyActionProps): JSX.Element {
   const { apiKey, activeOfKind } = props
-
-  if (apiKey.kind === 'secret' && activeOfKind <= 1) {
-    return (
-      <span className="text-muted-foreground text-sm whitespace-normal">Única secret ativa</span>
-    )
-  }
+  const [isConfirming, setIsConfirming] = useState(false)
+  const label = keyLabel(apiKey)
 
   return (
-    <ConfirmButton
-      title={revokeTitle(apiKey)}
-      description={revokeConsequence(apiKey.kind, activeOfKind)}
-      confirmLabel="Revogar"
-      change={{ subject: keyLabel(apiKey), icon: Key, from: 'Ativa', to: 'Revogada' }}
-      illustration={<KeyRevokeIllustration kind={apiKey.kind} />}
-      isDestructive
-      isPending={props.isPending}
-      triggerLabel={`Revogar ${keyLabel(apiKey)}`}
-      onConfirm={props.onRevoke}
-    >
-      <TrashBin aria-hidden="true" className="size-4" />
-      <span className="hidden sm:inline">Revogar</span>
-    </ConfirmButton>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <PendingButton
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Ações da chave ${label}`}
+            isPending={props.isPending}
+          >
+            <Ellipsis aria-hidden />
+          </PendingButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            variant="destructive"
+            disabled={isLastSecret(apiKey.kind, activeOfKind)}
+            onSelect={() => setIsConfirming(true)}
+          >
+            <Trash2 aria-hidden />
+            Revogar
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <ConfirmDialog
+        isOpen={isConfirming}
+        onOpenChange={setIsConfirming}
+        title={revokeTitle(apiKey)}
+        description={revokeConsequence(apiKey.kind, activeOfKind)}
+        confirmLabel="Revogar"
+        change={{ subject: label, icon: Key, from: 'Ativa', to: 'Revogada' }}
+        isDestructive
+        onConfirm={props.onRevoke}
+      />
+    </>
   )
 }
 
-/** Names the key the way the list does, so the dialog cannot be mistaken for another row. */
+/** Names the key the way the table does, so the dialog cannot be mistaken for another row. */
 function revokeTitle(apiKey: ApiKeySummary): string {
   const label = `${apiKey.kind} key …${apiKey.hint}`
 

@@ -1,59 +1,68 @@
-import type { JSX } from 'react'
-import { useId } from 'react'
+import { useId, type JSX, type ReactNode } from 'react'
 
-import { Label } from '@/shared/ui/label'
-import { Switch } from '@/shared/ui/switch'
+import { cn } from '@/shared/lib/utils'
+import { FieldMessages } from '@/shared/ui/field-messages'
+import { describedBy } from '@/shared/ui/field-ids'
+import { Checkbox } from '@/shared/ui/primitives/checkbox'
+import { Field, FieldContent, FieldLabel } from '@/shared/ui/primitives/field'
+import { Switch } from '@/shared/ui/primitives/switch'
 
-type SwitchFieldProps = {
-  label: string
-  description?: string
+type ToggleFieldProps = {
+  label: ReactNode
+  hint?: ReactNode
+  error?: ReactNode
   checked: boolean
   onCheckedChange: (checked: boolean) => void
+  disabled?: boolean
+  className?: string
 }
 
-/** A switch named by its visible label, so screen readers announce what it toggles. */
-export function SwitchField(props: SwitchFieldProps): JSX.Element {
-  const labelId = useId()
-  const descriptionId = `${labelId}-description`
+/** A setting turned on or off: label and hint on the left, the switch on the right. */
+export function SwitchField(props: ToggleFieldProps): JSX.Element {
+  const id = useId()
 
   return (
-    <div className="flex items-start justify-between gap-4">
-      <div className="grid gap-1">
-        <Label id={labelId}>{props.label}</Label>
-        <SwitchDescription id={descriptionId} description={props.description} />
-      </div>
+    <Field
+      orientation="horizontal"
+      className={cn('items-start justify-between gap-4', props.className)}
+      data-disabled={props.disabled === true || undefined}
+    >
+      <FieldContent className="min-w-0">
+        <FieldLabel htmlFor={id}>{props.label}</FieldLabel>
+        <FieldMessages id={id} hint={props.hint} error={props.error} />
+      </FieldContent>
       <Switch
-        aria-labelledby={labelId}
-        aria-describedby={describedBy(props.description, descriptionId)}
+        id={id}
         checked={props.checked}
+        disabled={props.disabled}
+        aria-describedby={describedBy(id, props.hint, props.error)}
         onCheckedChange={props.onCheckedChange}
       />
-    </div>
+    </Field>
   )
 }
 
-function describedBy(description: string | undefined, id: string): string | undefined {
-  if (description === undefined) {
-    return undefined
-  }
-
-  return id
-}
-
-function SwitchDescription({
-  id,
-  description,
-}: {
-  id: string
-  description?: string
-}): JSX.Element | null {
-  if (description === undefined) {
-    return null
-  }
+/** A choice ticked in a list of options or above a destructive confirmation. */
+export function CheckboxField(props: ToggleFieldProps): JSX.Element {
+  const id = useId()
 
   return (
-    <p id={id} className="text-muted-foreground text-xs text-pretty">
-      {description}
-    </p>
+    <Field
+      orientation="horizontal"
+      className={cn('items-start gap-3', props.className)}
+      data-disabled={props.disabled === true || undefined}
+    >
+      <Checkbox
+        id={id}
+        checked={props.checked}
+        disabled={props.disabled}
+        aria-describedby={describedBy(id, props.hint, props.error)}
+        onCheckedChange={(checked) => props.onCheckedChange(checked === true)}
+      />
+      <FieldContent className="min-w-0">
+        <FieldLabel htmlFor={id}>{props.label}</FieldLabel>
+        <FieldMessages id={id} hint={props.hint} error={props.error} />
+      </FieldContent>
+    </Field>
   )
 }
