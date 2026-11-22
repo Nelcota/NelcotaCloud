@@ -23,11 +23,11 @@ export function ThemeToggle(): JSX.Element {
           type="button"
           variant="ghost"
           size="icon"
-          className="size-10"
+          className="size-10 rounded-[10px]"
           aria-label={label}
           onClick={toggleMode}
         >
-          <Glyph aria-hidden className="size-5" />
+          <Glyph aria-hidden className="size-[18px]" />
         </Button>
       </TooltipTrigger>
       <TooltipContent side="right">{label}</TooltipContent>

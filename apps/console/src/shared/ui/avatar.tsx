@@ -8,7 +8,7 @@ import {
 } from '@/shared/ui/primitives/avatar'
 
 const SIZES = {
-  xs: 'size-5 text-xs',
+  xs: 'size-5 text-2xs',
   sm: 'size-7 text-xs',
   md: 'size-9 text-sm',
   lg: 'size-11 text-base',
@@ -16,6 +16,14 @@ const SIZES = {
 }
 
 export type AvatarSize = keyof typeof SIZES
+
+const SQUARE_RADII: Record<AvatarSize, string> = {
+  xs: 'rounded-[5px]',
+  sm: 'rounded-md',
+  md: 'rounded-lg',
+  lg: 'rounded-[10px]',
+  xl: 'rounded-xl',
+}
 
 /** A person or project: their photo, or their initials on a tinted square. */
 export function Avatar({
@@ -32,12 +40,12 @@ export function Avatar({
   return (
     <PrimitiveAvatar
       title={name}
-      className={cn('isolate shrink-0', SIZES[size], isSquare === true && 'rounded-lg')}
+      className={cn('isolate shrink-0', SIZES[size], isSquare === true && SQUARE_RADII[size])}
     >
       {src !== undefined && (
         <AvatarImage src={src} alt="" className="rounded-[inherit] object-cover" />
       )}
-      <AvatarFallback className="rounded-[inherit] bg-primary/15 font-medium text-primary">
+      <AvatarFallback className="rounded-[inherit] bg-brand/15 font-medium text-primary">
         {initialsOf(name)}
       </AvatarFallback>
     </PrimitiveAvatar>

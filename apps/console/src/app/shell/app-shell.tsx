@@ -41,7 +41,7 @@ function SignedInShell(): JSX.Element {
       </a>
       <IconRail location={location} />
       <div className="flex min-w-0 flex-1 p-0 md:py-2 md:pe-2">
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden border-border bg-background md:rounded-xl md:border">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background md:rounded-2xl">
           <PanelTopBar location={location} pageTitle={pageTitle} />
           <div className="flex min-h-0 flex-1">
             <ProjectNavigation location={location} />
@@ -67,7 +67,7 @@ function ProjectNavigation({ location }: { location: ProjectLocation | null }): 
   return (
     <aside
       aria-label="Navegação do projeto"
-      className="scrollbar-thin hidden w-64 shrink-0 overflow-y-auto overscroll-contain border-e lg:block"
+      className="scrollbar-thin hidden w-56 shrink-0 overflow-y-auto overscroll-contain lg:block"
     >
       <ProjectSidebar location={location} />
     </aside>
@@ -104,9 +104,10 @@ function PageArea({ pathname, isWide, children }: PageAreaProps): JSX.Element {
       className="scrollbar-thin min-w-0 flex-1 overflow-y-auto overscroll-contain focus:outline-none"
     >
       <div
+        key={pathname}
         className={cn(
-          'mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-8 px-4 py-8 sm:px-6 lg:px-10',
-          isWide && 'max-w-none py-5 lg:px-6',
+          'mx-auto flex w-full max-w-[76rem] min-w-0 animate-page-in flex-col gap-6 px-4 pt-5 pb-10 sm:px-6 lg:px-8',
+          isWide && 'max-w-none pb-5 lg:px-5',
         )}
       >
         {children}

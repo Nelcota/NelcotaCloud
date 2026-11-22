@@ -23,11 +23,11 @@ type HeaderBreadcrumbsProps = {
 export function HeaderBreadcrumbs({ location, pageTitle }: HeaderBreadcrumbsProps): JSX.Element {
   return (
     <Breadcrumb className="min-w-0">
-      <BreadcrumbList className="flex-nowrap gap-1.5 text-sm sm:gap-1.5">
+      <BreadcrumbList className="flex-nowrap gap-1 text-xs sm:gap-1.5">
         <BreadcrumbItem className="hidden sm:inline-flex">
           <BreadcrumbLink asChild>
             <RouterLink href="/" className="inline-flex items-center gap-1.5">
-              <Folder aria-hidden className="size-4" />
+              <Folder aria-hidden className="size-3.5" />
               Projetos
             </RouterLink>
           </BreadcrumbLink>
@@ -47,6 +47,7 @@ function ProjectCrumbs({ location, pageTitle }: HeaderBreadcrumbsProps): JSX.Ele
     <>
       <BreadcrumbSeparator className="hidden sm:inline-flex" />
       <ProjectCrumb projectId={location.projectId} />
+      <GroupCrumb label={location.group.label} />
       <CurrentCrumb title={pageTitle} hasSeparator />
     </>
   )
@@ -69,6 +70,20 @@ function CurrentCrumb({
       <BreadcrumbItem className="min-w-0">
         <BreadcrumbPage className="truncate">{title}</BreadcrumbPage>
       </BreadcrumbItem>
+    </>
+  )
+}
+
+/** The sidebar group of the page ("Autenticação"), a level of the path but not a page itself. */
+function GroupCrumb({ label }: { label: string | null }): JSX.Element | null {
+  if (label === null) {
+    return null
+  }
+
+  return (
+    <>
+      <BreadcrumbSeparator className="hidden md:inline-flex" />
+      <BreadcrumbItem className="hidden md:inline-flex">{label}</BreadcrumbItem>
     </>
   )
 }

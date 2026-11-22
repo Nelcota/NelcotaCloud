@@ -1,7 +1,6 @@
 import { useLocation } from '@tanstack/react-router'
 import type { JSX } from 'react'
 
-import { AccountMenu } from '@/app/shell/account-menu'
 import { CONSOLE_SECTIONS, consoleSectionOf } from '@/app/shell/console-sections'
 import { InvitationsBell } from '@/app/shell/invitations-bell'
 import { RailLink } from '@/app/shell/rail-link'
@@ -18,14 +17,14 @@ export function IconRail({ location }: { location: ProjectLocation | null }): JS
   return (
     <nav
       aria-label="Console"
-      className="hidden w-16 shrink-0 flex-col items-center gap-1 py-3 md:flex"
+      className="hidden w-14 shrink-0 flex-col items-center gap-1 py-3 md:flex"
     >
       <RouterLink
         href="/"
         aria-label="NelcotaCloud, todos os projetos"
-        className="mb-4 grid size-10 place-items-center rounded-lg hover:bg-surface-hover"
+        className="mb-3 grid size-10 place-items-center rounded-[10px] hover:bg-surface"
       >
-        <LogoMark size={32} />
+        <LogoMark size={24} />
       </RouterLink>
       {CONSOLE_SECTIONS.map((section) => (
         <RailLink
@@ -39,7 +38,6 @@ export function IconRail({ location }: { location: ProjectLocation | null }): JS
       <div className="mt-auto flex flex-col items-center gap-1">
         <InvitationsBell />
         <ThemeToggle />
-        <AccountMenu />
       </div>
     </nav>
   )

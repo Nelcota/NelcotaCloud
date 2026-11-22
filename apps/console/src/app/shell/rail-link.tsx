@@ -22,11 +22,11 @@ export function RailLink({ href, label, icon: Glyph, isCurrent }: RailLinkProps)
           aria-label={label}
           aria-current={isCurrent ? 'page' : undefined}
           className={cn(
-            'grid size-10 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground',
+            'grid size-10 place-items-center rounded-[10px] text-muted-foreground hover:bg-surface hover:text-foreground',
             isCurrent && 'bg-surface-hover text-foreground',
           )}
         >
-          <Glyph aria-hidden className="size-5" />
+          <Glyph aria-hidden className="size-[18px]" />
         </RouterLink>
       </TooltipTrigger>
       <TooltipContent side="right">{label}</TooltipContent>

@@ -8,6 +8,8 @@ import {
   filterCommands,
   groupCommands,
 } from '@/app/shell/command-items'
+import { PaletteFooter } from '@/app/shell/command-palette-footer'
+import { ThemeCommand } from '@/app/shell/command-theme-action'
 import { ProjectAvatar } from '@/app/shell/project-avatar'
 import { useProjectsQuery } from '@/modules/projects/queries/use-projects'
 import {
@@ -78,14 +80,16 @@ export function CommandPalette({
                   <span className="truncate">{item.label}</span>
                   <span data-slot="command-shortcut" className="ml-auto">
                     <Kbd className="hidden group-data-[selected=true]/command-item:inline-flex">
-                      Enter
+                      ↵
                     </Kbd>
                   </span>
                 </CommandItem>
               ))}
             </CommandGroup>
           ))}
+          <ThemeCommand query={query} onDone={() => changeOpen(false)} />
         </CommandList>
+        <PaletteFooter />
       </Command>
     </CommandDialog>
   )

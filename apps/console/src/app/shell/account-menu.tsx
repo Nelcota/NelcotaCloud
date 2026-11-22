@@ -1,4 +1,9 @@
-import { CircleUser as UserRound, LogOut, ShieldAlert as ShieldWarning } from 'lucide-react'
+import {
+  ChevronsUpDown,
+  CircleUser as UserRound,
+  LogOut,
+  ShieldAlert as ShieldWarning,
+} from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import type { JSX } from 'react'
 
@@ -18,8 +23,11 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/ui/primitives/dropdown-menu'
 
-/** The signed-in console account: its page, the second step reminder and the way out. */
-export function AccountMenu({ side = 'right' }: { side?: 'right' | 'bottom' }): JSX.Element | null {
+/**
+ * The signed-in console account as the top bar's first chip (its initial on a square, like an
+ * organization): its page, the second step reminder and the way out.
+ */
+export function AccountMenu(): JSX.Element | null {
   const session = useSession()
   const navigate = useNavigate()
   const isMfaOff = useIsMfaOff()
@@ -46,12 +54,17 @@ export function AccountMenu({ side = 'right' }: { side?: 'right' | 'bottom' }): 
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Conta: ${name}`}
-        className="relative grid size-10 place-items-center rounded-lg hover:bg-surface-hover"
+        className="relative inline-flex h-7 max-w-56 min-w-0 shrink-0 items-center gap-2 rounded-md px-1.5 text-xs text-foreground hover:bg-surface aria-expanded:bg-surface sm:px-2"
       >
-        <Avatar src={nelcota.auth.avatar.url(user) ?? undefined} name={name} size="md" />
+        <Avatar src={nelcota.auth.avatar.url(user) ?? undefined} name={name} size="xs" isSquare />
+        <span className="hidden truncate sm:inline">{name}</span>
+        <ChevronsUpDown
+          aria-hidden
+          className="hidden size-3 shrink-0 text-muted-foreground sm:block"
+        />
         <MfaDot isMfaOff={isMfaOff} />
       </DropdownMenuTrigger>
-      <DropdownMenuContent side={side} align="end" className="w-64">
+      <DropdownMenuContent side="bottom" align="start" className="w-64">
         <DropdownMenuLabel className="grid gap-0.5">
           <span className="truncate text-sm font-medium text-foreground">{name}</span>
           <span className="truncate text-xs font-normal text-muted-foreground">{email}</span>
@@ -104,7 +117,7 @@ function MfaDot({ isMfaOff }: { isMfaOff: boolean }): JSX.Element | null {
     <span
       role="img"
       aria-label="Verificação em duas etapas desativada"
-      className="absolute end-1 top-1 size-2 rounded-full bg-warning ring-2 ring-frame"
+      className="absolute start-4 top-0.5 size-2 rounded-full bg-warning ring-2 ring-background"
     />
   )
 }

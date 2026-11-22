@@ -20,11 +20,14 @@ export function InvitationsBell(): JSX.Element {
     <Popover>
       <PopoverTrigger
         aria-label={bellLabel(pending.length)}
-        className="relative grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-surface-hover hover:text-foreground"
+        className="relative grid size-10 place-items-center rounded-[10px] text-muted-foreground hover:bg-surface hover:text-foreground"
       >
-        <Bell aria-hidden className="size-5" />
+        <Bell aria-hidden className="size-[18px]" />
         {pending.length > 0 && (
-          <span aria-hidden className="absolute end-1.5 top-1.5 size-2 rounded-full bg-primary" />
+          <span
+            aria-hidden
+            className="absolute end-2 top-2 size-2 rounded-full bg-brand ring-2 ring-frame"
+          />
         )}
       </PopoverTrigger>
       <PopoverContent side="right" align="end" className="w-80 gap-0 p-0">

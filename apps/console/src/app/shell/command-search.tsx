@@ -22,9 +22,9 @@ export function CommandSearch({ projectId }: { projectId: string | null }): JSX.
         aria-haspopup="dialog"
         aria-label="Buscar"
         onClick={open}
-        className="flex h-9 items-center gap-2 rounded-lg border bg-surface ps-3 pe-1.5 text-sm text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground sm:w-64"
+        className="flex h-7 items-center gap-1.5 rounded-md bg-surface px-2 text-sm text-muted-foreground hover:bg-surface-hover hover:text-foreground sm:w-[200px] sm:px-2.5"
       >
-        <Search aria-hidden className="size-4" />
+        <Search aria-hidden className="size-3.5" />
         <span className="hidden sm:inline">Buscar…</span>
         <Kbd className="ms-auto hidden sm:inline-flex">{shortcutLabel()}</Kbd>
       </button>

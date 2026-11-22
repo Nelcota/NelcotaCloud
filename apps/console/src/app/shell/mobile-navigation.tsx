@@ -2,7 +2,6 @@ import { useLocation } from '@tanstack/react-router'
 import { Menu } from 'lucide-react'
 import { type JSX, type MouseEvent, useState } from 'react'
 
-import { AccountMenu } from '@/app/shell/account-menu'
 import { CONSOLE_SECTIONS, consoleSectionOf } from '@/app/shell/console-sections'
 import { InvitationsBell } from '@/app/shell/invitations-bell'
 import { ProjectSidebar } from '@/app/shell/project-sidebar'
@@ -66,7 +65,6 @@ export function MobileNavigation({ location }: { location: ProjectLocation | nul
             <div className="mt-auto flex flex-col items-center gap-1">
               <InvitationsBell />
               <ThemeToggle />
-              <AccountMenu />
             </div>
           </div>
           <div className="scrollbar-thin min-w-0 flex-1 overflow-y-auto">
