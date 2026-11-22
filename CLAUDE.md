@@ -332,7 +332,9 @@ dependencies. In `apps/console/src/`:
   `StepDialog`, `CopyButton`, `CopyableValue`, `UrlField`, `JsonField`, `SavedNote`,
   `FlashNotice`, `StatCard`, `Notice`, `StatusBadge`, `PendingButton`, `TextField`,
   `SwitchField`, `SelectField`, `SearchField`, `SegmentedControl`, `ChoiceCards`, `DataList`,
-  `CodeBlock`, `EmptyState`), `lib`. Layout is plain Tailwind markup over the primitives: no
+  `CodeBlock`, `EmptyState`, and the Veloz-style `SummarySentence`, `ResourceCard`,
+  `ActivityItem`, `LevelBadge`, `LiveIndicator`, `FieldFacets`, `ChartLegend`,
+  `AnimatedNumber`), `lib` (including `format-number` and `format-relative` for pt-BR figures). Layout is plain Tailwind markup over the primitives: no
   stack, text or wrapper components that restyle primitives. `shared` never imports from `modules` or `app`.
 - Use shadcn/ui primitives from `shared/ui/primitives/` and semantic tokens defined in
   `app/global.css`. See `DESIGN.md` for the visual and interaction conventions.
@@ -369,7 +371,8 @@ Never ship the generic look of AI-generated UI. Every element must earn its plac
 
 - Copy: say it once, short and concrete. No tips ("Dica: …"), no sentences explaining what
   the UI already shows, no repeating the same information in the description and in the field.
-- No decoration without a job: no illustrations, gradients, glows, uppercase labels, badges or
+- No decoration without a job: no illustrations, gradients, glows, uppercase labels (except the
+  sidebar and menu group labels of `DESIGN.md`), badges or
   emojis for flavor.
 - One control per action: no button that duplicates a link or a clickable area next to it.
 - Show only what the user needs to decide or act: no extra readouts (zoom percentages, counters)
