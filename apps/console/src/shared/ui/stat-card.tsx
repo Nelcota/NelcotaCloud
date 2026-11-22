@@ -30,7 +30,7 @@ export function StatCard({
         className,
       )}
     >
-      <span className="truncate text-xs text-muted-foreground">{label}</span>
+      <span className="text-xs text-pretty text-muted-foreground">{label}</span>
       <div className="flex min-w-0 items-end justify-between gap-3">
         <span className="truncate text-2xl font-semibold text-heading tabular-nums">{value}</span>
         {aside}
@@ -46,5 +46,5 @@ function StatHint({ hint }: { hint?: ReactNode }): JSX.Element | null {
     return null
   }
 
-  return <span className="truncate text-xs text-muted-foreground">{hint}</span>
+  return <span className="text-xs text-pretty text-muted-foreground">{hint}</span>
 }

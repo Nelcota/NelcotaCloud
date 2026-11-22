@@ -49,5 +49,5 @@ function emptyDescription(isRlsEnabled: boolean): string {
     return 'Sem políticas, os apps não alcançam nenhuma linha desta tabela.'
   }
 
-  return 'Com row level security desligado, as políticas não valem.'
+  return 'Com row level security desativado, as políticas não valem.'
 }

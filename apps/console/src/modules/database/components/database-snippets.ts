@@ -44,7 +44,7 @@ function curlSnippet(table: string, functionName: string, publishableKey: string
   const functionPath = `rpc/${encodeURIComponent(functionName)}`
 
   return [
-    '# Sem Authorization, o pedido roda como anon',
+    '# Sem Authorization, a requisição roda como anon',
     `curl ${shellQuote(restUrl(`${encodeURIComponent(table)}?select=*`))} \\`,
     ...auth,
     '',

@@ -48,7 +48,7 @@ export function AuditEventFacts({ event, context, actions }: AuditEventFactsProp
       <OptionalItem label="User agent" value={event.user_agent}>
         <span className="font-mono text-xs">{event.user_agent}</span>
       </OptionalItem>
-      <OptionalItem label="Request ID" value={event.request_id}>
+      <OptionalItem label="ID da requisição" value={event.request_id}>
         <IdChip label="ID da requisição" value={event.request_id ?? ''} />
       </OptionalItem>
     </DataList>

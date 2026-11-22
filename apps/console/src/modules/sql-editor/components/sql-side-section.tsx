@@ -18,7 +18,7 @@ export function SqlSideSection({ title, meta, children }: SqlSideSectionProps): 
         className="flex items-center gap-1.5 px-2 text-2xs font-medium tracking-[0.025em] text-muted-foreground uppercase"
       >
         {title}
-        <span className="text-faint tabular-nums">{meta}</span>
+        <span className="text-muted-foreground tabular-nums">{meta}</span>
       </h2>
       {children}
     </section>

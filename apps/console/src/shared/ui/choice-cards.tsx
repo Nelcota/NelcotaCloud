@@ -77,7 +77,7 @@ function ChoiceCard<Value extends string>({ choice }: { choice: Choice<Value> })
         <span className="flex items-center gap-2 text-sm font-medium text-heading">
           {choice.title}
           {choice.badge !== undefined && (
-            <span className="rounded-[6px] bg-surface px-1.5 py-0.5 text-2xs font-normal text-muted-foreground">
+            <span className="rounded-sm bg-surface px-1.5 py-0.5 text-2xs font-normal text-muted-foreground">
               {choice.badge}
             </span>
           )}

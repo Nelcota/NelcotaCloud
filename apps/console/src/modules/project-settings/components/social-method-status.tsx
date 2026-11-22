@@ -21,7 +21,7 @@ export function SocialMethodStatus({ projectId }: { projectId: string }): JSX.El
   const count = providers.data.length
 
   if (count === 0) {
-    return <StatusBadge>Desligado</StatusBadge>
+    return <StatusBadge>Desativado</StatusBadge>
   }
 
   return (

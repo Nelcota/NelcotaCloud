@@ -43,8 +43,8 @@ export function DeleteBucketMenu({ projectId, bucket }: DeleteBucketMenuProps): 
       <ConfirmDialog
         isOpen={isConfirming}
         onOpenChange={setIsConfirming}
-        title="Excluir bucket?"
-        description={`O bucket “${bucket.name}” e todos os arquivos nele serão excluídos.`}
+        title={`Excluir o bucket ${bucket.name}?`}
+        description="Todos os arquivos dele são apagados. Não dá para desfazer."
         confirmLabel="Excluir bucket"
         isDestructive
         onConfirm={() => deletion.mutateAsync(bucket.id)}

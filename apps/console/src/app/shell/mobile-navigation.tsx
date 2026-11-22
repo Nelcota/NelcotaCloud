@@ -2,11 +2,11 @@ import { useLocation } from '@tanstack/react-router'
 import { Menu } from 'lucide-react'
 import { type JSX, type MouseEvent, useState } from 'react'
 
-import { CONSOLE_SECTIONS, consoleSectionOf } from '@/app/shell/console-sections'
+import { consoleSectionOf } from '@/app/shell/console-sections'
 import { InvitationsBell } from '@/app/shell/invitations-bell'
+import { MobileConsoleLinks } from '@/app/shell/mobile-console-links'
 import { ProjectSidebar } from '@/app/shell/project-sidebar'
 import type { ProjectLocation } from '@/app/shell/project-sections'
-import { RailLink } from '@/app/shell/rail-link'
 import { ThemeToggle } from '@/app/shell/theme-toggle'
 import { Button } from '@/shared/ui/primitives/button'
 import {
@@ -17,7 +17,7 @@ import {
   SheetTrigger,
 } from '@/shared/ui/primitives/sheet'
 
-/** Below the large breakpoint the rail and the project's pages open in a sheet. */
+/** Below the large breakpoint the console's places and the project's pages open in a sheet. */
 export function MobileNavigation({ location }: { location: ProjectLocation | null }): JSX.Element {
   const { pathname } = useLocation()
   const [openPath, setOpenPath] = useState<string | null>(null)
@@ -56,24 +56,14 @@ export function MobileNavigation({ location }: { location: ProjectLocation | nul
         <SheetDescription className="sr-only">
           Projetos, conta e páginas do projeto.
         </SheetDescription>
-        <div className="flex h-full min-h-0" onClick={closeOnLink}>
-          <div className="flex w-14 shrink-0 flex-col items-center gap-1 border-e bg-frame py-3">
-            {CONSOLE_SECTIONS.map((section) => (
-              <RailLink
-                key={section.path}
-                href={section.path}
-                label={section.label}
-                icon={section.icon}
-                isCurrent={section === current}
-              />
-            ))}
-            <div className="mt-auto flex flex-col items-center gap-1">
-              <InvitationsBell />
-              <ThemeToggle />
-            </div>
-          </div>
-          <div className="scrollbar-thin min-w-0 flex-1 overflow-y-auto">
+        <div className="flex h-full min-h-0 flex-col" onClick={closeOnLink}>
+          <MobileConsoleLinks current={current} />
+          <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto overscroll-contain">
             <ProjectPages location={location} />
+          </div>
+          <div className="flex gap-1 border-t p-2">
+            <InvitationsBell />
+            <ThemeToggle />
           </div>
         </div>
       </SheetContent>

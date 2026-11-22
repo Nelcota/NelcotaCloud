@@ -52,7 +52,10 @@ function FacetGroup({ facet, selected, onSelect }: FacetGroupProps): JSX.Element
           className="size-3 text-muted-foreground transition-transform duration-200 group-data-[state=closed]/facet:-rotate-90"
         />
         <span className="flex-1 truncate text-start font-medium">{facet.field}</span>
-        <span className="text-muted-foreground tabular-nums">{facet.values.length}</span>
+        <span className="text-muted-foreground tabular-nums">
+          <span className="sr-only">, </span>
+          {facet.values.length}
+        </span>
       </CollapsibleTrigger>
       <CollapsibleContent className="grid gap-px py-0.5">
         {facet.values.map((entry) => (
@@ -60,13 +63,14 @@ function FacetGroup({ facet, selected, onSelect }: FacetGroupProps): JSX.Element
             key={entry.value}
             type="button"
             aria-pressed={selected === entry.value}
+            title={entry.label}
             onClick={() => onSelect(nextSelection(selected, entry.value))}
             className={cn(
               'grid grid-cols-[minmax(0,1fr)_3rem_2.5rem] items-center gap-2 rounded-md py-1 ps-6 pe-1.5 text-start text-muted-foreground hover:bg-surface hover:text-foreground',
               selected === entry.value && 'bg-surface-hover text-foreground',
             )}
           >
-            <span className="truncate">{entry.label}</span>
+            <span className="line-clamp-2 wrap-break-word">{entry.label}</span>
             <span aria-hidden className="h-0.5 overflow-hidden rounded-full bg-surface-hover">
               <span
                 className="block h-full rounded-full bg-muted-foreground/60"

@@ -56,7 +56,7 @@ function SectionHeading(props: SectionProps & { titleId: string }): JSX.Element 
           )}
         </div>
         {props.description !== undefined && (
-          <div className="text-xs text-muted-foreground">{props.description}</div>
+          <div className="max-w-prose text-xs text-muted-foreground">{props.description}</div>
         )}
       </div>
       {props.action}

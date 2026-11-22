@@ -30,37 +30,37 @@ function healthOf(totals: KnownTotals): UsersHealth {
     return {
       tone: 'warning',
       verdict: `${accounts(totals.banned)} ${blocked(totals.banned)}.`,
-      sentence: 'Todas as contas confirmaram o email.',
+      sentence: 'Todos os usuários confirmaram o email.',
     }
   }
 
   return {
     tone: 'success',
     verdict: 'Tudo certo.',
-    sentence: `${capitalized(accounts(totals.all))}, todas com email confirmado e nenhuma bloqueada.`,
+    sentence: `${capitalized(accounts(totals.all))}, todos com email confirmado e nenhum bloqueado.`,
   }
 }
 
-/** "1 conta", "1.234 contas". */
+/** "1 usuário", "1.234 usuários". */
 function accounts(count: number): string {
   if (count === 1) {
-    return '1 conta'
+    return '1 usuário'
   }
 
-  return `${formatCount(count)} contas`
+  return `${formatCount(count)} usuários`
 }
 
 function blocked(count: number): string {
   if (count === 1) {
-    return 'bloqueada'
+    return 'bloqueado'
   }
 
-  return 'bloqueadas'
+  return 'bloqueados'
 }
 
 function bannedSentence(banned: number): string {
   if (banned === 0) {
-    return 'Nenhuma conta bloqueada.'
+    return 'Nenhum usuário bloqueado.'
   }
 
   return `${accounts(banned)} ${blocked(banned)}.`

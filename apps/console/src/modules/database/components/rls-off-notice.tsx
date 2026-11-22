@@ -23,7 +23,7 @@ export function RlsOffNotice({ projectId, table }: RlsOffNoticeProps): JSX.Eleme
     <div className="flex flex-col gap-2">
       <Notice
         tone="warning"
-        title="Row level security desligado"
+        title="Row level security desativado"
         action={
           <PendingButton
             type="button"
@@ -31,7 +31,7 @@ export function RlsOffNotice({ projectId, table }: RlsOffNoticeProps): JSX.Eleme
             isPending={change.isPending}
             onClick={() => change.mutate({ table: table.name, isEnabled: true })}
           >
-            Ligar RLS
+            Ativar RLS
           </PendingButton>
         }
       >

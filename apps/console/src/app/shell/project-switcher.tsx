@@ -24,7 +24,7 @@ export function ProjectSwitcher({ projectId }: { projectId: string }): JSX.Eleme
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Trocar projeto: ${name}`}
-        className="flex w-full min-w-0 items-center gap-2.5 rounded-[10px] p-2 text-start hover:bg-surface aria-expanded:bg-surface"
+        className="flex w-full min-w-0 items-center gap-2.5 rounded-lg p-2 text-start hover:bg-surface aria-expanded:bg-surface"
       >
         <ProjectAvatar name={name} mascotId={project?.mascot_id} size="sm" />
         <span className="grid min-w-0 flex-1">
@@ -37,7 +37,7 @@ export function ProjectSwitcher({ projectId }: { projectId: string }): JSX.Eleme
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-60">
         <DropdownMenuLabel>Projetos</DropdownMenuLabel>
-        <DropdownMenuGroup className="max-h-72 overflow-y-auto">
+        <DropdownMenuGroup className="max-h-72 overflow-y-auto overscroll-contain">
           {(projects.data ?? []).map((candidate) => (
             <DropdownMenuItem key={candidate.id} asChild>
               <RouterLink href={`/projects/${candidate.id}`}>

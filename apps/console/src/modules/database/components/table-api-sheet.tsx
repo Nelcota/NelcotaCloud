@@ -17,7 +17,7 @@ export function TableApiSheet({ projectId, table }: TableApiSheetProps): JSX.Ele
   return (
     <ApiSheet
       title={`${table.name} pela API`}
-      description="Como o usuário logado: as políticas da tabela decidem quais linhas cada pedido alcança."
+      description="Como o usuário logado: as políticas da tabela decidem quais linhas cada requisição alcança."
       snippets={[
         { label: 'SDK', title: 'app.ts', code: tableSdkSnippet(table, publishableKey) },
         { label: 'curl', title: 'shell', code: tableCurlSnippet(table, publishableKey) },

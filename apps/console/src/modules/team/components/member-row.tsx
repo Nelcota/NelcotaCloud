@@ -30,7 +30,7 @@ export function MemberRowView({ row, isOwnRow, list }: MemberRowViewProps): JSX.
       <TableCell className="text-muted-foreground">
         <Timestamp value={row.joinedAt} format="relative" />
       </TableCell>
-      <TableCell className="text-right">
+      <TableCell className="sticky end-0 z-[1] bg-card text-end">
         <TeamRowMenu row={row} viewer={viewer} onAction={list.onAction} />
       </TableCell>
     </TableRow>

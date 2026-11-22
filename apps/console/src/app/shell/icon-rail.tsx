@@ -22,7 +22,7 @@ export function IconRail({ location }: { location: ProjectLocation | null }): JS
       <RouterLink
         href="/"
         aria-label="NelcotaCloud, todos os projetos"
-        className="mb-3 grid size-10 place-items-center rounded-[10px] hover:bg-surface"
+        className="mb-3 grid size-10 place-items-center rounded-lg hover:bg-surface"
       >
         <LogoMark size={32} />
       </RouterLink>

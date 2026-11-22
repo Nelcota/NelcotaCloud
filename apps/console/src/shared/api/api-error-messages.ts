@@ -10,43 +10,48 @@ export const MESSAGES_BY_CODE: Record<string, string> = {
   invalid_mfa_code: 'Código incorreto. Confira o app autenticador e tente de novo.',
   invalid_refresh_token: 'Sua sessão terminou. Entre de novo.',
   invalid_access_token: 'Sua sessão terminou. Entre de novo.',
-  user_banned: 'Esta conta está bloqueada.',
+  user_banned: 'Esta conta está bloqueada. Quem administra o console pode desbloqueá-la.',
   email_already_verified: 'Este email já foi confirmado.',
   too_many_requests: 'Muitas tentativas em pouco tempo. Espere um minuto e tente de novo.',
   slug_taken: 'Esse identificador já está em uso. Escolha outro.',
-  project_access_denied: 'Você não tem mais acesso a este projeto.',
-  admin_access_denied: 'Você não tem permissão para isso neste projeto.',
-  secret_key_required: 'Essa ação exige uma secret key.',
+  project_access_denied: 'Você não tem mais acesso a este projeto. Peça um novo convite a um dono.',
+  admin_access_denied: 'Só donos fazem isso neste projeto. Peça a um dono.',
+  secret_key_required: 'Essa ação exige a chave secreta.',
   smtp_delivery_failed:
     'O servidor SMTP não aceitou o email. Confira host, porta, usuário e senha.',
-  provider_not_configured: 'Esse login social não está configurado neste projeto.',
+  provider_not_configured: 'Esse login social não está configurado. Configure-o em Login social.',
   unknown_provider: 'Esse provedor de login não existe.',
   invalid_oauth_code: 'O login social expirou. Comece de novo.',
   webhook_endpoint_limit: 'O projeto já tem 5 endpoints, o máximo. Exclua um antes de criar outro.',
   last_owner: 'O projeto precisa de pelo menos um dono. Transfira a propriedade antes.',
-  owned_project_limit: 'Essa conta já é dona do máximo de 10 projetos.',
+  owned_project_limit:
+    'Essa conta já é dona de 10 projetos, o máximo. Exclua ou transfira um antes.',
   already_member: 'Essa pessoa já faz parte da equipe.',
   already_invited: 'Já existe um convite pendente para esse email.',
   invitation_delivery_in_progress: 'O email do convite está sendo enviado. Aguarde o resultado.',
-  payload_too_large: 'O arquivo é grande demais.',
-  storage_unavailable: 'O armazenamento de arquivos está indisponível.',
-  storage_bucket_not_found: 'Este bucket não existe mais.',
-  storage_object_not_found: 'Este arquivo não está disponível.',
+  payload_too_large: 'O arquivo é grande demais. Envie até 25 MiB.',
+  storage_unavailable: 'O armazenamento está indisponível. Tente de novo em alguns minutos.',
+  storage_bucket_not_found: 'Este bucket não existe mais. Recarregue a página.',
+  storage_object_not_found: 'Este arquivo não existe mais. Recarregue a página.',
   storage_bucket_exists: 'Já existe um bucket com esse nome.',
-  storage_bucket_limit: 'O projeto atingiu o limite de buckets.',
-  storage_quota_exceeded: 'O projeto atingiu o limite de armazenamento.',
+  storage_bucket_limit: 'O projeto atingiu o limite de buckets. Exclua um antes de criar outro.',
+  storage_quota_exceeded:
+    'O projeto atingiu o limite de armazenamento. Exclua arquivos para liberar espaço.',
   storage_upload_expired: 'O envio expirou. Selecione o arquivo e envie novamente.',
   storage_upload_missing: 'O arquivo ainda não chegou. Tente enviá-lo novamente.',
-  storage_upload_mismatch: 'O arquivo recebido é diferente do selecionado.',
+  storage_upload_mismatch:
+    'O arquivo recebido é diferente do selecionado. Selecione o arquivo e envie de novo.',
   storage_upload_failed: 'O arquivo não pôde ser enviado. Tente de novo.',
   storage_upload_request_conflict:
     'Este envio pertence a outro arquivo. Selecione o arquivo novamente.',
   storage_download_failed: 'O arquivo não pôde ser baixado. Tente de novo.',
   platform_not_configured: 'O console ainda não foi configurado neste servidor.',
   internal_error: 'Erro no servidor. Tente de novo em instantes.',
-  query_timeout: 'A consulta passou de 15 segundos e foi cancelada.',
+  query_timeout:
+    'A consulta passou de 15 segundos e foi cancelada. Filtre menos linhas ou crie um índice.',
   table_not_found: 'Essa tabela não existe mais. Recarregue a página.',
-  permission_denied: 'Os privilégios ou as políticas da tabela recusaram o acesso.',
+  permission_denied:
+    'As políticas da tabela recusaram o acesso. Crie uma política que libere este comando.',
   invalid_captcha_secret:
     'O Cloudflare não reconhece essa secret key. Copie de novo do widget do Turnstile.',
   captcha_unavailable: 'Não foi possível falar com o Cloudflare. Tente de novo em instantes.',
@@ -57,9 +62,9 @@ export const MESSAGES_BY_CODE: Record<string, string> = {
 /** Generic codes carry the detail in their English message; the known ones read like this. */
 export const MESSAGES_BY_TEXT: Record<string, string> = {
   'the last active secret key cannot be revoked; create another one first':
-    'Esta é a última secret key ativa. Crie outra antes de revogar esta.',
+    'Esta é a última chave secreta ativa. Crie outra antes de revogar esta.',
   'TOTP is already enabled; disable it before adding another authenticator':
-    'A verificação em duas etapas já está ativa. Desative-a antes de trocar de app.',
+    'O MFA já está ativo. Desative-o antes de trocar de app.',
   'configure your own SMTP server before sending a test':
     'Configure o seu servidor SMTP antes de enviar um teste.',
   'the delivery is being sent right now':
@@ -83,16 +88,16 @@ export const MESSAGES_BY_TEXT: Record<string, string> = {
   'webhook host resolves to no public address':
     'O domínio do webhook não aponta para nenhum endereço público.',
   'too many manual webhook sends': 'Muitos envios manuais em pouco tempo. Espere um minuto.',
-  'SMTP URL is not a valid URL': 'A SMTP URL não é válida.',
-  'SMTP URL is not valid': 'A SMTP URL não é válida.',
-  'SMTP URL must name a host': 'A SMTP URL precisa ter um host.',
+  'SMTP URL is not a valid URL': 'A URL SMTP não é válida.',
+  'SMTP URL is not valid': 'A URL SMTP não é válida.',
+  'SMTP URL must name a host': 'A URL SMTP precisa ter um host.',
   'SMTP URL must start with smtp:// or smtps://':
-    'A SMTP URL precisa começar com smtp:// ou smtps://.',
+    'A URL SMTP precisa começar com smtp:// ou smtps://.',
   'SMTP connections must use implicit TLS or required STARTTLS':
     'Use TLS: smtps:// ou smtp://…?tls=required.',
   'SMTP requires implicit TLS (smtps://) or required STARTTLS (?tls=required)':
     'Use TLS: smtps:// ou smtp://…?tls=required.',
-  'SMTP host could not be resolved': 'O host SMTP não foi encontrado.',
+  'SMTP host could not be resolved': 'O host SMTP não foi encontrado. Confira o endereço.',
   'SMTP host must be a public host name or address': 'O host SMTP precisa ser um endereço público.',
   'SMTP server did not accept connections on any of its addresses':
     'O servidor SMTP não aceitou conexão. Confira host e porta.',
@@ -114,5 +119,5 @@ export const FALLBACK_BY_CODE: Record<string, string> = {
  */
 export const LEAD_BY_CODE: Record<string, string> = {
   sql_error: 'O Postgres recusou',
-  invalid_query: 'Pedido recusado',
+  invalid_query: 'Requisição recusada',
 }

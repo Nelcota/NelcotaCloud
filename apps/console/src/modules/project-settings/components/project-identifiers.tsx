@@ -27,7 +27,7 @@ export function ProjectIdentifiers({ projectId }: { projectId: string }): JSX.El
         value={project.id}
       />
       <EndpointRow
-        label="Slug"
+        label="Identificador"
         meaning="Nome curto e fixo; o banco do projeto é tenant_<slug>."
         value={project.slug}
       />

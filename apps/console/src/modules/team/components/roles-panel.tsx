@@ -22,7 +22,7 @@ export function RolesPanel(): JSX.Element {
       <table className="w-full text-xs">
         <thead className="text-2xs text-muted-foreground">
           <tr className="border-b border-border/60">
-            <th scope="col" className="h-9 ps-4 text-left font-normal">
+            <th scope="col" className="h-9 ps-4 text-start font-normal">
               <span className="sr-only">Permissão</span>
             </th>
             <th scope="col" className="w-14 text-center font-normal">
@@ -36,7 +36,7 @@ export function RolesPanel(): JSX.Element {
         <tbody className="divide-y divide-border/60">
           {ABILITIES.map((ability) => (
             <tr key={ability.label}>
-              <th scope="row" className="py-2 ps-4 text-left font-normal text-foreground">
+              <th scope="row" className="py-2 ps-4 text-start font-normal text-foreground">
                 {ability.label}
               </th>
               <td className="text-center">
@@ -59,8 +59,9 @@ function Allowed({ isAllowed }: { isAllowed: boolean }): JSX.Element {
   }
 
   return (
-    <span aria-label="Não pode" className="text-faint">
-      —
+    <span className="text-muted-foreground">
+      <span className="sr-only">Não pode</span>
+      <span aria-hidden>—</span>
     </span>
   )
 }

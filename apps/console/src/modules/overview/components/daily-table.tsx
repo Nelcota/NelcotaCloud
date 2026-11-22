@@ -43,7 +43,7 @@ export function DailyTable({ days }: { days: DailyActivity[] }): JSX.Element {
               <TableRow>
                 <TableHead>Dia (UTC)</TableHead>
                 {ACTIVITY_SERIES.map((series) => (
-                  <TableHead key={series.id} className="text-right">
+                  <TableHead key={series.id} className="text-end">
                     {series.label}
                   </TableHead>
                 ))}
@@ -54,7 +54,7 @@ export function DailyTable({ days }: { days: DailyActivity[] }): JSX.Element {
                 <TableRow key={day.date}>
                   <TableCell>{longDay(day.date)}</TableCell>
                   {ACTIVITY_SERIES.map((series) => (
-                    <TableCell key={series.id} className="text-right tabular-nums">
+                    <TableCell key={series.id} className="text-end tabular-nums">
                       {day[series.id].toLocaleString('pt-BR')}
                     </TableCell>
                   ))}

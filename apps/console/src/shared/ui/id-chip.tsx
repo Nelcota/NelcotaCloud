@@ -17,7 +17,7 @@ export function IdChip({ label, value, isLabelVisible, className }: IdChipProps)
   return (
     <span
       className={cn(
-        'inline-flex h-6 max-w-full min-w-0 items-center gap-1.5 rounded-[6px] bg-surface ps-2 pe-0.5 text-2xs',
+        'inline-flex h-7 max-w-full min-w-0 items-center gap-1.5 rounded-md bg-surface ps-2 pe-0.5 text-2xs [&_[data-slot=button]]:size-6 [&_[data-slot=button]]:rounded-sm',
         className,
       )}
     >

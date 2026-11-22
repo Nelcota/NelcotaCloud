@@ -22,9 +22,9 @@ type HeaderBreadcrumbsProps = {
 /** The path from the projects list to the current page. */
 export function HeaderBreadcrumbs({ location, pageTitle }: HeaderBreadcrumbsProps): JSX.Element {
   return (
-    <Breadcrumb className="min-w-0">
+    <Breadcrumb className="min-w-0 flex-1 overflow-hidden">
       <BreadcrumbList className="flex-nowrap gap-1 text-sm sm:gap-1.5">
-        <BreadcrumbItem className="hidden sm:inline-flex">
+        <BreadcrumbItem className="hidden shrink-0 lg:inline-flex">
           <BreadcrumbLink asChild>
             <RouterLink href="/" className="inline-flex items-center gap-1.5">
               <Folder aria-hidden className="size-4" />
@@ -40,12 +40,18 @@ export function HeaderBreadcrumbs({ location, pageTitle }: HeaderBreadcrumbsProp
 
 function ProjectCrumbs({ location, pageTitle }: HeaderBreadcrumbsProps): JSX.Element | null {
   if (location === null) {
-    return <CurrentCrumb title={pageTitle} hasSeparator={pageTitle !== 'Projetos'} />
+    return (
+      <CurrentCrumb
+        title={pageTitle}
+        hasSeparator={pageTitle !== 'Projetos'}
+        separatorClassName="hidden lg:inline-flex"
+      />
+    )
   }
 
   return (
     <>
-      <BreadcrumbSeparator className="hidden sm:inline-flex" />
+      <BreadcrumbSeparator className="hidden lg:inline-flex" />
       <ProjectCrumb projectId={location.projectId} />
       <GroupCrumb label={location.group.label} />
       <CurrentCrumb title={pageTitle} hasSeparator />
@@ -56,9 +62,12 @@ function ProjectCrumbs({ location, pageTitle }: HeaderBreadcrumbsProps): JSX.Ele
 function CurrentCrumb({
   title,
   hasSeparator,
+  separatorClassName,
 }: {
   title: string
   hasSeparator: boolean
+  /** Hidden with the root crumb it follows, so no stray "›" is left at the start. */
+  separatorClassName?: string
 }): JSX.Element | null {
   if (hasSeparator === false || title === '') {
     return null
@@ -66,7 +75,7 @@ function CurrentCrumb({
 
   return (
     <>
-      <BreadcrumbSeparator />
+      <BreadcrumbSeparator className={separatorClassName} />
       <BreadcrumbItem className="min-w-0">
         <BreadcrumbPage className="truncate">{title}</BreadcrumbPage>
       </BreadcrumbItem>
@@ -82,8 +91,8 @@ function GroupCrumb({ label }: { label: string | null }): JSX.Element | null {
 
   return (
     <>
-      <BreadcrumbSeparator className="hidden md:inline-flex" />
-      <BreadcrumbItem className="hidden md:inline-flex">{label}</BreadcrumbItem>
+      <BreadcrumbSeparator className="hidden xl:inline-flex" />
+      <BreadcrumbItem className="hidden xl:inline-flex">{label}</BreadcrumbItem>
     </>
   )
 }

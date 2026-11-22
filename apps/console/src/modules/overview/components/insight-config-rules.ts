@@ -39,8 +39,8 @@ export function emailVerificationRule({ settings }: InsightSources, base: string
   return {
     id: 'email-verification',
     severity: 'warning',
-    title: 'Ligue a confirmação de email',
-    text: 'A confirmação de email está desligada: qualquer endereço entra sem provar que é dele.',
+    title: 'Ative a confirmação de email',
+    text: 'A confirmação de email está desativada: qualquer endereço entra sem provar que é dele.',
     action: { label: 'Ligar', to: `${base}/settings` },
   }
 }

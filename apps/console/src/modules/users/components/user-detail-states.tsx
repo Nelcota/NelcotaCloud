@@ -36,7 +36,8 @@ export function UserLoading({ error, onRetry }: UserLoadingProps): JSX.Element {
   }
 
   return (
-    <div aria-busy="true" aria-label="Carregando usuário" className="flex flex-col gap-5">
+    <div role="status" aria-busy="true" className="flex flex-col gap-5">
+      <span className="sr-only">Carregando usuário</span>
       <Skeleton className="h-4 w-20" />
       <div className="flex items-center gap-3">
         <Skeleton className="size-11 rounded-full" />

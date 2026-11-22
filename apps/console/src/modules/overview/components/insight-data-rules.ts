@@ -16,7 +16,7 @@ export function rlsRule({ schema }: InsightSources, base: string): Insight | nul
   return {
     id: 'rls-off',
     severity: 'warning',
-    title: 'Ligue o RLS nas tabelas',
+    title: 'Ative o RLS nas tabelas',
     text: `${countText(open.length, 'tabela', 'tabelas')} sem RLS: ${namesOf(open)}.`,
     action: { label: 'Revisar', to: `${base}/database` },
   }
@@ -67,8 +67,8 @@ export function publishableKeyRule({ keys }: InsightSources, base: string): Insi
   return {
     id: 'no-publishable-key',
     severity: 'warning',
-    title: 'Crie uma chave publishable',
-    text: 'Nenhuma chave publishable ativa: o app não tem como chamar a API.',
+    title: 'Crie uma chave publicável',
+    text: 'Nenhuma chave publicável ativa: o app não tem como chamar a API.',
     action: { label: 'Criar chave', to: `${base}/keys` },
   }
 }

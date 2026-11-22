@@ -58,7 +58,7 @@ function securityText(table: AiTable): string {
   }
 
   if (table.isRlsEnabled === false) {
-    return 'RLS desligado'
+    return 'RLS desativado'
   }
 
   if (table.policyCount === 0) {

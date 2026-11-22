@@ -32,7 +32,7 @@ export function ProjectsTable({ projects }: { projects: ProjectSummary[] }): JSX
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             <TableHead>Nome</TableHead>
-            <TableHead className={WIDE_ONLY}>Slug</TableHead>
+            <TableHead className={WIDE_ONLY}>Identificador</TableHead>
             <TableHead className={LARGE_ONLY}>Site</TableHead>
             <TableHead>Papel</TableHead>
             <TableHead className={WIDE_ONLY}>Criado em</TableHead>

@@ -31,8 +31,8 @@ export const CONFIRMATIONS: Record<ConfirmedAction, Confirmation> = {
     change: (email) => ({ subject: email, icon: User, from: 'Conectado', to: 'Desconectado' }),
   },
   'reset-mfa': {
-    title: () => 'Remover o autenticador?',
-    description: 'Use quando o usuário perdeu o celular e você já confirmou quem ele é.',
+    title: () => 'Remover o MFA?',
+    description: 'O usuário passa a entrar só com a senha até cadastrar um novo autenticador.',
     confirmLabel: 'Remover MFA',
     isDestructive: false,
     change: (email) => ({ subject: email, icon: User, from: 'Com MFA', to: 'Sem MFA' }),
@@ -40,7 +40,7 @@ export const CONFIRMATIONS: Record<ConfirmedAction, Confirmation> = {
   delete: {
     title: (email) => `Excluir ${email}?`,
     description: 'Remove o usuário, suas identidades e sessões. Não dá para desfazer.',
-    confirmLabel: 'Excluir',
+    confirmLabel: 'Excluir usuário',
     isDestructive: true,
     change: (email) => ({ subject: email, icon: User, from: 'Ativo', to: 'Excluído' }),
   },

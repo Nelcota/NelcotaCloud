@@ -53,13 +53,13 @@ export function DataGrid({ label, columns, rows, rowOffset = 0 }: DataGridProps)
           <TableBody>
             {data.map((row) => (
               <TableRow key={row.number} className="[&>td]:border-b [&>td]:border-border/60">
-                <TableCell className="sticky left-0 z-[1] h-8 w-12 bg-card px-1 py-0 ps-1">
+                <TableCell className="sticky start-0 z-[1] h-8 w-12 bg-card px-1 py-0 ps-1">
                   <RowButton row={row} onShow={showRow} />
                 </TableCell>
                 {row.cells.map((value, index) => (
                   <TableCell
                     key={index}
-                    className={cn('h-8 max-w-72 py-0', isNumeric[index] === true && 'text-right')}
+                    className={cn('h-8 max-w-72 py-0', isNumeric[index] === true && 'text-end')}
                   >
                     <CellValue value={value} />
                   </TableCell>
@@ -91,7 +91,7 @@ function RowButton({ row, onShow }: RowButtonProps): JSX.Element {
       variant="ghost"
       size="xs"
       aria-label={`Ver linha ${number}`}
-      className="w-full justify-end font-mono text-faint tabular-nums"
+      className="w-full justify-end font-mono text-muted-foreground tabular-nums"
       onClick={() => onShow(row)}
     >
       {number}

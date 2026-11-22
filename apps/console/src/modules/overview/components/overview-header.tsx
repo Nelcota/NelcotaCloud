@@ -31,7 +31,7 @@ export function OverviewHeader({
   const siteUrl = settings.data?.site_url ?? project?.site_url
 
   return (
-    <div className="grid gap-3">
+    <div className="grid grid-cols-1 gap-3">
       <PageHeader
         title={name}
         description={<ProjectState slug={project?.slug} health={health} />}

@@ -22,7 +22,7 @@ export function CommandSearch({ projectId }: { projectId: string | null }): JSX.
         aria-haspopup="dialog"
         aria-label="Buscar"
         onClick={open}
-        className="flex h-9 items-center gap-2 rounded-md bg-surface px-2.5 text-sm text-muted-foreground hover:bg-surface-hover hover:text-foreground sm:w-60 sm:px-3"
+        className="flex h-9 items-center gap-2 rounded-md bg-surface px-2.5 text-sm text-muted-foreground hover:bg-surface-hover hover:text-foreground sm:w-44 sm:px-3 xl:w-60"
       >
         <Search aria-hidden className="size-4" />
         <span className="hidden sm:inline">Buscar…</span>

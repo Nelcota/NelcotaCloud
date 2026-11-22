@@ -25,6 +25,7 @@ color or a size in a screen.
   `shared/lib/format-number` (`15,2 mil`, `86,6%`, `33,1 GB`) and times with
   `shared/lib/format-relative` (`há 14h`, `há 2d`).
 - Uppercase only for sidebar group labels and menu/palette group headings.
+- `faint` is for icons and separators only; text uses `muted-foreground` or stronger.
 
 ## Color
 
@@ -65,14 +66,15 @@ color or a size in a screen.
   activity feeds (`ActivityItem`: message first, `meta · meta · há 2h` line, status pill on the
   right) or log lines (mono, time in ms, `LevelBadge`, `chave=valor` chips, `FieldFacets` with
   counts per value, `LiveIndicator`).
-- Shortcuts are visible as `Kbd`: "Buscar… ⌘K", "Executar ⌘↵", "/" to focus a list search.
+- Shortcuts are visible as `Kbd`: "Buscar… ⌘K", "Executar ⌘↵". No single-key shortcuts: they
+  cannot be turned off, which fails WCAG 2.1.4.
 
 ## Motion
 
-200ms `ease-standard` for color changes, `scale(.97)` on press, `animate-page-in` (180ms fade,
-blur and 6px slide) on page and tab changes, `animate-row-in` for new rows, `animate-live` for
-the live dot, 250ms `ease-emphasized` for sheets. Everything collapses under
-`prefers-reduced-motion`.
+200ms `ease-standard` for color changes, `scale(.97)` on press, `animate-page-in` (180ms fade
+and 6px slide) on page changes only (tab content swaps instantly), `animate-row-in` for live
+log rows, `animate-live` for the live dot, 250ms `ease-emphasized` in and 150ms out for sheets.
+Theme switches skip transitions. Everything collapses under `prefers-reduced-motion`.
 
 ## States
 

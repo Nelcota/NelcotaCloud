@@ -13,7 +13,7 @@ export function StorageApiSheet({ projectId, bucketId }: StorageApiSheetProps): 
   return (
     <ApiSheet
       title="Arquivos pela API"
-      description="Os arquivos são privados: cada pedido leva o token do usuário logado."
+      description="Os arquivos são privados: cada requisição leva o token do usuário logado."
       snippets={storageSnippets({ bucketId, publishableKey })}
     />
   )

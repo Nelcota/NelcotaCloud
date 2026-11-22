@@ -74,7 +74,7 @@ export function TextAreaField({
       </FieldCaption>
       <Textarea
         id={controlId}
-        className={cn(isCode === true && 'font-mono text-xs')}
+        className={cn(isCode === true && 'font-mono sm:text-xs')}
         aria-invalid={hasError(error)}
         aria-describedby={describedBy(controlId, hint, error)}
         {...props}

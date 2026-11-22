@@ -28,7 +28,7 @@ export function ActivityStats({ projectId, days, onShowEvents }: ActivityStatsPr
         period={{ summary: summary.data, days }}
         onShowEvents={onShowEvents}
       />
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 @min-[48rem]:grid-cols-4">
         <SummaryCards summary={summary.data} days={days} />
       </div>
     </div>

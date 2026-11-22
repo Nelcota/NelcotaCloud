@@ -20,5 +20,5 @@ function AccountChip({ accountId }: { accountId: string }): JSX.Element | null {
     return null
   }
 
-  return <IdChip label="Seu account ID" value={accountId} isLabelVisible />
+  return <IdChip label="ID da sua conta" value={accountId} isLabelVisible />
 }

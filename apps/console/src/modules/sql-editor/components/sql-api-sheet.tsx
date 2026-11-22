@@ -27,7 +27,7 @@ export function SqlApiSheet(): JSX.Element | null {
   return (
     <ApiSheet
       title="SQL pela API"
-      description="Roda as instruções como nelcota_developer, numa transação. Só com a secret key, no servidor."
+      description="Roda as instruções como nelcota_developer, numa transação. Só com a chave secreta, no servidor."
       snippets={[
         { label: 'curl', title: 'shell', code: CURL_SNIPPET },
         { label: 'HTTP', title: 'http', code: HTTP_SNIPPET },

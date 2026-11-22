@@ -7,7 +7,8 @@ const SKELETON_ROWS = [0, 1]
 /** Shaped like the members table it stands for, heading included, so nothing jumps on load. */
 export function TeamSkeleton(): JSX.Element {
   return (
-    <div className="flex flex-col gap-3" aria-busy="true" aria-label="Carregando equipe">
+    <div className="flex flex-col gap-3" role="status" aria-busy="true">
+      <span className="sr-only">Carregando equipe</span>
       <Skeleton className="h-4 w-24" />
       <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
         <div className="h-9 border-b border-border/60" />

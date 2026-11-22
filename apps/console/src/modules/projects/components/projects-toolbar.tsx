@@ -33,7 +33,6 @@ export function ProjectsToolbar(props: ProjectsToolbarProps): JSX.Element {
       <SearchField
         label="Buscar projeto"
         className="sm:max-w-64"
-        hasSlashShortcut
         value={query.search}
         onValueChange={(search) => onChange({ ...query, search })}
       />

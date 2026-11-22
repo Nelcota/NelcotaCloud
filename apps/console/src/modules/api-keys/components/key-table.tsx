@@ -68,7 +68,7 @@ function KeyRows({ keys, revocation }: Omit<KeyTableProps, 'footer'>): JSX.Eleme
               {column.label}
             </TableHead>
           ))}
-          <TableHead className="w-12">
+          <TableHead className="sticky end-0 z-[1] w-12 bg-card">
             <span className="sr-only">Ações</span>
           </TableHead>
         </TableRow>

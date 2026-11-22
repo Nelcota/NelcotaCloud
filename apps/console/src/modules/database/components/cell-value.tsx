@@ -5,12 +5,12 @@ import { cellText } from '@/modules/database/components/cell-text'
 /** Compact preview. The row inspector shows the complete value. */
 export function CellValue({ value }: { value: unknown }): JSX.Element {
   if (value === null || value === undefined) {
-    return <span className="text-faint">NULL</span>
+    return <span className="text-muted-foreground">NULL</span>
   }
 
   if (value === '') {
     return (
-      <span className="text-faint">
+      <span className="text-muted-foreground">
         <span aria-hidden="true">''</span>
         <span className="sr-only">Texto vazio</span>
       </span>

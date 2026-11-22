@@ -32,7 +32,7 @@ export function ActivityItem({
     </>
   )
   const rowClass = cn(
-    'flex w-full min-w-0 items-center gap-3 rounded-lg px-3 py-2.5 text-start animate-row-in',
+    'flex w-full min-w-0 items-center gap-3 rounded-lg px-3 py-2.5 text-start',
     className,
   )
 

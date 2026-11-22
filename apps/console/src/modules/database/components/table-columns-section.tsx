@@ -95,7 +95,7 @@ function DropCell({ projectId, table, column }: ColumnRowProps): JSX.Element | n
   }
 
   return (
-    <TableCell className="py-1 text-right">
+    <TableCell className="py-1 text-end">
       <DropColumnButton projectId={projectId} table={table.name} column={column.name} />
     </TableCell>
   )

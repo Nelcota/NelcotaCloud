@@ -14,7 +14,7 @@ export function ServicesPanel({ projectId }: { projectId: string }): JSX.Element
       aria-labelledby="services-title"
       className="flex min-w-0 flex-col overflow-hidden rounded-xl border bg-card"
     >
-      <h2 id="services-title" className="border-b px-5 py-3.5 text-base font-medium text-heading">
+      <h2 id="services-title" className="border-b px-4 py-3.5 text-base font-medium text-heading">
         Serviços
       </h2>
       <ul className="divide-y">
@@ -32,7 +32,7 @@ function ServiceRow({ service }: { service: Service }): JSX.Element {
   return (
     <RouterLink
       href={service.to}
-      className="group flex min-w-0 items-center gap-3 px-5 py-3 transition-colors hover:bg-surface"
+      className="group flex min-w-0 items-center gap-3 px-4 py-3 transition-colors hover:bg-surface"
     >
       <span className="grid min-w-0 flex-1 gap-0.5">
         <span className="truncate text-sm font-medium text-heading">{service.name}</span>

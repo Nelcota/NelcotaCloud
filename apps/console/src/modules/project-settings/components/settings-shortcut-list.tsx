@@ -20,7 +20,7 @@ export function SettingsShortcutList({ projectId }: { projectId: string }): JSX.
             <li key={shortcut.segment}>
               <RouterLink
                 href={`/projects/${projectId}/${shortcut.segment}`}
-                className="group flex h-8 items-center gap-2 rounded-md px-2 text-sm text-muted-foreground transition-[color,background-color,scale] duration-200 ease-standard outline-none hover:bg-surface hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring active:scale-[0.97] motion-reduce:active:scale-100"
+                className="group flex h-8 items-center gap-2 rounded-md px-2 text-sm text-muted-foreground transition-[color,background-color,scale] duration-200 ease-standard hover:bg-surface hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
               >
                 <Glyph aria-hidden className="size-4 shrink-0" />
                 <span className="flex-1 truncate">{shortcut.label}</span>

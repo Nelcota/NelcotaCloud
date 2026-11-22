@@ -37,7 +37,7 @@ export function SettingsNavItem({ pane, isCurrent, look }: SettingsNavItemProps)
       href={`#${pane.id}`}
       aria-current={currentOf(isCurrent)}
       className={cn(
-        'flex min-w-0 items-center gap-2 rounded-md whitespace-nowrap text-muted-foreground transition-[color,background-color,scale] duration-200 ease-standard outline-none hover:bg-surface hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring active:scale-[0.97] motion-reduce:active:scale-100',
+        'flex min-w-0 items-center gap-2 rounded-md whitespace-nowrap text-muted-foreground transition-[color,background-color,scale] duration-200 ease-standard hover:bg-surface hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
         LOOKS[look],
         isCurrent && 'bg-surface-hover font-medium text-foreground hover:bg-surface-hover',
         isDanger && 'text-destructive hover:text-destructive',

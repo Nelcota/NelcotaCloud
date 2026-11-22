@@ -12,7 +12,7 @@ import { SearchField } from '@/shared/ui/search-field'
 type TableOverview = components['schemas']['TableOverview']
 
 const SIDE_ITEM =
-  'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-muted-foreground transition-[color,background-color,scale] duration-200 ease-standard hover:bg-surface-hover hover:text-foreground active:scale-[0.98] motion-reduce:active:scale-100'
+  'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-start text-muted-foreground transition-[color,background-color,scale] duration-200 ease-standard hover:bg-surface-hover hover:text-foreground'
 
 type SchemaTablesPanelProps = {
   projectId: string
@@ -94,5 +94,9 @@ function RowCount({ rows }: { rows: number | null | undefined }): JSX.Element | 
     return null
   }
 
-  return <span className="shrink-0 text-2xs text-faint tabular-nums">{formatCount(rows)}</span>
+  return (
+    <span className="shrink-0 text-2xs text-muted-foreground tabular-nums">
+      {formatCount(rows)}
+    </span>
+  )
 }

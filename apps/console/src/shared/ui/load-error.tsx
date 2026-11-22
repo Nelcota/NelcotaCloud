@@ -29,7 +29,7 @@ function NextStep({ error, onRetry }: { error: Error; onRetry: () => void }): JS
   if (error instanceof ApiError && error.code === ACCESS_LOST) {
     return (
       <Button asChild variant="outline" size="sm">
-        <RouterLink href="/">Ver meus projetos</RouterLink>
+        <RouterLink href="/">Ir para os projetos</RouterLink>
       </Button>
     )
   }

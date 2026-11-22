@@ -25,7 +25,7 @@ export function setupSteps(facts: SetupFacts, projectId: string): SetupStep[] {
   return [
     {
       id: 'key',
-      label: 'Crie uma publishable key',
+      label: 'Crie uma chave publicável',
       detail: 'É com ela que o app fala com a API.',
       isDone: facts.publishableKeys > 0,
       to: `${base}/keys`,

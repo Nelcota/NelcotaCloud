@@ -43,7 +43,7 @@ function MoreFacts({ count, onExpand }: MoreFactsProps): JSX.Element | null {
   return (
     <button
       type="button"
-      aria-label={`Mostrar mais ${count} campos`}
+      aria-label={moreFieldsLabel(count)}
       aria-expanded={false}
       onClick={onExpand}
       className="h-4.5 rounded-xs px-1 font-mono text-2xs text-muted-foreground tabular-nums hover:bg-surface hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
@@ -59,4 +59,12 @@ function visibleFacts(facts: LogFact[], isExpanded: boolean): LogFact[] {
   }
 
   return facts.slice(0, VISIBLE_FACTS)
+}
+
+function moreFieldsLabel(count: number): string {
+  if (count === 1) {
+    return 'Mostrar mais 1 campo'
+  }
+
+  return `Mostrar mais ${count} campos`
 }

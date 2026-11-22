@@ -52,7 +52,7 @@ function TablesContent({ projectId, tables, hasFailed }: TablesContentProps): JS
 function TablesLoading(): JSX.Element {
   return (
     <div role="status" aria-label="Carregando tabelas" className="flex flex-col gap-6">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 @min-[48rem]:grid-cols-4">
         <Skeleton className="h-27 rounded-xl" />
         <Skeleton className="h-27 rounded-xl" />
         <Skeleton className="h-27 rounded-xl" />

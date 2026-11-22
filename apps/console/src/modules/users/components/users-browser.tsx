@@ -53,7 +53,7 @@ export function UsersBrowser({ projectId }: { projectId: string }): JSX.Element 
       <UsersToolbar filter={{ search, status }} total={users.data?.total} onChange={changeFilter} />
       <LoadError error={users.error} onRetry={() => users.refetch()} />
       <ErrorAlert error={unconfirmedError(action.error, action.variables?.action)} />
-      <Section title="Contas do projeto" hideHeader isFramed>
+      <Section title="Usuários do projeto" hideHeader isFramed>
         <UsersList
           users={users.data?.users}
           context={{

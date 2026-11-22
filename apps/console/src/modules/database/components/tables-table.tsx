@@ -20,7 +20,7 @@ type TableOverview = components['schemas']['TableOverview']
 
 type TablesTableProps = { projectId: string; tables: TableOverview[] }
 
-const NUMBER_CELL = 'text-right tabular-nums text-muted-foreground'
+const NUMBER_CELL = 'text-end tabular-nums text-muted-foreground'
 
 /** One row per table of `public`: its name opens it; size, protection and policies beside it. */
 export function TablesTable({ projectId, tables }: TablesTableProps): JSX.Element {
@@ -31,9 +31,9 @@ export function TablesTable({ projectId, tables }: TablesTableProps): JSX.Elemen
           <TableHead>Nome</TableHead>
           <TableHead>Tipo</TableHead>
           <TableHead>RLS</TableHead>
-          <TableHead className="text-right">Colunas</TableHead>
-          <TableHead className="text-right">Políticas</TableHead>
-          <TableHead className="text-right">Linhas (est.)</TableHead>
+          <TableHead className="text-end">Colunas</TableHead>
+          <TableHead className="text-end">Políticas</TableHead>
+          <TableHead className="text-end">Linhas (est.)</TableHead>
           <TableHead className="w-10">
             <span className="sr-only">Ações</span>
           </TableHead>
@@ -56,10 +56,10 @@ export function TablesTable({ projectId, tables }: TablesTableProps): JSX.Elemen
             </TableCell>
             <TableCell className={NUMBER_CELL}>{formatCount(table.columns.length)}</TableCell>
             <TableCell className={NUMBER_CELL}>{policyCount(table)}</TableCell>
-            <TableCell className="text-right text-foreground tabular-nums">
+            <TableCell className="text-end text-foreground tabular-nums">
               {estimatedRows(table)}
             </TableCell>
-            <TableCell className="py-1 text-right">
+            <TableCell className="py-1 text-end">
               <TableRowMenu table={table.name} />
             </TableCell>
           </TableRow>

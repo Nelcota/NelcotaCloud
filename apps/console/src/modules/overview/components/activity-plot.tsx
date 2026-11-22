@@ -58,6 +58,7 @@ export function ActivityPlot({ days }: { days: DailyActivity[] }): JSX.Element |
               fill="none"
               stroke="currentColor"
               strokeWidth={2}
+              strokeDasharray={series.dash}
               strokeLinejoin="round"
               vectorEffect="non-scaling-stroke"
             />

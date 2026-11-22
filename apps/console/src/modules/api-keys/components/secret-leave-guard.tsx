@@ -34,9 +34,9 @@ export function SecretLeaveGuard({ isActive, subject }: SecretLeaveGuardProps): 
       isOpen={blocker.status === 'blocked'}
       onOpenChange={changeOpen}
       title={`Sair sem copiar: ${subject.toLowerCase()}?`}
-      description="Não aparece de novo. Se sair sem guardar, vai precisar gerar outro e descartar este."
+      description="Não aparece de novo. Se sair sem copiar, vai precisar gerar um novo valor."
       confirmLabel="Sair mesmo assim"
-      change={{ subject, icon: Key, from: 'Visível', to: 'Nunca mais exibida' }}
+      change={{ subject, icon: Key, from: 'Visível', to: 'Não aparece de novo' }}
       isDestructive
       onConfirm={() => blocker.proceed?.()}
     />

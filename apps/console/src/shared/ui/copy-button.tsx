@@ -93,7 +93,7 @@ function labelOf(isCopied: boolean, hasFailed: boolean): string {
   }
 
   if (hasFailed) {
-    return 'Tentar copiar'
+    return 'Tentar de novo'
   }
 
   return 'Copiar'

@@ -19,7 +19,7 @@ export function RemovePhotoButton(props: RemovePhotoButtonProps): JSX.Element | 
       label="Remover"
       title="Remover foto de perfil?"
       description="Suas iniciais voltam a aparecer no lugar da foto."
-      confirmLabel="Remover"
+      confirmLabel="Remover foto"
       isDestructive
       isPending={props.isPending}
       onConfirm={props.onConfirm}

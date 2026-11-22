@@ -85,7 +85,7 @@ export function FileInput({
       {description && <FieldDescription id={descriptionId}>{description}</FieldDescription>}
       {status?.message && <FieldError id={errorId}>{status.message}</FieldError>}
       {!status?.message && maxSize !== undefined && value && value.size > maxSize && (
-        <FieldError>O arquivo excede o tamanho máximo.</FieldError>
+        <FieldError>O arquivo passa do limite. Escolha um menor.</FieldError>
       )}
     </Field>
   )

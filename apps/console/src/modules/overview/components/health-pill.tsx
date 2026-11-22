@@ -11,7 +11,7 @@ const TONES: Record<StatusTone, string> = {
   warning: 'bg-warning/12 text-warning',
   error: 'bg-destructive/12 text-destructive',
   info: 'bg-info/12 text-info',
-  brand: 'bg-brand-subtle text-primary',
+  brand: 'bg-brand-subtle text-foreground',
 }
 
 /** The project's state next to its name. */
@@ -20,7 +20,7 @@ export function HealthPill({ health }: { health: ProjectHealth }): JSX.Element {
     <span
       role="status"
       className={cn(
-        'inline-flex h-5 items-center gap-1.5 rounded-[6px] px-2 text-2xs font-medium',
+        'inline-flex h-6 items-center gap-1.5 rounded-sm px-2 text-2xs font-medium',
         TONES[health.tone],
       )}
     >

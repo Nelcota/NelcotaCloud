@@ -21,7 +21,6 @@ export function UsersToolbar({ filter, total, onChange }: UsersToolbarProps): JS
         className="sm:max-w-72"
         value={filter.search}
         onValueChange={(search) => onChange({ ...filter, search })}
-        hasSlashShortcut
       />
       <div className="scrollbar-thin max-w-full overflow-x-auto">
         <UserStatusFilter

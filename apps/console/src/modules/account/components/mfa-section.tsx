@@ -14,7 +14,7 @@ export function MfaSection(): JSX.Element {
 
   return (
     <SettingsSection
-      title="Verificação em duas etapas"
+      title="Verificação em duas etapas (MFA)"
       description="Um código do celular a cada login."
     >
       <LoadError error={status.error} onRetry={() => status.refetch()} />

@@ -18,11 +18,11 @@ export function GridHeader({ columns, isNumeric }: GridHeaderProps): JSX.Element
   return (
     <TableHeader className="bg-transparent">
       <TableRow className="hover:bg-transparent">
-        <TableHead className={cn(STICKY_HEAD, 'left-0 z-[3] w-12 px-2 text-right')}>#</TableHead>
+        <TableHead className={cn(STICKY_HEAD, 'left-0 z-[3] w-12 px-2 text-end')}>#</TableHead>
         {columns.map((column, index) => (
           <TableHead
             key={index}
-            className={cn(STICKY_HEAD, isNumeric[index] === true && 'text-right')}
+            className={cn(STICKY_HEAD, isNumeric[index] === true && 'text-end')}
           >
             {column.name}
             <ColumnType type={column.type} />
@@ -38,5 +38,5 @@ function ColumnType({ type }: { type?: string }): JSX.Element | null {
     return null
   }
 
-  return <span className="ms-1.5 text-faint">{type}</span>
+  return <span className="ms-1.5 text-muted-foreground">{type}</span>
 }

@@ -31,13 +31,13 @@ function HistoryList({ entries, onPick }: SqlHistoryPanelProps): JSX.Element {
           <button
             type="button"
             title={entry.sql}
-            className="flex w-full min-w-0 items-baseline gap-2 rounded-md px-2 py-1.5 text-left transition-[color,background-color,scale] duration-200 ease-standard hover:bg-surface-hover active:scale-[0.98] motion-reduce:active:scale-100"
+            className="flex w-full min-w-0 items-baseline gap-2 rounded-md px-2 py-1.5 text-start transition-[color,background-color,scale] duration-200 ease-standard hover:bg-surface-hover"
             onClick={() => onPick(entry.sql)}
           >
             <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground">
               {firstLine(entry.sql)}
             </span>
-            <span className="shrink-0 text-2xs text-faint">
+            <span className="shrink-0 text-2xs text-muted-foreground">
               <Timestamp value={entry.ranAt} format="relative" />
             </span>
           </button>

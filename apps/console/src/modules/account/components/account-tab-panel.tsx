@@ -10,10 +10,7 @@ export function AccountTabPanel({
   children: ReactNode
 }): JSX.Element {
   return (
-    <TabsPrimitive.Content
-      value={value}
-      className="flex min-w-0 flex-col gap-4 outline-none data-[state=active]:animate-page-in"
-    >
+    <TabsPrimitive.Content value={value} className="flex min-w-0 flex-col gap-4">
       {children}
     </TabsPrimitive.Content>
   )

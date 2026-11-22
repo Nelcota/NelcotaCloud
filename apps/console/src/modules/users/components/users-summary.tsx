@@ -16,8 +16,8 @@ export function UsersSummary({ projectId }: { projectId: string }): JSX.Element 
   return (
     <div className="flex flex-col gap-4">
       <UsersVerdict totals={totals} />
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-        <StatCard label="Contas" value={<Figure value={totals.all} />} hint="No projeto" />
+      <div className="grid grid-cols-2 gap-3 @min-[48rem]:grid-cols-4 @min-[48rem]:gap-4">
+        <StatCard label="Usuários" value={<Figure value={totals.all} />} hint="No projeto" />
         <StatCard
           label="Novas"
           value={<Figure value={recent} />}
@@ -29,7 +29,7 @@ export function UsersSummary({ projectId }: { projectId: string }): JSX.Element 
           hint={shareHint(totals.unverified, totals.all)}
         />
         <StatCard
-          label="Bloqueadas"
+          label="Bloqueados"
           value={<Figure value={totals.banned} />}
           hint="Sem login nem renovação"
         />
@@ -60,11 +60,11 @@ function Figure({ value }: { value: number | undefined }): JSX.Element {
   return <AnimatedNumber value={value} format={formatCount} />
 }
 
-/** "50% das contas"; nothing to compare against while the totals load or with no accounts. */
+/** "50% dos usuários"; nothing to compare against while the totals load or with no accounts. */
 function shareHint(part: number | undefined, all: number | undefined): string {
   if (part === undefined || all === undefined || all === 0) {
-    return 'Das contas do projeto'
+    return 'Dos usuários do projeto'
   }
 
-  return `${formatShare(part / all)} das contas`
+  return `${formatShare(part / all)} dos usuários`
 }

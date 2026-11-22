@@ -42,7 +42,7 @@ export function KeyTableRow({ apiKey, activeCount, revocation }: KeyTableRowProp
       <TableCell>
         <StatusBadge tone="success">Ativa</StatusBadge>
       </TableCell>
-      <TableCell className="text-right">
+      <TableCell className="sticky end-0 z-[1] bg-card text-end">
         <RevokeKeyAction
           apiKey={apiKey}
           activeOfKind={activeCount}

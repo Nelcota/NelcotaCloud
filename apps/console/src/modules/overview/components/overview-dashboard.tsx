@@ -8,7 +8,8 @@ import { RecentActivity } from '@/modules/overview/components/recent-activity'
 import { ServicesPanel } from '@/modules/overview/components/services-panel'
 import { StatRow } from '@/modules/overview/components/stat-row'
 
-const TWO_THIRDS = 'grid items-stretch gap-4 @min-[56rem]:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]'
+const TWO_THIRDS =
+  'grid grid-cols-1 items-stretch gap-4 @min-[56rem]:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]'
 
 type OverviewDashboardProps = { projectId: string; days: number }
 

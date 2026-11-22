@@ -43,7 +43,7 @@ export function SummarySentence({
       )}
     >
       <Glyph aria-hidden className={cn('size-4 shrink-0', WORD_COLORS[tone])} />
-      <p className="min-w-0 flex-1 text-sm text-foreground">
+      <p className="max-w-prose min-w-0 flex-1 text-sm text-pretty text-foreground">
         <span className={cn('font-medium', WORD_COLORS[tone])}>{verdict}</span> {children}
       </p>
       {action}

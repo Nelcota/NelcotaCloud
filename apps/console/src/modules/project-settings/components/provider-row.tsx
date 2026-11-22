@@ -57,7 +57,7 @@ export function ProviderRow(props: ProviderRowProps): JSX.Element {
 
 function ProviderStatus({ configured }: { configured: ConfiguredProvider | null }): JSX.Element {
   if (configured === null) {
-    return <StatusBadge>Desligado</StatusBadge>
+    return <StatusBadge>Desativado</StatusBadge>
   }
 
   return <StatusBadge tone="success">Ativo</StatusBadge>

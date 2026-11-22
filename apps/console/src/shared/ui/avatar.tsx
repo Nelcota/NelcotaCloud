@@ -18,10 +18,10 @@ const SIZES = {
 export type AvatarSize = keyof typeof SIZES
 
 const SQUARE_RADII: Record<AvatarSize, string> = {
-  xs: 'rounded-[5px]',
+  xs: 'rounded-sm',
   sm: 'rounded-md',
   md: 'rounded-lg',
-  lg: 'rounded-[10px]',
+  lg: 'rounded-lg',
   xl: 'rounded-xl',
 }
 
@@ -45,7 +45,7 @@ export function Avatar({
       {src !== undefined && (
         <AvatarImage src={src} alt="" className="rounded-[inherit] object-cover" />
       )}
-      <AvatarFallback className="rounded-[inherit] bg-brand/15 font-medium text-primary">
+      <AvatarFallback className="rounded-[inherit] bg-surface-hover font-medium text-foreground">
         {initialsOf(name)}
       </AvatarFallback>
     </PrimitiveAvatar>

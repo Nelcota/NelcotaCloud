@@ -20,7 +20,7 @@ export function InvitationsBell(): JSX.Element {
     <Popover>
       <PopoverTrigger
         aria-label={bellLabel(pending.length)}
-        className="relative grid size-10 place-items-center rounded-[10px] text-muted-foreground hover:bg-surface hover:text-foreground"
+        className="relative grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-surface hover:text-foreground"
       >
         <Bell aria-hidden className="size-5" />
         {pending.length > 0 && (

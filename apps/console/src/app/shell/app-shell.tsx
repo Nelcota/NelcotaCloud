@@ -106,7 +106,7 @@ function PageArea({ pathname, isWide, children }: PageAreaProps): JSX.Element {
       <div
         key={pathname}
         className={cn(
-          'mx-auto flex w-full max-w-[76rem] min-w-0 animate-page-in flex-col gap-6 px-4 pt-5 pb-10 sm:px-6 lg:px-8',
+          '@container mx-auto flex w-full max-w-[76rem] min-w-0 animate-page-in flex-col gap-6 px-4 pt-5 pb-10 sm:px-6 lg:px-8',
           isWide && 'max-w-none pb-5 lg:px-5',
         )}
       >

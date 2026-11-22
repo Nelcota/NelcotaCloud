@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/ui/primitives/dialog'
+import { cn } from '@/shared/lib/utils'
 import { FocusedError } from '@/shared/ui/step-dialog/focused-error'
 import { BackButton, ForwardButton } from '@/shared/ui/step-dialog/step-dialog-buttons'
 import { StepTrack } from '@/shared/ui/step-dialog/step-track'
@@ -93,17 +94,17 @@ export function StepDialog(props: StepDialogProps): JSX.Element {
   return (
     <Dialog open={props.isOpen} onOpenChange={changeOpen}>
       <DialogContent
-        className="gap-0 p-0 sm:max-w-2xl"
+        className="gap-0 overflow-hidden p-0 sm:max-w-2xl"
         onPointerDownOutside={(event) => event.preventDefault()}
       >
-        <form onSubmit={advance} className="flex min-w-0 flex-col">
+        <form onSubmit={advance} className="flex min-h-0 min-w-0 flex-col">
           <DialogHeader className="gap-1 border-b border-border/60 px-5 pt-5 pb-4 pe-12">
             <DialogTitle>{props.title}</DialogTitle>
-            <DialogDescription className={props.description === undefined ? 'sr-only' : ''}>
+            <DialogDescription className={cn(props.description === undefined && 'sr-only')}>
               {props.description ?? props.title}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex min-w-0 flex-col gap-5 p-5">
+          <div className="flex min-h-0 min-w-0 flex-col gap-5 overflow-y-auto overscroll-contain p-5">
             <StepTrack
               labels={props.steps.map((candidate) => candidate.label)}
               activeIndex={index}

@@ -73,7 +73,7 @@ type StepTargetProps = {
 
 /** A finished step is a button back to it; the others are plain text. */
 function StepTarget({ isSelectable, onSelect, children }: StepTargetProps): JSX.Element {
-  const className = 'flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-left'
+  const className = 'flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-start'
 
   if (isSelectable === false) {
     return <div className={className}>{children}</div>

@@ -47,5 +47,7 @@ function PreviewNote({ note }: { note: string }): JSX.Element | null {
     return null
   }
 
-  return <p className="mt-1 text-xs whitespace-pre-line text-faint wrap-anywhere">{note}</p>
+  return (
+    <p className="mt-1 text-xs whitespace-pre-line text-muted-foreground wrap-anywhere">{note}</p>
+  )
 }

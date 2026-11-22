@@ -74,7 +74,7 @@ function verificationLine(requiresVerification: boolean): string {
     return '- Confirmação de email obrigatória: o login por senha só funciona depois que o usuário abre o link do email.'
   }
 
-  return '- Confirmação de email desligada: o usuário entra logo após o cadastro.'
+  return '- Confirmação de email desativada: o usuário entra logo após o cadastro.'
 }
 
 function captchaLine(hasCaptcha: boolean): string {

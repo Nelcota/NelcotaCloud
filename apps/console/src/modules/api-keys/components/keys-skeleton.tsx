@@ -7,7 +7,8 @@ const ROWS = ['publishable', 'secret']
 /** Shaped like the keys table, heading included, so nothing jumps when it arrives. */
 export function KeysSkeleton(): JSX.Element {
   return (
-    <div className="flex flex-col gap-3" aria-busy="true" aria-label="Carregando chaves">
+    <div className="flex flex-col gap-3" role="status" aria-busy="true">
+      <span className="sr-only">Carregando chaves</span>
       <div className="grid gap-1.5">
         <Skeleton className="h-4 w-32" />
         <Skeleton className="h-3 w-80 max-w-full" />

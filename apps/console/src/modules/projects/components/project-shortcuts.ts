@@ -10,6 +10,6 @@ export function projectShortcuts(projectHref: string): readonly ResourceShortcut
     { label: 'SQL', href: `${projectHref}/sql`, icon: SquareCode },
     { label: 'Chaves', href: `${projectHref}/keys`, icon: KeyRound },
     { label: 'Atividade', href: `${projectHref}/activity`, icon: History },
-    { label: 'Config.', href: `${projectHref}/settings`, icon: Settings },
+    { label: 'Ajustes', href: `${projectHref}/settings`, icon: Settings },
   ]
 }

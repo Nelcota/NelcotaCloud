@@ -18,8 +18,8 @@ export function LogPanelHeader({
   onLiveChange,
 }: LogPanelHeaderProps): JSX.Element {
   return (
-    <div className="flex min-w-0 items-center gap-2">
-      <div className="scrollbar-none min-w-0 flex-1 overflow-x-auto">
+    <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+      <div className="min-w-0 [&_[data-slot=toggle-group]]:flex-wrap">
         <SegmentedControl
           label="Tipo de evento"
           isMono

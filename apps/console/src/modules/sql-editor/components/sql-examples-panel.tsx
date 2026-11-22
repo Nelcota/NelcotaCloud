@@ -17,7 +17,7 @@ export function SqlExamplesPanel({ onPick }: SqlExamplesPanelProps): JSX.Element
           <li key={example.label}>
             <button
               type="button"
-              className="w-full truncate rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-[color,background-color,scale] duration-200 ease-standard hover:bg-surface-hover hover:text-foreground active:scale-[0.98] motion-reduce:active:scale-100"
+              className="w-full truncate rounded-md px-2 py-1.5 text-start text-sm text-muted-foreground transition-[color,background-color,scale] duration-200 ease-standard hover:bg-surface-hover hover:text-foreground"
               onClick={() => onPick(example.sql)}
             >
               {example.label}

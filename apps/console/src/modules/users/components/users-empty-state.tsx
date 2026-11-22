@@ -67,7 +67,7 @@ export function UsersEmptyState(props: UsersEmptyStateProps): JSX.Element {
     <EmptyState
       icon={<Users aria-hidden />}
       title="Nenhum usuário ainda"
-      description="As contas aparecem aqui quando alguém se cadastra pelo seu app, com a chave publicável."
+      description="Os usuários aparecem aqui quando alguém se cadastra pelo seu app, com a chave publicável."
       actions={
         <Button asChild size="sm">
           <RouterLink href={`/projects/${props.projectId}/keys`}>Ver chaves de API</RouterLink>

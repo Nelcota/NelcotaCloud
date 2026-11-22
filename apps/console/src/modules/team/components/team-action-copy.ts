@@ -71,7 +71,7 @@ export const ACTION_COPY: Record<MemberAction, ActionCopy> = {
     title: (name) => `Remover ${name}?`,
     description: () =>
       'Perde o acesso ao console deste projeto na hora. Chaves de API que a pessoa copiou continuam funcionando: revogue-as se ela não deve mais usá-las.',
-    confirmLabel: 'Remover',
+    confirmLabel: 'Remover do projeto',
     isDestructive: true,
     isWeighty: false,
     from: () => ROLE_NAMES.member,

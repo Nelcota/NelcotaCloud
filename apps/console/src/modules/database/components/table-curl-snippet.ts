@@ -19,7 +19,7 @@ export function tableCurlSnippet(table: TableOverview, publishableKey: string | 
   const auth = curlAuthLines(publishableKey)
   const body = JSON.stringify(sampleRow(insertColumns(table.columns)))
   const lines = [
-    '# Ler (sem Authorization, o pedido roda como anon)',
+    '# Ler (sem Authorization, a requisição roda como anon)',
     `curl ${shellQuote(restUrl(`${path}?select=*&limit=20`))} \\`,
     ...auth,
     '',

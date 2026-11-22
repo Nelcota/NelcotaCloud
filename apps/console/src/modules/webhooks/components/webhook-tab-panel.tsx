@@ -11,10 +11,7 @@ export function WebhookTabPanel({ value, children, className }: WebhookTabPanelP
     <TabsPrimitive.Content
       value={value}
       forceMount
-      className={cn(
-        'flex min-w-0 flex-col gap-4 focus-visible:outline-none data-[state=active]:animate-page-in data-[state=inactive]:hidden',
-        className,
-      )}
+      className={cn('flex min-w-0 flex-col gap-4 data-[state=inactive]:hidden', className)}
     >
       {children}
     </TabsPrimitive.Content>

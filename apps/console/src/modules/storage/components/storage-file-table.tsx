@@ -28,7 +28,7 @@ export function StorageFileTable({ objects, projectId }: StorageFileTableProps):
         <TableRow>
           <TableHead>Nome</TableHead>
           <TableHead>Tipo</TableHead>
-          <TableHead className="text-right">Tamanho</TableHead>
+          <TableHead className="text-end">Tamanho</TableHead>
           <TableHead>ID</TableHead>
           <TableHead className="w-20">
             <span className="sr-only">Ações</span>
@@ -46,9 +46,7 @@ export function StorageFileTable({ objects, projectId }: StorageFileTableProps):
             <TableCell className="max-w-40 truncate text-muted-foreground">
               {file.content_type}
             </TableCell>
-            <TableCell className="text-right tabular-nums">
-              {formatBytes(file.size_bytes)}
-            </TableCell>
+            <TableCell className="text-end tabular-nums">{formatBytes(file.size_bytes)}</TableCell>
             <TableCell className="max-w-44">
               <IdChip label={`ID de ${file.name}`} value={file.id} className="border-0" />
             </TableCell>

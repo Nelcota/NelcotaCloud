@@ -43,8 +43,8 @@ export function StorageFileActions({ projectId, file }: StorageFileActionsProps)
           label={`Excluir ${file.name}`}
           icon={Trash}
           isIconOnly
-          title="Excluir arquivo?"
-          description={`O arquivo “${file.name}” será removido do bucket.`}
+          title={`Excluir ${file.name}?`}
+          description="O arquivo é apagado do bucket. Não dá para desfazer."
           confirmLabel="Excluir arquivo"
           isDestructive
           isPending={deletion.isPending}
@@ -62,7 +62,7 @@ function DownloadError({ error }: { error: Error | null }): JSX.Element | null {
   }
 
   return (
-    <p role="alert" className="max-w-56 text-right text-xs whitespace-normal text-destructive">
+    <p role="alert" className="max-w-56 text-end text-xs whitespace-normal text-destructive">
       {describeError(error)}
     </p>
   )

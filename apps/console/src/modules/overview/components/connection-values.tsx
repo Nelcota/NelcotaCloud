@@ -12,7 +12,7 @@ export function ConnectionValues({ context }: { context: AiContext }): JSX.Eleme
       <ValueRow label="URL da API">
         <IdChip label="URL da API" value={context.apiUrl} />
       </ValueRow>
-      <ValueRow label="Publishable key">
+      <ValueRow label="Chave publicável">
         <PublishableKey context={context} />
       </ValueRow>
       <ValueRow label="ID do projeto">
@@ -46,5 +46,5 @@ function PublishableKey({ context }: { context: AiContext }): JSX.Element {
     )
   }
 
-  return <IdChip label="Publishable key" value={context.publishableKey} />
+  return <IdChip label="Chave publicável" value={context.publishableKey} />
 }

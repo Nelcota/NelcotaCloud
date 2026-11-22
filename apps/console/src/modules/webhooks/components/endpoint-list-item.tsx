@@ -28,7 +28,7 @@ export function EndpointListItem(props: EndpointListItemProps): JSX.Element {
         aria-current={isSelected || undefined}
         title={endpoint.url}
         className={cn(
-          'grid w-full min-w-0 gap-0.5 rounded-md px-2 py-1.5 text-start text-muted-foreground transition-[background-color,color,scale] duration-200 ease-standard hover:bg-surface hover:text-foreground active:scale-[0.98] motion-reduce:active:scale-100',
+          'grid w-full min-w-0 gap-0.5 rounded-md px-2 py-1.5 text-start text-muted-foreground transition-[background-color,color,scale] duration-200 ease-standard hover:bg-surface hover:text-foreground',
           isSelected && 'bg-surface-hover text-foreground hover:bg-surface-hover',
         )}
         onClick={props.onSelect}
@@ -37,7 +37,9 @@ export function EndpointListItem(props: EndpointListItemProps): JSX.Element {
           <StatusDot tone={state.tone} label={state.label} />
           <span className="truncate font-mono text-xs font-medium">{hostOf(endpoint.url)}</span>
         </span>
-        <span className="truncate ps-4 font-mono text-2xs text-faint">{pathOf(endpoint.url)}</span>
+        <span className="truncate ps-4 font-mono text-2xs text-muted-foreground">
+          {pathOf(endpoint.url)}
+        </span>
         <span className="flex min-w-0 items-center gap-1.5 ps-4 text-2xs text-muted-foreground">
           <span className="truncate">{state.label}</span>
           <LastAt value={state.lastAt} />

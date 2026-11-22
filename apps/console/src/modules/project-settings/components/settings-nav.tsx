@@ -29,7 +29,7 @@ export function SettingsNav({ projectId, current }: SettingsNavProps): JSX.Eleme
 function SettingsPills({ current }: { current: SettingsPane }): JSX.Element {
   return (
     <nav aria-label="Configurações" className="min-w-0 lg:hidden">
-      <ul className="scrollbar-none -mx-4 flex gap-1 overflow-x-auto px-4 sm:-mx-6 sm:px-6">
+      <ul className="scrollbar-thin -mx-4 flex gap-1 overflow-x-auto px-4 sm:-mx-6 sm:px-6">
         {SETTINGS_PANES.map((pane) => (
           <li key={pane.id} className="shrink-0">
             <SettingsNavItem pane={pane} isCurrent={pane.id === current.id} look="pill" />

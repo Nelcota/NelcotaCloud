@@ -22,7 +22,7 @@ export function RouteErrorPage({ error, reset }: ErrorComponentProps): JSX.Eleme
     <StatusScreen
       code={statusCode(error)}
       title="Esta página não carregou"
-      description="Tente de novo. Se repetir, envie o relatório abaixo para nós."
+      description="Tente de novo. Se o erro se repetir, copie o relatório abaixo para quem cuida do console."
       actions={
         <>
           <Button type="button" onClick={() => void retry()}>

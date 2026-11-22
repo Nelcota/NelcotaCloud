@@ -16,7 +16,7 @@ export function MemberIdentity({ row, isOwnRow, myPhotoUrl }: MemberIdentityProp
           {isOwnRow && <span className="shrink-0 text-muted-foreground">(você)</span>}
         </span>
         <code title={row.id} className="truncate font-mono text-2xs text-muted-foreground">
-          <span className="sr-only">Account ID </span>
+          <span className="sr-only">ID da conta </span>
           {row.id}
         </code>
       </span>

@@ -20,11 +20,11 @@ export function DisableCaptchaButton({
 
   return (
     <ConfirmButton
-      label="Desligar"
+      label="Desativar"
       size="md"
-      title="Desligar o captcha?"
+      title="Desativar o captcha?"
       description="Cadastro e login deixam de exigir o captcha na hora. A secret key guardada é apagada."
-      confirmLabel="Desligar captcha"
+      confirmLabel="Desativar captcha"
       isDestructive
       isPending={isPending}
       onConfirm={onDisable}

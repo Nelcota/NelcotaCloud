@@ -53,7 +53,7 @@ export function AccountMenu(): JSX.Element | null {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        aria-label={`Conta: ${name}`}
+        aria-label={`Conta: ${name}${mfaSuffix(isMfaOff)}`}
         className="relative inline-flex h-9 max-w-60 min-w-0 shrink-0 items-center gap-2 rounded-md px-1.5 text-sm text-foreground hover:bg-surface aria-expanded:bg-surface sm:px-2"
       >
         <Avatar src={nelcota.auth.avatar.url(user) ?? undefined} name={name} size="xs" isSquare />
@@ -115,9 +115,17 @@ function MfaDot({ isMfaOff }: { isMfaOff: boolean }): JSX.Element | null {
 
   return (
     <span
-      role="img"
-      aria-label="Verificação em duas etapas desativada"
+      aria-hidden
       className="absolute start-4 top-0.5 size-2 rounded-full bg-warning ring-2 ring-background"
     />
   )
+}
+
+/** The dot's warning is part of the button's name, which replaces its content for screen readers. */
+function mfaSuffix(isMfaOff: boolean): string {
+  if (isMfaOff) {
+    return ', MFA desativado'
+  }
+
+  return ''
 }

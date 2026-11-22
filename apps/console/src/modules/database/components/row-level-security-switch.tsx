@@ -45,9 +45,9 @@ export function RowLevelSecuritySwitch({
       <ConfirmDialog
         isOpen={isConfirming}
         onOpenChange={setIsConfirming}
-        title={`Desligar row level security de ${table.name}?`}
-        description="As políticas deixam de valer: todo pedido pela API, de visitantes (anon) ou de usuários logados, alcança todas as linhas."
-        confirmLabel="Desligar RLS"
+        title={`Desativar row level security de ${table.name}?`}
+        description="As políticas deixam de valer: toda requisição pela API, de visitantes (anon) ou de usuários logados, alcança todas as linhas."
+        confirmLabel="Desativar RLS"
         change={{
           subject: table.name,
           icon: ShieldKeyhole,

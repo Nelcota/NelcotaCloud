@@ -8,7 +8,17 @@ export function ConsoleTheme({ children }: { children: ReactNode }): JSX.Element
   const [mode, setMode] = useState(storedThemeMode)
 
   useLayoutEffect(() => {
-    document.documentElement.dataset.theme = mode
+    const root = document.documentElement
+    root.dataset.themeSwitching = ''
+    root.dataset.theme = mode
+    const frame = requestAnimationFrame(() => {
+      delete root.dataset.themeSwitching
+    })
+
+    return () => {
+      cancelAnimationFrame(frame)
+      delete root.dataset.themeSwitching
+    }
   }, [mode])
 
   function toggleMode(): void {

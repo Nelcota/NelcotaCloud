@@ -23,7 +23,7 @@ export function RailLink({ href, label, icon: Glyph, isCurrent }: RailLinkProps)
           aria-label={label}
           aria-current={ariaCurrentPage(isCurrent)}
           className={cn(
-            'grid size-10 place-items-center rounded-[10px] text-muted-foreground hover:bg-surface hover:text-foreground',
+            'grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-surface hover:text-foreground',
             isCurrent && 'bg-surface-hover text-foreground',
           )}
         >

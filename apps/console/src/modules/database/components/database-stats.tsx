@@ -17,7 +17,7 @@ export function DatabaseStats({ tables }: { tables: TableOverview[] }): JSX.Elem
   const withPolicies = plain.filter((table) => table.policies.length > 0).length
 
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 @min-[48rem]:grid-cols-4">
       <StatCard label="Tabelas" value={formatCount(tables.length)} hint={kindsHint(otherKinds)} />
       <RlsCard plain={plain.length} open={tables.filter(isRlsOff).length} />
       <StatCard

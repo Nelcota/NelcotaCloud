@@ -14,7 +14,7 @@ export function UsersTableHeader(): JSX.Element {
         <TableHead>Situação</TableHead>
         <TableHead className={USER_COLUMN_VISIBILITY.createdAt}>Criada</TableHead>
         <TableHead className={USER_COLUMN_VISIBILITY.lastSignIn}>Último login</TableHead>
-        <TableHead className="w-12">
+        <TableHead className="sticky end-0 z-[1] w-12 bg-card">
           <span className="sr-only">Ações</span>
         </TableHead>
       </TableRow>

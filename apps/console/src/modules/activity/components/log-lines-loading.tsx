@@ -18,7 +18,8 @@ export function LogLinesLoading({ error, onRetry }: LogLinesLoadingProps): JSX.E
   }
 
   return (
-    <div aria-busy="true" aria-label="Carregando atividade" className="flex flex-col">
+    <div role="status" aria-busy="true" className="flex flex-col">
+      <span className="sr-only">Carregando atividade</span>
       {SKELETON_LINES.map((line) => (
         <div key={line} className="grid gap-1.5 px-3 py-2.5">
           <div className="flex items-center gap-2">

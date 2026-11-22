@@ -13,7 +13,7 @@ export function RlsBadge({ table }: { table: TableOverview }): JSX.Element | nul
   }
 
   if (isRlsOff(table)) {
-    return <StatusBadge tone="warning">RLS desligado</StatusBadge>
+    return <StatusBadge tone="warning">RLS desativado</StatusBadge>
   }
 
   return null

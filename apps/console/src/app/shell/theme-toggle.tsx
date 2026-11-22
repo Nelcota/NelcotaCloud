@@ -23,7 +23,7 @@ export function ThemeToggle(): JSX.Element {
           type="button"
           variant="ghost"
           size="icon"
-          className="size-10 rounded-[10px]"
+          className="size-10 rounded-lg"
           aria-label={label}
           onClick={toggleMode}
         >

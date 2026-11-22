@@ -1,6 +1,16 @@
 @import 'cal-sans';
 @import '@fontsource-variable/jetbrains-mono';
 @import 'tailwindcss';
+
+/* Matches Cal Sans's width and vertical metrics so the font swap does not reflow lines. */
+@font-face {
+  font-family: 'Cal Sans Fallback';
+  src: local('Segoe UI'), local('Arial');
+  size-adjust: 105%;
+  ascent-override: 85.7%;
+  descent-override: 23.3%;
+  line-gap-override: 0%;
+}
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 
@@ -12,21 +22,21 @@
  */
 @theme {
   --text-2xs: 0.6875rem;
-  --text-2xs--line-height: 1rem;
+  --text-2xs--line-height: calc(1 / 0.6875);
   --text-xs: 0.8125rem;
-  --text-xs--line-height: 1.25rem;
+  --text-xs--line-height: calc(1.25 / 0.8125);
   --text-sm: 0.875rem;
-  --text-sm--line-height: 1.375rem;
+  --text-sm--line-height: calc(1.375 / 0.875);
   --text-base: 0.9375rem;
-  --text-base--line-height: 1.375rem;
+  --text-base--line-height: calc(1.375 / 0.9375);
   --text-lg: 1.0625rem;
-  --text-lg--line-height: 1.625rem;
+  --text-lg--line-height: calc(1.625 / 1.0625);
   --text-xl: 1.375rem;
-  --text-xl--line-height: 1.875rem;
+  --text-xl--line-height: calc(1.875 / 1.375);
   --text-2xl: 1.625rem;
-  --text-2xl--line-height: 2.125rem;
+  --text-2xl--line-height: calc(2.125 / 1.625);
   --text-3xl: 1.875rem;
-  --text-3xl--line-height: 2.375rem;
+  --text-3xl--line-height: calc(2.375 / 1.875);
 
   --radius-xs: 4px;
   --radius-sm: 6px;
@@ -36,17 +46,15 @@
   --radius-2xl: 16px;
 
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-emphasized: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
 
   --animate-page-in: page-in 180ms ease-out both;
   --animate-row-in: row-in 200ms ease-out both;
-  --animate-row-mark: row-mark 1200ms ease-out both;
   --animate-live: live 2s var(--ease-standard) infinite;
 
   @keyframes page-in {
     from {
       opacity: 0;
-      filter: blur(4px);
       translate: -6px 0;
     }
   }
@@ -54,12 +62,6 @@
   @keyframes row-in {
     from {
       opacity: 0;
-    }
-  }
-
-  @keyframes row-mark {
-    from {
-      background-color: var(--brand-subtle);
     }
   }
 
@@ -71,7 +73,7 @@
 }
 
 @theme inline {
-  --font-sans: 'Cal Sans', system-ui, sans-serif;
+  --font-sans: 'Cal Sans', 'Cal Sans Fallback', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -134,20 +136,20 @@
   --primary-fill: #d63f00;
   --primary-fill-hover: #c23900;
   --primary-foreground: #ffffff;
-  --secondary: #0000000f;
-  --muted: #0000000f;
-  --muted-foreground: #6b6b6b;
-  --faint: #8a8a8a;
+  --secondary: var(--surface);
+  --muted: var(--surface);
+  --muted-foreground: #5e5e5e;
+  --faint: #707070;
   --accent: #00000012;
   --surface: #0000000f;
   --surface-hover: #00000017;
-  --destructive: #dc2626;
-  --success: #15803d;
-  --warning: #b45309;
-  --info: #2563eb;
+  --destructive: #a91d1d;
+  --success: #166534;
+  --warning: #92400e;
+  --info: #1d4ed8;
   --border: #e3e3e3;
   --input: #8a8a8a;
-  --ring: #ff4d00;
+  --ring: #d63f00;
   --sidebar: #ffffff;
   --sidebar-accent: #00000012;
   --sidebar-accent-foreground: #0a0a0a;
@@ -176,19 +178,19 @@
   --primary-fill: #d63f00;
   --primary-fill-hover: #c23900;
   --primary-foreground: #ffffff;
-  --secondary: #ffffff0f;
-  --muted: #ffffff0f;
-  --muted-foreground: #8b8b8b;
-  --faint: #666666;
+  --secondary: var(--surface);
+  --muted: var(--surface);
+  --muted-foreground: #a0a0a0;
+  --faint: #858585;
   --accent: #ffffff12;
   --surface: #ffffff0f;
   --surface-hover: #ffffff1a;
-  --destructive: #ef4444;
-  --success: #22a356;
+  --destructive: #f87171;
+  --success: #22c55e;
   --warning: #f59e0b;
   --info: #60a5fa;
   --border: #262626;
-  --input: #666666;
+  --input: #707070;
   --ring: #ff4d00;
   --sidebar: #141414;
   --sidebar-accent: #ffffff1a;
@@ -216,8 +218,8 @@
     font-family: var(--font-sans);
     font-size: var(--text-sm);
     line-height: var(--text-sm--line-height);
-    text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   code,
@@ -244,7 +246,7 @@
   }
 
   ::selection {
-    background: color-mix(in oklab, var(--brand) 35%, transparent);
+    background: color-mix(in oklab, var(--brand) 22%, transparent);
   }
 
   :where(button, a[href], [role='button'], [role='tab'], [role='menuitem']):not(:disabled):active {
@@ -293,6 +295,13 @@
   .scrollbar-none {
     scrollbar-width: none;
   }
+}
+
+/* Switching themes changes every color at once; fading each one would smear the swap. */
+:root[data-theme-switching] *,
+:root[data-theme-switching] ::before,
+:root[data-theme-switching] ::after {
+  transition: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

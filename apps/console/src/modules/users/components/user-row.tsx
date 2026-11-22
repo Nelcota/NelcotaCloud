@@ -64,7 +64,7 @@ export function UserRow({ user, context }: UserRowProps): JSX.Element {
       <TableCell className={cn('text-muted-foreground', COLUMNS.lastSignIn)}>
         <LastLogin lastSignInAt={user.last_sign_in_at ?? null} />
       </TableCell>
-      <TableCell className="py-1 text-end">
+      <TableCell className="sticky end-0 z-[1] bg-card py-1 text-end">
         <UserActionsMenu
           user={user}
           isPending={context.pendingUserId === user.id}

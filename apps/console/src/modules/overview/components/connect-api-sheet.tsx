@@ -23,7 +23,7 @@ export function ConnectApiSheet({ context }: { context: AiContext | null }): JSX
   return (
     <ApiSheet
       title="Conectar pela API"
-      description="Use a publishable key no app; a secret key fica só no servidor."
+      description="Use a chave publicável no app; a chave secreta fica só no servidor."
       snippets={snippets}
     />
   )

@@ -17,7 +17,7 @@ export function StorageStats({ projectId, buckets, selected }: StorageStatsProps
   const suffix = files.hasNextPage && '+'
 
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 @min-[48rem]:grid-cols-4">
       <StatCard label="Buckets" value={formatCount(buckets.length)} hint="privados do projeto" />
       <StatCard
         label="Arquivos"

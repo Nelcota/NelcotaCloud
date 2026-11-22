@@ -28,7 +28,7 @@ type ResourceCardProps = {
 /** A resource on the canvas: name and kind, its address, status chips, key numbers and shortcuts. */
 export function ResourceCard(props: ResourceCardProps): JSX.Element {
   return (
-    <article className="group relative flex min-w-0 flex-col overflow-hidden rounded-xl bg-card ring-1 ring-border/60 transition-[background-color,box-shadow] duration-200 hover:ring-muted-foreground/30 focus-within:ring-brand/60">
+    <article className="group relative flex min-w-0 flex-col overflow-hidden rounded-xl bg-card border border-border/60 transition-[border-color] duration-200 hover:border-muted-foreground/30">
       <div className="flex flex-col gap-3 p-3">
         <header className="flex min-w-0 items-start gap-2.5">
           {props.leading}
@@ -36,7 +36,7 @@ export function ResourceCard(props: ResourceCardProps): JSX.Element {
             <h2 className="truncate text-sm font-medium text-heading">
               <RouterLink
                 href={props.href}
-                className="outline-none after:absolute after:inset-0 after:rounded-xl focus-visible:after:outline-2 focus-visible:after:outline-ring"
+                className="outline-none after:absolute after:inset-0 after:rounded-xl focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-ring"
               >
                 {props.name}
               </RouterLink>
@@ -74,9 +74,7 @@ function ResourceMetrics({ metrics }: { metrics?: readonly ResourceMetric[] }): 
     <dl className="grid grid-cols-2 gap-3">
       {metrics.map((metric) => (
         <div key={metric.label} className="grid min-w-0 gap-0.5">
-          <dt className="truncate text-2xs tracking-[0.025em] text-muted-foreground uppercase">
-            {metric.label}
-          </dt>
+          <dt className="truncate text-xs text-muted-foreground">{metric.label}</dt>
           <dd className="truncate font-mono text-xs font-semibold text-foreground tabular-nums">
             {metric.value}
           </dd>

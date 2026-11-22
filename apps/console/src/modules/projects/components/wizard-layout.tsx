@@ -25,7 +25,7 @@ export function WizardLayout({ position, onStepSelect, children }: WizardLayoutP
           <WizardSteps position={position} onStepSelect={onStepSelect} />
         </div>
       </aside>
-      <div className="min-w-0 animate-page-in">{children}</div>
+      <div className="min-w-0">{children}</div>
     </div>
   )
 }

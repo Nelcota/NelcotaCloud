@@ -38,7 +38,7 @@ function NextStepRow({ step, href }: { step: NextStep; href: string }): JSX.Elem
   return (
     <RouterLink
       href={href}
-      className="group flex h-10 items-center gap-2.5 px-3 text-xs outline-none hover:bg-surface focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-inset"
+      className="group flex h-10 items-center gap-2.5 px-3 text-xs hover:bg-surface focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-inset"
     >
       <Glyph aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
       <span className="font-medium text-heading">{step.label}</span>

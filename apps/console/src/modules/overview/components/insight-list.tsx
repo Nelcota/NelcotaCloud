@@ -10,7 +10,7 @@ export function InsightList({ insights }: { insights: Insight[] }): JSX.Element 
   }
 
   return (
-    <div className="grid gap-1">
+    <div className="grid grid-cols-1 gap-1">
       <h3 className="text-sm text-muted-foreground">Outros avisos</h3>
       <ul className="-mx-2 grid">
         {insights.map((insight) => (

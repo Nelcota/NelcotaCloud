@@ -13,11 +13,7 @@ export function SettingsPaneView({ pane, children }: SettingsPaneViewProps): JSX
   const titleId = useId()
 
   return (
-    <section
-      key={pane.id}
-      aria-labelledby={titleId}
-      className="flex min-w-0 animate-page-in flex-col gap-4"
-    >
+    <section key={pane.id} aria-labelledby={titleId} className="flex min-w-0 flex-col gap-4">
       <div className="grid gap-0.5">
         <h2
           id={titleId}

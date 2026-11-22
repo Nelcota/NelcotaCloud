@@ -41,7 +41,7 @@ export function EndpointDetail({ panel }: { panel: EndpointPanel }): JSX.Element
   }
 
   return (
-    <section aria-labelledby={titleId} className="flex min-w-0 animate-page-in flex-col gap-4">
+    <section aria-labelledby={titleId} className="flex min-w-0 flex-col gap-4">
       <EndpointDetailHeader panel={panel} titleId={titleId} onTest={sendTest} />
       <EndpointHealth
         projectId={projectId}

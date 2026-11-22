@@ -11,7 +11,7 @@ type Schemas = components['schemas']
 type ProjectRole = Schemas['ProjectRole']
 
 const ROLE_LABELS: Record<ProjectRole, string> = { owner: 'Dono', member: 'Membro' }
-const ROLE_TONES: Record<ProjectRole, StatusTone> = { owner: 'brand', member: 'neutral' }
+const ROLE_TONES: Record<ProjectRole, StatusTone> = { owner: 'neutral', member: 'neutral' }
 
 /** Id, slug, creation date and the viewer's role, as read-only facts under the name. */
 export function ProjectFacts({
@@ -28,8 +28,8 @@ export function ProjectFacts({
       <DataListItem label="ID do projeto">
         <CopyableFact label="ID do projeto" value={project.id} />
       </DataListItem>
-      <DataListItem label="Slug">
-        <CopyableFact label="Slug" value={project.slug} />
+      <DataListItem label="Identificador">
+        <CopyableFact label="Identificador" value={project.slug} />
       </DataListItem>
       <DataListItem label="Criado em">
         <span className="tabular-nums">
