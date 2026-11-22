@@ -21,7 +21,7 @@ export function TotpCodeField({ value, onChange, hasAutoFocus }: TotpCodeFieldPr
       autoComplete="one-time-code"
       required
       autoFocus={hasAutoFocus}
-      className="max-w-52 [&_input]:h-10 [&_input]:font-mono [&_input]:tracking-[0.2em]"
+      className="max-w-44 [&_input]:font-mono [&_input]:tracking-[0.2em]"
       value={value}
       onChange={(event) => onChange(codeOf(event.target.value))}
     />

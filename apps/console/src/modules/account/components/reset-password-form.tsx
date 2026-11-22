@@ -23,7 +23,7 @@ export function ResetPasswordForm({ token, onDone }: ResetPasswordFormProps): JS
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4">
+    <form onSubmit={submit} className="flex flex-col gap-3">
       <TextField
         label="Nova senha"
         type="password"
@@ -31,7 +31,6 @@ export function ResetPasswordForm({ token, onDone }: ResetPasswordFormProps): JS
         autoFocus
         required
         minLength={MIN_PASSWORD_LENGTH}
-        className="[&_input]:h-10"
         value={password}
         onChange={(event) => setPassword(event.target.value)}
       />
@@ -39,7 +38,7 @@ export function ResetPasswordForm({ token, onDone }: ResetPasswordFormProps): JS
       <PendingButton
         type="submit"
         size="lg"
-        className="h-10 w-full"
+        className="w-full"
         isPending={reset.isPending}
         disabled={password.length < MIN_PASSWORD_LENGTH}
       >

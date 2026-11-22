@@ -7,6 +7,7 @@ import { NextSteps } from '@/modules/projects/components/next-steps'
 import { ProjectCredentials } from '@/modules/projects/components/project-credentials'
 import { SdkSnippet } from '@/modules/projects/components/sdk-snippet'
 import { SecretKeyPanel } from '@/modules/projects/components/secret-key-panel'
+import { StepMark } from '@/shared/ui/step-mark'
 import { RouterLink } from '@/shared/routing/router-link'
 import { Button } from '@/shared/ui/primitives/button'
 import { Section } from '@/shared/ui/section'
@@ -22,22 +23,23 @@ export function ProjectReady({ setup }: { setup: CreatedSetup }): JSX.Element {
   }, [])
 
   return (
-    <div className="grid min-w-0 gap-8">
+    <div className="grid min-w-0 gap-5">
       <SecretLeaveGuard isActive={isSecretSaved === false} subject="Chave secreta do projeto" />
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div className="grid min-w-0 gap-1">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="grid min-w-0 gap-0.5">
           <h2
             ref={heading}
             tabIndex={-1}
-            className="text-3xl font-semibold tracking-tight text-balance text-heading outline-none"
+            className="flex items-center gap-2 text-xl font-medium text-balance text-heading outline-none"
           >
+            <StepMark state="done" />
             Seu projeto está pronto
           </h2>
-          <p className="truncate text-base text-muted-foreground">
-            {name} · <span className="font-mono text-sm">{project.slug}</span>
+          <p className="truncate text-sm text-muted-foreground">
+            {name} · <span className="font-mono text-xs">{project.slug}</span>
           </p>
         </div>
-        <Button asChild size="lg">
+        <Button asChild>
           <RouterLink href={`/projects/${project.tenant_id}`}>
             Ir para o projeto
             <ArrowRight aria-hidden data-icon="inline-end" />
@@ -50,8 +52,8 @@ export function ProjectReady({ setup }: { setup: CreatedSetup }): JSX.Element {
         onSavedChange={setIsSecretSaved}
       />
       <div className="@container">
-        <div className="grid items-start gap-8 @min-[46rem]:grid-cols-[minmax(0,1fr)_18rem]">
-          <div className="grid min-w-0 gap-8">
+        <div className="grid items-start gap-5 @min-[46rem]:grid-cols-[minmax(0,1fr)_16.25rem]">
+          <div className="grid min-w-0 gap-5">
             <Section title="Valores públicos">
               <ProjectCredentials
                 projectId={project.tenant_id}

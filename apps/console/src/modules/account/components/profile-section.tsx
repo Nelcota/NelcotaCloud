@@ -7,6 +7,7 @@ import { RemovePhotoButton } from '@/modules/account/components/remove-photo-but
 import { useRemoveAvatarMutation } from '@/modules/account/queries/use-avatar'
 import { useCurrentAccount } from '@/shared/auth/use-current-account'
 import { Avatar } from '@/shared/ui/avatar'
+import { SettingsSection } from '@/shared/ui/settings-section'
 import { StatusBadge } from '@/shared/ui/status-badge'
 
 /** Who the console account is: photo, email and its state, then its technical facts. */
@@ -16,11 +17,11 @@ export function ProfileSection({ session }: { session: Session }): JSX.Element {
   const removal = useRemoveAvatarMutation()
 
   return (
-    <section aria-label="Perfil" className="min-w-0 overflow-hidden rounded-xl border bg-card">
-      <div className="flex flex-wrap items-center gap-5 p-6">
-        <Avatar src={photoUrl ?? undefined} name={user.email} size="xl" />
-        <div className="grid min-w-0 flex-1 basis-56 gap-1.5">
-          <p className="truncate text-xl font-semibold tracking-tight text-heading">{user.email}</p>
+    <SettingsSection title="Perfil">
+      <div className="flex flex-wrap items-center gap-3 rounded-lg bg-surface p-3">
+        <Avatar src={photoUrl ?? undefined} name={user.email} size="lg" />
+        <div className="grid min-w-0 flex-1 basis-48 gap-1">
+          <p className="truncate text-sm font-medium text-heading">{user.email}</p>
           <div className="flex flex-wrap items-center gap-2">
             <VerificationBadge verifiedAt={user.email_verified_at ?? null} />
           </div>
@@ -35,7 +36,7 @@ export function ProfileSection({ session }: { session: Session }): JSX.Element {
         </div>
       </div>
       <ProfileFacts user={user} />
-    </section>
+    </SettingsSection>
   )
 }
 

@@ -22,13 +22,13 @@ export function MfaChallengeForm({ mfaToken, onSignedIn }: MfaChallengeFormProps
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4">
+    <form onSubmit={submit} className="flex flex-col gap-3">
       <TotpCodeField value={code} onChange={setCode} hasAutoFocus />
       <ErrorAlert error={verify.error} />
       <PendingButton
         type="submit"
         size="lg"
-        className="h-10 w-full"
+        className="w-full"
         isPending={verify.isPending}
         disabled={code.trim() === ''}
       >

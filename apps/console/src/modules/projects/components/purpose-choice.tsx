@@ -26,7 +26,7 @@ export function PurposeChoice({ purpose, onPurposeChange }: PurposeChoiceProps):
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
       <span aria-hidden>Quem vai usar:</span>
       <SegmentedControl
         label="Quem vai usar o projeto"

@@ -4,11 +4,13 @@ import { InsideShellContext } from '@/app/shell/inside-shell-context'
 import { PublicFrame } from '@/modules/account/components/public-frame'
 
 type StatusScreenProps = {
+  /** The status in mono above the title ("Erro 404"). */
+  code: string
   title: string
   description: ReactNode
   actions: ReactNode
-  /** The evidence under the message: the error report, the missing status code. */
-  aside: ReactNode
+  /** The evidence under the message, such as the error report. */
+  aside?: ReactNode
 }
 
 /**
@@ -18,7 +20,7 @@ type StatusScreenProps = {
 export function StatusScreen(props: StatusScreenProps): JSX.Element {
   if (use(InsideShellContext)) {
     return (
-      <div className="mx-auto w-full max-w-xl rounded-xl border bg-card p-6 sm:p-8">
+      <div className="mx-auto mt-6 w-full max-w-lg overflow-hidden rounded-xl bg-card sm:mt-12">
         <StatusMessage {...props} />
       </div>
     )
@@ -33,12 +35,11 @@ export function StatusScreen(props: StatusScreenProps): JSX.Element {
 
 function StatusMessage(props: StatusScreenProps): JSX.Element {
   return (
-    <div className="flex flex-col gap-8">
-      <div className="grid gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight text-balance text-heading">
-          {props.title}
-        </h1>
-        <div className="text-base text-pretty text-muted-foreground">{props.description}</div>
+    <div className="flex flex-col gap-5 p-6">
+      <div className="grid gap-1.5">
+        <p className="font-mono text-2xs text-muted-foreground">{props.code}</p>
+        <h1 className="text-xl font-medium text-balance text-heading">{props.title}</h1>
+        <div className="text-xs text-pretty text-muted-foreground">{props.description}</div>
       </div>
       <div className="flex flex-wrap gap-2">{props.actions}</div>
       {props.aside}

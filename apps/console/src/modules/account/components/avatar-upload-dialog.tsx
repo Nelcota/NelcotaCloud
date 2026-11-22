@@ -1,4 +1,4 @@
-import Camera from '~icons/solar/camera-linear'
+import { Camera } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
@@ -48,19 +48,19 @@ export function AvatarUploadDialog({ triggerLabel }: { triggerLabel: string }): 
 
   return (
     <>
-      <Button type="button" onClick={open}>
+      <Button type="button" variant="outline" size="sm" onClick={open}>
         <Camera aria-hidden data-icon="inline-start" />
         {triggerLabel}
       </Button>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent
-          className="sm:max-w-xl"
+          className="gap-4 sm:max-w-lg"
           onPointerDownOutside={(event) => event.preventDefault()}
         >
           <DialogHeader className="pe-8">
             <DialogTitle>Foto de perfil</DialogTitle>
             <DialogDescription>
-              Escolha uma imagem e ajuste o enquadramento arrastando ou usando os botões de posição.
+              Arraste para enquadrar a foto no círculo; o zoom aproxima.
             </DialogDescription>
           </DialogHeader>
           <DialogBody imageUrl={picked?.url ?? null} onPick={pick} onAreaChange={setArea} />

@@ -2,7 +2,7 @@ import type { SessionSummary } from '@nelcota/sdk'
 import type { JSX } from 'react'
 
 import { RevokeOthersButton } from '@/modules/account/components/revoke-others-button'
-import { SessionsTable } from '@/modules/account/components/sessions-table'
+import { SessionList } from '@/modules/account/components/session-list'
 import { useRevokeSessionMutation, useSessionsQuery } from '@/modules/account/queries/use-sessions'
 import { LoadError } from '@/shared/ui/load-error'
 import { Skeleton } from '@/shared/ui/primitives/skeleton'
@@ -20,7 +20,7 @@ export function SessionsSection(): JSX.Element {
       footer={othersFooter(sessions.data)}
     >
       <LoadError error={sessions.error} onRetry={() => sessions.refetch()} />
-      <SessionList
+      <SessionRows
         sessions={sessionsToShow(sessions.isError, sessions.data)}
         pendingId={runningId(revocation.isPending, revocation.variables)}
         onRevoke={(sessionId) => revocation.mutateAsync(sessionId)}
@@ -57,24 +57,24 @@ function runningId(isPending: boolean, sessionId: string | undefined): string | 
   return sessionId
 }
 
-type SessionListProps = {
+type SessionRowsProps = {
   sessions: SessionSummary[] | undefined | null
   pendingId: string | null
   onRevoke: (sessionId: string) => Promise<void>
 }
 
-function SessionList({ sessions, pendingId, onRevoke }: SessionListProps): JSX.Element | null {
+function SessionRows({ sessions, pendingId, onRevoke }: SessionRowsProps): JSX.Element | null {
   if (sessions === null) {
     return null
   }
 
   if (sessions === undefined) {
-    return <Skeleton className="h-28 w-full rounded-lg" />
+    return <Skeleton className="h-11 w-full rounded-lg" />
   }
 
   if (sessions.length === 0) {
-    return <p className="text-sm text-muted-foreground">Nenhuma sessão ativa.</p>
+    return <p className="text-xs text-muted-foreground">Nenhuma sessão ativa.</p>
   }
 
-  return <SessionsTable sessions={sessions} pendingId={pendingId} onRevoke={onRevoke} />
+  return <SessionList sessions={sessions} pendingId={pendingId} onRevoke={onRevoke} />
 }

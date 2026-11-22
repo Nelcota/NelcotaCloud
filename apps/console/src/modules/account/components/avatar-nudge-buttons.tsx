@@ -1,8 +1,10 @@
+import {
+  ChevronDown as ArrowDown,
+  ChevronLeft as ArrowLeft,
+  ChevronRight as ArrowRight,
+  ChevronUp as ArrowUp,
+} from 'lucide-react'
 import type { Point, Size } from 'react-easy-crop'
-import ArrowDown from '~icons/solar/alt-arrow-down-linear'
-import ArrowLeft from '~icons/solar/alt-arrow-left-linear'
-import ArrowRight from '~icons/solar/alt-arrow-right-linear'
-import ArrowUp from '~icons/solar/alt-arrow-up-linear'
 import type { JSX } from 'react'
 
 import { Button } from '@/shared/ui/primitives/button'
@@ -35,7 +37,7 @@ export function AvatarNudgeButtons({
   const limits = cropLimits(sizes)
 
   return (
-    <div className="flex gap-1" role="group" aria-label="Mover a foto">
+    <div className="flex gap-0.5" role="group" aria-label="Mover a foto">
       {DIRECTIONS.map((direction) => {
         const moved = nudge(crop, limits, direction)
 
@@ -44,7 +46,7 @@ export function AvatarNudgeButtons({
             <TooltipTrigger asChild>
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 size="icon-sm"
                 aria-label={direction.label}
                 disabled={isSamePoint(moved, crop)}

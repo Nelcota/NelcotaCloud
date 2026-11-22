@@ -1,10 +1,9 @@
-import Monitor from '~icons/solar/monitor-linear'
+import { Monitor } from 'lucide-react'
 import type { SessionSummary } from '@nelcota/sdk'
 import type { JSX } from 'react'
 
 import { formatDateTime } from '@/shared/lib/format-date'
 import { ConfirmButton } from '@/shared/ui/confirm-button'
-import { StatusBadge } from '@/shared/ui/status-badge'
 
 type SessionActionProps = {
   session: SessionSummary
@@ -12,14 +11,14 @@ type SessionActionProps = {
   onRevoke: () => Promise<void>
 }
 
-/** Ends another session; this browser's own row says so instead (signing out lives in the menu). */
-export function SessionAction({ session, isPending, onRevoke }: SessionActionProps): JSX.Element {
+/** Ends another session; this browser's own row has none (signing out lives in the menu). */
+export function SessionAction({
+  session,
+  isPending,
+  onRevoke,
+}: SessionActionProps): JSX.Element | null {
   if (session.is_current) {
-    return (
-      <span className="md:hidden">
-        <StatusBadge tone="success">Esta sessão</StatusBadge>
-      </span>
-    )
+    return null
   }
 
   return (

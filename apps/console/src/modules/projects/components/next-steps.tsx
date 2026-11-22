@@ -1,9 +1,4 @@
-import { ChevronRight } from 'lucide-react'
-import Code from '~icons/solar/code-linear'
-import Letter from '~icons/solar/letter-linear'
-import Link from '~icons/solar/link-linear'
-import Table from '~icons/solar/database-linear'
-import UserPlus from '~icons/solar/user-plus-linear'
+import { ChevronRight, Code, Mail as Letter, Link, Database as Table, UserPlus } from 'lucide-react'
 import type { JSX } from 'react'
 
 import type { ProjectPurpose } from '@/modules/projects/components/project-draft'
@@ -26,7 +21,7 @@ type NextStepsProps = { projectId: string; purpose: ProjectPurpose }
 export function NextSteps({ projectId, purpose }: NextStepsProps): JSX.Element {
   return (
     <nav aria-label="E agora?">
-      <ul className="divide-y">
+      <ul className="divide-y divide-border/60">
         {orderedSteps(purpose).map((step) => (
           <li key={step.id}>
             <NextStepRow step={step} href={`/projects/${projectId}${step.path}`} />
@@ -43,12 +38,12 @@ function NextStepRow({ step, href }: { step: NextStep; href: string }): JSX.Elem
   return (
     <RouterLink
       href={href}
-      className="group flex items-center gap-3 px-4 py-3 text-sm outline-none hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-inset"
+      className="group flex h-10 items-center gap-2.5 px-3 text-xs outline-none hover:bg-surface focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-inset"
     >
-      <Glyph aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+      <Glyph aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
       <span className="font-medium text-heading">{step.label}</span>
-      <span className="ms-auto truncate text-xs text-muted-foreground">{step.hint}</span>
-      <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+      <span className="ms-auto truncate text-2xs text-muted-foreground">{step.hint}</span>
+      <ChevronRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
     </RouterLink>
   )
 }

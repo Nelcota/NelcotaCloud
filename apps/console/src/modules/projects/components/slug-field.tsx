@@ -1,4 +1,4 @@
-import Pen from '~icons/solar/pen-linear'
+import { Pencil as Pen } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { isValidSlug, MAX_SLUG_LENGTH } from '@/modules/projects/components/project-slug'
@@ -41,10 +41,10 @@ export function SlugField(props: SlugFieldProps): JSX.Element {
 
   return (
     <div className="grid gap-1.5">
-      <div className="flex min-h-7 flex-wrap items-center gap-2 text-sm">
+      <div className="flex min-h-7 flex-wrap items-center gap-2 text-xs">
         <span className="text-muted-foreground">Identificador:</span>
         <SlugValue slug={slug} />
-        <Button type="button" variant="ghost" size="sm" onClick={() => onCustomSlugChange(slug)}>
+        <Button type="button" variant="ghost" size="xs" onClick={() => onCustomSlugChange(slug)}>
           <Pen aria-hidden data-icon="inline-start" />
           Editar
         </Button>

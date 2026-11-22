@@ -17,7 +17,7 @@ export function RecoverPasswordForm({ onSent }: { onSent: () => void }): JSX.Ele
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4">
+    <form onSubmit={submit} className="flex flex-col gap-3">
       <TextField
         label="Email"
         type="email"
@@ -25,7 +25,6 @@ export function RecoverPasswordForm({ onSent }: { onSent: () => void }): JSX.Ele
         spellCheck={false}
         autoFocus
         required
-        className="[&_input]:h-10"
         value={email}
         onChange={(event) => setEmail(event.target.value)}
       />
@@ -33,7 +32,7 @@ export function RecoverPasswordForm({ onSent }: { onSent: () => void }): JSX.Ele
       <PendingButton
         type="submit"
         size="lg"
-        className="h-10 w-full"
+        className="w-full"
         isPending={recover.isPending}
         disabled={email.trim() === ''}
       >

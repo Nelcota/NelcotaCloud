@@ -37,16 +37,14 @@ export function ReviewStep(props: ReviewStepProps): JSX.Element {
       onSubmit={props.onCreate}
       footer={
         <>
-          <PendingButton type="submit" size="lg">
-            Criar projeto
-          </PendingButton>
-          <Button type="button" variant="ghost" size="lg" onClick={props.onBack}>
+          <PendingButton type="submit">Criar projeto</PendingButton>
+          <Button type="button" variant="ghost" onClick={props.onBack}>
             Voltar
           </Button>
         </>
       }
     >
-      <DataList className="rounded-xl border bg-card px-5">
+      <DataList className="rounded-xl bg-card px-4">
         <DataListItem label="Nome">{draft.name.trim()}</DataListItem>
         <DataListItem label="Identificador">
           <InlineCode>{slug}</InlineCode>

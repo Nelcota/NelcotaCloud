@@ -6,6 +6,7 @@ import { MfaChallengeForm } from '@/modules/account/components/mfa-challenge-for
 import { RecoverPasswordForm } from '@/modules/account/components/recover-password-form'
 import { SignInForm } from '@/modules/account/components/sign-in-form'
 import { SignUpForm } from '@/modules/account/components/sign-up-form'
+import { Notice } from '@/shared/ui/notice'
 
 type LoginStepContentProps = {
   step: LoginStep
@@ -27,11 +28,7 @@ export function LoginStepContent(props: LoginStepContentProps): JSX.Element {
     case 'recover':
       return <RecoverPasswordForm onSent={() => onStep(RECOVERY_SENT)} />
     case 'notice':
-      return (
-        <p role="status" className="text-sm text-pretty">
-          {step.message}
-        </p>
-      )
+      return <Notice tone="success" title={step.message} />
     case 'sign-in':
       return (
         <SignInForm

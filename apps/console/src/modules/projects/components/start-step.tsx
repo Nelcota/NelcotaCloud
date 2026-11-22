@@ -40,7 +40,7 @@ export function StartStep(props: StartStepProps): JSX.Element {
       isFocusedOnMount={props.isFocusedOnMount}
       onSubmit={props.onNext}
       footer={
-        <Button type="submit" size="lg">
+        <Button type="submit">
           Continuar
           <ArrowRight aria-hidden data-icon="inline-end" />
         </Button>

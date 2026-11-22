@@ -24,7 +24,12 @@ export function MobileNavigation({ location }: { location: ProjectLocation | nul
   const current = consoleSectionOf(pathname, location !== null)
 
   function changeOpen(isOpen: boolean): void {
-    setOpenPath(isOpen ? pathname : null)
+    if (isOpen) {
+      setOpenPath(pathname)
+      return
+    }
+
+    setOpenPath(null)
   }
 
   function closeOnLink(event: MouseEvent<HTMLDivElement>): void {

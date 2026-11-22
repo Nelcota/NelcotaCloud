@@ -1,7 +1,7 @@
 import { Check, ChevronsUpDown, LayoutGrid, Plus } from 'lucide-react'
 import type { JSX } from 'react'
 
-import { ProjectAvatar } from '@/app/shell/project-avatar'
+import { ProjectAvatar } from '@/shared/ui/project-avatar'
 import { useCurrentProject, useProjectsQuery } from '@/modules/projects/queries/use-projects'
 import { RouterLink } from '@/shared/routing/router-link'
 import {

@@ -34,7 +34,7 @@ export function ConfigStep(props: ConfigStepProps): JSX.Element {
 
   return (
     <div className="@container">
-      <div className="grid items-start gap-8 @min-[46rem]:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="grid items-start gap-6 @min-[44rem]:grid-cols-[minmax(0,1fr)_16.25rem]">
         <StepPanel
           title="Como se chama o app?"
           isFocusedOnMount={props.isFocusedOnMount}
@@ -89,11 +89,11 @@ export function ConfigStep(props: ConfigStepProps): JSX.Element {
 function ConfigFooter({ onBack }: { onBack: () => void }): JSX.Element {
   return (
     <>
-      <Button type="submit" size="lg">
+      <Button type="submit">
         Continuar
         <ArrowRight aria-hidden data-icon="inline-end" />
       </Button>
-      <Button type="button" variant="ghost" size="lg" onClick={onBack}>
+      <Button type="button" variant="ghost" onClick={onBack}>
         Voltar
       </Button>
     </>

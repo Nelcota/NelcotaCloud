@@ -4,6 +4,7 @@ import type { JSX } from 'react'
 import { useState } from 'react'
 
 import { AuthCard } from '@/modules/account/components/auth-card'
+import { AuthPanel } from '@/modules/account/components/auth-panel'
 import { LoginProductPreview } from '@/modules/account/components/login-product-preview'
 import {
   LOGIN_STEP_HEADINGS,
@@ -42,26 +43,27 @@ export function LoginPage(): JSX.Element {
 
   return (
     <div className="flex min-h-dvh gap-2 bg-frame p-2">
-      <main className="flex w-full flex-col rounded-xl border bg-background px-6 py-6 sm:px-10 lg:w-[26.25rem] lg:shrink-0">
+      <main className="flex w-full flex-col gap-6 px-2 py-4 sm:px-6 lg:w-[28rem] lg:shrink-0">
         <ConsoleBrand />
-        <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-10">
-          <AuthCard
-            title={heading.title}
-            description={heading.description}
-            footer={<LoginStepFooter step={step} onStep={setStep} />}
-          >
-            <LoginStepContent
-              step={step}
-              onSignIn={handleSignIn}
-              onSignUp={handleSignUp}
-              onStep={setStep}
-              onSignedIn={goToProjects}
-            />
-          </AuthCard>
+        <div className="flex flex-1 flex-col justify-center pb-10">
+          <div className="mx-auto w-full max-w-[22.5rem]">
+            <AuthPanel>
+              <AuthCard
+                title={heading.title}
+                description={heading.description}
+                footer={<LoginStepFooter step={step} onStep={setStep} />}
+              >
+                <LoginStepContent
+                  step={step}
+                  onSignIn={handleSignIn}
+                  onSignUp={handleSignUp}
+                  onStep={setStep}
+                  onSignedIn={goToProjects}
+                />
+              </AuthCard>
+            </AuthPanel>
+          </div>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Ao continuar, você concorda com os termos de uso da plataforma.
-        </p>
       </main>
       <LoginProductPreview />
     </div>

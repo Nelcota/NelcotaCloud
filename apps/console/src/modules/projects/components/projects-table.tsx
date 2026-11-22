@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 
-import { ProjectAvatar } from '@/app/shell/project-avatar'
+import { ProjectAvatar } from '@/shared/ui/project-avatar'
 import { RoleBadge } from '@/modules/projects/components/role-badge'
 import { siteLabel } from '@/modules/projects/components/site-label'
 import type { components } from '@/shared/api/api-schema'

@@ -20,14 +20,15 @@ export function RouteErrorPage({ error, reset }: ErrorComponentProps): JSX.Eleme
 
   return (
     <StatusScreen
+      code={statusCode(error)}
       title="Esta página não carregou"
       description="Tente de novo. Se repetir, envie o relatório abaixo para nós."
       actions={
         <>
-          <Button type="button" size="lg" onClick={() => void retry()}>
+          <Button type="button" onClick={() => void retry()}>
             Tentar de novo
           </Button>
-          <Button asChild variant="outline" size="lg">
+          <Button asChild variant="outline">
             <a href="/">Ir para os projetos</a>
           </Button>
         </>
@@ -35,4 +36,13 @@ export function RouteErrorPage({ error, reset }: ErrorComponentProps): JSX.Eleme
       aside={<ErrorReport error={error} />}
     />
   )
+}
+
+/** The error's class in the mono status line ("Erro · TypeError"), when it names one. */
+function statusCode(error: unknown): string {
+  if (error instanceof Error && error.name.trim() !== '') {
+    return `Erro · ${error.name}`
+  }
+
+  return 'Erro'
 }

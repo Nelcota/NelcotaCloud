@@ -17,13 +17,13 @@ type MoreOptionsProps = {
 /** Keeps what most people never change out of sight, one small link away. */
 export function MoreOptions({ label, children }: MoreOptionsProps): JSX.Element {
   return (
-    <Collapsible className="grid gap-4">
+    <Collapsible className="grid gap-3">
       <CollapsibleTrigger asChild>
         <Button
           type="button"
           variant="link"
           size="sm"
-          className="group w-fit px-0 text-muted-foreground hover:text-foreground"
+          className="group w-fit px-0 text-xs font-normal text-muted-foreground hover:text-foreground"
         >
           {label}
           <ChevronDown
@@ -33,7 +33,7 @@ export function MoreOptions({ label, children }: MoreOptionsProps): JSX.Element 
           />
         </Button>
       </CollapsibleTrigger>
-      <CollapsibleContent className="grid gap-6">{children}</CollapsibleContent>
+      <CollapsibleContent className="grid gap-4">{children}</CollapsibleContent>
     </Collapsible>
   )
 }

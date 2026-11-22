@@ -1,5 +1,6 @@
 import type { JSX } from 'react'
 
+import { ariaCurrentPage } from '@/shared/lib/aria-current'
 import { cn } from '@/shared/lib/utils'
 import { RouterLink } from '@/shared/routing/router-link'
 import type { IconComponent } from '@/shared/ui/icon-component'
@@ -20,7 +21,7 @@ export function RailLink({ href, label, icon: Glyph, isCurrent }: RailLinkProps)
         <RouterLink
           href={href}
           aria-label={label}
-          aria-current={isCurrent ? 'page' : undefined}
+          aria-current={ariaCurrentPage(isCurrent)}
           className={cn(
             'grid size-10 place-items-center rounded-[10px] text-muted-foreground hover:bg-surface hover:text-foreground',
             isCurrent && 'bg-surface-hover text-foreground',

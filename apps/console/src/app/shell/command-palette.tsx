@@ -10,7 +10,7 @@ import {
 } from '@/app/shell/command-items'
 import { PaletteFooter } from '@/app/shell/command-palette-footer'
 import { ThemeCommand } from '@/app/shell/command-theme-action'
-import { ProjectAvatar } from '@/app/shell/project-avatar'
+import { ProjectAvatar } from '@/shared/ui/project-avatar'
 import { useProjectsQuery } from '@/modules/projects/queries/use-projects'
 import {
   Command,

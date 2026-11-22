@@ -338,7 +338,8 @@ dependencies. In `apps/console/src/`:
   stack, text or wrapper components that restyle primitives. `shared` never imports from `modules` or `app`.
 - Use shadcn/ui primitives from `shared/ui/primitives/` and semantic tokens defined in
   `app/global.css`. See `DESIGN.md` for the visual and interaction conventions.
-- Existing Solar icons compile at build time through `unplugin-icons`; shadcn/ui primitives use Lucide.
+- Icons are Lucide (stroke 1.5) everywhere; only brand logos compile at build time through
+  `unplugin-icons` (`@iconify-json/logos`).
 - Dependencies point one way: `app → modules → shared`. A module may use another module's
   components; never create a cycle (`import/no-cycle` enforces it).
 

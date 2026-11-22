@@ -31,7 +31,7 @@ function MfaBody({ isFailed, isEnabled }: MfaBodyProps): JSX.Element | null {
   }
 
   if (isEnabled === undefined) {
-    return <Skeleton className="h-14 w-full rounded-lg" />
+    return <Skeleton className="h-11 w-full rounded-lg" />
   }
 
   if (isEnabled) {
@@ -60,9 +60,9 @@ type MfaStateProps = { badge: JSX.Element; text: string; action?: JSX.Element }
 /** The factor's current state as one row, with the action that changes it. */
 function MfaState({ badge, text, action }: MfaStateProps): JSX.Element {
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-surface px-3.5 py-3">
+    <div className="flex flex-wrap items-center gap-3 rounded-lg bg-surface px-3 py-2.5">
       {badge}
-      <span className="min-w-0 flex-1 text-sm text-muted-foreground">{text}</span>
+      <span className="min-w-0 flex-1 text-xs text-muted-foreground">{text}</span>
       {action}
     </div>
   )

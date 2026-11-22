@@ -1,7 +1,7 @@
 import { Folder } from 'lucide-react'
 import type { JSX } from 'react'
 
-import { ProjectAvatar } from '@/app/shell/project-avatar'
+import { ProjectAvatar } from '@/shared/ui/project-avatar'
 import type { ProjectLocation } from '@/app/shell/project-sections'
 import { useCurrentProject } from '@/modules/projects/queries/use-projects'
 import { RouterLink } from '@/shared/routing/router-link'

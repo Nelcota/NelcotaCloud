@@ -36,20 +36,20 @@ export function StepPanel(props: StepPanelProps): JSX.Element {
       method="post"
       noValidate
       onSubmit={submit}
-      className="flex min-w-0 flex-col gap-8"
+      className="flex min-w-0 flex-col gap-5"
     >
-      <div className="grid gap-2">
+      <div className="grid gap-1">
         <h2
           id={titleId}
           ref={heading}
           tabIndex={-1}
-          className="text-3xl font-semibold tracking-tight text-balance text-heading outline-none"
+          className="text-xl font-medium text-balance text-heading outline-none"
         >
           {props.title}
         </h2>
         <StepDescription description={props.description} />
       </div>
-      <div className="grid gap-6">{props.children}</div>
+      <div className="grid gap-4">{props.children}</div>
       <div className="flex flex-wrap items-center gap-2">{props.footer}</div>
     </form>
   )
@@ -60,5 +60,5 @@ function StepDescription({ description }: { description?: string }): JSX.Element
     return null
   }
 
-  return <p className="text-base text-muted-foreground">{description}</p>
+  return <p className="text-xs text-muted-foreground">{description}</p>
 }

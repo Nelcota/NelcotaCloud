@@ -1,5 +1,5 @@
+import { RotateCcw as Restart } from 'lucide-react'
 import Cropper, { type Size } from 'react-easy-crop'
-import Restart from '~icons/solar/restart-linear'
 import type { JSX } from 'react'
 import { useId, useState } from 'react'
 
@@ -35,9 +35,9 @@ export function AvatarCropEditor({ imageUrl, onAreaChange }: AvatarCropEditorPro
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-2">
       {/* The cropper positions itself absolutely, so its frame must be the positioned box. */}
-      <div className="relative h-[22.5rem] cursor-move overflow-hidden rounded-lg border bg-frame">
+      <div className="relative h-80 cursor-move overflow-hidden rounded-xl bg-frame">
         <Cropper
           image={imageUrl}
           crop={crop}
@@ -56,7 +56,7 @@ export function AvatarCropEditor({ imageUrl, onAreaChange }: AvatarCropEditorPro
           onCropComplete={(_, pixels) => onAreaChange(pixels)}
         />
       </div>
-      <div className="flex flex-wrap items-center gap-4 rounded-lg border bg-surface px-3 py-2">
+      <div className="flex flex-wrap items-center gap-3 rounded-lg bg-surface px-2 py-1.5">
         <AvatarNudgeButtons
           crop={crop}
           sizes={{ media: mediaSize, crop: cropSize, zoom }}

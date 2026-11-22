@@ -24,7 +24,7 @@ export function SignUpForm({
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4">
+    <form onSubmit={submit} className="flex flex-col gap-3">
       <TextField
         label="Email"
         type="email"
@@ -32,7 +32,6 @@ export function SignUpForm({
         spellCheck={false}
         autoFocus
         required
-        className="[&_input]:h-10"
         value={email}
         onChange={(event) => setEmail(event.target.value)}
       />
@@ -43,7 +42,6 @@ export function SignUpForm({
         required
         minLength={MIN_PASSWORD_LENGTH}
         hint="Pelo menos 8 caracteres."
-        className="[&_input]:h-10"
         value={password}
         onChange={(event) => setPassword(event.target.value)}
       />
@@ -51,7 +49,7 @@ export function SignUpForm({
       <PendingButton
         type="submit"
         size="lg"
-        className="h-10 w-full"
+        className="w-full"
         isPending={signUp.isPending}
         disabled={email.trim() === '' || password.length < MIN_PASSWORD_LENGTH}
       >

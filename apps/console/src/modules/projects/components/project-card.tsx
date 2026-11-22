@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 
-import { ProjectAvatar } from '@/app/shell/project-avatar'
+import { ProjectAvatar } from '@/shared/ui/project-avatar'
 import { ProjectActiveUsers } from '@/modules/projects/components/project-active-users'
 import { projectShortcuts } from '@/modules/projects/components/project-shortcuts'
 import { ProjectStatusRow } from '@/modules/projects/components/project-status-row'

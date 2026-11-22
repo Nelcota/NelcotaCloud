@@ -8,6 +8,7 @@ import {
   sectionPath,
   sectionsOf,
 } from '@/app/shell/project-sections'
+import { ariaCurrentPage } from '@/shared/lib/aria-current'
 import { cn } from '@/shared/lib/utils'
 import { RouterLink } from '@/shared/routing/router-link'
 
@@ -58,7 +59,7 @@ function SectionLink({ projectId, section, isCurrent }: SectionLinkProps): JSX.E
   return (
     <RouterLink
       href={sectionPath(projectId, section)}
-      aria-current={isCurrent ? 'page' : undefined}
+      aria-current={ariaCurrentPage(isCurrent)}
       className={cn(
         'flex h-8 min-w-0 items-center gap-2 rounded-md px-2 text-sm text-muted-foreground hover:bg-surface hover:text-foreground',
         isCurrent && 'bg-surface-hover font-medium text-foreground hover:bg-surface-hover',

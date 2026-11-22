@@ -1,4 +1,4 @@
-import Monitor from '~icons/solar/monitor-linear'
+import { Monitor } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { useRevokeOtherSessionsMutation } from '@/modules/account/queries/use-sessions'

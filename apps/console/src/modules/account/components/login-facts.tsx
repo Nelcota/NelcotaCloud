@@ -1,6 +1,4 @@
-import Database from '~icons/solar/database-linear'
-import Key from '~icons/solar/key-linear'
-import Shield from '~icons/solar/shield-keyhole-linear'
+import { Database, KeyRound as Key, ShieldEllipsis as Shield } from 'lucide-react'
 import type { JSX } from 'react'
 
 import type { IconComponent } from '@/shared/ui/icon-component'
@@ -31,7 +29,7 @@ const FACTS: readonly Fact[] = [
 /** Three facts a developer checks first, under the console miniature. */
 export function LoginFacts(): JSX.Element {
   return (
-    <ul className="grid grid-cols-3 gap-4">
+    <ul className="grid grid-cols-3 gap-2">
       {FACTS.map((fact) => (
         <FactItem key={fact.id} fact={fact} />
       ))}
@@ -43,10 +41,10 @@ function FactItem({ fact }: { fact: Fact }): JSX.Element {
   const Glyph = fact.icon
 
   return (
-    <li className="grid min-w-0 content-start gap-1.5 border-t pt-4">
-      <Glyph aria-hidden className="size-5 text-primary" />
-      <p className="text-sm font-medium text-heading">{fact.title}</p>
-      <p className="truncate font-mono text-xs text-muted-foreground" title={fact.detail}>
+    <li className="grid min-w-0 content-start gap-1 rounded-xl bg-surface p-3">
+      <Glyph aria-hidden className="mb-1 size-4 text-brand" />
+      <p className="text-xs font-medium text-heading">{fact.title}</p>
+      <p className="truncate font-mono text-2xs text-muted-foreground" title={fact.detail}>
         {fact.detail}
       </p>
     </li>

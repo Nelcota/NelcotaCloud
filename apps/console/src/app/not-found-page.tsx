@@ -12,18 +12,19 @@ export function NotFoundPage(): JSX.Element {
 
   return (
     <StatusScreen
+      code="Erro 404"
       title="Página não encontrada"
       description={
         <>
-          <InlineCode>{pathname}</InlineCode> não existe.
+          <InlineCode>{pathname}</InlineCode> não existe no console. Confira o endereço ou volte
+          para os projetos.
         </>
       }
       actions={
-        <Button asChild size="lg">
+        <Button asChild>
           <RouterLink href="/">Ir para os projetos</RouterLink>
         </Button>
       }
-      aside={<p className="font-mono text-xs text-muted-foreground">Erro 404</p>}
     />
   )
 }

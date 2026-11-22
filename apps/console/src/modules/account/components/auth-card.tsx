@@ -8,15 +8,17 @@ type AuthCardProps = {
   footer?: ReactNode
 }
 
-/** One sign-in or email-link task: its heading, optional description, controls and way out. */
+/** One sign-in or email-link task inside its panel: heading, controls, and a footer bar. */
 export function AuthCard({ title, description, children, footer }: AuthCardProps): JSX.Element {
   return (
-    <section className="flex flex-col gap-8">
-      <div className="grid gap-1.5">
-        <h1 className="text-3xl font-semibold tracking-tight text-balance text-heading">{title}</h1>
-        <AuthDescription description={description} />
+    <section className="flex flex-col">
+      <div className="flex flex-col gap-5 p-6">
+        <header className="grid gap-1">
+          <h1 className="text-xl font-medium text-balance text-heading">{title}</h1>
+          <AuthDescription description={description} />
+        </header>
+        <div className="flex flex-col gap-3">{children}</div>
       </div>
-      <div className="flex flex-col gap-4">{children}</div>
       <AuthFooter footer={footer} />
     </section>
   )
@@ -27,7 +29,7 @@ function AuthDescription({ description }: { description?: ReactNode }): JSX.Elem
     return null
   }
 
-  return <p className="text-base text-pretty text-muted-foreground">{description}</p>
+  return <p className="text-xs text-pretty text-muted-foreground">{description}</p>
 }
 
 function AuthFooter({ footer }: { footer?: ReactNode }): JSX.Element | null {
@@ -35,5 +37,5 @@ function AuthFooter({ footer }: { footer?: ReactNode }): JSX.Element | null {
     return null
   }
 
-  return <div className="flex flex-col gap-3">{footer}</div>
+  return <div className="flex flex-col gap-2 rounded-b-2xl bg-surface px-6 py-3">{footer}</div>
 }

@@ -8,7 +8,7 @@ import { Timestamp } from '@/shared/ui/timestamp'
 /** The account's record as the API keeps it: id, sign-in methods and dates. */
 export function ProfileFacts({ user }: { user: User }): JSX.Element {
   return (
-    <DataList className="border-t px-6">
+    <DataList>
       <DataListItem label="ID da conta">
         <IdChip label="ID da conta" value={user.id} />
       </DataListItem>
@@ -31,7 +31,7 @@ function OptionalTimestamp({ value }: { value: string | null }): JSX.Element {
     return <span className="text-muted-foreground">—</span>
   }
 
-  return <Timestamp value={value} />
+  return <Timestamp value={value} format="relative" />
 }
 
 type SignInMethodsProps = { hasPassword: boolean; providers: string[] }

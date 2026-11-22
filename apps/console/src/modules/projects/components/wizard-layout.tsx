@@ -12,18 +12,20 @@ type WizardLayoutProps = {
 }
 
 /**
- * The flow's frame: a quiet title and the steps on the left (a track above on phones), the step
+ * The flow's frame: the steps as a checklist on the left (a track above on phones), the step
  * beside. The flow's name stays small so each step's question is what reads first.
  */
 export function WizardLayout({ position, onStepSelect, children }: WizardLayoutProps): JSX.Element {
   return (
-    <div className="mx-auto grid w-full max-w-6xl min-w-0 items-start gap-8 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-12">
-      <aside className="grid min-w-0 gap-5 lg:sticky lg:top-6">
+    <div className="mx-auto grid w-full max-w-5xl min-w-0 items-start gap-5 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-10">
+      <aside className="grid min-w-0 gap-3 lg:sticky lg:top-4">
         <BackLink label="Projetos" href="/" />
-        <h1 className="text-sm font-medium text-muted-foreground">Novo projeto</h1>
-        <WizardSteps position={position} onStepSelect={onStepSelect} />
+        <div className="grid gap-2 lg:rounded-xl lg:bg-card lg:p-2">
+          <h1 className="px-2 pt-1 text-2xs text-muted-foreground max-lg:sr-only">Novo projeto</h1>
+          <WizardSteps position={position} onStepSelect={onStepSelect} />
+        </div>
       </aside>
-      <div className="min-w-0 lg:pt-1">{children}</div>
+      <div className="min-w-0 animate-page-in">{children}</div>
     </div>
   )
 }

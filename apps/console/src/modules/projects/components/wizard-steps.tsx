@@ -1,4 +1,3 @@
-import { Check } from 'lucide-react'
 import type { JSX } from 'react'
 
 import {
@@ -7,28 +6,26 @@ import {
   type WizardStepId,
   positionIndex,
 } from '@/modules/projects/components/wizard-step'
+import { type StepMarkState, StepMark } from '@/shared/ui/step-mark'
 import { cn } from '@/shared/lib/utils'
-
-type StepState = 'done' | 'current' | 'next'
 
 type WizardStepsProps = {
   position: WizardPosition
   onStepSelect?: (step: WizardStepId) => void
 }
 
-/** The numbered steps: a vertical list on wide screens, a horizontal track on phones. */
+/** The steps as a checklist: a vertical list on wide screens, a horizontal track on phones. */
 export function WizardSteps({ position, onStepSelect }: WizardStepsProps): JSX.Element {
   const currentIndex = positionIndex(position)
 
   return (
     <ol
       aria-label="Etapas"
-      className="flex min-w-0 items-center gap-2 overflow-x-auto lg:flex-col lg:items-stretch lg:gap-0.5"
+      className="flex min-w-0 items-center gap-1 overflow-x-auto lg:flex-col lg:items-stretch lg:gap-0.5"
     >
       {WIZARD_STEPS.map((step, index) => (
         <WizardStepItem
           key={step.id}
-          number={index + 1}
           label={step.label}
           state={stepState(index, currentIndex)}
           onSelect={selectionOf(step.id, onStepSelect)}
@@ -39,22 +36,30 @@ export function WizardSteps({ position, onStepSelect }: WizardStepsProps): JSX.E
 }
 
 type WizardStepItemProps = {
-  number: number
   label: string
-  state: StepState
+  state: StepMarkState
   onSelect: (() => void) | undefined
 }
 
-function WizardStepItem({ number, label, state, onSelect }: WizardStepItemProps): JSX.Element {
-  const content = <StepContent number={number} label={label} state={state} />
-
+function WizardStepItem({ label, state, onSelect }: WizardStepItemProps): JSX.Element {
   return (
     <li
       aria-current={currentMarker(state)}
-      className="flex shrink-0 items-center gap-2 not-last:after:h-px not-last:after:w-6 not-last:after:bg-border lg:not-last:after:hidden"
+      className="flex shrink-0 items-center gap-1 not-last:after:h-px not-last:after:w-4 not-last:after:bg-border lg:not-last:after:hidden"
     >
       <StepTarget isSelectable={state === 'done' && onSelect !== undefined} onSelect={onSelect}>
-        {content}
+        <StepMark state={state} />
+        <span
+          className={cn(
+            'text-xs whitespace-nowrap text-muted-foreground',
+            state === 'current' && 'font-medium text-heading',
+            state === 'done' && 'text-foreground',
+            state !== 'current' && 'max-sm:sr-only',
+          )}
+        >
+          {label}
+          {state === 'done' && <span className="sr-only"> (concluída)</span>}
+        </span>
       </StepTarget>
     </li>
   )
@@ -63,66 +68,29 @@ function WizardStepItem({ number, label, state, onSelect }: WizardStepItemProps)
 type StepTargetProps = {
   isSelectable: boolean
   onSelect: (() => void) | undefined
-  children: JSX.Element
+  children: JSX.Element[]
 }
 
 /** A finished step is a button back to it; the others are plain text. */
 function StepTarget({ isSelectable, onSelect, children }: StepTargetProps): JSX.Element {
+  const className = 'flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-left'
+
   if (isSelectable === false) {
-    return (
-      <div className="flex w-full items-center gap-2.5 rounded-lg lg:px-2.5 lg:py-2">
-        {children}
-      </div>
-    )
+    return <div className={className}>{children}</div>
   }
 
   return (
     <button
       type="button"
       onClick={onSelect}
-      className="flex w-full items-center gap-2.5 rounded-lg text-left hover:bg-surface-hover lg:px-2.5 lg:py-2"
+      className={cn(className, 'transition-colors duration-200 hover:bg-surface')}
     >
       {children}
     </button>
   )
 }
 
-function StepContent({ number, label, state }: Omit<WizardStepItemProps, 'onSelect'>): JSX.Element {
-  return (
-    <>
-      <span
-        className={cn(
-          'grid size-7 shrink-0 place-items-center rounded-full border text-sm font-medium tabular-nums',
-          state === 'current' && 'border-primary bg-primary text-primary-foreground',
-          state === 'done' && 'border-primary/40 text-primary',
-          state === 'next' && 'text-muted-foreground',
-        )}
-      >
-        <StepMark number={number} state={state} />
-      </span>
-      <span
-        className={cn(
-          'text-sm whitespace-nowrap',
-          state === 'current' && 'font-medium text-heading',
-          state !== 'current' && 'max-sm:sr-only text-muted-foreground',
-        )}
-      >
-        {label}
-        {state === 'done' && <span className="sr-only"> (concluída)</span>}
-      </span>
-    </>
-  )
-}
-
-function StepMark({ number, state }: { number: number; state: StepState }): JSX.Element {
-  if (state === 'done') {
-    return <Check aria-hidden className="size-4" />
-  }
-
-  return <span aria-hidden>{number}</span>
-}
-
-function currentMarker(state: StepState): 'step' | undefined {
+function currentMarker(state: StepMarkState): 'step' | undefined {
   if (state === 'current') {
     return 'step'
   }
@@ -130,7 +98,7 @@ function currentMarker(state: StepState): 'step' | undefined {
   return undefined
 }
 
-function stepState(index: number, currentIndex: number): StepState {
+function stepState(index: number, currentIndex: number): StepMarkState {
   if (index < currentIndex) {
     return 'done'
   }

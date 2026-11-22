@@ -24,7 +24,7 @@ export function SignInForm({ onResult, onForgotPassword }: SignInFormProps): JSX
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4">
+    <form onSubmit={submit} className="flex flex-col gap-3">
       <TextField
         label="Email"
         type="email"
@@ -33,18 +33,16 @@ export function SignInForm({ onResult, onForgotPassword }: SignInFormProps): JSX
         spellCheck={false}
         autoFocus
         required
-        className="[&_input]:h-10"
         value={email}
         onChange={(event) => setEmail(event.target.value)}
       />
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1.5">
         <TextField
           label="Senha"
           type="password"
           name="password"
           autoComplete="current-password"
           required
-          className="[&_input]:h-10"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
@@ -53,7 +51,7 @@ export function SignInForm({ onResult, onForgotPassword }: SignInFormProps): JSX
             type="button"
             variant="link"
             size="sm"
-            className="px-0 text-muted-foreground hover:text-foreground"
+            className="h-auto px-0 text-xs font-normal text-muted-foreground hover:text-foreground"
             onClick={onForgotPassword}
           >
             Esqueci minha senha
@@ -61,7 +59,7 @@ export function SignInForm({ onResult, onForgotPassword }: SignInFormProps): JSX
         </div>
       </div>
       <ErrorAlert error={signIn.error} />
-      <PendingButton type="submit" size="lg" className="h-10 w-full" isPending={signIn.isPending}>
+      <PendingButton type="submit" size="lg" className="w-full" isPending={signIn.isPending}>
         Entrar
       </PendingButton>
     </form>

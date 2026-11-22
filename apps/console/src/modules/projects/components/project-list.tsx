@@ -1,4 +1,4 @@
-import Server from '~icons/solar/server-square-linear'
+import { Server } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { NewProjectButton } from '@/modules/projects/components/new-project-button'

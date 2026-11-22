@@ -13,7 +13,7 @@ type SecretKeyPanelProps = {
 /** The secret key, shown only once: leaving asks until the box says it was saved. */
 export function SecretKeyPanel(props: SecretKeyPanelProps): JSX.Element {
   return (
-    <div className="grid gap-4 rounded-xl border border-warning/40 bg-card p-5">
+    <div className="grid gap-3 rounded-xl bg-card p-4">
       <Notice tone="warning" title="Copie a chave secreta agora">
         Ela não aparece de novo. Use só no servidor.
       </Notice>
