@@ -1,5 +1,4 @@
-import Download from '~icons/solar/download-linear'
-import Trash from '~icons/solar/trash-bin-trash-linear'
+import { Download, Trash2 as Trash } from 'lucide-react'
 import type { JSX } from 'react'
 
 import type { StorageObject } from '@/modules/storage/api/storage-types'

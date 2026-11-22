@@ -5,6 +5,7 @@ import { TableRowMenu } from '@/modules/database/components/table-row-menu'
 import { isPlainTable, kindLabel } from '@/modules/database/components/table-kinds'
 import { tableHref } from '@/modules/database/components/table-href'
 import type { components } from '@/shared/api/api-schema'
+import { formatCount } from '@/shared/lib/format-number'
 import { RouterLink } from '@/shared/routing/router-link'
 import {
   Table,
@@ -29,11 +30,11 @@ export function TablesTable({ projectId, tables }: TablesTableProps): JSX.Elemen
         <TableRow>
           <TableHead>Nome</TableHead>
           <TableHead>Tipo</TableHead>
-          <TableHead className="text-right">Colunas</TableHead>
-          <TableHead className="text-right">Linhas (est.)</TableHead>
           <TableHead>RLS</TableHead>
+          <TableHead className="text-right">Colunas</TableHead>
           <TableHead className="text-right">Políticas</TableHead>
-          <TableHead className="w-12">
+          <TableHead className="text-right">Linhas (est.)</TableHead>
+          <TableHead className="w-10">
             <span className="sr-only">Ações</span>
           </TableHead>
         </TableRow>
@@ -41,22 +42,24 @@ export function TablesTable({ projectId, tables }: TablesTableProps): JSX.Elemen
       <TableBody>
         {tables.map((table) => (
           <TableRow key={table.name}>
-            <TableCell className="max-w-72 py-2.5">
+            <TableCell className="max-w-72">
               <RouterLink
                 href={tableHref(projectId, table.name)}
-                className="block truncate rounded-sm font-mono text-sm font-medium text-heading underline-offset-4 hover:underline"
+                className="block truncate rounded-sm font-mono text-xs font-medium text-heading underline-offset-4 hover:underline"
               >
                 {table.name}
               </RouterLink>
             </TableCell>
             <TableCell className="text-muted-foreground">{kindLabel(table.kind)}</TableCell>
-            <TableCell className={NUMBER_CELL}>{table.columns.length}</TableCell>
-            <TableCell className={NUMBER_CELL}>{estimatedRows(table)}</TableCell>
             <TableCell>
               <RlsBadge table={table} />
             </TableCell>
+            <TableCell className={NUMBER_CELL}>{formatCount(table.columns.length)}</TableCell>
             <TableCell className={NUMBER_CELL}>{policyCount(table)}</TableCell>
-            <TableCell className="py-1.5 text-right">
+            <TableCell className="text-right text-foreground tabular-nums">
+              {estimatedRows(table)}
+            </TableCell>
+            <TableCell className="py-1 text-right">
               <TableRowMenu table={table.name} />
             </TableCell>
           </TableRow>
@@ -74,7 +77,7 @@ function estimatedRows(table: TableOverview): string {
     return '—'
   }
 
-  return rows.toLocaleString('pt-BR')
+  return formatCount(rows)
 }
 
 /** Views and other kinds have no policies of their own. */
@@ -83,5 +86,5 @@ function policyCount(table: TableOverview): string {
     return '—'
   }
 
-  return table.policies.length.toLocaleString('pt-BR')
+  return formatCount(table.policies.length)
 }

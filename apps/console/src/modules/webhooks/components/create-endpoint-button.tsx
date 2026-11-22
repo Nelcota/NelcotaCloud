@@ -24,7 +24,7 @@ export function CreateEndpointButton({ creator }: CreateEndpointButtonProps): JS
     <>
       <Button type="button" disabled={creator.isDisabled} onClick={() => setIsOpen(true)}>
         <Plus aria-hidden data-icon="inline-start" />
-        Novo endpoint
+        Adicionar endpoint
       </Button>
       <EndpointFormDialog
         isOpen={isOpen}

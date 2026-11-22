@@ -1,5 +1,4 @@
-import ShieldKeyhole from '~icons/solar/shield-keyhole-linear'
-import TrashBin from '~icons/solar/trash-bin-trash-linear'
+import { ShieldEllipsis as ShieldKeyhole, Trash2 as TrashBin } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { useDropPolicyMutation } from '@/modules/database/queries/use-policy-mutations'

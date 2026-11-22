@@ -1,4 +1,4 @@
-import ShieldKeyhole from '~icons/solar/shield-keyhole-linear'
+import { ShieldEllipsis as ShieldKeyhole } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { CreatePolicyDialog } from '@/modules/database/components/create-policy-dialog'

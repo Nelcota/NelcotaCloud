@@ -1,36 +1,38 @@
-import { useId, type JSX } from 'react'
+import type { JSX } from 'react'
 
+import {
+  CreateEndpointButton,
+  type EndpointCreator,
+} from '@/modules/webhooks/components/create-endpoint-button'
 import { EventCatalog } from '@/modules/webhooks/components/event-catalog'
-import { OnboardingSteps } from '@/modules/webhooks/components/onboarding-steps'
 import { REQUEST_SAMPLE, VERIFY_SAMPLE } from '@/modules/webhooks/components/webhook-samples'
 import { CodeBlock } from '@/shared/ui/code-block'
+import { EmptyState } from '@/shared/ui/empty-state'
+import { Section } from '@/shared/ui/section'
 
-/** The empty page: the three steps, every event and what a delivery looks like, all in view. */
-export function WebhooksIntro(): JSX.Element {
-  const titleId = useId()
-
+/** The empty page: what a webhook is and the button to add one, then every event and a sample. */
+export function WebhooksIntro({ creator }: { creator: EndpointCreator }): JSX.Element {
   return (
-    <section
-      aria-labelledby={titleId}
-      className="flex min-w-0 flex-col gap-8 rounded-xl border bg-card p-5 sm:p-8"
-    >
-      <div className="grid max-w-xl gap-1">
-        <h2 id={titleId} className="text-xl font-semibold tracking-tight text-heading">
-          Nenhum endpoint ainda
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Cada evento chega como um POST assinado, com até 28 horas de novas tentativas.
-        </p>
-      </div>
-      <OnboardingSteps />
-      <div className="grid gap-6 border-t pt-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-        <EventCatalog />
-        <div className="grid min-w-0 content-start gap-3">
-          <h3 className="text-sm font-semibold">Exemplo de entrega</h3>
+    <div className="flex min-w-0 flex-col gap-6">
+      <EmptyState
+        title="Nenhum endpoint ainda"
+        description="Cada evento chega ao seu servidor como um POST assinado, com novas tentativas por até 28 horas."
+        actions={<CreateEndpointButton creator={creator} />}
+        isCompact
+        isFramed
+      />
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <Section title="Eventos" description="O que um endpoint pode assinar.">
+          <EventCatalog />
+        </Section>
+        <Section
+          title="Exemplo de entrega"
+          description="Headers Standard Webhooks e o corpo em JSON."
+        >
           <CodeBlock code={REQUEST_SAMPLE} title="Requisição" isWrapped />
           <CodeBlock code={VERIFY_SAMPLE} title="server.ts" copyLabel="Código de verificação" />
-        </div>
+        </Section>
       </div>
-    </section>
+    </div>
   )
 }

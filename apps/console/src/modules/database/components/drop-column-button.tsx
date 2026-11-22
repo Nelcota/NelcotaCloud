@@ -1,5 +1,4 @@
-import Columns from '~icons/solar/list-linear'
-import TrashBin from '~icons/solar/trash-bin-trash-linear'
+import { List as Columns, Trash2 as TrashBin } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { useDropColumnMutation } from '@/modules/database/queries/use-column-mutations'

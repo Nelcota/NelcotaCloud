@@ -10,7 +10,7 @@ export function DatabasePage(): JSX.Element {
   const projectId = useProjectId()
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Banco de dados"
         description="O Postgres do projeto, servido como API REST sob row level security."

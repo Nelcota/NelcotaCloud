@@ -1,4 +1,3 @@
-import { Tabs as TabsPrimitive } from 'radix-ui'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
@@ -11,7 +10,7 @@ import { TablePoliciesSection } from '@/modules/database/components/table-polici
 import { TableRowsSection } from '@/modules/database/components/table-rows-section'
 import { type TableView, isTableView, viewsOf } from '@/modules/database/components/table-views'
 import type { components } from '@/shared/api/api-schema'
-import { Tabs, TabsList, TabsTrigger } from '@/shared/ui/primitives/tabs'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/primitives/tabs'
 
 type TableOverview = components['schemas']['TableOverview']
 
@@ -33,33 +32,31 @@ export function LoadedTable(props: LoadedTableProps): JSX.Element {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <BackToTables projectId={projectId} />
       <TableHeading projectId={projectId} table={table} />
       <RlsOffNotice projectId={projectId} table={table} />
       <Tabs value={view} onValueChange={pickView} className="gap-4">
-        <div className="scrollbar-thin overflow-x-auto border-b">
-          <TabsList variant="line" aria-label="Seções da tabela">
-            {viewsOf(table).map((option) => (
-              <TabsTrigger key={option.value} value={option.value} className="px-2.5">
-                {option.label}
-                <TabCount count={option.count} />
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
-        <TabsPrimitive.Content value="rows" className="outline-none">
+        <TabsList variant="line" aria-label="Seções da tabela" className="w-full">
+          {viewsOf(table).map((option) => (
+            <TabsTrigger key={option.value} value={option.value}>
+              {option.label}
+              <TabCount count={option.count} />
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <TabsContent value="rows">
           <TableRowsSection projectId={projectId} table={table} />
-        </TabsPrimitive.Content>
-        <TabsPrimitive.Content value="columns" className="outline-none">
+        </TabsContent>
+        <TabsContent value="columns">
           <TableColumnsSection {...props} />
-        </TabsPrimitive.Content>
-        <TabsPrimitive.Content value="policies" className="outline-none">
+        </TabsContent>
+        <TabsContent value="policies">
           <TablePoliciesSection projectId={projectId} table={table} />
-        </TabsPrimitive.Content>
-        <TabsPrimitive.Content value="settings" className="outline-none">
+        </TabsContent>
+        <TabsContent value="settings">
           <TableDangerZone projectId={projectId} table={table.name} />
-        </TabsPrimitive.Content>
+        </TabsContent>
       </Tabs>
     </div>
   )
@@ -70,5 +67,5 @@ function TabCount({ count }: { count: number | null }): JSX.Element | null {
     return null
   }
 
-  return <span className="text-xs text-muted-foreground tabular-nums">{count}</span>
+  return <span className="text-2xs text-muted-foreground tabular-nums">{count}</span>
 }

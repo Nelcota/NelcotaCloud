@@ -22,7 +22,7 @@ export function SecretGraceNotice({
 
   return (
     <Notice
-      tone="info"
+      tone="warning"
       title={`O segredo anterior assina junto com o novo até ${formatDateTime(until)}.`}
     />
   )

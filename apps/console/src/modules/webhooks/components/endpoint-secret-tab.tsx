@@ -8,6 +8,7 @@ import { SecretGraceNotice } from '@/modules/webhooks/components/secret-grace-no
 import { requestSample, VERIFY_SAMPLE } from '@/modules/webhooks/components/webhook-samples'
 import { CodeBlock } from '@/shared/ui/code-block'
 import { InlineCode } from '@/shared/ui/inline-code'
+import { Section } from '@/shared/ui/section'
 import { SettingsSection } from '@/shared/ui/settings-section'
 
 /** The signing secret (shown only when issued) and how a receiver verifies each request. */
@@ -35,8 +36,10 @@ export function EndpointSecretTab({ panel }: { panel: EndpointPanel }): JSX.Elem
       >
         <SecretGraceNotice endpointId={endpoint.id} lastRotation={rotation.lastRotation} />
       </SettingsSection>
-      <section className="grid gap-3">
-        <h3 className="text-base font-semibold">Verificar no servidor</h3>
+      <Section
+        title="Verificar no servidor"
+        description="Confira cada requisição antes de usar o corpo."
+      >
         <CodeBlock code={VERIFY_SAMPLE} title="server.ts" copyLabel="Código de verificação" />
         <RevealableSample label="Ver exemplo de requisição">
           <CodeBlock
@@ -45,7 +48,7 @@ export function EndpointSecretTab({ panel }: { panel: EndpointPanel }): JSX.Elem
             isWrapped
           />
         </RevealableSample>
-      </section>
+      </Section>
     </>
   )
 }

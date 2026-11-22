@@ -1,6 +1,7 @@
 import type { JSX } from 'react'
 
 import type { components } from '@/shared/api/api-schema'
+import { formatCount } from '@/shared/lib/format-number'
 
 type SqlResult = components['schemas']['SqlResult']
 
@@ -13,53 +14,51 @@ type SqlResultStatusProps = {
 
 const DURATION = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 })
 
-/** Rows, time and truncation of the last run, announced when they change. */
+/** "12 linhas · 34 ms": rows, time and truncation of the last run, announced when they change. */
 export function SqlResultStatus(props: SqlResultStatusProps): JSX.Element {
   return (
-    <p
-      role="status"
-      className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground tabular-nums"
-    >
-      <StatusItems {...props} />
+    <p role="status" className="min-w-0 text-xs text-muted-foreground tabular-nums">
+      {statusText(props)}
+      <TruncatedNote
+        result={props.result}
+        isShown={props.error === null && props.isRunning === false}
+      />
     </p>
   )
 }
 
-function StatusItems({
-  result,
-  error,
-  isRunning,
-  durationMs,
-}: SqlResultStatusProps): JSX.Element | null {
-  if (isRunning || error !== null || result === undefined) {
-    return null
+function statusText({ result, error, isRunning, durationMs }: SqlResultStatusProps): string {
+  if (isRunning) {
+    return 'Executando…'
   }
 
-  return (
-    <>
-      <span>{rowsText(result)}</span>
-      <Duration durationMs={durationMs} />
-      <TruncatedNote result={result} />
-    </>
-  )
+  // A refusal is told by the panel below, in Postgres's own words.
+  if (error !== null || result === undefined) {
+    return ''
+  }
+
+  return [rowsText(result), durationText(durationMs)].filter((part) => part !== '').join(' · ')
 }
 
-function Duration({ durationMs }: { durationMs: number | null }): JSX.Element | null {
+function durationText(durationMs: number | null): string {
   if (durationMs === null) {
-    return null
+    return ''
   }
 
-  return <span>{DURATION.format(durationMs)} ms</span>
+  return `${DURATION.format(durationMs)} ms`
 }
 
-function TruncatedNote({ result }: { result: SqlResult }): JSX.Element | null {
-  if (result.is_truncated === false) {
+type TruncatedNoteProps = { result: SqlResult | undefined; isShown: boolean }
+
+function TruncatedNote({ result, isShown }: TruncatedNoteProps): JSX.Element | null {
+  if (result === undefined || isShown === false || result.is_truncated === false) {
     return null
   }
 
   return (
     <span className="text-warning">
-      Mostrando as primeiras {result.rows.length.toLocaleString('pt-BR')}
+      {' '}
+      · mostrando as primeiras {formatCount(result.rows.length)}
     </span>
   )
 }

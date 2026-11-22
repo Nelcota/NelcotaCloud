@@ -1,4 +1,4 @@
-import Key from '~icons/solar/key-linear'
+import { KeyRound as Key } from 'lucide-react'
 
 export const DELETE_DESCRIPTION =
   'Ele para de receber eventos na hora, e as entregas pendentes são canceladas.'

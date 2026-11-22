@@ -15,7 +15,7 @@ export function TablesBrowser({ projectId }: { projectId: string }): JSX.Element
   const tables = schema.data?.tables
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <LoadError error={schema.error} onRetry={() => schema.refetch()} />
       <TablesContent projectId={projectId} tables={tables} hasFailed={schema.isError} />
     </div>
@@ -51,14 +51,14 @@ function TablesContent({ projectId, tables, hasFailed }: TablesContentProps): JS
 
 function TablesLoading(): JSX.Element {
   return (
-    <div role="status" aria-label="Carregando tabelas" className="flex flex-col gap-8">
+    <div role="status" aria-label="Carregando tabelas" className="flex flex-col gap-6">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Skeleton className="h-32 rounded-xl" />
-        <Skeleton className="h-32 rounded-xl" />
-        <Skeleton className="h-32 rounded-xl" />
-        <Skeleton className="h-32 rounded-xl" />
+        <Skeleton className="h-27 rounded-xl" />
+        <Skeleton className="h-27 rounded-xl" />
+        <Skeleton className="h-27 rounded-xl" />
+        <Skeleton className="h-27 rounded-xl" />
       </div>
-      <Skeleton className="h-64 rounded-xl" />
+      <Skeleton className="h-56 rounded-xl" />
     </div>
   )
 }

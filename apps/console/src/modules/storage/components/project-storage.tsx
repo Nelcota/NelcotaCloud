@@ -24,7 +24,7 @@ export function ProjectStorage({ projectId }: { projectId: string }): JSX.Elemen
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Arquivos"
         description="Arquivos privados do projeto, guardados em buckets."
@@ -50,6 +50,7 @@ export function ProjectStorage({ projectId }: { projectId: string }): JSX.Elemen
             buckets={buckets}
             selected={selected}
             onSelect={setSelectedId}
+            onCreateBucket={() => setIsCreating(true)}
           />
         }
       />

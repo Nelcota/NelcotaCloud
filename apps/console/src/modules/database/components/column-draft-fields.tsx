@@ -1,4 +1,4 @@
-import TrashBin from '~icons/solar/trash-bin-trash-linear'
+import { Trash2 as TrashBin } from 'lucide-react'
 import type { JSX } from 'react'
 
 import {
@@ -43,7 +43,7 @@ export function ColumnDraftFields(props: ColumnDraftFieldsProps): JSX.Element {
   }
 
   return (
-    <fieldset className="flex min-w-0 flex-col gap-3 rounded-lg border bg-surface p-3">
+    <fieldset className="flex min-w-0 flex-col gap-3 rounded-xl bg-surface p-3">
       <legend className="sr-only">Coluna {draft.name}</legend>
       <div className="flex items-end gap-2">
         <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-3">
@@ -85,7 +85,7 @@ function RemoveButton({ name, onRemove }: RemoveButtonProps): JSX.Element | null
         <Button
           type="button"
           variant="ghost"
-          size="icon"
+          size="icon-sm"
           aria-label={`Remover a coluna ${name}`}
           onClick={onRemove}
         >

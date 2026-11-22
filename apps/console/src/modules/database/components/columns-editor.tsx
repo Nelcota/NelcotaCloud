@@ -1,4 +1,4 @@
-import Plus from '~icons/solar/add-linear'
+import { Plus } from 'lucide-react'
 import type { JSX } from 'react'
 
 import {
@@ -27,7 +27,7 @@ export function ColumnsEditor({ columns, targets, onChange }: ColumnsEditorProps
 
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="text-sm font-semibold">Colunas</h3>
+      <h3 className="text-sm font-medium">Colunas</h3>
       {columns.map((column) => (
         <ColumnDraftFields
           key={column.key}

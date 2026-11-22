@@ -1,5 +1,4 @@
-import { Ellipsis, Pencil, Send, Trash2 } from 'lucide-react'
-import Refresh from '~icons/solar/refresh-linear'
+import { Ellipsis, Pencil, Send, Trash2, RefreshCw as Refresh } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 

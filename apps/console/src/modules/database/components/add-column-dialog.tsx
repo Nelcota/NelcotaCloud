@@ -1,4 +1,4 @@
-import Plus from '~icons/solar/add-linear'
+import { Plus } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
@@ -37,7 +37,7 @@ export function AddColumnDialog({ projectId, table, targets }: AddColumnDialogPr
 
   return (
     <>
-      <Button type="button" size="sm" onClick={open}>
+      <Button type="button" variant="outline" size="sm" onClick={open}>
         <Plus aria-hidden data-icon="inline-start" />
         Adicionar coluna
       </Button>

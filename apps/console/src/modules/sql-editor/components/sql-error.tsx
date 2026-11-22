@@ -10,10 +10,10 @@ const SQL_ERROR = 'sql_error'
 /** Postgres's refusal as it wrote it, with the API's code and status to search or report. */
 export function SqlError({ error }: { error: Error }): JSX.Element {
   return (
-    <div className="p-4">
+    <div className="p-3">
       <Notice tone="error" title={titleOf(error)}>
         <span className="flex flex-col gap-2">
-          <span className="font-mono text-sm whitespace-pre-wrap text-foreground wrap-anywhere">
+          <span className="font-mono text-xs whitespace-pre-wrap text-foreground wrap-anywhere">
             {messageOf(error)}
           </span>
           <ErrorCode error={error} />
@@ -29,7 +29,7 @@ function ErrorCode({ error }: { error: Error }): JSX.Element | null {
   }
 
   return (
-    <span className="font-mono text-xs text-muted-foreground">
+    <span className="font-mono text-2xs text-muted-foreground">
       {error.code} · HTTP {error.status}
     </span>
   )

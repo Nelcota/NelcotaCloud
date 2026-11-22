@@ -22,7 +22,7 @@ export function RowsPagination(props: RowsPaginationProps): JSX.Element {
   const lastShown = offset + shown
 
   return (
-    <div className="flex min-h-11 flex-wrap items-center justify-between gap-3 border-t bg-surface px-4 py-1.5">
+    <div className="flex min-h-10 flex-wrap items-center justify-between gap-3 border-t border-border/60 bg-surface px-4 py-1">
       <span className="text-xs text-muted-foreground tabular-nums">
         <RangeLabel offset={offset} lastShown={lastShown} />
         <TotalLabel total={props.total} />

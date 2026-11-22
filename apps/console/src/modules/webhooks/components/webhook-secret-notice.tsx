@@ -1,7 +1,7 @@
 import type { JSX } from 'react'
 
 import { SecretLeaveGuard } from '@/modules/api-keys/components/secret-leave-guard'
-import { CopyableValue } from '@/shared/ui/copyable-value'
+import { CopyButton } from '@/shared/ui/copy-button'
 import { InlineCode } from '@/shared/ui/inline-code'
 import { Notice } from '@/shared/ui/notice'
 import { Button } from '@/shared/ui/primitives/button'
@@ -29,9 +29,15 @@ export function WebhookSecretNotice({
       <div className="mt-1 flex flex-col gap-3">
         <span className="wrap-anywhere">
           Ele não aparece de novo. Seu servidor confere com ele o header{' '}
-          <InlineCode>webhook-signature</InlineCode> de {revealed.url}.
+          <InlineCode>webhook-signature</InlineCode> de{' '}
+          <span className="font-mono">{revealed.url}</span>.
         </span>
-        <CopyableValue label="Segredo" value={revealed.secret} />
+        <div className="flex min-w-0 items-center gap-1 rounded-lg bg-surface py-1 ps-3 pe-1">
+          <code className="min-w-0 flex-1 font-mono text-xs text-foreground wrap-anywhere">
+            {revealed.secret}
+          </code>
+          <CopyButton value={revealed.secret} description="Segredo do webhook" isIconOnly />
+        </div>
         <div className="flex justify-end">
           <Button type="button" size="sm" variant="outline" onClick={onDismiss}>
             Já guardei o segredo

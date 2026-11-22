@@ -1,4 +1,4 @@
-import CloudCross from '~icons/solar/cloud-cross-linear'
+import { CloudOff as CloudCross } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { ApiError } from '@/shared/api/api-error'
@@ -18,7 +18,7 @@ export function StorageLoadFailure({
 }: StorageLoadFailureProps): JSX.Element {
   if (error instanceof ApiError && error.code === STORAGE_UNAVAILABLE) {
     return (
-      <div className="rounded-xl border bg-card">
+      <div className="rounded-xl border border-border/60 bg-card">
         <EmptyState
           icon={<CloudCross aria-hidden />}
           title="Armazenamento indisponível"

@@ -1,4 +1,4 @@
-import Plus from '~icons/solar/add-linear'
+import { Plus } from 'lucide-react'
 import type { JSX } from 'react'
 
 import type { StorageBucket } from '@/modules/storage/api/storage-types'
@@ -21,10 +21,15 @@ export function StorageHeaderActions(props: StorageHeaderActionsProps): JSX.Elem
   return (
     <>
       <StorageApiSheet projectId={projectId} bucketId={selected?.id ?? null} />
-      <NewBucketButton isShown={props.buckets !== undefined} onCreate={props.onCreateBucket} />
+      <NewBucketButton isShown={hasBuckets(props.buckets)} onCreate={props.onCreateBucket} />
       <UploadAction projectId={projectId} selected={selected} />
     </>
   )
+}
+
+/** With no bucket yet, the empty list offers the first one instead. */
+function hasBuckets(buckets: StorageBucket[] | undefined): boolean {
+  return buckets !== undefined && buckets.length > 0
 }
 
 function NewBucketButton(props: { isShown: boolean; onCreate: () => void }): JSX.Element | null {

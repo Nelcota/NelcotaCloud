@@ -63,15 +63,13 @@ type ColumnRowProps = { projectId: string; table: TableOverview; column: ColumnO
 function ColumnRow({ projectId, table, column }: ColumnRowProps): JSX.Element {
   return (
     <TableRow>
-      <TableCell className="py-2.5 font-mono text-sm font-medium">{column.name}</TableCell>
-      <TableCell className="py-2.5 font-mono text-sm text-muted-foreground">
-        {column.type}
-      </TableCell>
-      <TableCell className="py-2.5 text-muted-foreground">{yesNo(column.nullable)}</TableCell>
-      <TableCell className="max-w-56 truncate py-2.5 font-mono text-sm text-muted-foreground">
+      <TableCell className="font-mono font-medium text-heading">{column.name}</TableCell>
+      <TableCell className="font-mono text-muted-foreground">{column.type}</TableCell>
+      <TableCell className="text-muted-foreground">{yesNo(column.nullable)}</TableCell>
+      <TableCell className="max-w-56 truncate font-mono text-muted-foreground">
         {column.default ?? '—'}
       </TableCell>
-      <TableCell className="py-2.5">
+      <TableCell>
         <ColumnTraits column={column} foreignKeys={table.foreign_keys} />
       </TableCell>
       <DropCell projectId={projectId} table={table} column={column} />
@@ -85,7 +83,7 @@ function ActionsHead({ table }: { table: TableOverview }): JSX.Element | null {
   }
 
   return (
-    <TableHead className="w-12">
+    <TableHead className="w-10">
       <span className="sr-only">Ações</span>
     </TableHead>
   )
@@ -97,7 +95,7 @@ function DropCell({ projectId, table, column }: ColumnRowProps): JSX.Element | n
   }
 
   return (
-    <TableCell className="py-1.5 text-right">
+    <TableCell className="py-1 text-right">
       <DropColumnButton projectId={projectId} table={table.name} column={column.name} />
     </TableCell>
   )

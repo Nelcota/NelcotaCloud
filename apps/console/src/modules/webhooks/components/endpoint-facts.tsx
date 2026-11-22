@@ -10,16 +10,16 @@ export function EndpointFacts({ endpoint }: { endpoint: WebhookEndpoint }): JSX.
   const subscribed = EVENT_TYPES.filter((eventType) => endpoint.event_types.includes(eventType))
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
-      <IdChip label="ID do endpoint" value={endpoint.id} isLabelVisible className="max-w-72" />
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
+      <IdChip label="ID" value={endpoint.id} isLabelVisible className="max-w-64" />
       <span>
         Criado em <Timestamp value={endpoint.created_at} format="date" />
       </span>
-      <ul aria-label="Eventos assinados" className="flex flex-wrap gap-1.5">
+      <ul aria-label="Eventos assinados" className="flex flex-wrap gap-1">
         {subscribed.map((eventType) => (
           <li
             key={eventType}
-            className="rounded-md border bg-surface px-1.5 py-0.5 font-mono text-xs text-foreground"
+            className="rounded-sm bg-surface px-1.5 py-0.5 font-mono text-2xs text-foreground"
           >
             {eventType}
           </li>

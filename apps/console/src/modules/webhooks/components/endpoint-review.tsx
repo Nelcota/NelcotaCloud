@@ -14,9 +14,9 @@ export function EndpointReview({ url, eventTypes }: EndpointReviewProps): JSX.El
   })).filter((group) => group.picked.length > 0)
 
   return (
-    <DataList className="rounded-lg border px-4">
+    <DataList className="rounded-xl bg-surface px-4">
       <DataListItem label="URL">
-        <code className="font-mono text-sm wrap-anywhere">{url}</code>
+        <code className="font-mono text-xs wrap-anywhere">{url}</code>
       </DataListItem>
       {groups.map((group) => (
         <DataListItem key={group.label} label={group.label}>

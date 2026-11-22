@@ -1,15 +1,13 @@
-import ShieldCheck from '~icons/solar/shield-check-linear'
-import ShieldWarning from '~icons/solar/shield-warning-linear'
+import { ShieldCheck, ShieldAlert as ShieldWarning } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { countLabel } from '@/modules/database/components/count-label'
 import { isPlainTable, isRlsOff } from '@/modules/database/components/table-kinds'
 import type { components } from '@/shared/api/api-schema'
+import { formatCount } from '@/shared/lib/format-number'
 import { StatCard } from '@/shared/ui/stat-card'
 
 type TableOverview = components['schemas']['TableOverview']
-
-const COMPACT_COUNT = new Intl.NumberFormat('pt-BR', { notation: 'compact' })
 
 /** The schema in four figures; tables without RLS are the one that asks for attention. */
 export function DatabaseStats({ tables }: { tables: TableOverview[] }): JSX.Element {
@@ -20,20 +18,16 @@ export function DatabaseStats({ tables }: { tables: TableOverview[] }): JSX.Elem
 
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      <StatCard
-        label="Tabelas"
-        value={tables.length.toLocaleString('pt-BR')}
-        hint={kindsHint(otherKinds)}
-      />
+      <StatCard label="Tabelas" value={formatCount(tables.length)} hint={kindsHint(otherKinds)} />
       <RlsCard plain={plain.length} open={tables.filter(isRlsOff).length} />
       <StatCard
         label="Políticas"
-        value={policyCount.toLocaleString('pt-BR')}
-        hint={`em ${withPolicies.toLocaleString('pt-BR')} de ${countLabel(plain.length, 'tabela', 'tabelas')}`}
+        value={formatCount(policyCount)}
+        hint={`em ${formatCount(withPolicies)} de ${countLabel(plain.length, 'tabela', 'tabelas')}`}
       />
       <StatCard
         label="Linhas estimadas"
-        value={COMPACT_COUNT.format(estimatedTotal(tables))}
+        value={formatCount(estimatedTotal(tables))}
         hint="pelo Postgres"
       />
     </div>
@@ -41,14 +35,14 @@ export function DatabaseStats({ tables }: { tables: TableOverview[] }): JSX.Elem
 }
 
 function RlsCard({ plain, open }: { plain: number; open: number }): JSX.Element {
-  const protectedCount = (plain - open).toLocaleString('pt-BR')
+  const protectedCount = formatCount(plain - open)
 
   if (open === 0) {
     return (
       <StatCard
         label="Com RLS"
         value={protectedCount}
-        aside={<ShieldCheck aria-hidden className="size-5 text-success" />}
+        aside={<ShieldCheck aria-hidden className="mb-1 size-4 text-success" />}
         hint="todas protegidas"
       />
     )
@@ -57,10 +51,9 @@ function RlsCard({ plain, open }: { plain: number; open: number }): JSX.Element 
   return (
     <StatCard
       label="Com RLS"
-      value={`${protectedCount}/${plain.toLocaleString('pt-BR')}`}
-      aside={<ShieldWarning aria-hidden className="size-5 text-warning" />}
-      hint={<span className="text-warning">{open.toLocaleString('pt-BR')} sem RLS</span>}
-      className="border-warning/40"
+      value={`${protectedCount} de ${formatCount(plain)}`}
+      aside={<ShieldWarning aria-hidden className="mb-1 size-4 text-warning" />}
+      hint={<span className="text-warning">{formatCount(open)} sem RLS</span>}
     />
   )
 }

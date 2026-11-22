@@ -12,8 +12,8 @@ import { useUpdateWebhookEndpointMutation } from '@/modules/webhooks/queries/use
 import { ErrorAlert } from '@/shared/ui/error-alert'
 
 /**
- * The selected endpoint as a full panel: its name and menu, then its health as the one large
- * message, then the tabs. The health's action can open the log already filtered.
+ * The selected endpoint's workspace: its address and state, the health sentence with the step
+ * that fits it, then the tabs. The health's action can open the log already filtered.
  */
 export function EndpointDetail({ panel }: { panel: EndpointPanel }): JSX.Element {
   const { projectId, endpoint } = panel
@@ -41,21 +41,16 @@ export function EndpointDetail({ panel }: { panel: EndpointPanel }): JSX.Element
   }
 
   return (
-    <section
-      aria-labelledby={titleId}
-      className="min-w-0 overflow-hidden rounded-xl border bg-card"
-    >
+    <section aria-labelledby={titleId} className="flex min-w-0 animate-page-in flex-col gap-4">
       <EndpointDetailHeader panel={panel} titleId={titleId} onTest={sendTest} />
-      <div className="flex flex-col gap-4 border-b p-5 sm:p-6">
-        <EndpointHealth
-          projectId={projectId}
-          endpoint={endpoint}
-          isActing={test.isPending || resume.isPending}
-          onAction={act}
-        />
-        <TestOutcome test={test} />
-        <ErrorAlert error={resume.error} />
-      </div>
+      <EndpointHealth
+        projectId={projectId}
+        endpoint={endpoint}
+        isActing={test.isPending || resume.isPending}
+        onAction={act}
+      />
+      <TestOutcome test={test} />
+      <ErrorAlert error={resume.error} />
       <EndpointTabs
         panel={panel}
         view={{ tab, filter, onTabChange: setTab, onFilterChange: setFilter }}

@@ -8,7 +8,7 @@ export type TableView = 'rows' | 'columns' | 'policies' | 'settings'
 export type TableViewOption = { value: TableView; label: string; count: number | null }
 
 const VIEW_LABELS: Record<TableView, string> = {
-  rows: 'Dados',
+  rows: 'Linhas',
   columns: 'Colunas',
   policies: 'Políticas',
   settings: 'Configurações',

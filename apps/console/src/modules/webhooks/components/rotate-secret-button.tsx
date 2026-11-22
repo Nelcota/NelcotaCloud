@@ -1,4 +1,4 @@
-import Refresh from '~icons/solar/refresh-linear'
+import { RefreshCw as Refresh } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { ROTATE_CHANGE, ROTATE_DESCRIPTION } from '@/modules/webhooks/components/endpoint-copy'

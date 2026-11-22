@@ -1,9 +1,10 @@
 import type { JSX } from 'react'
 import { useState } from 'react'
 
-import { CreateEndpointButton } from '@/modules/webhooks/components/create-endpoint-button'
+import type { EndpointCreator } from '@/modules/webhooks/components/create-endpoint-button'
 import type { EndpointFormValues } from '@/modules/webhooks/components/endpoint-form-dialog'
 import type { LastRotation } from '@/modules/webhooks/components/endpoint-panel-types'
+import { HeaderCreateAction } from '@/modules/webhooks/components/header-create-action'
 import { useEndpointSelection } from '@/modules/webhooks/components/use-endpoint-selection'
 import { WebhookSecretNotice } from '@/modules/webhooks/components/webhook-secret-notice'
 import { webhookApiSnippets } from '@/modules/webhooks/components/webhook-api-snippets'
@@ -35,6 +36,10 @@ export function WebhooksPage(): JSX.Element {
   const canIssueSecret =
     secret === undefined && creation.isPending === false && rotation.isPending === false
   const count = endpoints.data?.length ?? 0
+  const creator: EndpointCreator = {
+    isDisabled: canIssueSecret === false || count >= MAX_ENDPOINTS,
+    onCreate: create,
+  }
 
   // The new endpoint opens at once, so its secret and its panel are seen together.
   async function create(values: EndpointFormValues): Promise<void> {
@@ -48,19 +53,14 @@ export function WebhooksPage(): JSX.Element {
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-4">
       <PageHeader
         title="Webhooks"
         description="Eventos assinados para o seu servidor, no formato Standard Webhooks."
         actions={
           <>
             <ApiSheet title="Webhooks pela API" snippets={webhookApiSnippets()} />
-            <CreateEndpointButton
-              creator={{
-                isDisabled: canIssueSecret === false || count >= MAX_ENDPOINTS,
-                onCreate: create,
-              }}
-            />
+            <HeaderCreateAction endpoints={endpoints.data} creator={creator} />
           </>
         }
       />
@@ -78,6 +78,7 @@ export function WebhooksPage(): JSX.Element {
         hasFailed={endpoints.isError}
         limit={MAX_ENDPOINTS}
         selection={selection}
+        creator={creator}
         rotation={{
           canRotate: canIssueSecret,
           isRotating: rotation.isPending,

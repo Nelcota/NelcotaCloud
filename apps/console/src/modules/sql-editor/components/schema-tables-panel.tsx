@@ -1,15 +1,18 @@
+import { Table } from 'lucide-react'
 import { type JSX, useState } from 'react'
 
 import { useSchemaQuery } from '@/modules/database/queries/use-schema-query'
 import { SqlSideSection } from '@/modules/sql-editor/components/sql-side-section'
 import type { components } from '@/shared/api/api-schema'
+import { formatCount } from '@/shared/lib/format-number'
 import { LoadError } from '@/shared/ui/load-error'
 import { Skeleton } from '@/shared/ui/primitives/skeleton'
 import { SearchField } from '@/shared/ui/search-field'
 
 type TableOverview = components['schemas']['TableOverview']
 
-const COMPACT_COUNT = new Intl.NumberFormat('pt-BR', { notation: 'compact' })
+const SIDE_ITEM =
+  'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-muted-foreground transition-[color,background-color,scale] duration-200 ease-standard hover:bg-surface-hover hover:text-foreground active:scale-[0.98] motion-reduce:active:scale-100'
 
 type SchemaTablesPanelProps = {
   projectId: string
@@ -25,22 +28,15 @@ export function SchemaTablesPanel({ projectId, onPick }: SchemaTablesPanelProps)
   const tables = schema.data?.tables
 
   return (
-    <SqlSideSection title="Tabelas" meta={tables?.length} isOpenByDefault>
-      <div className="flex flex-col gap-2">
-        <SearchField
-          label="Buscar tabela"
-          value={search}
-          onValueChange={setSearch}
-          className="sm:max-w-none"
-        />
-        <LoadError error={schema.error} onRetry={() => schema.refetch()} />
-        <TablesContent
-          tables={tables}
-          isPending={schema.isPending}
-          filter={filter}
-          onPick={onPick}
-        />
-      </div>
+    <SqlSideSection title="Tabelas" meta={tables?.length}>
+      <SearchField
+        label="Buscar tabela"
+        value={search}
+        onValueChange={setSearch}
+        className="mb-1 sm:max-w-none"
+      />
+      <LoadError error={schema.error} onRetry={() => schema.refetch()} />
+      <TablesContent tables={tables} isPending={schema.isPending} filter={filter} onPick={onPick} />
     </SqlSideSection>
   )
 }
@@ -52,36 +48,30 @@ type TablesContentProps = {
   onPick: (table: string) => void
 }
 
-function TablesContent({
-  tables,
-  isPending,
-  filter,
-  onPick,
-}: TablesContentProps): JSX.Element | null {
-  if (isPending) {
-    return <Skeleton className="h-40" />
+function TablesContent(props: TablesContentProps): JSX.Element | null {
+  const { tables, onPick } = props
+
+  if (props.isPending) {
+    return <Skeleton className="h-32" />
   }
 
   if (tables === undefined) {
     return null
   }
 
-  const shown = tables.filter((table) => table.name.toLowerCase().includes(filter))
+  const shown = tables.filter((table) => table.name.toLowerCase().includes(props.filter))
 
   if (shown.length === 0) {
-    return <p className="px-2 py-1.5 text-sm text-muted-foreground">{emptyText(tables.length)}</p>
+    return <p className="px-2 py-1.5 text-xs text-muted-foreground">{emptyText(tables.length)}</p>
   }
 
   return (
-    <ul className="scrollbar-thin flex max-h-[28rem] flex-col overflow-y-auto">
+    <ul className="scrollbar-thin flex max-h-[22rem] flex-col overflow-y-auto">
       {shown.map((table) => (
         <li key={table.name}>
-          <button
-            type="button"
-            className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left font-mono text-sm text-muted-foreground hover:bg-surface-hover hover:text-foreground"
-            onClick={() => onPick(table.name)}
-          >
-            <span className="truncate">{table.name}</span>
+          <button type="button" className={SIDE_ITEM} onClick={() => onPick(table.name)}>
+            <Table aria-hidden className="size-3.5 shrink-0" />
+            <span className="min-w-0 flex-1 truncate font-mono text-xs">{table.name}</span>
             <RowCount rows={table.estimated_rows} />
           </button>
         </li>
@@ -98,15 +88,11 @@ function emptyText(tableCount: number): string {
   return 'Nenhuma tabela ainda.'
 }
 
-/** Postgres's estimate, short ("48 mil"); empty when it has not counted the table yet. */
+/** Postgres's estimate, short ("48,2 mil"); empty when it has not counted the table yet. */
 function RowCount({ rows }: { rows: number | null | undefined }): JSX.Element | null {
   if (rows === null || rows === undefined || rows < 0) {
     return null
   }
 
-  return (
-    <span className="shrink-0 font-sans text-xs text-muted-foreground tabular-nums">
-      {COMPACT_COUNT.format(rows)}
-    </span>
-  )
+  return <span className="shrink-0 text-2xs text-faint tabular-nums">{formatCount(rows)}</span>
 }

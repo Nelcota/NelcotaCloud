@@ -1,4 +1,4 @@
-import MenuDots from '~icons/solar/menu-dots-bold'
+import { Ellipsis as MenuDots } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { restUrl } from '@/modules/database/components/snippet-syntax'

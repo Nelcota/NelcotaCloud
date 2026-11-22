@@ -1,5 +1,4 @@
-import MenuDots from '~icons/solar/menu-dots-bold'
-import TrashBin from '~icons/solar/trash-bin-trash-linear'
+import { Ellipsis as MenuDots, Trash2 as TrashBin } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 

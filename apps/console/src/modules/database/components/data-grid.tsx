@@ -8,6 +8,8 @@ import {
   type GridRow,
   GridRowDetails,
 } from '@/modules/database/components/grid-row-details'
+import { numericColumns } from '@/modules/database/components/numeric-columns'
+import { cn } from '@/shared/lib/utils'
 import { EmptyState } from '@/shared/ui/empty-state'
 import { Button } from '@/shared/ui/primitives/button'
 import { TableBody, TableCell, TableRow } from '@/shared/ui/primitives/table'
@@ -29,6 +31,7 @@ export function DataGrid({ label, columns, rows, rowOffset = 0 }: DataGridProps)
   const [openRow, setOpenRow] = useState<GridRow | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const data = rows.map((cells, index) => ({ number: rowOffset + index + 1, cells }))
+  const isNumeric = numericColumns(columns, rows)
 
   function showRow(row: GridRow): void {
     setOpenRow(row)
@@ -42,18 +45,21 @@ export function DataGrid({ label, columns, rows, rowOffset = 0 }: DataGridProps)
   return (
     <>
       <div className="scrollbar-thin max-h-[32rem] min-w-0 overflow-auto overscroll-contain">
-        <table aria-label={label} className="w-full border-separate border-spacing-0 text-sm">
-          <GridHeader columns={columns} />
+        <table
+          aria-label={label}
+          className="w-full border-separate border-spacing-0 font-mono text-xs"
+        >
+          <GridHeader columns={columns} isNumeric={isNumeric} />
           <TableBody>
             {data.map((row) => (
               <TableRow key={row.number} className="[&>td]:border-b [&>td]:border-border/60">
-                <TableCell className="sticky left-0 z-[1] w-12 bg-card px-1 py-0.5">
+                <TableCell className="sticky left-0 z-[1] h-8 w-12 bg-card px-1 py-0 ps-1">
                   <RowButton row={row} onShow={showRow} />
                 </TableCell>
                 {row.cells.map((value, index) => (
                   <TableCell
                     key={index}
-                    className="max-w-72 border-l border-border/60 px-3 py-1.5 font-mono"
+                    className={cn('h-8 max-w-72 py-0', isNumeric[index] === true && 'text-right')}
                   >
                     <CellValue value={value} />
                   </TableCell>
@@ -83,9 +89,9 @@ function RowButton({ row, onShow }: RowButtonProps): JSX.Element {
     <Button
       type="button"
       variant="ghost"
-      size="sm"
+      size="xs"
       aria-label={`Ver linha ${number}`}
-      className="w-full justify-end font-mono text-muted-foreground tabular-nums"
+      className="w-full justify-end font-mono text-faint tabular-nums"
       onClick={() => onShow(row)}
     >
       {number}

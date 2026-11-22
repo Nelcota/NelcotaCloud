@@ -12,26 +12,27 @@ type EndpointListProps = {
   limit: number
 }
 
-/** The master column: every endpoint as a selectable row, with the count against the limit. */
+/** The secondary sidebar: every endpoint as a selectable row, under a label with the count. */
 export function EndpointList(props: EndpointListProps): JSX.Element {
   const titleId = useId()
 
   return (
-    <section
+    <nav
       aria-labelledby={titleId}
-      className="flex min-w-0 flex-col overflow-hidden rounded-xl border bg-card lg:sticky lg:top-0"
+      className="flex min-w-0 flex-col gap-1 rounded-xl bg-surface p-1.5 lg:sticky lg:top-0 lg:bg-transparent lg:p-0"
     >
-      <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
-        <div className="flex min-w-0 items-baseline gap-2">
-          <h2 id={titleId} className="text-sm font-semibold">
-            Endpoints
-          </h2>
-          <span className="text-sm text-muted-foreground tabular-nums">
-            {props.endpoints.length} de {props.limit}
-          </span>
-        </div>
+      <div className="flex items-baseline justify-between gap-2 px-2 pb-1">
+        <h2
+          id={titleId}
+          className="text-2xs font-medium tracking-wide text-muted-foreground uppercase"
+        >
+          Endpoints
+        </h2>
+        <span className="font-mono text-2xs text-faint tabular-nums">
+          {props.endpoints.length} de {props.limit}
+        </span>
       </div>
-      <ul className="flex flex-col gap-1 p-1.5">
+      <ul className="flex flex-col gap-0.5">
         {props.endpoints.map((endpoint) => (
           <EndpointListItem
             key={endpoint.id}
@@ -42,6 +43,6 @@ export function EndpointList(props: EndpointListProps): JSX.Element {
           />
         ))}
       </ul>
-    </section>
+    </nav>
   )
 }

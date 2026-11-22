@@ -53,7 +53,7 @@ export function EventGroupFieldset({
           {allToggleLabel(isAll)}
         </Button>
       </div>
-      <div className="divide-y rounded-lg border">
+      <div className="divide-y divide-border/60 rounded-xl bg-surface">
         {group.eventTypes.map((eventType) => (
           <CheckboxField
             key={eventType}
@@ -74,7 +74,7 @@ type EventHintProps = { eventType: WebhookEventType; hasMeaning: boolean }
 function EventHint({ eventType, hasMeaning }: EventHintProps): JSX.Element {
   return (
     <span className="grid gap-0.5">
-      <code className="font-mono text-xs text-foreground/80">{eventType}</code>
+      <code className="font-mono text-2xs text-foreground/80">{eventType}</code>
       {hasMeaning && <span>{EVENT_TYPE_MEANINGS[eventType]}</span>}
     </span>
   )

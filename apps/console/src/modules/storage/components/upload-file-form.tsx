@@ -5,14 +5,12 @@ import { useRef, useState } from 'react'
 
 import type { StorageObject } from '@/modules/storage/api/storage-types'
 import type { UploadFileAttempt } from '@/modules/storage/api/upload-file'
+import { MAX_FILE_BYTES } from '@/modules/storage/components/storage-limits'
 import { ErrorAlert } from '@/shared/ui/error-alert'
 import { FileInput } from '@/shared/ui/file-input'
 import { PendingButton } from '@/shared/ui/pending-button'
 import { Button } from '@/shared/ui/primitives/button'
 import { DialogFooter } from '@/shared/ui/primitives/dialog'
-
-/** The storage API's limit per object, refused here before the upload starts. */
-const MAX_FILE_BYTES = 25 * 1024 * 1024
 
 type UploadFileFormProps = {
   upload: UseMutationResult<StorageObject, Error, UploadFileAttempt>

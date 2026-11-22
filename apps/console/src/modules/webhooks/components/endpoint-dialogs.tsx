@@ -1,4 +1,4 @@
-import PlugCircle from '~icons/solar/plug-circle-linear'
+import { Plug as PlugCircle } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { DELETE_DESCRIPTION } from '@/modules/webhooks/components/endpoint-copy'

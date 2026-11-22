@@ -1,4 +1,4 @@
-import CodeSquare from '~icons/solar/code-square-linear'
+import { SquareCode as CodeSquare } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { CreateTableDialog } from '@/modules/database/components/create-table-dialog'

@@ -33,17 +33,15 @@ export function EndpointTabs({ panel, view }: EndpointTabsProps): JSX.Element {
     <Tabs
       value={view.tab}
       onValueChange={(value) => view.onTabChange(tabOf(value))}
-      className="gap-0"
+      className="gap-4"
     >
-      <div className="border-b px-4 sm:px-6">
-        <TabsList variant="line" className="justify-start gap-2.5 px-0 sm:gap-5">
-          {TABS.map((tab) => (
-            <TabsTrigger key={tab.value} value={tab.value} className="flex-none px-0">
-              {tab.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </div>
+      <TabsList variant="line" className="w-full">
+        {TABS.map((tab) => (
+          <TabsTrigger key={tab.value} value={tab.value}>
+            {tab.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
       <WebhookTabPanel value="deliveries">
         <DeliveryLog
           projectId={panel.projectId}
@@ -51,13 +49,13 @@ export function EndpointTabs({ panel, view }: EndpointTabsProps): JSX.Element {
           filter={{ value: view.filter, onChange: view.onFilterChange }}
         />
       </WebhookTabPanel>
-      <WebhookTabPanel value="events" className="p-5 sm:p-6">
+      <WebhookTabPanel value="events">
         <EndpointEventsTab projectId={panel.projectId} endpoint={panel.endpoint} />
       </WebhookTabPanel>
-      <WebhookTabPanel value="secret" className="p-5 sm:p-6">
+      <WebhookTabPanel value="secret">
         <EndpointSecretTab panel={panel} />
       </WebhookTabPanel>
-      <WebhookTabPanel value="settings" className="p-5 sm:p-6">
+      <WebhookTabPanel value="settings">
         <EndpointSettingsTab projectId={panel.projectId} endpoint={panel.endpoint} />
       </WebhookTabPanel>
     </Tabs>

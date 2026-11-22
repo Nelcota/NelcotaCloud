@@ -1,4 +1,4 @@
-import Upload from '~icons/solar/upload-linear'
+import { Upload } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 

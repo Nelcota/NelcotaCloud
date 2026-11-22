@@ -1,4 +1,4 @@
-import SearchX from '~icons/solar/magnifier-close-linear'
+import { SearchX } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
@@ -11,6 +11,7 @@ import {
 import { isRlsOff } from '@/modules/database/components/table-kinds'
 import { TablesTable } from '@/modules/database/components/tables-table'
 import type { components } from '@/shared/api/api-schema'
+import { formatCount } from '@/shared/lib/format-number'
 import { EmptyState } from '@/shared/ui/empty-state'
 import { Button } from '@/shared/ui/primitives/button'
 import { SearchField } from '@/shared/ui/search-field'
@@ -41,9 +42,9 @@ export function FilteredTables({ projectId, tables }: FilteredTablesProps): JSX.
   return (
     <section
       aria-label="Tabelas do schema public"
-      className="min-w-0 overflow-hidden rounded-xl border bg-card"
+      className="min-w-0 overflow-hidden rounded-xl border border-border/60 bg-card"
     >
-      <div className="flex flex-wrap items-center gap-3 border-b px-4 py-3">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border/60 px-4 py-2.5">
         <SearchField label="Buscar tabela" value={search} onValueChange={setSearch} />
         <SegmentedControl
           label="Filtrar tabelas"
@@ -51,10 +52,10 @@ export function FilteredTables({ projectId, tables }: FilteredTablesProps): JSX.
           onValueChange={pickFilter}
           options={[
             { value: 'all', label: 'Todas' },
-            { value: 'rls-off', label: `Sem RLS (${openCount.toLocaleString('pt-BR')})` },
+            { value: 'rls-off', label: `Sem RLS · ${formatCount(openCount)}` },
           ]}
         />
-        <span className="ms-auto text-sm text-muted-foreground tabular-nums" aria-live="polite">
+        <span className="ms-auto text-xs text-muted-foreground tabular-nums" aria-live="polite">
           {visibleCount(visible.length, tables.length)}
         </span>
       </div>
@@ -68,7 +69,7 @@ function visibleCount(shown: number, total: number): string {
     return countLabel(total, 'tabela', 'tabelas')
   }
 
-  return `${shown.toLocaleString('pt-BR')} de ${countLabel(total, 'tabela', 'tabelas')}`
+  return `${formatCount(shown)} de ${countLabel(total, 'tabela', 'tabelas')}`
 }
 
 type VisibleTablesProps = { projectId: string; tables: TableOverview[]; onClear: () => void }

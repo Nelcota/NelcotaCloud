@@ -13,7 +13,7 @@ type SqlHistoryPanelProps = {
 /** The last queries run here, newest first; picking one only fills the editor. */
 export function SqlHistoryPanel({ entries, onPick }: SqlHistoryPanelProps): JSX.Element {
   return (
-    <SqlSideSection title="Histórico" meta={entries.length} isOpenByDefault>
+    <SqlSideSection title="Histórico" meta={entries.length}>
       <HistoryList entries={entries} onPick={onPick} />
     </SqlSideSection>
   )
@@ -21,7 +21,7 @@ export function SqlHistoryPanel({ entries, onPick }: SqlHistoryPanelProps): JSX.
 
 function HistoryList({ entries, onPick }: SqlHistoryPanelProps): JSX.Element {
   if (entries.length === 0) {
-    return <p className="px-2 py-1.5 text-sm text-muted-foreground">Nenhuma consulta ainda.</p>
+    return <p className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma consulta ainda.</p>
   }
 
   return (
@@ -31,13 +31,13 @@ function HistoryList({ entries, onPick }: SqlHistoryPanelProps): JSX.Element {
           <button
             type="button"
             title={entry.sql}
-            className="grid w-full gap-0.5 rounded-md px-2 py-1.5 text-left transition-transform hover:bg-surface-hover active:scale-[0.98] motion-reduce:active:scale-100"
+            className="flex w-full min-w-0 items-baseline gap-2 rounded-md px-2 py-1.5 text-left transition-[color,background-color,scale] duration-200 ease-standard hover:bg-surface-hover active:scale-[0.98] motion-reduce:active:scale-100"
             onClick={() => onPick(entry.sql)}
           >
-            <span className="truncate font-mono text-xs text-foreground">
+            <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground">
               {firstLine(entry.sql)}
             </span>
-            <span className="text-xs text-muted-foreground">
+            <span className="shrink-0 text-2xs text-faint">
               <Timestamp value={entry.ranAt} format="relative" />
             </span>
           </button>

@@ -37,7 +37,7 @@ export function EndpointWorkspace(props: EndpointWorkspaceProps): JSX.Element {
   }
 
   return (
-    <div className="grid items-start gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
+    <div className="grid items-start gap-4 lg:grid-cols-[13.5rem_minmax(0,1fr)] lg:gap-6">
       <EndpointList
         projectId={props.projectId}
         endpoints={endpoints}

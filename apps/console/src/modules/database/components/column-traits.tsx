@@ -36,7 +36,7 @@ function ReferenceNote({ target }: { target: string | null }): JSX.Element | nul
     return null
   }
 
-  return <code className="font-mono text-xs text-muted-foreground">→ {target}</code>
+  return <code className="font-mono text-muted-foreground">→ {target}</code>
 }
 
 /** `posts.id` for a one-column key; `posts(a, b)` when the key spans several columns. */

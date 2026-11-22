@@ -10,9 +10,11 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from '@/shared/ui/primitives/sheet'
+import { Timestamp } from '@/shared/ui/timestamp'
 
 type DeliveryLogEntry = components['schemas']['DeliveryLogEntry']
 
@@ -36,7 +38,7 @@ export function DeliverySheet({ delivery, retry, onClose }: DeliverySheetProps):
     >
       <SheetContent
         side="right"
-        className="gap-0 overflow-y-auto p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-xl"
+        className="gap-0 p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-xl"
       >
         <DeliveryContent delivery={delivery} retry={retry} />
       </SheetContent>
@@ -53,36 +55,39 @@ function DeliveryContent({ delivery, retry }: DeliveryContentProps): JSX.Element
 
   return (
     <>
-      <SheetHeader className="gap-2 border-b px-6 py-5">
-        <SheetTitle className="font-mono text-lg font-semibold text-heading">
-          {delivery.event_type}
-        </SheetTitle>
+      <SheetHeader className="gap-1.5 border-b pe-12">
+        <SheetTitle className="font-mono wrap-anywhere">{delivery.event_type}</SheetTitle>
         <SheetDescription asChild>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <DeliveryStatusBadge status={delivery.status} />
-            <span>Eventos de teste não entram neste histórico.</span>
+            <span>
+              Criada <Timestamp value={delivery.created_at} format="relative" />
+            </span>
           </div>
         </SheetDescription>
       </SheetHeader>
-      <div className="flex flex-col gap-6 p-6">
+      <div className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
         <DeliveryFields delivery={delivery} />
-        <CodeBlock code={sentHeaders(delivery)} title="Headers enviados" isWrapped />
-        <p className="-mt-4 text-sm text-muted-foreground">
-          O corpo não fica guardado: tem dados pessoais.
-        </p>
-        <CodeBlock code={JSON.stringify(delivery, null, 2)} title="JSON" copyLabel="Entrega" />
-        <div className="flex justify-end">
-          <PendingButton
-            type="button"
-            variant="outline"
-            isPending={retry.retryingId === delivery.id}
-            disabled={retry.retryingId !== null}
-            onClick={() => retry.onRetry(delivery.id)}
-          >
-            Reenviar
-          </PendingButton>
+        <div className="grid gap-1.5">
+          <CodeBlock code={sentHeaders(delivery)} title="Headers enviados" isWrapped />
+          <p className="text-xs text-muted-foreground">
+            O corpo não fica guardado: tem dados pessoais. Eventos de teste não entram neste
+            histórico.
+          </p>
         </div>
+        <CodeBlock code={JSON.stringify(delivery, null, 2)} title="Registro" copyLabel="Entrega" />
       </div>
+      <SheetFooter className="flex-row justify-end border-t">
+        <PendingButton
+          type="button"
+          variant="outline"
+          isPending={retry.retryingId === delivery.id}
+          disabled={retry.retryingId !== null}
+          onClick={() => retry.onRetry(delivery.id)}
+        >
+          Reenviar
+        </PendingButton>
+      </SheetFooter>
     </>
   )
 }

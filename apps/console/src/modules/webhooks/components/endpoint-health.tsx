@@ -1,24 +1,18 @@
 import type { JSX } from 'react'
 
-import { DeliverySummaryLine } from '@/modules/webhooks/components/delivery-summary-line'
 import { summarizeDeliveries } from '@/modules/webhooks/components/delivery-summary'
-import { type HealthAction, healthOf } from '@/modules/webhooks/components/endpoint-health-state'
+import { healthSentence } from '@/modules/webhooks/components/endpoint-health-sentence'
+import {
+  HEALTH,
+  type HealthAction,
+  healthKindOf,
+} from '@/modules/webhooks/components/endpoint-health-state'
 import type { WebhookEndpoint } from '@/modules/webhooks/components/endpoint-panel-types'
 import { useWebhookDeliveriesQuery } from '@/modules/webhooks/queries/use-webhook-deliveries'
-import { cn } from '@/shared/lib/utils'
 import { LoadError } from '@/shared/ui/load-error'
 import { PendingButton } from '@/shared/ui/pending-button'
 import { Skeleton } from '@/shared/ui/primitives/skeleton'
-import type { StatusTone } from '@/shared/ui/status-badge'
-
-const DOT_COLORS: Record<StatusTone, string> = {
-  neutral: 'bg-muted-foreground',
-  success: 'bg-success',
-  warning: 'bg-warning',
-  error: 'bg-destructive',
-  info: 'bg-info',
-  brand: 'bg-primary',
-}
+import { SummarySentence } from '@/shared/ui/summary-sentence'
 
 type EndpointHealthProps = {
   projectId: string
@@ -28,7 +22,7 @@ type EndpointHealthProps = {
   onAction: (action: HealthAction) => void
 }
 
-/** The panel's headline: whether this endpoint is delivering, in one large line, and what to do. */
+/** Whether this endpoint is delivering, in one sentence, with the step that fits it. */
 export function EndpointHealth(props: EndpointHealthProps): JSX.Element {
   const deliveries = useWebhookDeliveriesQuery(props.projectId, props.endpoint.id)
 
@@ -37,35 +31,31 @@ export function EndpointHealth(props: EndpointHealthProps): JSX.Element {
   }
 
   if (deliveries.data === undefined) {
-    return <Skeleton className="h-24 rounded-xl" />
+    return <Skeleton className="h-12 rounded-xl" />
   }
 
-  const summary = summarizeDeliveries(deliveries.data, deliveries.dataUpdatedAt)
-  const health = healthOf(props.endpoint.is_enabled, summary)
+  const loadedAt = deliveries.dataUpdatedAt
+  const summary = summarizeDeliveries(deliveries.data, loadedAt)
+  const kind = healthKindOf(props.endpoint.is_enabled, summary)
+  const health = HEALTH[kind]
 
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="grid min-w-0 gap-2">
-        <p
-          role="status"
-          className="flex items-start gap-3 text-2xl font-semibold tracking-tight text-heading sm:text-3xl"
+    <SummarySentence
+      tone={health.tone}
+      verdict={health.verdict}
+      action={
+        <PendingButton
+          type="button"
+          size="sm"
+          variant="outline"
+          isPending={props.isActing}
+          onClick={() => props.onAction(health.action)}
         >
-          <span
-            aria-hidden
-            className={cn('mt-[0.4em] size-3 shrink-0 rounded-full', DOT_COLORS[health.tone])}
-          />
-          {health.title}
-        </p>
-        <DeliverySummaryLine summary={summary} />
-      </div>
-      <PendingButton
-        type="button"
-        className="self-start sm:self-auto"
-        isPending={props.isActing}
-        onClick={() => props.onAction(health.action)}
-      >
-        {health.actionLabel}
-      </PendingButton>
-    </div>
+          {health.actionLabel}
+        </PendingButton>
+      }
+    >
+      <span className="tabular-nums">{healthSentence(kind, summary, loadedAt)}</span>
+    </SummarySentence>
   )
 }

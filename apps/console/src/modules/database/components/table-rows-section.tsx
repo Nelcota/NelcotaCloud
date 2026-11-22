@@ -1,4 +1,4 @@
-import Rows from '~icons/solar/list-linear'
+import { List as Rows } from 'lucide-react'
 import type { JSX, ReactNode } from 'react'
 import { useState } from 'react'
 
@@ -99,7 +99,7 @@ function RowsContent({ table, page, hasFailed, frame }: RowsContentProps): JSX.E
   const columns = table.columns
 
   return (
-    <div className="overflow-hidden rounded-xl border bg-card">
+    <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
       {frame.toolbar}
       <DataGrid
         label={`Linhas de ${table.name}`}

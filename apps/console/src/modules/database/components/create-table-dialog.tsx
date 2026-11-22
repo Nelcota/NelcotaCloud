@@ -1,4 +1,4 @@
-import Plus from '~icons/solar/add-linear'
+import { Plus } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import type { JSX } from 'react'
 import { useState } from 'react'
