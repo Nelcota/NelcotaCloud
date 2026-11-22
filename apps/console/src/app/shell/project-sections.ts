@@ -49,7 +49,7 @@ export const PROJECT_GROUPS: readonly ProjectGroup[] = [
   { id: 'home', label: null },
   { id: 'auth', label: 'Autenticação' },
   { id: 'data', label: 'Dados' },
-  { id: 'project', label: 'Projeto' },
+  { id: 'project', label: 'Administração' },
 ]
 
 export const PROJECT_SECTIONS: readonly ProjectSection[] = [

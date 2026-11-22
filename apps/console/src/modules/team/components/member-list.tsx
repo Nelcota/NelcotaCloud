@@ -7,7 +7,11 @@ import type { MemberRow } from '@/modules/team/components/team-rows'
 import type { CurrentAccount } from '@/shared/auth/use-current-account'
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/shared/ui/primitives/table'
 
-const COLUMNS = ['Pessoa', 'Papel', 'Account ID', 'Entrou em']
+const COLUMNS = [
+  { label: 'Pessoa', width: '' },
+  { label: 'Papel', width: 'w-28' },
+  { label: 'Entrou', width: 'w-28' },
+]
 
 export type MemberListProps = {
   rows: MemberRow[]
@@ -22,13 +26,15 @@ export type MemberListProps = {
 /** Who has access, one row per person, owners first. */
 export function MemberList(props: MemberListProps): JSX.Element {
   return (
-    <Table>
+    <Table className="min-w-[34rem] table-fixed">
       <TableHeader>
-        <TableRow className="hover:bg-transparent">
+        <TableRow>
           {COLUMNS.map((column) => (
-            <TableHead key={column}>{column}</TableHead>
+            <TableHead key={column.label} className={column.width}>
+              {column.label}
+            </TableHead>
           ))}
-          <TableHead>
+          <TableHead className="w-12">
             <span className="sr-only">Ações</span>
           </TableHead>
         </TableRow>

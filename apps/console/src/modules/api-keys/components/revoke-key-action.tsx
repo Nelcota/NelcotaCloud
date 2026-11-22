@@ -1,5 +1,4 @@
-import Key from '~icons/solar/key-linear'
-import { Ellipsis, Trash2 } from 'lucide-react'
+import { Ellipsis, Trash2, KeyRound as Key } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
@@ -15,6 +14,11 @@ import {
 } from '@/shared/ui/primitives/dropdown-menu'
 
 type ApiKeySummary = components['schemas']['ApiKeySummary']
+
+const KIND_NAMES: Record<string, string> = {
+  publishable: 'chave publicável',
+  secret: 'chave secreta',
+}
 
 type RevokeKeyActionProps = {
   apiKey: ApiKeySummary
@@ -42,7 +46,7 @@ export function RevokeKeyAction(props: RevokeKeyActionProps): JSX.Element {
             type="button"
             variant="ghost"
             size="icon-sm"
-            aria-label={`Ações da chave ${label}`}
+            aria-label={`Ações da ${label}`}
             isPending={props.isPending}
           >
             <Ellipsis aria-hidden />
@@ -75,7 +79,7 @@ export function RevokeKeyAction(props: RevokeKeyActionProps): JSX.Element {
 
 /** Names the key the way the table does, so the dialog cannot be mistaken for another row. */
 function revokeTitle(apiKey: ApiKeySummary): string {
-  const label = `${apiKey.kind} key …${apiKey.hint}`
+  const label = keyLabel(apiKey)
 
   if (apiKey.name === '') {
     return `Revogar a ${label}?`
@@ -85,12 +89,12 @@ function revokeTitle(apiKey: ApiKeySummary): string {
 }
 
 function keyLabel(apiKey: ApiKeySummary): string {
-  return `${apiKey.kind} …${apiKey.hint}`
+  return `${KIND_NAMES[apiKey.kind] ?? apiKey.kind} …${apiKey.hint}`
 }
 
 function revokeConsequence(kind: string, activeOfKind: number): string {
   if (kind === 'publishable' && activeOfKind <= 1) {
-    return 'É a única publishable key ativa: o app para de fazer login na hora, até você publicá-lo com uma chave nova.'
+    return 'É a única chave publicável ativa: o app para de fazer login na hora, até você publicá-lo com uma chave nova.'
   }
 
   return 'Ela para de funcionar na hora. Apps e servidores que ainda a usam deixam de acessar a API.'

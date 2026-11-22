@@ -1,12 +1,12 @@
 import type { JSX } from 'react'
 
+import { KeyKindBadge } from '@/modules/api-keys/components/key-kind-badge'
 import { KeyLastUsed } from '@/modules/api-keys/components/key-last-used'
 import { KeyName } from '@/modules/api-keys/components/key-name'
 import type { KeyRevocation } from '@/modules/api-keys/components/key-revocation'
 import { KeyValue } from '@/modules/api-keys/components/key-value'
 import { RevokeKeyAction } from '@/modules/api-keys/components/revoke-key-action'
 import type { components } from '@/shared/api/api-schema'
-import { IdChip } from '@/shared/ui/id-chip'
 import { TableCell, TableRow } from '@/shared/ui/primitives/table'
 import { StatusBadge } from '@/shared/ui/status-badge'
 import { Timestamp } from '@/shared/ui/timestamp'
@@ -28,13 +28,13 @@ export function KeyTableRow({ apiKey, activeCount, revocation }: KeyTableRowProp
         <KeyName apiKey={apiKey} />
       </TableCell>
       <TableCell>
-        <KeyValue apiKey={apiKey} isRevoked={false} />
+        <KeyKindBadge kind={apiKey.kind} />
       </TableCell>
       <TableCell>
-        <IdChip label="ID da chave" value={apiKey.id} className="max-w-28" />
+        <KeyValue apiKey={apiKey} isRevoked={false} />
       </TableCell>
       <TableCell className="text-muted-foreground">
-        <Timestamp value={apiKey.created_at} format="date" />
+        <Timestamp value={apiKey.created_at} format="relative" />
       </TableCell>
       <TableCell className="text-muted-foreground">
         <KeyLastUsed lastUsedAt={apiKey.last_used_at} />
@@ -42,7 +42,7 @@ export function KeyTableRow({ apiKey, activeCount, revocation }: KeyTableRowProp
       <TableCell>
         <StatusBadge tone="success">Ativa</StatusBadge>
       </TableCell>
-      <TableCell className="w-10 text-right">
+      <TableCell className="text-right">
         <RevokeKeyAction
           apiKey={apiKey}
           activeOfKind={activeCount}

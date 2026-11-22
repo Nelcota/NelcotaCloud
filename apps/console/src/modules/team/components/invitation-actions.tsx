@@ -1,5 +1,4 @@
-import Letter from '~icons/solar/letter-linear'
-import Trash from '~icons/solar/trash-bin-trash-linear'
+import { Mail as Letter, Trash2 as Trash } from 'lucide-react'
 import type { JSX } from 'react'
 
 import type { InvitationRow } from '@/modules/team/components/team-rows'

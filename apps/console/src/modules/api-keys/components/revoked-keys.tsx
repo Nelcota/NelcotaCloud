@@ -11,7 +11,15 @@ type ApiKeySummary = components['schemas']['ApiKeySummary']
 
 export type MoreKeys = { hasMore: boolean; isLoading: boolean; onLoad: () => void }
 
-const COLUMNS = ['Nome', 'Tipo', 'Chave', 'ID', 'Criada', 'Último uso', 'Revogada']
+/** The same widths as the active table, so both read column by column. */
+const COLUMNS = [
+  { label: 'Nome', width: 'w-[26%]' },
+  { label: 'Tipo', width: 'w-24' },
+  { label: 'Chave', width: 'w-[30%]' },
+  { label: 'Criada', width: 'w-24' },
+  { label: 'Último uso', width: 'w-24' },
+  { label: 'Revogada', width: 'w-32' },
+]
 
 type RevokedKeysProps = { keys: ApiKeySummary[]; more: MoreKeys }
 
@@ -24,16 +32,14 @@ export function RevokedKeys({ keys, more }: RevokedKeysProps): JSX.Element | nul
   }
 
   return (
-    <DisclosurePanel
-      title="Chaves revogadas"
-      summary={revokedCount(revoked.length, more.hasMore)}
-      isFlush
-    >
-      <Table>
+    <DisclosurePanel title="Revogadas" summary={revokedCount(revoked.length, more.hasMore)} isFlush>
+      <Table className="min-w-[48rem] table-fixed">
         <TableHeader>
-          <TableRow className="hover:bg-transparent">
+          <TableRow>
             {COLUMNS.map((column) => (
-              <TableHead key={column}>{column}</TableHead>
+              <TableHead key={column.label} className={column.width}>
+                {column.label}
+              </TableHead>
             ))}
           </TableRow>
         </TableHeader>
@@ -62,10 +68,11 @@ function LoadMore({ more }: { more: MoreKeys }): JSX.Element | null {
   }
 
   return (
-    <div className="flex justify-center border-t p-3">
+    <div className="flex justify-center border-t border-border/60 p-2">
       <PendingButton
         type="button"
-        variant="outline"
+        variant="ghost"
+        size="sm"
         isPending={more.isLoading}
         onClick={more.onLoad}
       >

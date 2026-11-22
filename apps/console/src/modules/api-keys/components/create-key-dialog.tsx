@@ -1,6 +1,4 @@
-import Server from '~icons/solar/server-linear'
-import Smartphone from '~icons/solar/smartphone-linear'
-import { Plus } from 'lucide-react'
+import { Plus, Server, Smartphone } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
@@ -64,7 +62,7 @@ export function CreateKeyDialog(props: CreateKeyDialogProps): JSX.Element {
         isOpen={isOpen}
         onOpenChange={setIsOpen}
         title="Nova chave de API"
-        description="Uma secret key nunca vai para o app."
+        description="Uma chave secreta nunca vai para o app."
         confirmLabel="Criar chave"
         size="lg"
         canConfirm={name.trim().length <= MAX_NAME_LENGTH}

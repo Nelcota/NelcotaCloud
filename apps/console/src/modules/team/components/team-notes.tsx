@@ -26,7 +26,7 @@ export function TeamNotes({ team }: { team: TeamView }): JSX.Element | null {
 
 function Note({ children }: { children: string }): JSX.Element {
   return (
-    <p className="border-t bg-surface px-4 py-2.5 text-xs text-pretty text-muted-foreground">
+    <p className="border-t border-border/60 px-4 py-2.5 text-xs text-pretty text-muted-foreground">
       {children}
     </p>
   )

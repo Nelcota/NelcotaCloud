@@ -6,6 +6,7 @@ import { KeysSkeleton } from '@/modules/api-keys/components/keys-skeleton'
 import { type MoreKeys, RevokedKeys } from '@/modules/api-keys/components/revoked-keys'
 import { useRevokeApiKeyMutation } from '@/modules/api-keys/queries/use-api-keys'
 import type { components } from '@/shared/api/api-schema'
+import { Notice } from '@/shared/ui/notice'
 
 type ApiKeySummary = components['schemas']['ApiKeySummary']
 
@@ -17,11 +18,11 @@ type KeyListsProps = {
   more: MoreKeys
 }
 
-/** Publishable and secret keys as two tables, then the revoked ones behind a closed panel. */
+/** The working keys as one table, then the revoked ones behind a closed panel. */
 export function KeyLists({ projectId, keys, hasFailed, more }: KeyListsProps): JSX.Element | null {
   const revocation = useRevokeApiKeyMutation(projectId)
 
-  // The page's load error already says it all, so neither the lists nor a skeleton show.
+  // The load error of the page already says it all, so neither the lists nor a skeleton show.
   if (keys === undefined && hasFailed) {
     return null
   }
@@ -39,26 +40,31 @@ export function KeyLists({ projectId, keys, hasFailed, more }: KeyListsProps): J
     keyId: revocation.variables,
     onRevoke: revoke,
   }
+  const activeSecrets = countActive(keys, 'secret')
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-3">
+      <NoSecretNotice activeSecrets={activeSecrets} />
       <KeyTable
-        title="Publicáveis"
-        description="Vão no app, web ou mobile. Respeitam o RLS."
-        kind="publishable"
         keys={keys}
         revocation={revoking}
-      />
-      <KeyTable
-        title="Secretas"
-        description="Só no servidor. Ignoram o RLS e acessam a API admin."
-        kind="secret"
-        keys={keys}
-        revocation={revoking}
-        footer={<LastSecretNote activeSecrets={countActive(keys, 'secret')} />}
+        footer={<LastSecretNote activeSecrets={activeSecrets} />}
       />
       <RevokedKeys keys={keys} more={more} />
     </div>
+  )
+}
+
+/** Without a secret key, no server of the project reaches the admin API. */
+function NoSecretNotice({ activeSecrets }: { activeSecrets: number }): JSX.Element | null {
+  if (activeSecrets > 0) {
+    return null
+  }
+
+  return (
+    <Notice tone="warning" title="Nenhuma chave secreta ativa">
+      Seus servidores não acessam a API admin até você criar uma.
+    </Notice>
   )
 }
 
@@ -69,7 +75,7 @@ function LastSecretNote({ activeSecrets }: { activeSecrets: number }): JSX.Eleme
   }
 
   return (
-    <p className="border-t bg-surface px-4 py-2.5 text-sm text-muted-foreground">
+    <p className="border-t border-border/60 px-4 py-2.5 text-xs text-muted-foreground">
       Crie outra chave secreta antes de revogar a última ativa.
     </p>
   )

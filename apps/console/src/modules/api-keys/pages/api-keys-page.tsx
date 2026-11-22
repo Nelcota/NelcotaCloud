@@ -6,7 +6,6 @@ import { keyApiSnippets } from '@/modules/api-keys/components/key-api-snippets'
 import { firstVisiblePublishable } from '@/modules/api-keys/components/key-activity'
 import { KeyFacts } from '@/modules/api-keys/components/key-facts'
 import { KeyLists } from '@/modules/api-keys/components/key-lists'
-import { KeyStats } from '@/modules/api-keys/components/key-stats'
 import { NewKeyNotice } from '@/modules/api-keys/components/new-key-notice'
 import { SigningKeySection } from '@/modules/api-keys/components/signing-key-section'
 import {
@@ -32,7 +31,7 @@ function ProjectKeys({ projectId }: { projectId: string }): JSX.Element {
   const publishableKey = firstVisiblePublishable(keys.data)
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Chaves de API"
         description="Identificam o projeto em cada requisição, no header apikey."
@@ -53,7 +52,6 @@ function ProjectKeys({ projectId }: { projectId: string }): JSX.Element {
       </PageHeader>
       <NewKeyNotice apiKey={creation.data} onDismiss={() => creation.reset()} />
       <LoadError error={keys.error} onRetry={() => keys.refetch()} />
-      <KeyStats keys={keys.data} hasFailed={keys.isError} />
       <KeyLists
         projectId={projectId}
         keys={keys.data}
@@ -64,7 +62,7 @@ function ProjectKeys({ projectId }: { projectId: string }): JSX.Element {
           onLoad: () => void keys.fetchNextPage(),
         }}
       />
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid items-start gap-6 xl:grid-cols-2">
         <ConnectAppPanel publishableKey={publishableKey} projectId={projectId} />
         <SigningKeySection projectId={projectId} />
       </div>

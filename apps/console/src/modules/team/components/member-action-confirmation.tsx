@@ -1,4 +1,4 @@
-import User from '~icons/solar/user-linear'
+import { User } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 

@@ -19,30 +19,30 @@ const ABILITIES: Ability[] = [
 export function RolesPanel(): JSX.Element {
   return (
     <Section title="Papéis" isFramed>
-      <table className="w-full text-sm">
-        <thead className="bg-surface text-muted-foreground">
-          <tr className="border-b">
-            <th scope="col" className="h-10 px-4 text-left font-medium">
+      <table className="w-full text-xs">
+        <thead className="text-2xs text-muted-foreground">
+          <tr className="border-b border-border/60">
+            <th scope="col" className="h-9 ps-4 text-left font-normal">
               <span className="sr-only">Permissão</span>
             </th>
-            <th scope="col" className="w-16 px-2 text-center font-medium">
+            <th scope="col" className="w-14 text-center font-normal">
               Dono
             </th>
-            <th scope="col" className="w-16 px-2 pe-4 text-center font-medium">
+            <th scope="col" className="w-16 pe-2 text-center font-normal">
               Membro
             </th>
           </tr>
         </thead>
-        <tbody className="divide-y">
+        <tbody className="divide-y divide-border/60">
           {ABILITIES.map((ability) => (
             <tr key={ability.label}>
-              <th scope="row" className="px-4 py-2.5 text-left font-normal">
+              <th scope="row" className="py-2 ps-4 text-left font-normal text-foreground">
                 {ability.label}
               </th>
-              <td className="px-2 text-center">
+              <td className="text-center">
                 <Allowed isAllowed />
               </td>
-              <td className="px-2 pe-4 text-center">
+              <td className="pe-2 text-center">
                 <Allowed isAllowed={ability.isOwnerOnly === false} />
               </td>
             </tr>
@@ -55,11 +55,11 @@ export function RolesPanel(): JSX.Element {
 
 function Allowed({ isAllowed }: { isAllowed: boolean }): JSX.Element {
   if (isAllowed) {
-    return <Check aria-label="Pode" className="mx-auto size-4 text-success" />
+    return <Check aria-label="Pode" className="mx-auto size-3.5 text-success" />
   }
 
   return (
-    <span aria-label="Não pode" className="text-muted-foreground">
+    <span aria-label="Não pode" className="text-faint">
       —
     </span>
   )

@@ -1,4 +1,4 @@
-import Key from '~icons/solar/key-linear'
+import { KeyRound as Key } from 'lucide-react'
 import { useBlocker } from '@tanstack/react-router'
 import type { JSX } from 'react'
 

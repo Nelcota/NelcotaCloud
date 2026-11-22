@@ -2,6 +2,9 @@ import type { components } from '@/shared/api/api-schema'
 
 type ApiKeySummary = components['schemas']['ApiKeySummary']
 
+/** The API refuses a new key once the project holds this many active ones, of both kinds. */
+export const MAX_ACTIVE_KEYS = 20
+
 export function isRevokedKey(key: ApiKeySummary): boolean {
   return key.revoked_at !== null && key.revoked_at !== undefined
 }

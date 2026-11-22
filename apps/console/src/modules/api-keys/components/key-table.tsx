@@ -1,6 +1,10 @@
 import type { JSX } from 'react'
 
-import { activeKeys, countActive } from '@/modules/api-keys/components/key-activity'
+import {
+  MAX_ACTIVE_KEYS,
+  activeKeys,
+  countActive,
+} from '@/modules/api-keys/components/key-activity'
 import type { KeyRevocation } from '@/modules/api-keys/components/key-revocation'
 import { KeyTableRow } from '@/modules/api-keys/components/key-table-row'
 import type { components } from '@/shared/api/api-schema'
@@ -10,56 +14,61 @@ import { Section } from '@/shared/ui/section'
 
 type ApiKeySummary = components['schemas']['ApiKeySummary']
 
-/** Fixed widths, so the publishable and secret tables line up column by column. */
+/** Fixed widths, so long keys are cut instead of pushing the other columns away. */
 const COLUMNS = [
-  { label: 'Nome', width: 'w-[22%]' },
+  { label: 'Nome', width: 'w-[26%]' },
+  { label: 'Tipo', width: 'w-24' },
   { label: 'Chave', width: 'w-[30%]' },
-  { label: 'ID', width: 'w-36' },
-  { label: 'Criada', width: 'w-28' },
-  { label: 'Último uso', width: 'w-36' },
-  { label: 'Status', width: 'w-24' },
+  { label: 'Criada', width: 'w-24' },
+  { label: 'Último uso', width: 'w-24' },
+  { label: 'Status', width: 'w-20' },
 ]
 
+/** Publishable keys first, then secret ones, each in the API's order. */
+const KIND_ORDER = ['publishable', 'secret']
+
 type KeyTableProps = {
-  title: string
-  description: string
-  kind: 'publishable' | 'secret'
   keys: ApiKeySummary[]
   revocation: KeyRevocation
   /** Said under the rows, such as why a key cannot be revoked. */
   footer?: JSX.Element | null
 }
 
-/** The working keys of one kind as a framed table. */
-export function KeyTable(props: KeyTableProps): JSX.Element {
-  const rows = activeKeys(props.keys).filter((key) => key.kind === props.kind)
-  const activeCount = countActive(props.keys, props.kind)
+/** Every working key of the project in one table, against the per-project limit. */
+export function KeyTable({ keys, revocation, footer }: KeyTableProps): JSX.Element {
+  const active = activeKeys(keys)
 
   return (
-    <Section title={props.title} description={props.description} meta={rows.length} isFramed>
-      <KeyRows rows={rows} activeCount={activeCount} revocation={props.revocation} />
-      {props.footer}
+    <Section
+      title="Chaves ativas"
+      description="Publicáveis vão no app e respeitam o RLS. Secretas ficam no servidor e ignoram o RLS."
+      meta={`${active.length} de ${MAX_ACTIVE_KEYS}`}
+      isFramed
+    >
+      <KeyRows keys={keys} revocation={revocation} />
+      {footer}
     </Section>
   )
 }
 
-type KeyRowsProps = { rows: ApiKeySummary[]; activeCount: number; revocation: KeyRevocation }
+function KeyRows({ keys, revocation }: Omit<KeyTableProps, 'footer'>): JSX.Element {
+  const active = activeKeys(keys)
+  const rows = KIND_ORDER.flatMap((kind) => active.filter((key) => key.kind === kind))
 
-function KeyRows({ rows, activeCount, revocation }: KeyRowsProps): JSX.Element {
   if (rows.length === 0) {
-    return <EmptyState title="Nenhuma chave ativa deste tipo." isCompact />
+    return <EmptyState title="Nenhuma chave ativa." isCompact />
   }
 
   return (
-    <Table className="min-w-[52rem] table-fixed">
+    <Table className="min-w-[48rem] table-fixed">
       <TableHeader>
-        <TableRow className="hover:bg-transparent">
+        <TableRow>
           {COLUMNS.map((column) => (
             <TableHead key={column.label} className={column.width}>
               {column.label}
             </TableHead>
           ))}
-          <TableHead className="w-14">
+          <TableHead className="w-12">
             <span className="sr-only">Ações</span>
           </TableHead>
         </TableRow>
@@ -69,7 +78,7 @@ function KeyRows({ rows, activeCount, revocation }: KeyRowsProps): JSX.Element {
           <KeyTableRow
             key={apiKey.id}
             apiKey={apiKey}
-            activeCount={activeCount}
+            activeCount={countActive(keys, apiKey.kind)}
             revocation={revocation}
           />
         ))}

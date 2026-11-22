@@ -1,7 +1,4 @@
-import Crown from '~icons/solar/crown-minimalistic-linear'
-import Logout from '~icons/solar/logout-2-linear'
-import Trash from '~icons/solar/trash-bin-trash-linear'
-import UserDown from '~icons/solar/user-minus-linear'
+import { Crown, LogOut as Logout, Trash2 as Trash, UserMinus as UserDown } from 'lucide-react'
 
 import type { MemberAction } from '@/modules/team/components/team-row-actions'
 import type { MemberRow } from '@/modules/team/components/team-rows'

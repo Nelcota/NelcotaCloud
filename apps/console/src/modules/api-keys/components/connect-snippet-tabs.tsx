@@ -21,7 +21,7 @@ export function ConnectSnippetTabs({
     <Tabs defaultValue="install" className="gap-3">
       <TabsList variant="line" aria-label="Passos para conectar">
         {steps.map((step) => (
-          <TabsTrigger key={step.id} value={step.id} className="flex-none px-2.5">
+          <TabsTrigger key={step.id} value={step.id}>
             {step.tab}
           </TabsTrigger>
         ))}

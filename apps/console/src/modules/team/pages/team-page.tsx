@@ -21,7 +21,7 @@ export function TeamPage(): JSX.Element {
   const team = useTeamQuery(projectId)
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Equipe"
         description={<TeamCount team={team.data} />}

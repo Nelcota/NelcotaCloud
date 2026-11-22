@@ -1,7 +1,7 @@
 import type { JSX } from 'react'
 
 import { SecretLeaveGuard } from '@/modules/api-keys/components/secret-leave-guard'
-import { CopyableValue } from '@/shared/ui/copyable-value'
+import { SecretValue } from '@/modules/api-keys/components/secret-value'
 import { Notice } from '@/shared/ui/notice'
 import { Button } from '@/shared/ui/primitives/button'
 
@@ -24,17 +24,17 @@ export function NewKeyNotice({ apiKey, onDismiss }: NewKeyNoticeProps): JSX.Elem
   }
 
   return (
-    <Notice tone="warning" title={`Copie a nova secret key${keyNameSuffix(apiKey.name)} agora`}>
-      <div className="mt-1 flex flex-col gap-3">
-        <span>Ela não aparece de novo. Guarde-a antes de sair desta página.</span>
-        <CopyableValue label="Secret key" value={apiKey.key} />
+    <Notice tone="warning" title={`Copie a chave secreta${keyNameSuffix(apiKey.name)} agora`}>
+      <div className="mt-1 flex flex-col gap-2.5">
+        <span>Ela aparece só desta vez. Guarde-a no servidor antes de sair desta página.</span>
+        <SecretValue label="Chave secreta" value={apiKey.key} />
         <div className="flex justify-end">
           <Button type="button" size="sm" variant="outline" onClick={onDismiss}>
             Já guardei a chave
           </Button>
         </div>
       </div>
-      <SecretLeaveGuard isActive subject="Secret key nova" />
+      <SecretLeaveGuard isActive subject="Chave secreta nova" />
     </Notice>
   )
 }

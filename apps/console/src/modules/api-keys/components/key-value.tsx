@@ -1,8 +1,8 @@
 import type { JSX } from 'react'
 
+import { MonoCopyValue } from '@/modules/api-keys/components/mono-copy-value'
 import { visibleKey } from '@/modules/api-keys/components/key-activity'
 import type { components } from '@/shared/api/api-schema'
-import { IdChip } from '@/shared/ui/id-chip'
 
 type ApiKeySummary = components['schemas']['ApiKeySummary']
 
@@ -13,9 +13,7 @@ export function KeyValue({ apiKey, isRevoked }: KeyValueProps): JSX.Element {
   const value = visibleKey(apiKey, isRevoked)
 
   if (value !== null) {
-    return (
-      <IdChip label={`Chave publicável …${apiKey.hint}`} value={value} className="max-w-full" />
-    )
+    return <MonoCopyValue label={`Chave publicável …${apiKey.hint}`} value={value} />
   }
 
   return <KeyHint hint={apiKey.hint} />
@@ -27,7 +25,7 @@ function KeyHint({ hint }: { hint: string }): JSX.Element {
   }
 
   return (
-    <code className="font-mono text-sm text-muted-foreground">
+    <code className="font-mono text-xs text-muted-foreground">
       <span className="sr-only">termina em </span>…{hint}
     </code>
   )
