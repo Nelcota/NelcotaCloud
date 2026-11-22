@@ -8,7 +8,7 @@ type ProjectSummary = components['schemas']['ProjectSummary']
 export function ProjectCards({ projects }: { projects: ProjectSummary[] }): JSX.Element {
   return (
     <ul
-      className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] gap-4"
+      className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,16.25rem),1fr))] gap-3"
       aria-label="Projetos"
     >
       {projects.map((project) => (

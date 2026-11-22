@@ -13,7 +13,7 @@ type UserMetadataSectionProps = { projectId: string; user: User }
  */
 export function UserMetadataSection({ projectId, user }: UserMetadataSectionProps): JSX.Element {
   return (
-    <div className="grid items-start gap-6 xl:grid-cols-2">
+    <div className="grid items-start gap-4 xl:grid-cols-2">
       <MetadataPanel
         key={`app-${user.id}`}
         projectId={projectId}

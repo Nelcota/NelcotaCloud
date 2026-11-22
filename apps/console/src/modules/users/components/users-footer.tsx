@@ -25,8 +25,8 @@ export function UsersFooter({
   }
 
   return (
-    <div className="flex min-h-11 flex-wrap items-center justify-between gap-3 border-t bg-surface px-4 py-2">
-      <span className="text-sm text-muted-foreground tabular-nums">{rangeText(offset, total)}</span>
+    <div className="flex min-h-11 flex-wrap items-center justify-between gap-3 border-t border-border/70 px-4 py-2">
+      <span className="text-xs text-muted-foreground tabular-nums">{rangeText(offset, total)}</span>
       <UsersPagination
         offset={offset}
         pageSize={USERS_PAGE_SIZE}

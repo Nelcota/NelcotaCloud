@@ -36,17 +36,23 @@ export function UserLoading({ error, onRetry }: UserLoadingProps): JSX.Element {
   }
 
   return (
-    <div aria-busy="true" aria-label="Carregando usuário" className="flex flex-col gap-6">
+    <div aria-busy="true" aria-label="Carregando usuário" className="flex flex-col gap-5">
       <Skeleton className="h-4 w-20" />
       <div className="flex items-center gap-3">
         <Skeleton className="size-11 rounded-full" />
         <div className="grid flex-1 gap-2">
-          <Skeleton className="h-5 w-3/5" />
-          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-5 w-64 max-w-3/5" />
+          <div className="flex gap-2">
+            <Skeleton className="h-6 w-24" />
+            <Skeleton className="h-5 w-24 rounded-md" />
+          </div>
         </div>
       </div>
-      <Skeleton className="h-8 w-full" />
-      <Skeleton className="h-56 w-full rounded-xl" />
+      <Skeleton className="h-9 w-full rounded-none" />
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Skeleton className="h-80 rounded-xl lg:col-span-2" />
+        <Skeleton className="h-48 rounded-xl" />
+      </div>
     </div>
   )
 }

@@ -12,7 +12,7 @@ export function UserTabPanel({ value, children }: UserTabPanelProps): JSX.Elemen
     <TabsPrimitive.Content
       value={value}
       forceMount
-      className="flex flex-col gap-6 pt-4 focus-visible:outline-none data-[state=inactive]:hidden"
+      className="flex flex-col gap-4 pt-4 focus-visible:outline-none data-[state=active]:animate-page-in data-[state=inactive]:hidden"
     >
       {children}
     </TabsPrimitive.Content>

@@ -52,9 +52,9 @@ function PanelFrame({ children }: { children: ReactNode }): JSX.Element {
   return (
     <section
       aria-labelledby="connect-app-title"
-      className="@container flex min-w-0 flex-col gap-5 rounded-xl border bg-card p-6"
+      className="@container flex min-w-0 flex-col gap-4 rounded-xl border border-border/60 bg-card p-4"
     >
-      <h2 id="connect-app-title" className="text-base font-semibold text-heading">
+      <h2 id="connect-app-title" className="text-base font-medium text-heading">
         Conectar seu app
       </h2>
       {children}

@@ -4,12 +4,12 @@ import type { JSX } from 'react'
 
 import type { UserActionRunner } from '@/modules/users/components/user-action-runner'
 import { UserConfirmButton } from '@/modules/users/components/user-confirm-button'
+import { SessionsSkeleton } from '@/modules/users/components/user-sessions-skeleton'
 import { UserSessionsTable } from '@/modules/users/components/user-sessions-table'
 import { useUserSessionsQuery } from '@/modules/users/queries/use-user-detail'
 import type { components } from '@/shared/api/api-schema'
 import { EmptyState } from '@/shared/ui/empty-state'
 import { ErrorAlert } from '@/shared/ui/error-alert'
-import { Skeleton } from '@/shared/ui/primitives/skeleton'
 import { Section } from '@/shared/ui/section'
 
 type User = components['schemas']['User']
@@ -29,6 +29,7 @@ export function UserSessionsSection({
   return (
     <Section
       title="Sessões ativas"
+      description="Logins que ainda renovam o token, do uso mais recente ao mais antigo."
       meta={list?.length}
       action={<EndSessionsButton user={user} runner={runner} sessions={list} />}
       isFramed
@@ -65,14 +66,14 @@ type SessionsBodyProps = { sessions: UserSession[] | undefined; error: Error | n
 function SessionsBody({ sessions, error }: SessionsBodyProps): JSX.Element {
   if (error !== null) {
     return (
-      <div className="p-4">
+      <div className="p-3">
         <ErrorAlert error={error} />
       </div>
     )
   }
 
   if (sessions === undefined) {
-    return <Skeleton className="m-4 h-16" />
+    return <SessionsSkeleton />
   }
 
   if (sessions.length === 0) {

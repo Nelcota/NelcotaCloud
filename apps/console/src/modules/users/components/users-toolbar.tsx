@@ -18,9 +18,10 @@ export function UsersToolbar({ filter, total, onChange }: UsersToolbarProps): JS
     <div className="flex flex-wrap items-center gap-2">
       <SearchField
         label="Buscar por email"
-        className="sm:max-w-80"
+        className="sm:max-w-72"
         value={filter.search}
         onValueChange={(search) => onChange({ ...filter, search })}
+        hasSlashShortcut
       />
       <div className="scrollbar-thin max-w-full overflow-x-auto">
         <UserStatusFilter
@@ -28,7 +29,7 @@ export function UsersToolbar({ filter, total, onChange }: UsersToolbarProps): JS
           onChange={(status) => onChange({ ...filter, status })}
         />
       </div>
-      <span className="ms-auto text-sm text-muted-foreground tabular-nums" aria-live="polite">
+      <span className="ms-auto text-xs text-muted-foreground tabular-nums" aria-live="polite">
         {totalText(total)}
       </span>
     </div>

@@ -37,13 +37,16 @@ function ChartFrame({ days, children }: { days: number; children: ReactNode }): 
   return (
     <section
       aria-labelledby="activity-chart-title"
-      className="flex min-w-0 flex-col gap-5 rounded-xl border bg-card p-6"
+      className="flex min-w-0 flex-col gap-4 rounded-xl border border-border/60 bg-card p-4"
     >
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="activity-chart-title" className="text-base font-semibold text-heading">
+      <div className="grid gap-0.5">
+        <h2 id="activity-chart-title" className="text-base font-medium text-heading">
           Logins e cadastros
         </h2>
-        <span className="text-sm text-muted-foreground">Últimos {days} dias, por dia (UTC)</span>
+        <p className="text-xs text-muted-foreground">
+          Contagem por dia nos últimos {days} dias, em UTC. Cadastros sem logins depois costumam ser
+          contas abandonadas.
+        </p>
       </div>
       {children}
     </section>

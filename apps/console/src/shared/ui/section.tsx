@@ -41,7 +41,7 @@ function SectionHeading(props: SectionProps & { titleId: string }): JSX.Element 
   return (
     <div
       className={cn(
-        'flex flex-wrap items-end justify-between gap-3',
+        'flex flex-wrap items-center justify-between gap-3',
         props.hideHeader === true && 'sr-only',
       )}
     >

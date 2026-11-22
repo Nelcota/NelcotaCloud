@@ -3,6 +3,7 @@ import Users from '~icons/solar/users-group-rounded-linear'
 import type { JSX } from 'react'
 
 import type { UserStatusFilter } from '@/modules/users/api/list-users'
+import { RouterLink } from '@/shared/routing/router-link'
 import { EmptyState } from '@/shared/ui/empty-state'
 import { Button } from '@/shared/ui/primitives/button'
 
@@ -22,13 +23,15 @@ const ALL_CLEAR: Record<Status, string> = {
 }
 
 type UsersEmptyStateProps = {
+  projectId: string
   filter: UserListFilter
   /** Clears the search and the status filter, the way out of an empty filtered list. */
   onClearFilter: () => void
 }
 
 /** Why the list is empty: no users yet, none matching the search, or none in that state. */
-export function UsersEmptyState({ filter, onClearFilter }: UsersEmptyStateProps): JSX.Element {
+export function UsersEmptyState(props: UsersEmptyStateProps): JSX.Element {
+  const { filter, onClearFilter } = props
   const clearAction = (
     <Button type="button" variant="outline" size="sm" onClick={onClearFilter}>
       Limpar filtros
@@ -40,6 +43,7 @@ export function UsersEmptyState({ filter, onClearFilter }: UsersEmptyStateProps)
   if (search !== '') {
     return (
       <EmptyState
+        isCompact
         icon={<SearchX aria-hidden />}
         title="Nenhum usuário encontrado"
         description={searchMiss(search, status)}
@@ -51,6 +55,7 @@ export function UsersEmptyState({ filter, onClearFilter }: UsersEmptyStateProps)
   if (status !== 'all') {
     return (
       <EmptyState
+        isCompact
         icon={<Users aria-hidden />}
         title={`Nenhum usuário ${STATUS_WORDS[status]}`}
         description={ALL_CLEAR[status]}
@@ -63,7 +68,12 @@ export function UsersEmptyState({ filter, onClearFilter }: UsersEmptyStateProps)
     <EmptyState
       icon={<Users aria-hidden />}
       title="Nenhum usuário ainda"
-      description="Quando alguém criar uma conta no seu app, ela aparece aqui."
+      description="As contas aparecem aqui quando alguém se cadastra pelo seu app, com a chave publicável."
+      actions={
+        <Button asChild size="sm">
+          <RouterLink href={`/projects/${props.projectId}/keys`}>Ver chaves de API</RouterLink>
+        </Button>
+      }
     />
   )
 }

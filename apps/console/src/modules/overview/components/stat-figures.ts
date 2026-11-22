@@ -41,7 +41,11 @@ function usersFigure(total: number | undefined, period: PeriodSeries): StatFigur
 
   const figures = heroFigures(total, days)
 
-  return { value: total, change: figures.change, trend: figures.growth.map((point) => point.users) }
+  return {
+    value: total,
+    change: figures.change,
+    trend: figures.growth.map((point) => point.users),
+  }
 }
 
 function loginsFigure({ current, previous }: PeriodSeries): StatFigure {

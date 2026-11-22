@@ -5,8 +5,10 @@ import { UserActionsMenu } from '@/modules/users/components/user-actions-menu'
 import { userAvatarUrl } from '@/modules/users/components/user-avatar-url'
 import { UserShortId } from '@/modules/users/components/user-short-id'
 import { UserStatusBadges } from '@/modules/users/components/user-status-badges'
+import { USER_COLUMN_VISIBILITY as COLUMNS } from '@/modules/users/components/user-columns'
 import type { UserAction } from '@/modules/users/queries/use-users'
 import type { components } from '@/shared/api/api-schema'
+import { cn } from '@/shared/lib/utils'
 import { RouterLink } from '@/shared/routing/router-link'
 import { Avatar } from '@/shared/ui/avatar'
 import { TableCell, TableRow } from '@/shared/ui/primitives/table'
@@ -30,7 +32,7 @@ export function UserRow({ user, context }: UserRowProps): JSX.Element {
 
   return (
     <TableRow>
-      <TableCell className="py-2">
+      <TableCell>
         <div className="flex max-w-80 min-w-0 items-center gap-2.5">
           <Avatar
             name={user.email}
@@ -39,27 +41,27 @@ export function UserRow({ user, context }: UserRowProps): JSX.Element {
           />
           <RouterLink
             href={`/projects/${context.projectId}/users/${user.id}`}
-            className="min-w-0 truncate rounded-sm font-medium text-heading hover:underline"
+            className="min-w-0 truncate rounded-sm font-medium text-foreground hover:underline"
           >
             {user.email}
           </RouterLink>
         </div>
       </TableCell>
-      <TableCell className="hidden py-1 md:table-cell">
+      <TableCell className={cn('py-1', COLUMNS.id)}>
         <UserShortId id={user.id} />
       </TableCell>
-      <TableCell className="hidden py-2 text-muted-foreground lg:table-cell">
+      <TableCell className={cn('text-muted-foreground', COLUMNS.methods)}>
         <span title={methods} className="block max-w-48 truncate">
           {methods}
         </span>
       </TableCell>
-      <TableCell className="py-2">
+      <TableCell>
         <UserStatusBadges user={user} showsConfirmed />
       </TableCell>
-      <TableCell className="hidden py-2 text-muted-foreground xl:table-cell">
-        <Timestamp value={user.created_at} format="date" />
+      <TableCell className={cn('text-muted-foreground', COLUMNS.createdAt)}>
+        <Timestamp value={user.created_at} format="relative" />
       </TableCell>
-      <TableCell className="hidden py-2 text-muted-foreground sm:table-cell">
+      <TableCell className={cn('text-muted-foreground', COLUMNS.lastSignIn)}>
         <LastLogin lastSignInAt={user.last_sign_in_at ?? null} />
       </TableCell>
       <TableCell className="py-1 text-end">

@@ -14,7 +14,7 @@ export function ServicesPanel({ projectId }: { projectId: string }): JSX.Element
       aria-labelledby="services-title"
       className="flex min-w-0 flex-col overflow-hidden rounded-xl border bg-card"
     >
-      <h2 id="services-title" className="border-b px-5 py-3.5 text-base font-semibold text-heading">
+      <h2 id="services-title" className="border-b px-5 py-3.5 text-base font-medium text-heading">
         Serviços
       </h2>
       <ul className="divide-y">

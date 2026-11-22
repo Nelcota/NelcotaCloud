@@ -31,8 +31,9 @@ export function ProjectsToolbar(props: ProjectsToolbarProps): JSX.Element {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <SearchField
-        label="Buscar por nome, slug ou site"
-        className="sm:max-w-80"
+        label="Buscar projeto"
+        className="sm:max-w-64"
+        hasSlashShortcut
         value={query.search}
         onValueChange={(search) => onChange({ ...query, search })}
       />

@@ -6,12 +6,12 @@ import type { StatusTone } from '@/shared/ui/status-badge'
 import { StatusDot } from '@/shared/ui/status-dot'
 
 const TONES: Record<StatusTone, string> = {
-  neutral: 'border-border text-muted-foreground',
-  success: 'border-success/30 text-success',
-  warning: 'border-warning/30 text-warning',
-  error: 'border-destructive/30 text-destructive',
-  info: 'border-info/30 text-info',
-  brand: 'border-primary/30 text-primary',
+  neutral: 'bg-surface text-muted-foreground',
+  success: 'bg-success/14 text-success',
+  warning: 'bg-warning/12 text-warning',
+  error: 'bg-destructive/12 text-destructive',
+  info: 'bg-info/12 text-info',
+  brand: 'bg-brand-subtle text-primary',
 }
 
 /** The project's state next to its name. */
@@ -20,7 +20,7 @@ export function HealthPill({ health }: { health: ProjectHealth }): JSX.Element {
     <span
       role="status"
       className={cn(
-        'inline-flex items-center gap-2 rounded-full border px-2.5 py-0.5 text-sm font-medium',
+        'inline-flex h-5 items-center gap-1.5 rounded-[6px] px-2 text-2xs font-medium',
         TONES[health.tone],
       )}
     >

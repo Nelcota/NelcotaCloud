@@ -1,43 +1,70 @@
 import type { JSX } from 'react'
 
+import { usersHealth } from '@/modules/users/components/users-health'
 import { RECENT_SIGN_UP_DAYS, useRecentSignUps } from '@/modules/users/queries/use-recent-sign-ups'
-import { useStatusTotals } from '@/modules/users/queries/use-status-totals'
+import { type StatusTotals, useStatusTotals } from '@/modules/users/queries/use-status-totals'
+import { formatCount, formatShare } from '@/shared/lib/format-number'
+import { AnimatedNumber } from '@/shared/ui/animated-number'
 import { StatCard } from '@/shared/ui/stat-card'
+import { SummarySentence } from '@/shared/ui/summary-sentence'
 
-/** The project's accounts in four figures: all, new, unconfirmed and blocked. */
+/** The project's accounts in one sentence and four figures: all, new, unconfirmed and blocked. */
 export function UsersSummary({ projectId }: { projectId: string }): JSX.Element {
   const totals = useStatusTotals(projectId)
   const recent = useRecentSignUps(projectId)
 
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      <StatCard className="p-4" label="Total" value={figure(totals.all)} hint="Contas no projeto" />
-      <StatCard
-        className="p-4"
-        label="Novos no período"
-        value={figure(recent)}
-        hint={`Últimos ${RECENT_SIGN_UP_DAYS} dias`}
-      />
-      <StatCard
-        className="p-4"
-        label="Não confirmados"
-        value={figure(totals.unverified)}
-        hint="Email ainda não confirmado"
-      />
-      <StatCard
-        className="p-4"
-        label="Bloqueados"
-        value={figure(totals.banned)}
-        hint="Sem login nem renovação"
-      />
+    <div className="flex flex-col gap-4">
+      <UsersVerdict totals={totals} />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+        <StatCard label="Contas" value={<Figure value={totals.all} />} hint="No projeto" />
+        <StatCard
+          label="Novas"
+          value={<Figure value={recent} />}
+          hint={`Últimos ${RECENT_SIGN_UP_DAYS} dias`}
+        />
+        <StatCard
+          label="Sem email confirmado"
+          value={<Figure value={totals.unverified} />}
+          hint={shareHint(totals.unverified, totals.all)}
+        />
+        <StatCard
+          label="Bloqueadas"
+          value={<Figure value={totals.banned} />}
+          hint="Sem login nem renovação"
+        />
+      </div>
     </div>
   )
 }
 
-function figure(total: number | undefined): string {
-  if (total === undefined) {
-    return '—'
+function UsersVerdict({ totals }: { totals: StatusTotals }): JSX.Element | null {
+  const health = usersHealth(totals)
+
+  if (health === null) {
+    return null
   }
 
-  return total.toLocaleString('pt-BR')
+  return (
+    <SummarySentence tone={health.tone} verdict={health.verdict}>
+      {health.sentence}
+    </SummarySentence>
+  )
+}
+
+function Figure({ value }: { value: number | undefined }): JSX.Element {
+  if (value === undefined) {
+    return <span className="text-muted-foreground">—</span>
+  }
+
+  return <AnimatedNumber value={value} format={formatCount} />
+}
+
+/** "50% das contas"; nothing to compare against while the totals load or with no accounts. */
+function shareHint(part: number | undefined, all: number | undefined): string {
+  if (part === undefined || all === undefined || all === 0) {
+    return 'Das contas do projeto'
+  }
+
+  return `${formatShare(part / all)} das contas`
 }

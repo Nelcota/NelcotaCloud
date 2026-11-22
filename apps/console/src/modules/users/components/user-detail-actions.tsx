@@ -15,8 +15,8 @@ type User = components['schemas']['User']
 
 type UserDetailActionsProps = { user: User; runner: UserActionRunner }
 
-/** Shown as buttons; the menu keeps the rest (sessions, MFA, delete). */
-const BUTTON_ACTIONS: readonly UserAction[] = ['resend-verification', 'ban', 'unban']
+/** Shown as buttons (delete in the danger zone at the bottom); the menu keeps sessions and MFA. */
+const BUTTON_ACTIONS: readonly UserAction[] = ['resend-verification', 'ban', 'unban', 'delete']
 
 /** The header's actions: resend the confirmation, block or unblock, and every other one in `…`. */
 export function UserDetailActions({ user, runner }: UserDetailActionsProps): JSX.Element {

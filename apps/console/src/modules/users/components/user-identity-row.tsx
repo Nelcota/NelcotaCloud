@@ -13,11 +13,13 @@ export function UserIdentityRow({ identity }: { identity: LinkedIdentity }): JSX
   const provider = identity.provider
 
   return (
-    <li className="flex flex-wrap items-center gap-2">
+    <li className="flex h-11 items-center gap-2.5 px-4 text-xs">
       <IdentityLogo provider={provider} />
-      <span className="font-medium">{PROVIDER_NAMES[provider] ?? provider}</span>
-      <span className="text-xs text-muted-foreground">
-        vinculado em <Timestamp value={identity.linked_at} />
+      <span className="min-w-0 flex-1 truncate font-medium">
+        {PROVIDER_NAMES[provider] ?? provider}
+      </span>
+      <span className="text-muted-foreground">
+        vinculado <Timestamp value={identity.linked_at} format="relative" />
       </span>
     </li>
   )

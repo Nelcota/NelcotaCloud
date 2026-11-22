@@ -3,9 +3,8 @@ import { useState } from 'react'
 
 import { ActivityFeed } from '@/modules/activity/components/activity-feed'
 import type { UserActionRunner } from '@/modules/users/components/user-action-runner'
-import { UserMetadataPreview } from '@/modules/users/components/user-metadata-preview'
 import { UserMetadataSection } from '@/modules/users/components/user-metadata-section'
-import { UserProperties } from '@/modules/users/components/user-properties'
+import { UserOverviewTab } from '@/modules/users/components/user-overview-tab'
 import { UserSessionsSection } from '@/modules/users/components/user-sessions-section'
 import { UserTabPanel } from '@/modules/users/components/user-tab-panel'
 import type { components } from '@/shared/api/api-schema'
@@ -28,20 +27,20 @@ export function UserDetailTabs({ projectId, user, runner }: UserDetailTabsProps)
 
   return (
     <Tabs value={tab} onValueChange={setTab} className="gap-0">
-      <TabsList variant="line" className="w-full justify-start gap-4 border-b px-0">
+      <TabsList variant="line" className="w-full">
         {TABS.map((item) => (
-          <TabsTrigger key={item.value} value={item.value} className="flex-none px-0">
+          <TabsTrigger key={item.value} value={item.value}>
             {item.label}
           </TabsTrigger>
         ))}
       </TabsList>
       <UserTabPanel value="overview">
-        <div className="grid items-start gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <UserProperties projectId={projectId} user={user} />
-          </div>
-          <UserMetadataPreview user={user} onEdit={() => setTab('metadata')} />
-        </div>
+        <UserOverviewTab
+          projectId={projectId}
+          user={user}
+          runner={runner}
+          onEditMetadata={() => setTab('metadata')}
+        />
       </UserTabPanel>
       <UserTabPanel value="sessions">
         <UserSessionsSection projectId={projectId} user={user} runner={runner} />

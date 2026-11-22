@@ -4,9 +4,9 @@ import { SegmentedControl } from '@/shared/ui/segmented-control'
 
 /** The periods the overview can cover; the API keeps 90 days of logins. */
 const PERIOD_OPTIONS = [
-  { value: '7', label: '7 dias' },
-  { value: '30', label: '30 dias' },
-  { value: '90', label: '90 dias' },
+  { value: '7', label: '7d' },
+  { value: '30', label: '30d' },
+  { value: '90', label: '90d' },
 ] as const
 
 type PeriodControlProps = {
@@ -32,6 +32,7 @@ export function PeriodControl({ days, onDaysChange }: PeriodControlProps): JSX.E
       options={PERIOD_OPTIONS}
       value={String(days)}
       onValueChange={choose}
+      isMono
     />
   )
 }

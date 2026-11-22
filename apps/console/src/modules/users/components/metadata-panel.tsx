@@ -103,7 +103,7 @@ export function MetadataPanel({ projectId, user, document }: MetadataPanelProps)
         onChange={(value) => setDraft((current) => ({ base: current?.base ?? saved, text: value }))}
       />
       {hasConflict && (
-        <p role="status">
+        <p role="status" className="text-xs text-warning">
           Os metadados mudaram enquanto você editava. Copie seu rascunho antes de descartá-lo.
         </p>
       )}

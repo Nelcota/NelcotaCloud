@@ -1,7 +1,6 @@
 import type { JSX } from 'react'
 
 import { signInMethods } from '@/modules/users/components/sign-in-methods'
-import { UserIdentitiesItem } from '@/modules/users/components/user-identities-item'
 import { OptionalDate, UserEmailFact } from '@/modules/users/components/user-property-values'
 import type { components } from '@/shared/api/api-schema'
 import { DataList, DataListItem } from '@/shared/ui/data-list'
@@ -11,10 +10,8 @@ import { Timestamp } from '@/shared/ui/timestamp'
 
 type User = components['schemas']['User']
 
-type UserPropertiesProps = { projectId: string; user: User }
-
 /** Every field the API returns about the account, as label and value rows. */
-export function UserProperties({ projectId, user }: UserPropertiesProps): JSX.Element {
+export function UserProperties({ user }: { user: User }): JSX.Element {
   return (
     <Section title="Conta" isFramed>
       <DataList className="px-4">
@@ -32,7 +29,6 @@ export function UserProperties({ projectId, user }: UserPropertiesProps): JSX.El
         </DataListItem>
         <DataListItem label="Entra com">{signInMethods(user).join(' · ')}</DataListItem>
         <DataListItem label="Senha">{passwordText(user)}</DataListItem>
-        <UserIdentitiesItem projectId={projectId} userId={user.id} />
         <DataListItem label="MFA">{mfaText(user)}</DataListItem>
         <DataListItem label="Foto atualizada em">
           <OptionalDate value={user.avatar_updated_at} missing="Sem foto" />

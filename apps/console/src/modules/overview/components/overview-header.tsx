@@ -1,9 +1,8 @@
 import type { JSX } from 'react'
 
 import { ConnectApiSheet } from '@/modules/overview/components/connect-api-sheet'
-import { CopyContextButton } from '@/modules/overview/components/copy-context-button'
 import { FactsBar } from '@/modules/overview/components/facts-bar'
-import { HealthPill } from '@/modules/overview/components/health-pill'
+import { ProjectState } from '@/modules/overview/components/project-state'
 import { PeriodControl } from '@/modules/overview/components/period-control'
 import { useAiContext } from '@/modules/overview/queries/use-ai-context'
 import { useProjectHealth } from '@/modules/overview/queries/use-project-health'
@@ -35,11 +34,10 @@ export function OverviewHeader({
     <div className="grid gap-3">
       <PageHeader
         title={name}
-        description={<HealthPill health={health} />}
+        description={<ProjectState slug={project?.slug} health={health} />}
         actions={
           <>
             <PeriodControl days={days} onDaysChange={onDaysChange} />
-            <CopyContextButton context={context} />
             <ConnectApiSheet context={context} />
           </>
         }

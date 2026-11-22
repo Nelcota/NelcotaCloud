@@ -51,7 +51,7 @@ function CardFrame({ children }: { children: ReactNode }): JSX.Element {
   return (
     <section
       aria-label="Próximo passo"
-      className="flex min-w-0 flex-col gap-5 rounded-xl border bg-card p-6"
+      className="flex min-w-0 flex-col gap-4 rounded-xl border border-border/60 bg-card p-4"
     >
       {children}
     </section>

@@ -53,8 +53,8 @@ function LoadedUser({ projectId, user }: { projectId: string; user: User }): JSX
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-3">
         <BackLink label="Usuários" href={`/projects/${projectId}/users`} />
         <UserDetailHeader projectId={projectId} user={user} runner={runner} />
       </div>

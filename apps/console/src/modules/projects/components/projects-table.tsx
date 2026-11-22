@@ -27,7 +27,7 @@ const SHORT_ID_LENGTH = 8
 
 export function ProjectsTable({ projects }: { projects: ProjectSummary[] }): JSX.Element {
   return (
-    <div className="overflow-hidden rounded-xl border bg-card">
+    <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">

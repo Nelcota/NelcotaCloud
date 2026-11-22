@@ -3,19 +3,19 @@ import type { JSX } from 'react'
 import { UserIdentityRow } from '@/modules/users/components/user-identity-row'
 import { useUserIdentitiesQuery } from '@/modules/users/queries/use-user-detail'
 import type { components } from '@/shared/api/api-schema'
-import { DataListItem } from '@/shared/ui/data-list'
 import { ErrorAlert } from '@/shared/ui/error-alert'
 import { Skeleton } from '@/shared/ui/primitives/skeleton'
+import { Section } from '@/shared/ui/section'
 
 type LinkedIdentity = components['schemas']['LinkedIdentity']
 
 type UserRef = { projectId: string; userId: string }
 
 /**
- * The Google and GitHub accounts the user can log in with, as one row of the account facts; a
- * user without any gets no row, since "Entra com" already says so.
+ * The Google and GitHub accounts the user can log in with, one row each; a user without any gets
+ * no section, since "Entra com" already says so.
  */
-export function UserIdentitiesItem(ref: UserRef): JSX.Element | null {
+export function UserIdentitiesSection(ref: UserRef): JSX.Element | null {
   const identities = useUserIdentitiesQuery(ref)
   const list = identities.data?.identities
 
@@ -24,9 +24,9 @@ export function UserIdentitiesItem(ref: UserRef): JSX.Element | null {
   }
 
   return (
-    <DataListItem label="Login social">
+    <Section title="Login social" meta={list?.length} isFramed>
       <IdentityList identities={list} error={identities.error} />
-    </DataListItem>
+    </Section>
   )
 }
 
@@ -34,15 +34,24 @@ type IdentityListProps = { identities: LinkedIdentity[] | undefined; error: Erro
 
 function IdentityList({ identities, error }: IdentityListProps): JSX.Element {
   if (error !== null) {
-    return <ErrorAlert error={error} />
+    return (
+      <div className="p-3">
+        <ErrorAlert error={error} />
+      </div>
+    )
   }
 
   if (identities === undefined) {
-    return <Skeleton className="h-5 w-40" />
+    return (
+      <div className="flex h-11 items-center gap-2.5 px-4">
+        <Skeleton className="size-4 rounded-sm" />
+        <Skeleton className="h-3 w-32" />
+      </div>
+    )
   }
 
   return (
-    <ul className="grid gap-1.5">
+    <ul className="divide-y divide-border/70">
       {identities.map((identity) => (
         <UserIdentityRow key={identity.provider} identity={identity} />
       ))}

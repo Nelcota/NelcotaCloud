@@ -15,10 +15,10 @@ export function ProjectsPage(): JSX.Element {
   const projects = useProjectsQuery()
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-5">
       <PageHeader
         title="Projetos"
-        description="Cada projeto tem seu próprio Auth, banco Postgres e chaves de API."
+        description="Cada projeto tem Auth, banco Postgres e chaves de API próprios."
         actions={<NewProjectButton />}
       />
       <LoadError error={projects.error} onRetry={() => projects.refetch()} />

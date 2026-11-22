@@ -25,7 +25,7 @@ export function NextStepBody({ step }: { step: NextStep }): JSX.Element {
         </span>
         {heading.label}
       </span>
-      <h2 className="text-lg font-semibold text-heading">{step.title}</h2>
+      <h2 className="text-base font-medium text-heading">{step.title}</h2>
       <p className="text-sm text-muted-foreground">{step.text}</p>
       <StepAction action={step.action} />
     </div>

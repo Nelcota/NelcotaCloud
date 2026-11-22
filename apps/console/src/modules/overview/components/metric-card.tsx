@@ -5,6 +5,8 @@ import { DeltaPill } from '@/modules/overview/components/delta-pill'
 import { countRange } from '@/modules/overview/components/chart-range'
 import { Sparkline } from '@/modules/overview/components/sparkline'
 import type { StatFigure } from '@/modules/overview/components/stat-figures'
+import { formatCount } from '@/shared/lib/format-number'
+import { AnimatedNumber } from '@/shared/ui/animated-number'
 import { Skeleton } from '@/shared/ui/primitives/skeleton'
 import { StatCard } from '@/shared/ui/stat-card'
 
@@ -49,7 +51,7 @@ export function MetricValue({ value }: { value: number | undefined }): JSX.Eleme
     return <Skeleton className="my-1 h-7 w-20" />
   }
 
-  return <>{value.toLocaleString('pt-BR')}</>
+  return <AnimatedNumber value={value} format={formatCount} />
 }
 
 type MetricHintProps = { figure: StatFigure; comparison: ReactNode }

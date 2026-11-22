@@ -21,12 +21,12 @@ export function InvitationItem(props: InvitationItemProps): JSX.Element {
 
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3">
-      <span className="grid size-8 shrink-0 place-items-center rounded-lg border bg-surface text-muted-foreground">
+      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-surface-hover text-muted-foreground">
         <Letter aria-hidden className="size-4" />
       </span>
       <div className="grid min-w-0 flex-1 basis-56 gap-0.5">
-        <p className="truncate text-base font-medium text-heading">{invitation.project_name}</p>
-        <p className="text-sm text-muted-foreground">
+        <p className="truncate text-sm font-medium text-heading">{invitation.project_name}</p>
+        <p className="text-xs text-muted-foreground">
           Como membro · {formatDate(invitation.created_at)}
         </p>
       </div>
