@@ -24,9 +24,9 @@ export function CodeBlock({
   className,
 }: CodeBlockProps): JSX.Element {
   return (
-    <div className={cn('min-w-0 overflow-hidden rounded-lg border bg-frame/60', className)}>
-      <div className="flex h-10 items-center justify-between gap-2 border-b bg-surface ps-3 pe-1">
-        <span className="truncate font-mono text-sm text-muted-foreground">{title}</span>
+    <div className={cn('min-w-0 overflow-hidden rounded-xl bg-surface', className)}>
+      <div className="flex h-8 items-center justify-between gap-2 border-b border-border/60 ps-3 pe-1">
+        <span className="truncate font-mono text-2xs text-muted-foreground">{title}</span>
         <CopyButton
           value={code}
           description={copyLabel ?? title ?? 'trecho de código'}
@@ -35,7 +35,7 @@ export function CodeBlock({
       </div>
       <pre
         className={cn(
-          'scrollbar-thin overflow-auto overscroll-contain p-4 font-mono text-sm leading-relaxed',
+          'scrollbar-thin overflow-auto overscroll-contain p-3.5 font-mono text-xs leading-relaxed',
           isWrapped === true && 'whitespace-pre-wrap wrap-anywhere',
         )}
         style={{ maxHeight }}

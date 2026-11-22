@@ -1,5 +1,4 @@
-import Crown from '~icons/solar/crown-minimalistic-linear'
-import { Users } from 'lucide-react'
+import { Users, Crown } from 'lucide-react'
 import type { JSX } from 'react'
 
 type ProjectStatusRowProps = { role: 'owner' | 'member' }

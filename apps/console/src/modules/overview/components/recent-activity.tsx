@@ -17,9 +17,9 @@ export function RecentActivity({ projectId }: { projectId: string }): JSX.Elemen
   if (list === undefined) {
     return (
       <ActivityFrame projectId={projectId}>
-        <div className="grid gap-3 p-5">
+        <div className="grid gap-3 p-4">
           <LoadError error={events.error} onRetry={() => void events.refetch()} />
-          {events.isError === false && <Skeleton className="h-64" />}
+          {events.isError === false && <Skeleton className="h-64 rounded-lg" />}
         </div>
       </ActivityFrame>
     )
@@ -39,7 +39,7 @@ export function RecentActivity({ projectId }: { projectId: string }): JSX.Elemen
 
   return (
     <ActivityFrame projectId={projectId}>
-      <ul className="divide-y">
+      <ul className="grid gap-px p-1.5">
         {list.map((event) => (
           <RecentEventRow key={event.id} event={event} projectId={projectId} />
         ))}
@@ -54,10 +54,13 @@ function ActivityFrame({ projectId, children }: ActivityFrameProps): JSX.Element
   return (
     <section
       aria-labelledby="recent-activity-title"
-      className="@container flex min-w-0 flex-col overflow-hidden rounded-xl border bg-card"
+      className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-card"
     >
-      <div className="flex items-center justify-between gap-3 border-b px-5 py-3">
-        <h2 id="recent-activity-title" className="text-base font-medium text-heading">
+      <div className="flex items-center justify-between gap-3 px-4 pt-3.5 pb-1">
+        <h2
+          id="recent-activity-title"
+          className="text-2xs font-medium tracking-[0.025em] text-muted-foreground uppercase"
+        >
           Atividade recente
         </h2>
         <Button asChild variant="ghost" size="sm">

@@ -18,7 +18,7 @@ export function ActivityTooltip({ day, x }: ActivityTooltipProps): JSX.Element {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute top-0 z-10 grid w-44 gap-1 rounded-lg border bg-popover p-2.5 text-sm text-popover-foreground shadow-md"
+      className="pointer-events-none absolute top-0 z-10 grid w-44 gap-1 rounded-lg bg-popover p-2.5 text-xs text-popover-foreground shadow-popover"
       style={placementOf(x)}
     >
       <span className="font-medium text-heading">{longDay(day.date)}</span>

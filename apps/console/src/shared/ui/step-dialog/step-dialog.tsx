@@ -97,7 +97,7 @@ export function StepDialog(props: StepDialogProps): JSX.Element {
         onPointerDownOutside={(event) => event.preventDefault()}
       >
         <form onSubmit={advance} className="flex min-w-0 flex-col">
-          <DialogHeader className="gap-1 border-b px-5 pt-5 pb-4 pe-12">
+          <DialogHeader className="gap-1 border-b border-border/60 px-5 pt-5 pb-4 pe-12">
             <DialogTitle>{props.title}</DialogTitle>
             <DialogDescription className={props.description === undefined ? 'sr-only' : ''}>
               {props.description ?? props.title}
@@ -113,7 +113,7 @@ export function StepDialog(props: StepDialogProps): JSX.Element {
             {step?.content}
             <FocusedError error={error} />
           </div>
-          <DialogFooter className="items-center border-t bg-surface px-5 py-3">
+          <DialogFooter className="items-center border-t border-border/60 bg-surface px-5 py-3">
             <MissingNote missing={step?.missing ?? null} />
             <BackButton
               index={index}
@@ -139,7 +139,7 @@ function StepDescription({ description }: { description?: string }): JSX.Element
     return null
   }
 
-  return <p className="text-sm text-muted-foreground">{description}</p>
+  return <p className="text-xs text-muted-foreground">{description}</p>
 }
 
 function MissingNote({ missing }: { missing: string | null }): JSX.Element | null {

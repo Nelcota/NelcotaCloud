@@ -65,24 +65,24 @@ function ChoiceCard<Value extends string>({ choice }: { choice: Choice<Value> })
   return (
     <label
       className={cn(
-        'group relative flex min-w-0 cursor-pointer items-start gap-3 rounded-xl border bg-card p-5 transition-colors hover:bg-surface',
-        'has-data-checked:border-primary/60 has-data-checked:bg-primary/6',
+        'group relative flex min-w-0 cursor-pointer items-start gap-3 rounded-xl border border-border/60 bg-card p-4 transition-colors hover:bg-surface',
+        'has-data-checked:border-brand/60 has-data-checked:bg-brand-subtle',
         'has-disabled:cursor-not-allowed has-disabled:opacity-60',
       )}
     >
-      <span className="grid size-10 shrink-0 place-items-center rounded-lg border bg-surface text-muted-foreground group-has-data-checked:border-primary/40 group-has-data-checked:text-primary">
-        <Glyph aria-hidden className="size-5" />
+      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-surface-hover text-muted-foreground group-has-data-checked:border-primary/40 group-has-data-checked:text-primary">
+        <Glyph aria-hidden className="size-4" />
       </span>
       <span className="grid min-w-0 flex-1 gap-1">
-        <span className="flex items-center gap-2 text-base font-medium text-heading">
+        <span className="flex items-center gap-2 text-sm font-medium text-heading">
           {choice.title}
           {choice.badge !== undefined && (
-            <span className="rounded-md bg-surface px-1.5 py-0.5 text-xs font-normal text-muted-foreground">
+            <span className="rounded-[6px] bg-surface px-1.5 py-0.5 text-2xs font-normal text-muted-foreground">
               {choice.badge}
             </span>
           )}
         </span>
-        <span className="text-sm text-muted-foreground">{choice.description}</span>
+        <span className="text-xs text-muted-foreground">{choice.description}</span>
       </span>
       <RadioGroupItem value={choice.value} disabled={choice.disabled} className="mt-0.5" />
     </label>

@@ -1,4 +1,4 @@
-import Crown from '~icons/solar/crown-minimalistic-linear'
+import { Crown } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { StatusBadge } from '@/shared/ui/status-badge'

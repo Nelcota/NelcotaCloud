@@ -1,4 +1,4 @@
-import Letter from '~icons/solar/letter-linear'
+import { Mail as Letter } from 'lucide-react'
 import type { JSX } from 'react'
 
 import type { components } from '@/shared/api/api-schema'

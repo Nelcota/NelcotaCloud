@@ -1,4 +1,4 @@
-import Trash from '~icons/solar/trash-bin-trash-linear'
+import { Trash2 as Trash } from 'lucide-react'
 import type { JSX } from 'react'
 
 import type { UserActionRunner } from '@/modules/users/components/user-action-runner'

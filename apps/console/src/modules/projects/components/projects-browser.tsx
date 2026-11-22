@@ -1,4 +1,4 @@
-import SearchX from '~icons/solar/magnifier-close-linear'
+import { SearchX } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 

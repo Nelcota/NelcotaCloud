@@ -1,4 +1,4 @@
-import User from '~icons/solar/user-linear'
+import { User } from 'lucide-react'
 
 import type { UserAction } from '@/modules/users/queries/use-users'
 import type { ConfirmChange } from '@/shared/ui/confirm-change'

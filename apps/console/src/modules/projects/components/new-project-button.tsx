@@ -1,4 +1,4 @@
-import Plus from '~icons/solar/add-linear'
+import { Plus } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { RouterLink } from '@/shared/routing/router-link'

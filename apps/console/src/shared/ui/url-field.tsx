@@ -39,7 +39,7 @@ export function UrlField({
   return (
     <Field className="gap-1.5" data-invalid={Boolean(error) || undefined}>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <InputGroup className="min-h-9">
+      <InputGroup className="min-h-8">
         <InputGroupInput
           id={id}
           name="site_url"

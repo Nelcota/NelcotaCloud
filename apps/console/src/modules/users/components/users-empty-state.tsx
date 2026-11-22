@@ -1,5 +1,4 @@
-import SearchX from '~icons/solar/magnifier-close-linear'
-import Users from '~icons/solar/users-group-rounded-linear'
+import { SearchX, Users } from 'lucide-react'
 import type { JSX } from 'react'
 
 import type { UserStatusFilter } from '@/modules/users/api/list-users'

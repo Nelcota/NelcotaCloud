@@ -46,13 +46,13 @@ export function ApiSheet({ title, description, snippets }: ApiSheetProps): JSX.E
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className="w-full gap-0 overflow-y-auto p-0 sm:max-w-2xl">
-        <SheetHeader className="gap-1 border-b px-6 py-5">
-          <SheetTitle className="text-lg font-semibold text-heading">{title}</SheetTitle>
+        <SheetHeader className="gap-1 border-b border-border/60 px-5 py-4">
+          <SheetTitle className="text-base font-medium text-heading">{title}</SheetTitle>
           <SheetDescription>
             {description ?? 'O mesmo que esta tela faz, pelo código.'}
           </SheetDescription>
         </SheetHeader>
-        <Tabs defaultValue={first.label} className="gap-4 p-6">
+        <Tabs defaultValue={first.label} className="gap-4 p-5">
           <TabsList variant="line">
             {snippets.map((snippet) => (
               <TabsTrigger key={snippet.label} value={snippet.label}>

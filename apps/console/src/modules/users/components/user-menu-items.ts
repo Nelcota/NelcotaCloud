@@ -1,9 +1,4 @@
-import Ban from '~icons/solar/forbidden-circle-linear'
-import Letter from '~icons/solar/letter-linear'
-import LogOut from '~icons/solar/logout-2-linear'
-import ShieldOff from '~icons/solar/shield-cross-linear'
-import Trash2 from '~icons/solar/trash-bin-trash-linear'
-import UserCheck from '~icons/solar/user-check-linear'
+import { Ban, Mail as Letter, LogOut, ShieldOff, Trash2, UserCheck } from 'lucide-react'
 
 import type { ConfirmedAction } from '@/modules/users/components/user-action-confirmations'
 import { isBanned, isVerified } from '@/modules/users/components/user-states'

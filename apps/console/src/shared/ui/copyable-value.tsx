@@ -11,9 +11,9 @@ type CopyableValueProps = {
 export function CopyableValue({ label, value }: CopyableValueProps): JSX.Element {
   return (
     <div className="grid min-w-0 gap-1.5">
-      <span className="text-sm font-medium text-muted-foreground">{label}</span>
-      <div className="flex min-w-0 items-start gap-1 rounded-lg border bg-frame/60 py-1 ps-3 pe-1">
-        <code className="min-w-0 flex-1 py-1 font-mono text-sm wrap-anywhere">{value}</code>
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <div className="flex min-w-0 items-start gap-1 rounded-md bg-surface py-0.5 ps-2.5 pe-0.5">
+        <code className="min-w-0 flex-1 py-1 font-mono text-xs wrap-anywhere">{value}</code>
         <CopyButton value={value} description={label} isIconOnly />
       </div>
     </div>

@@ -1,9 +1,9 @@
+import { Sparkles } from 'lucide-react'
 import ClaudeLogo from '~icons/logos/claude-icon'
 import CodexLogo from '~icons/logos/codex'
 import CodexDarkLogo from '~icons/logos/codex-dark'
 import CursorLogo from '~icons/logos/cursor-icon'
 import CopilotLogo from '~icons/logos/github-copilot'
-import Sparkles from '~icons/solar/stars-minimalistic-linear'
 import type { JSX } from 'react'
 
 import type { AiAgentId } from '@/modules/overview/components/ai-agent-prompts'

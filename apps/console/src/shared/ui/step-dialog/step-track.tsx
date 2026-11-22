@@ -18,7 +18,10 @@ export function StepTrack({ labels, activeIndex, onStepClick }: StepTrackProps):
         <li key={label} className="flex min-w-0 flex-1 flex-col gap-2">
           <span
             aria-hidden
-            className={cn('h-1 rounded-full bg-border', index <= activeIndex && 'bg-primary')}
+            className={cn(
+              'h-0.5 rounded-full bg-surface-hover',
+              index <= activeIndex && 'bg-brand',
+            )}
           />
           <StepLabel
             label={label}

@@ -13,7 +13,7 @@ export function OverviewPage(): JSX.Element {
   const [days, setDays] = useState(DEFAULT_DAYS)
 
   return (
-    <div className="@container flex flex-col gap-6">
+    <div className="@container flex flex-col gap-5">
       <OverviewHeader projectId={projectId} days={days} onDaysChange={setDays} />
       <OverviewDashboard projectId={projectId} days={days} />
     </div>

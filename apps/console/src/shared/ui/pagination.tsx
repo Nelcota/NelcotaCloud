@@ -24,7 +24,7 @@ export function Pagination({
   const canAdvance = totalPages === undefined ? hasMore : page < totalPages
 
   return (
-    <nav aria-label={label} className="flex items-center justify-end gap-2 text-sm">
+    <nav aria-label={label} className="flex items-center justify-end gap-2 text-xs">
       <Button
         type="button"
         variant="outline"

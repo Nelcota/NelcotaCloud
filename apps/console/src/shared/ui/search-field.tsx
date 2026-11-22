@@ -38,7 +38,7 @@ export function SearchField({
   }
 
   return (
-    <InputGroup className={cn('w-full sm:max-w-72', className)}>
+    <InputGroup className={cn("w-full border-transparent sm:max-w-72", className)}>
       <InputGroupAddon>
         <Search aria-hidden />
       </InputGroupAddon>

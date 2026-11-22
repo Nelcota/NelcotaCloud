@@ -14,9 +14,9 @@ export function BackLink({ label, href }: BackLinkProps): JSX.Element {
   return (
     <RouterLink
       href={href}
-      className="inline-flex w-fit items-center gap-1.5 rounded-md text-sm text-muted-foreground hover:text-foreground"
+      className="inline-flex w-fit items-center gap-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground"
     >
-      <ArrowLeft aria-hidden className="size-4" />
+      <ArrowLeft aria-hidden className="size-3.5" />
       {label}
     </RouterLink>
   )

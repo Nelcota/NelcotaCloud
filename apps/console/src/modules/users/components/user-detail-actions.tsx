@@ -1,6 +1,4 @@
-import Ban from '~icons/solar/forbidden-circle-linear'
-import Letter from '~icons/solar/letter-linear'
-import UserCheck from '~icons/solar/user-check-linear'
+import { Ban, Mail as Letter, UserCheck } from 'lucide-react'
 import type { JSX } from 'react'
 
 import type { UserActionRunner } from '@/modules/users/components/user-action-runner'

@@ -1,5 +1,4 @@
-import LogOut from '~icons/solar/logout-2-linear'
-import Monitor from '~icons/solar/monitor-smartphone-linear'
+import { LogOut, MonitorSmartphone as Monitor } from 'lucide-react'
 import type { JSX } from 'react'
 
 import type { UserActionRunner } from '@/modules/users/components/user-action-runner'
