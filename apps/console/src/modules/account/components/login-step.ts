@@ -10,8 +10,8 @@ export const LOGIN_STEP_HEADINGS: Record<
   LoginStep['kind'],
   { title: string; description?: string }
 > = {
-  'sign-in': { title: 'Entrar' },
-  'sign-up': { title: 'Criar conta' },
+  'sign-in': { title: 'Entrar no console', description: 'Use o email da sua conta NelcotaCloud.' },
+  'sign-up': { title: 'Criar conta', description: 'Uma conta cria e administra até 10 projetos.' },
   mfa: { title: 'Código de verificação', description: 'Os 6 dígitos do seu app autenticador.' },
   recover: { title: 'Redefinir senha', description: 'Enviamos um link para o seu email.' },
   notice: { title: 'Confira seu email' },

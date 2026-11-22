@@ -14,9 +14,7 @@ export function DetectedFields({ facets }: { facets: LogFacets }): JSX.Element {
   return (
     <div className="flex min-w-0 flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="font-mono text-2xs font-medium text-muted-foreground uppercase">
-          Campos detectados
-        </h3>
+        <h3 className="type-label font-mono text-muted-foreground">Campos detectados</h3>
         <Button
           type="button"
           variant="ghost"

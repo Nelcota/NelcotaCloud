@@ -31,7 +31,7 @@ export function LogQueryForm({ control, onRun }: LogQueryFormProps): JSX.Element
         onRun()
       }}
     >
-      <h3 className="font-mono text-2xs font-medium text-muted-foreground uppercase">Busca</h3>
+      <h3 className="type-label font-mono text-muted-foreground">Busca</h3>
       <SearchField
         label="Buscar por email ou IP"
         className="sm:max-w-none"

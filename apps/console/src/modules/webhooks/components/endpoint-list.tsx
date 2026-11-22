@@ -22,10 +22,7 @@ export function EndpointList(props: EndpointListProps): JSX.Element {
       className="flex min-w-0 flex-col gap-1 rounded-xl bg-surface p-1.5 lg:sticky lg:top-0 lg:bg-transparent lg:p-0"
     >
       <div className="flex items-baseline justify-between gap-2 px-2 pb-1">
-        <h2
-          id={titleId}
-          className="text-2xs font-medium tracking-[0.025em] text-muted-foreground uppercase"
-        >
+        <h2 id={titleId} className="type-label text-muted-foreground">
           Endpoints
         </h2>
         <span className="font-mono text-2xs text-muted-foreground tabular-nums">

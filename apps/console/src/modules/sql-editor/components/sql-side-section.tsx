@@ -13,10 +13,7 @@ export function SqlSideSection({ title, meta, children }: SqlSideSectionProps): 
 
   return (
     <section aria-labelledby={titleId} className="flex min-w-0 flex-col gap-1">
-      <h2
-        id={titleId}
-        className="flex items-center gap-1.5 px-2 text-2xs font-medium tracking-[0.025em] text-muted-foreground uppercase"
-      >
+      <h2 id={titleId} className="type-label flex items-center gap-1.5 px-2 text-muted-foreground">
         {title}
         <span className="text-muted-foreground tabular-nums">{meta}</span>
       </h2>

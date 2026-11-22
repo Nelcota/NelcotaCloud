@@ -1,7 +1,9 @@
 import type { SignInResult } from '@nelcota/sdk'
+import { ArrowRight } from 'lucide-react'
 import type { FormEvent, JSX } from 'react'
 import { useState } from 'react'
 
+import { PasswordField } from '@/modules/account/components/password-field'
 import { useSignInMutation } from '@/modules/account/queries/use-sign-in-mutation'
 import { ErrorAlert } from '@/shared/ui/error-alert'
 import { PendingButton } from '@/shared/ui/pending-button'
@@ -24,7 +26,7 @@ export function SignInForm({ onResult, onForgotPassword }: SignInFormProps): JSX
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3">
+    <form onSubmit={submit} className="flex flex-col gap-4">
       <TextField
         label="Email"
         type="email"
@@ -33,34 +35,31 @@ export function SignInForm({ onResult, onForgotPassword }: SignInFormProps): JSX
         spellCheck={false}
         autoFocus
         required
+        className="[&_input]:h-10"
         value={email}
         onChange={(event) => setEmail(event.target.value)}
       />
-      <div className="flex flex-col gap-1.5">
-        <TextField
-          label="Senha"
-          type="password"
-          name="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-        />
-        <div className="flex justify-end">
+      <PasswordField
+        label="Senha"
+        autoComplete="current-password"
+        value={password}
+        onChange={setPassword}
+        labelAction={
           <Button
             type="button"
             variant="link"
             size="sm"
-            className="h-auto px-0 text-xs font-normal text-muted-foreground hover:text-foreground"
+            className="text-xs font-normal text-muted-foreground hover:text-foreground"
             onClick={onForgotPassword}
           >
             Esqueci minha senha
           </Button>
-        </div>
-      </div>
+        }
+      />
       <ErrorAlert error={signIn.error} />
       <PendingButton type="submit" size="lg" className="w-full" isPending={signIn.isPending}>
         Entrar
+        <ArrowRight aria-hidden data-icon="inline-end" />
       </PendingButton>
     </form>
   )

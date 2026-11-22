@@ -3,17 +3,16 @@ import { useNavigate } from '@tanstack/react-router'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
-import { AuthCard } from '@/modules/account/components/auth-card'
-import { AuthPanel } from '@/modules/account/components/auth-panel'
-import { LoginProductPreview } from '@/modules/account/components/login-product-preview'
+import { AuthHeading } from '@/modules/account/components/auth-heading'
+import { AuthScreen } from '@/modules/account/components/auth-screen'
+import { AuthShowcase } from '@/modules/account/components/auth-showcase'
+import { AuthStepChrome } from '@/modules/account/components/auth-step-chrome'
 import {
   LOGIN_STEP_HEADINGS,
   VERIFICATION_SENT,
   type LoginStep,
 } from '@/modules/account/components/login-step'
 import { LoginStepContent } from '@/modules/account/components/login-step-content'
-import { LoginStepFooter } from '@/modules/account/components/login-step-footer'
-import { ConsoleBrand } from '@/shared/ui/console-brand'
 
 export function LoginPage(): JSX.Element {
   const navigate = useNavigate()
@@ -42,30 +41,18 @@ export function LoginPage(): JSX.Element {
   }
 
   return (
-    <div className="flex min-h-dvh gap-2 bg-frame p-2">
-      <main className="flex w-full flex-col gap-6 px-2 py-4 sm:px-6 lg:w-[28rem] lg:shrink-0">
-        <ConsoleBrand />
-        <div className="flex flex-1 flex-col justify-center pb-10">
-          <div className="mx-auto w-full max-w-[22.5rem]">
-            <AuthPanel>
-              <AuthCard
-                title={heading.title}
-                description={heading.description}
-                footer={<LoginStepFooter step={step} onStep={setStep} />}
-              >
-                <LoginStepContent
-                  step={step}
-                  onSignIn={handleSignIn}
-                  onSignUp={handleSignUp}
-                  onStep={setStep}
-                  onSignedIn={goToProjects}
-                />
-              </AuthCard>
-            </AuthPanel>
-          </div>
-        </div>
-      </main>
-      <LoginProductPreview />
-    </div>
+    <AuthScreen showcase={<AuthShowcase />}>
+      <AuthStepChrome step={step} onStep={setStep} />
+      <AuthHeading title={heading.title} description={heading.description} />
+      <div key={step.kind} className="animate-page-in">
+        <LoginStepContent
+          step={step}
+          onSignIn={handleSignIn}
+          onSignUp={handleSignUp}
+          onStep={setStep}
+          onSignedIn={goToProjects}
+        />
+      </div>
+    </AuthScreen>
   )
 }

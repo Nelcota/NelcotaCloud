@@ -57,10 +57,7 @@ function ActivityFrame({ projectId, children }: ActivityFrameProps): JSX.Element
       className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-card"
     >
       <div className="flex items-center justify-between gap-3 px-4 pt-3.5 pb-1">
-        <h2
-          id="recent-activity-title"
-          className="text-2xs font-medium tracking-[0.025em] text-muted-foreground uppercase"
-        >
+        <h2 id="recent-activity-title" className="type-label text-muted-foreground">
           Atividade recente
         </h2>
         <Button asChild variant="ghost" size="sm">

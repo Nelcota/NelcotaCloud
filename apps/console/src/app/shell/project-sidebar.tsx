@@ -44,11 +44,7 @@ function GroupLabel({ label }: { label: string | null }): JSX.Element | null {
     return null
   }
 
-  return (
-    <p className="px-2 pt-1 pb-1.5 text-2xs font-medium tracking-[0.025em] text-muted-foreground uppercase">
-      {label}
-    </p>
-  )
+  return <p className="type-label px-2 pt-1 pb-1.5 text-muted-foreground">{label}</p>
 }
 
 type SectionLinkProps = { projectId: string; section: ProjectSection; isCurrent: boolean }

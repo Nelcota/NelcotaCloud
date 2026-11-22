@@ -14,7 +14,7 @@ color or a size in a screen.
 
 ## Type
 
-- Cal Sans (official variable font, `cal-sans`) for the interface, JetBrains Mono (`font-mono`)
+- Cal Sans (official variable font, self-hosted in `public/fonts` and preloaded) for the interface, JetBrains Mono (`font-mono`)
   for ids, slugs, hashes, URLs, timestamps in logs, keys, shortcuts, CLI and SQL.
 - Scale, one step above the Veloz mockup (the site shows it scaled down, too small to work in
   all day): `text-2xs` 11px (meta, kbd, uppercase group labels), `text-xs` 13px (labels,
@@ -35,8 +35,8 @@ color or a size in a screen.
   `primary-fill` (#d63f00, AA with white) fills the one primary button of a view; `primary`
   is orange text that passes AA in each theme.
 - Status words and pills use `success`, `warning`, `destructive`, `info` on a 12–16% tint.
-- Charts: `chart-1` blue (main series), `chart-2` orange, `chart-3` amber, `chart-4` green,
-  `chart-5` red, `chart-6` light blue.
+- Charts: `chart-1` blue (main series) and `chart-2` orange, drawn dashed so the two series
+  differ without hue. Add a token when a chart needs a third series.
 
 ## Shape and size
 
