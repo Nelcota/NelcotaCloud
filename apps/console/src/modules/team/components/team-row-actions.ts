@@ -1,7 +1,14 @@
 import type { MemberRow } from '@/modules/team/components/team-rows'
 
 /** `transfer` is not a menu item: it is "Tornar dono" with "e deixar de ser dono" ticked. */
-export type MemberAction = 'promote' | 'transfer' | 'demote' | 'remove' | 'leave'
+export type MemberAction =
+  | 'promote'
+  | 'transfer'
+  | 'demote'
+  | 'restrict'
+  | 'allow-edit'
+  | 'remove'
+  | 'leave'
 
 export type Viewer = {
   isOwnRow: boolean
@@ -31,12 +38,16 @@ export function menuFor(row: MemberRow, viewer: Viewer): RowMenu {
     return { entries: [enabled('demote')], note: null }
   }
 
-  return { entries: [enabled('promote'), enabled('remove')], note: null }
+  if (row.role === 'viewer') {
+    return { entries: [enabled('allow-edit'), enabled('remove')], note: null }
+  }
+
+  return { entries: [enabled('promote'), enabled('restrict'), enabled('remove')], note: null }
 }
 
 /** Leaving has its own section at the bottom of the page, so your row only changes your role. */
 function ownMenu(row: MemberRow, viewer: Viewer): RowMenu {
-  if (row.role === 'member') {
+  if (row.role !== 'owner') {
     return { entries: [], note: null }
   }
 

@@ -44,7 +44,7 @@ export function MobileNavigation({ location }: { location: ProjectLocation | nul
         <Button
           type="button"
           variant="ghost"
-          size="icon-sm"
+          size="icon"
           className="lg:hidden"
           aria-label="Abrir navegação"
         >
@@ -56,12 +56,14 @@ export function MobileNavigation({ location }: { location: ProjectLocation | nul
         <SheetDescription className="sr-only">
           Projetos, conta e páginas do projeto.
         </SheetDescription>
-        <div className="flex h-full min-h-0 flex-col" onClick={closeOnLink}>
+        {/* The top row is the sheet's close button, on the line of the top bar it covers. */}
+        <div className="flex h-full min-h-0 flex-col pt-14" onClick={closeOnLink}>
           <MobileConsoleLinks current={current} />
           <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto overscroll-contain">
             <ProjectPages location={location} />
           </div>
-          <div className="flex gap-1 border-t p-2">
+          {/* 6px in, so the 40px buttons centre on the icon column of the links above. */}
+          <div className="flex gap-1 border-t px-1.5 py-2">
             <InvitationsBell />
             <ThemeToggle />
           </div>

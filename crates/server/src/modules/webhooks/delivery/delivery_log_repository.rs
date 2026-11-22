@@ -1,13 +1,10 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-/// The newest deliveries are what owners look at when a receiver misbehaves.
-const DELIVERY_LOG_LIMIT: i64 = 50;
-
-#[derive(Debug, Clone, Copy, Serialize, ToSchema, sqlx::Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema, sqlx::Type)]
 #[serde(rename_all = "snake_case")]
 #[sqlx(type_name = "text", rename_all = "snake_case")]
 pub enum DeliveryStatus {
@@ -29,6 +26,10 @@ pub struct DeliveryLogEntry {
     pub attempts: i32,
     pub last_response_status: Option<i32>,
     pub last_error: Option<String>,
+    /// How long the receiver took to answer the last attempt; `null` when it never answered.
+    pub last_duration_ms: Option<i32>,
+    /// The start (512 bytes at most) of the receiver's answer when it refused the last attempt.
+    pub last_response_body: Option<String>,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339::option")]
@@ -38,22 +39,26 @@ pub struct DeliveryLogEntry {
     pub next_attempt_at: Option<OffsetDateTime>,
 }
 
+/// One page of an endpoint's log, newest first: optionally one state only, and only deliveries
+/// older than `before` (the last delivery of the previous page).
+pub struct DeliveryLogQuery {
+    pub endpoint_id: Uuid,
+    pub status: Option<DeliveryStatus>,
+    pub before: Option<Uuid>,
+    pub limit: i64,
+}
+
 pub async fn list_deliveries(
     pool: &PgPool,
-    endpoint_id: Uuid,
+    query: DeliveryLogQuery,
 ) -> Result<Vec<DeliveryLogEntry>, sqlx::Error> {
     sqlx::query_as(
-        "SELECT delivery.id, delivery.event_id, event.event_type, \
-         CASE WHEN delivery.delivered_at IS NOT NULL THEN 'delivered' \
-         WHEN delivery.failed_at IS NOT NULL THEN 'failed' ELSE 'pending' END AS status, \
-         delivery.attempts, delivery.last_response_status, delivery.last_error, delivery.created_at, \
-         delivery.last_attempt_at, \
-         CASE WHEN delivery.delivered_at IS NULL AND delivery.failed_at IS NULL THEN delivery.next_attempt_at END AS next_attempt_at \
-         FROM webhook_deliveries delivery JOIN webhook_events event ON event.id = delivery.event_id \
-         WHERE delivery.endpoint_id = $1 ORDER BY delivery.created_at DESC LIMIT $2",
+        "SELECT delivery.id, delivery.event_id, event.event_type,          CASE WHEN delivery.delivered_at IS NOT NULL THEN 'delivered'          WHEN delivery.failed_at IS NOT NULL THEN 'failed' ELSE 'pending' END AS status,          delivery.attempts, delivery.last_response_status, delivery.last_error,          delivery.last_duration_ms, delivery.last_response_body, delivery.created_at,          delivery.last_attempt_at,          CASE WHEN delivery.delivered_at IS NULL AND delivery.failed_at IS NULL THEN delivery.next_attempt_at END AS next_attempt_at          FROM webhook_deliveries delivery JOIN webhook_events event ON event.id = delivery.event_id          WHERE delivery.endpoint_id = $1          AND ($2::text IS NULL            OR ($2 = 'delivered' AND delivery.delivered_at IS NOT NULL)            OR ($2 = 'failed' AND delivery.delivered_at IS NULL AND delivery.failed_at IS NOT NULL)            OR ($2 = 'pending' AND delivery.delivered_at IS NULL AND delivery.failed_at IS NULL))          AND ($3::uuid IS NULL OR (delivery.created_at, delivery.id) <            (SELECT previous.created_at, previous.id FROM webhook_deliveries previous             WHERE previous.id = $3 AND previous.endpoint_id = $1))          ORDER BY delivery.created_at DESC, delivery.id DESC LIMIT $4",
     )
-    .bind(endpoint_id)
-    .bind(DELIVERY_LOG_LIMIT)
+    .bind(query.endpoint_id)
+    .bind(query.status)
+    .bind(query.before)
+    .bind(query.limit)
     .fetch_all(pool)
     .await
 }

@@ -17,13 +17,13 @@ const DURATION = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 })
 /** "12 linhas · 34 ms": rows, time and truncation of the last run, announced when they change. */
 export function SqlResultStatus(props: SqlResultStatusProps): JSX.Element {
   return (
-    <p role="status" className="min-w-0 text-xs text-muted-foreground tabular-nums">
+    <span role="status" className="min-w-0 text-xs text-muted-foreground tabular-nums">
       {statusText(props)}
       <TruncatedNote
         result={props.result}
         isShown={props.error === null && props.isRunning === false}
       />
-    </p>
+    </span>
   )
 }
 

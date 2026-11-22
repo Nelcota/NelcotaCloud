@@ -7,7 +7,8 @@ import type { NoticeTone } from '@/shared/ui/notice'
 export type HealthNotice = {
   tone: NoticeTone
   text: string
-  action: { label: string; to: string }
+  /** `null` for setup left to do: the next steps card holds those actions. */
+  action: { label: string; to: string } | null
 }
 
 type HealthNoticeSources = {
@@ -66,7 +67,7 @@ function setupNotice(steps: SetupStep[] | null): HealthNotice | null {
 
   return {
     tone: 'info',
-    text: `Configuração incompleta, ${done} de ${steps.length}: ${next.label.toLowerCase()}.`,
-    action: { label: next.actionLabel, to: next.to },
+    text: `Configuração ${done} de ${steps.length}. Próximo passo: ${next.label.toLowerCase()}.`,
+    action: null,
   }
 }

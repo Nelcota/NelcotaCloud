@@ -7,3 +7,4 @@ pub mod routes;
 pub mod rows;
 pub mod schema;
 pub mod sql;
+pub mod usage;

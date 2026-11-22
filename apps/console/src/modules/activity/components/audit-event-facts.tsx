@@ -82,7 +82,7 @@ function AddressFact({
           Filtrar por este IP
         </Button>
         {onBlock !== undefined && (
-          <Button type="button" variant="outline" size="sm" onClick={() => onBlock(address)}>
+          <Button type="button" variant="destructive" size="sm" onClick={() => onBlock(address)}>
             Bloquear IP
           </Button>
         )}

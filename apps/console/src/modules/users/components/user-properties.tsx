@@ -4,28 +4,21 @@ import { signInMethods } from '@/modules/users/components/sign-in-methods'
 import { OptionalDate, UserEmailFact } from '@/modules/users/components/user-property-values'
 import type { components } from '@/shared/api/api-schema'
 import { DataList, DataListItem } from '@/shared/ui/data-list'
-import { IdChip } from '@/shared/ui/id-chip'
 import { Section } from '@/shared/ui/section'
 import { Timestamp } from '@/shared/ui/timestamp'
 
 type User = components['schemas']['User']
 
-/** Every field the API returns about the account, as label and value rows. */
+/** The account's fields the header does not already show (id, states, last login). */
 export function UserProperties({ user }: { user: User }): JSX.Element {
   return (
     <Section title="Conta" isFramed>
       <DataList className="px-4">
-        <DataListItem label="ID">
-          <IdChip label="ID do usuário" value={user.id} />
-        </DataListItem>
         <DataListItem label="Email">
           <UserEmailFact user={user} />
         </DataListItem>
         <DataListItem label="Criado em">
           <Timestamp value={user.created_at} />
-        </DataListItem>
-        <DataListItem label="Último login">
-          <OptionalDate value={user.last_sign_in_at} missing="Nunca entrou" />
         </DataListItem>
         <DataListItem label="Entra com">{signInMethods(user).join(' · ')}</DataListItem>
         <DataListItem label="Senha">{passwordText(user)}</DataListItem>

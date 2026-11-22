@@ -11,6 +11,7 @@ import { useIsMfaOff } from '@/app/shell/use-is-mfa-off'
 import { nelcota } from '@/shared/auth/nelcota'
 import { useSession } from '@/shared/auth/use-session'
 import { nameOf } from '@/shared/lib/account-name'
+import { showFlash } from '@/shared/lib/flash-notice'
 import { RouterLink } from '@/shared/routing/router-link'
 import { Avatar } from '@/shared/ui/avatar'
 import {
@@ -40,13 +41,21 @@ export function AccountMenu(): JSX.Element | null {
   const email = user.email
   const name = nameOf(email)
 
+  /**
+   * The SDK clears the local session even when the server's logout fails; the failure is then
+   * said on the login page, since the session may still be valid on the server.
+   */
   async function signOut(): Promise<void> {
     try {
       await nelcota.auth.signOut()
-    } finally {
-      if (nelcota.auth.getSession() === null) {
-        await navigate({ to: '/login' })
-      }
+    } catch {
+      showFlash(
+        'Você saiu deste navegador, mas o servidor não confirmou. Encerre as sessões na sua conta se precisar.',
+      )
+    }
+
+    if (nelcota.auth.getSession() === null) {
+      await navigate({ to: '/login' })
     }
   }
 
@@ -54,13 +63,13 @@ export function AccountMenu(): JSX.Element | null {
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Conta: ${name}${mfaSuffix(isMfaOff)}`}
-        className="relative inline-flex h-9 max-w-60 min-w-0 shrink-0 items-center gap-2 rounded-md px-1.5 text-sm text-foreground hover:bg-surface aria-expanded:bg-surface sm:px-2"
+        className="relative inline-flex h-9 max-w-60 min-w-0 items-center gap-1.5 rounded-md px-1.5 text-sm text-foreground hover:bg-surface aria-expanded:bg-surface sm:pe-2"
       >
         <Avatar src={nelcota.auth.avatar.url(user) ?? undefined} name={name} size="xs" isSquare />
         <span className="hidden truncate sm:inline">{name}</span>
         <ChevronsUpDown
           aria-hidden
-          className="hidden size-3.5 shrink-0 text-muted-foreground sm:block"
+          className="hidden size-4 shrink-0 text-muted-foreground sm:block"
         />
         <MfaDot isMfaOff={isMfaOff} />
       </DropdownMenuTrigger>
@@ -116,7 +125,7 @@ function MfaDot({ isMfaOff }: { isMfaOff: boolean }): JSX.Element | null {
   return (
     <span
       aria-hidden
-      className="absolute start-4 top-0.5 size-2 rounded-full bg-warning ring-2 ring-background"
+      className="absolute start-3.5 top-0.5 size-2 rounded-full bg-warning ring-2 ring-background"
     />
   )
 }

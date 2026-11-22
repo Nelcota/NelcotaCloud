@@ -45,6 +45,7 @@ export function EndpointSecretTab({ panel }: { panel: EndpointPanel }): JSX.Elem
           <CodeBlock
             code={requestSample(pathOf(endpoint.url), firstEvent)}
             title="Requisição"
+            language="http"
             isWrapped
           />
         </RevealableSample>

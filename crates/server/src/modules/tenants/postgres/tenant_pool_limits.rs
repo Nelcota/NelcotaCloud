@@ -9,6 +9,9 @@ pub struct TenantPoolLimits {
 }
 
 impl TenantPoolLimits {
+    /// The active Data API session budget across all projects in one API process.
+    pub const DATA_API_SESSION_BUDGET: usize = 40;
+
     /// The API's Auth and platform pools: the projects with recent requests keep a small pool,
     /// and a project past the limit reopens its pool on its next request.
     pub const API: Self = Self {
@@ -16,10 +19,10 @@ impl TenantPoolLimits {
         open_pools: 32,
     };
 
-    /// Data API pools, sized like its session slots: five sessions per project, forty in all.
+    /// Five cached Data API pools, each sized for eight sessions.
     pub const DATA_API: Self = Self {
-        connections_per_tenant: 5,
-        open_pools: 8,
+        connections_per_tenant: 8,
+        open_pools: 5,
     };
 
     /// The webhook worker handles a few tenants at a time, so it keeps only a few pools: its
@@ -61,6 +64,10 @@ mod tests {
         let cached = TenantPoolLimits::API.max_connections(0);
         let data_api = TenantPoolLimits::DATA_API.max_connections(0);
 
+        assert_eq!(
+            usize::try_from(data_api),
+            Ok(TenantPoolLimits::DATA_API_SESSION_BUDGET)
+        );
         assert!(cached.saturating_add(data_api) <= API_TENANT_CONNECTION_BUDGET);
     }
 

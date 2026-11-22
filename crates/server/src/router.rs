@@ -26,6 +26,7 @@ use crate::modules::auth::routes::auth_routes::auth_routes;
 use crate::modules::cache::routes::cache_routes::cache_routes;
 use crate::modules::database::query::preferences::PREFER_HEADER;
 use crate::modules::database::routes::database_routes::database_routes;
+use crate::modules::notifications::routes::notifications_routes::notifications_routes;
 use crate::modules::oauth::routes::oauth_routes::oauth_routes;
 use crate::modules::storage::routes::storage_routes::storage_routes;
 use crate::modules::team::routes::team_routes::team_routes;
@@ -111,6 +112,7 @@ pub fn api_routes() -> OpenApiRouter<AppState> {
         .merge(team_routes())
         .merge(auth_routes())
         .merge(webhooks_routes())
+        .merge(notifications_routes())
         .merge(oauth_routes())
         .merge(database_routes())
         .merge(cache_routes())

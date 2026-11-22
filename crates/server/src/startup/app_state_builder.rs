@@ -8,6 +8,7 @@ use crate::app_state::AppState;
 use crate::modules::cache::entries::cache_store::CacheStore;
 use crate::modules::database::execution::session_slots::SessionSlots;
 use crate::modules::database::schema::schema_cache::SchemaCache;
+use crate::modules::database::usage::usage_buffer::DataApiUsageBuffer;
 use crate::modules::oauth::provider::provider_endpoints::OAuthEndpoints;
 use crate::modules::storage::object_store::r2_store::R2Store;
 use crate::modules::tenants::api_keys::api_key_usage::ApiKeyUsage;
@@ -32,7 +33,6 @@ use crate::startup::service_dependencies::{
     cache_authentication_pool, master_secret_box, prepare_control_plane, webhook_transport,
 };
 use crate::startup::startup_error::StartupError;
-use crate::startup::tenant_database_preparation::prepare_existing_tenants;
 
 const OUTBOUND_HTTP_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -74,7 +74,6 @@ pub async fn build_app_state_with_endpoints(
             .prepare_runtime_role(password)
             .await
             .map_err(StartupError::DatabaseRoles)?;
-        prepare_existing_tenants(&control_plane_pool, &database_server).await?;
     }
     let (webhooks, webhook_hints) = build_webhooks(config, &control_plane_pool)?;
 
@@ -90,6 +89,7 @@ pub async fn build_app_state_with_endpoints(
         tenant_pools,
         schema_cache: Arc::new(SchemaCache::new()),
         database_session_slots: Arc::new(SessionSlots::new()),
+        data_api_usage: Arc::new(DataApiUsageBuffer::default()),
         signing_keys: Arc::new(signing_key_cache(&control_plane_pool, &secret_box)),
         tenant_provisioning_slots: Arc::new(tokio::sync::Semaphore::new(
             MAX_CONCURRENT_PROVISIONING,

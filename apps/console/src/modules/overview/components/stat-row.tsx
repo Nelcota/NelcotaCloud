@@ -1,10 +1,9 @@
 import type { JSX } from 'react'
 
+import { ApiRequestsCard } from '@/modules/overview/components/api-requests-card'
 import { MetricCard } from '@/modules/overview/components/metric-card'
 import { comparisonDays, splitPeriods } from '@/modules/overview/components/period-series'
-import { RefusedLoginsCard } from '@/modules/overview/components/refused-logins-card'
 import { statFiguresOf } from '@/modules/overview/components/stat-figures'
-import { useAuditSummaryQuery } from '@/modules/overview/queries/use-audit-summary-query'
 import { useDailyUsageQuery } from '@/modules/overview/queries/use-daily-usage-query'
 import { useProjectUsageQuery } from '@/modules/overview/queries/use-project-usage-query'
 import { useUsersQuery } from '@/modules/users/queries/use-users'
@@ -15,13 +14,12 @@ const TOTAL_ONLY = { email: '', status: 'all', offset: 0, limit: 1 } as const
 
 type StatRowProps = { projectId: string; days: number }
 
-/** The four numbers a developer checks first, each with its trend. */
+/** The four numbers a developer checks first, each with its trend: people, then traffic. */
 export function StatRow({ projectId, days }: StatRowProps): JSX.Element {
   const users = useUsersQuery(projectId, TOTAL_ONLY)
   const daily = useDailyUsageQuery(projectId, comparisonDays(days))
   const usage = useProjectUsageQuery(projectId)
-  const summary = useAuditSummaryQuery(projectId, days)
-  const failed = [users, daily, usage, summary].filter((query) => query.isError)
+  const failed = [users, daily, usage].filter((query) => query.isError)
   const period = splitPeriods(daily.data?.days, days)
   const figures = statFiguresOf({ total: users.data?.total, period, usage: usage.data })
 
@@ -47,7 +45,7 @@ export function StatRow({ projectId, days }: StatRowProps): JSX.Element {
           figure={figures.logins}
           comparison={loginsComparison(period.previous, days)}
         />
-        <RefusedLoginsCard summary={summary.data} days={days} />
+        <ApiRequestsCard projectId={projectId} days={days} />
       </div>
     </section>
   )

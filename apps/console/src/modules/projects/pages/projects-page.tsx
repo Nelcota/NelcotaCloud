@@ -19,13 +19,26 @@ export function ProjectsPage(): JSX.Element {
       <PageHeader
         title="Projetos"
         description="Cada projeto tem Auth, banco Postgres e chaves de API próprios."
-        actions={<NewProjectButton />}
+        actions={<HeaderAction projects={projects.data} />}
       />
       <LoadError error={projects.error} onRetry={() => projects.refetch()} />
       <ReceivedInvitations />
       <ProjectsContent isPending={projects.isPending} projects={projects.data} />
     </div>
   )
+}
+
+/** With no projects the empty state holds the one "Novo projeto" button. */
+function HeaderAction({
+  projects,
+}: {
+  projects: ProjectSummary[] | undefined
+}): JSX.Element | null {
+  if (projects === undefined || projects.length === 0) {
+    return null
+  }
+
+  return <NewProjectButton />
 }
 
 function ProjectsContent({

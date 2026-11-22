@@ -27,14 +27,14 @@ export const CONFIRMATIONS: Record<ConfirmedAction, Confirmation> = {
     description:
       'O usuário sai de todos os dispositivos e precisa entrar de novo. A conta continua ativa.',
     confirmLabel: 'Encerrar sessões',
-    isDestructive: false,
+    isDestructive: true,
     change: (email) => ({ subject: email, icon: User, from: 'Conectado', to: 'Desconectado' }),
   },
   'reset-mfa': {
     title: () => 'Remover o MFA?',
     description: 'O usuário passa a entrar só com a senha até cadastrar um novo autenticador.',
     confirmLabel: 'Remover MFA',
-    isDestructive: false,
+    isDestructive: true,
     change: (email) => ({ subject: email, icon: User, from: 'Com MFA', to: 'Sem MFA' }),
   },
   delete: {

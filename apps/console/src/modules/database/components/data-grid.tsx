@@ -20,6 +20,8 @@ type DataGridProps = {
   /** Each row's values in the order of `columns`. */
   rows: readonly (readonly unknown[])[]
   rowOffset?: number
+  /** Opens a row somewhere else (the row editor) instead of the read-only details panel. */
+  onRowOpen?: (index: number) => void
 }
 
 /**
@@ -27,13 +29,19 @@ type DataGridProps = {
  * results can repeat a column name (`?column?`) and rows have no identity of their own.
  * Unframed: the caller's panel draws the border.
  */
-export function DataGrid({ label, columns, rows, rowOffset = 0 }: DataGridProps): JSX.Element {
+export function DataGrid(props: DataGridProps): JSX.Element {
+  const { label, columns, rows, rowOffset = 0, onRowOpen } = props
   const [openRow, setOpenRow] = useState<GridRow | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const data = rows.map((cells, index) => ({ number: rowOffset + index + 1, cells }))
   const isNumeric = numericColumns(columns, rows)
 
   function showRow(row: GridRow): void {
+    if (onRowOpen !== undefined) {
+      onRowOpen(row.number - rowOffset - 1)
+      return
+    }
+
     setOpenRow(row)
     setIsOpen(true)
   }

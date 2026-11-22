@@ -39,6 +39,7 @@ export function DeliverySheet({ delivery, retry, onClose }: DeliverySheetProps):
       <SheetContent
         side="right"
         className="gap-0 p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-xl"
+        onOpenAutoFocus={focusSheet}
       >
         <DeliveryContent delivery={delivery} retry={retry} />
       </SheetContent>
@@ -66,16 +67,27 @@ function DeliveryContent({ delivery, retry }: DeliveryContentProps): JSX.Element
           </div>
         </SheetDescription>
       </SheetHeader>
-      <div className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+      <div className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 *:shrink-0">
         <DeliveryFields delivery={delivery} />
+        <ReceiverAnswer body={delivery.last_response_body ?? null} />
         <div className="grid gap-1.5">
-          <CodeBlock code={sentHeaders(delivery)} title="Headers enviados" isWrapped />
+          <CodeBlock
+            code={sentHeaders(delivery)}
+            title="Headers enviados"
+            language="http"
+            isWrapped
+          />
           <p className="text-xs text-muted-foreground">
             O corpo não fica guardado: tem dados pessoais. Eventos de teste não entram neste
             histórico.
           </p>
         </div>
-        <CodeBlock code={JSON.stringify(delivery, null, 2)} title="Registro" copyLabel="Entrega" />
+        <CodeBlock
+          code={JSON.stringify(delivery, null, 2)}
+          title="Registro"
+          language="json"
+          copyLabel="Entrega"
+        />
       </div>
       <SheetFooter className="flex-row justify-end border-t">
         <PendingButton
@@ -90,6 +102,28 @@ function DeliveryContent({ delivery, retry }: DeliveryContentProps): JSX.Element
       </SheetFooter>
     </>
   )
+}
+
+/**
+ * Focus lands on the sheet itself: the first focusable control is a copy button, whose
+ * tooltip would open on its own and cover the title.
+ */
+function focusSheet(event: Event): void {
+  event.preventDefault()
+  const sheet = event.currentTarget
+
+  if (sheet instanceof HTMLElement) {
+    sheet.focus()
+  }
+}
+
+/** The start of what the receiver answered when it refused, as it sent it. */
+function ReceiverAnswer({ body }: { body: string | null }): JSX.Element | null {
+  if (body === null) {
+    return null
+  }
+
+  return <CodeBlock code={body} title="Resposta do servidor" isWrapped />
 }
 
 /** The Standard Webhooks headers; `webhook-id` is the event id, the same on every retry. */

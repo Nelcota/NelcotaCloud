@@ -1,8 +1,8 @@
 import { Folder } from 'lucide-react'
 import type { JSX } from 'react'
 
-import { ProjectAvatar } from '@/shared/ui/project-avatar'
 import type { ProjectLocation } from '@/app/shell/project-sections'
+import { ProjectMark } from '@/modules/projects/components/project-mark'
 import { useCurrentProject } from '@/modules/projects/queries/use-projects'
 import { RouterLink } from '@/shared/routing/router-link'
 import {
@@ -27,7 +27,7 @@ export function HeaderBreadcrumbs({ location, pageTitle }: HeaderBreadcrumbsProp
         <BreadcrumbItem className="hidden shrink-0 lg:inline-flex">
           <BreadcrumbLink asChild>
             <RouterLink href="/" className="inline-flex items-center gap-1.5">
-              <Folder aria-hidden className="size-4" />
+              <Folder aria-hidden className="size-4.5" />
               Projetos
             </RouterLink>
           </BreadcrumbLink>
@@ -108,7 +108,15 @@ function ProjectCrumb({ projectId }: { projectId: string }): JSX.Element {
           href={`/projects/${projectId}`}
           className="inline-flex min-w-0 items-center gap-1.5"
         >
-          <ProjectAvatar name={name} mascotId={project?.mascot_id} size="xs" />
+          <ProjectMark
+            project={{
+              id: projectId,
+              name,
+              mascotId: project?.mascot_id,
+              logoVersion: project?.logo_updated_at,
+            }}
+            size="xs"
+          />
           <span className="truncate">{name}</span>
         </RouterLink>
       </BreadcrumbLink>

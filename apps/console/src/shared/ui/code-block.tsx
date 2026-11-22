@@ -1,12 +1,17 @@
 import type { JSX } from 'react'
 
+import { languageOfTitle } from '@/shared/lib/code-highlight/code-language'
+import type { CodeLanguage } from '@/shared/lib/code-highlight/code-language'
 import { cn } from '@/shared/lib/utils'
 import { CopyButton } from '@/shared/ui/copy-button'
+import { HighlightedCode } from '@/shared/ui/highlighted-code'
 
 type CodeBlockProps = {
   code: string
   /** Shown in the bar above the code: a file name or a language. */
   title?: string
+  /** Colors the code; read from `title` when left out ("curl", "nelcota.ts", ".env"). */
+  language?: CodeLanguage
   /** What is copied, for screen readers. */
   copyLabel?: string
   maxHeight?: number
@@ -18,6 +23,7 @@ type CodeBlockProps = {
 export function CodeBlock({
   code,
   title,
+  language,
   copyLabel,
   maxHeight,
   isWrapped,
@@ -40,7 +46,7 @@ export function CodeBlock({
         )}
         style={{ maxHeight }}
       >
-        <code>{code}</code>
+        <HighlightedCode code={code} language={language ?? languageOfTitle(title)} />
       </pre>
     </div>
   )

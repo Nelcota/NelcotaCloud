@@ -5,7 +5,6 @@ import { FactsBar } from '@/modules/overview/components/facts-bar'
 import { ProjectState } from '@/modules/overview/components/project-state'
 import { PeriodControl } from '@/modules/overview/components/period-control'
 import { useAiContext } from '@/modules/overview/queries/use-ai-context'
-import { useProjectHealth } from '@/modules/overview/queries/use-project-health'
 import { useSettingsQuery } from '@/modules/project-settings/queries/use-project-settings'
 import { useCurrentProject } from '@/modules/projects/queries/use-projects'
 import { ErrorAlert } from '@/shared/ui/error-alert'
@@ -26,7 +25,6 @@ export function OverviewHeader({
   const settings = useSettingsQuery(projectId)
   const project = useCurrentProject(projectId)
   const { context } = useAiContext(projectId)
-  const health = useProjectHealth(projectId, days)
   const name = settings.data?.name ?? project?.name ?? 'Visão geral'
   const siteUrl = settings.data?.site_url ?? project?.site_url
 
@@ -34,7 +32,7 @@ export function OverviewHeader({
     <div className="grid grid-cols-1 gap-3">
       <PageHeader
         title={name}
-        description={<ProjectState slug={project?.slug} health={health} />}
+        description={<ProjectState slug={project?.slug} />}
         actions={
           <>
             <PeriodControl days={days} onDaysChange={onDaysChange} />

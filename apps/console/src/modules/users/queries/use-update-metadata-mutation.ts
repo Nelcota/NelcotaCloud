@@ -15,10 +15,12 @@ export function useUpdateMetadataMutation(
 
   return useMutation({
     mutationFn: (update) => updateUserMetadata(projectId, update),
-    onSuccess: async (user) => {
+    // Not awaited: the saved user is in the cache already, and waiting for the refetches would
+    // leave the panel comparing its old draft with the new value, a conflict for a moment.
+    onSuccess: (user) => {
       queryClient.setQueryData([...usersQueryKey(projectId), 'detail', user.id], user)
-      await queryClient.invalidateQueries({ queryKey: auditEventsKey(projectId) })
-      await queryClient.invalidateQueries({ queryKey: usersQueryKey(projectId) })
+      void queryClient.invalidateQueries({ queryKey: auditEventsKey(projectId) })
+      void queryClient.invalidateQueries({ queryKey: usersQueryKey(projectId) })
     },
     onError: async (error) => {
       if (error instanceof ApiError && error.status === 409) {

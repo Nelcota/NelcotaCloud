@@ -1,10 +1,11 @@
 import type { DeliverySummary } from '@/modules/webhooks/components/delivery-summary'
+import type { WebhookEndpoint } from '@/modules/webhooks/components/endpoint-panel-types'
 import type { NoticeTone } from '@/shared/ui/notice'
 import type { StatusTone } from '@/shared/ui/status-badge'
 
-export type HealthAction = 'resume' | 'test' | 'show_failed' | 'show_pending'
+export type HealthAction = 'show_failed' | 'show_pending'
 
-export type HealthKind = 'paused' | 'failing' | 'retrying' | 'idle' | 'delivering'
+export type HealthKind = 'auto_paused' | 'paused' | 'failing' | 'retrying' | 'idle' | 'delivering'
 
 export type EndpointHealthState = {
   /** The summary sentence's tone. */
@@ -15,58 +16,62 @@ export type EndpointHealthState = {
   verdict: string
   /** The header pill's text. */
   label: string
-  action: HealthAction
-  actionLabel: string
+  /** The step only this strip offers; testing and pausing live in the page header. */
+  action: { kind: HealthAction; label: string } | null
 }
 
 /** How each health reads, and the action that fits it. */
 export const HEALTH: Record<HealthKind, EndpointHealthState> = {
+  auto_paused: {
+    tone: 'error',
+    badgeTone: 'error',
+    verdict: 'Pausado por falhas.',
+    label: 'Pausado por falhas',
+    action: null,
+  },
   paused: {
     tone: 'info',
     badgeTone: 'neutral',
     verdict: 'Pausado.',
     label: 'Pausado',
-    action: 'resume',
-    actionLabel: 'Retomar',
+    action: null,
   },
   failing: {
     tone: 'error',
     badgeTone: 'error',
     verdict: 'Falhando.',
     label: 'Falhando',
-    action: 'show_failed',
-    actionLabel: 'Ver falhas',
+    action: { kind: 'show_failed', label: 'Ver falhas' },
   },
   retrying: {
     tone: 'warning',
     badgeTone: 'warning',
     verdict: 'Tentando de novo.',
     label: 'Tentando de novo',
-    action: 'show_pending',
-    actionLabel: 'Ver pendentes',
+    action: { kind: 'show_pending', label: 'Ver pendentes' },
   },
   idle: {
     tone: 'info',
     badgeTone: 'neutral',
     verdict: 'Sem entregas.',
     label: 'Sem entregas',
-    action: 'test',
-    actionLabel: 'Enviar evento de teste',
+    action: null,
   },
   delivering: {
     tone: 'success',
     badgeTone: 'success',
     verdict: 'Entregando.',
     label: 'Saudável',
-    action: 'test',
-    actionLabel: 'Enviar evento de teste',
+    action: null,
   },
 }
 
+type EndpointSwitch = Pick<WebhookEndpoint, 'is_enabled' | 'auto_paused_at'>
+
 /** Whether the endpoint works: paused first, then recent failures, retries, silence or fine. */
-export function healthKindOf(isEnabled: boolean, summary: DeliverySummary): HealthKind {
-  if (isEnabled === false) {
-    return 'paused'
+export function healthKindOf(endpoint: EndpointSwitch, summary: DeliverySummary): HealthKind {
+  if (endpoint.is_enabled === false) {
+    return pauseKindOf(endpoint.auto_paused_at ?? null)
   }
 
   if (summary.failedLastDay > 0) {
@@ -82,4 +87,13 @@ export function healthKindOf(isEnabled: boolean, summary: DeliverySummary): Heal
   }
 
   return 'delivering'
+}
+
+/** Paused by its owner, or by the platform after failing for days. */
+function pauseKindOf(autoPausedAt: string | null): HealthKind {
+  if (autoPausedAt === null) {
+    return 'paused'
+  }
+
+  return 'auto_paused'
 }

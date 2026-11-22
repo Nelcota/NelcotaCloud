@@ -78,7 +78,7 @@ function StepLabel({
 
 function StepMark({ index, activeIndex }: { index: number; activeIndex: number }): JSX.Element {
   if (index < activeIndex) {
-    return <Check aria-hidden className="size-3.5 shrink-0 text-primary" />
+    return <Check aria-hidden className="size-4 shrink-0 text-primary" />
   }
 
   return <span className="shrink-0 tabular-nums">{index + 1}.</span>

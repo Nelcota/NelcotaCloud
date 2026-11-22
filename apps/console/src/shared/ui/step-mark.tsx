@@ -14,7 +14,7 @@ export function StepMark({ state }: { state: StepMarkState }): JSX.Element {
         aria-hidden
         className="grid size-4 shrink-0 place-items-center rounded-full bg-success/16 text-success"
       >
-        <Check className="size-2.5 stroke-3" />
+        <Check className="size-3 stroke-3" />
       </span>
     )
   }

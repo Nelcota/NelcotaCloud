@@ -15,6 +15,7 @@ SELECT json_build_object(
                 ELSE 'table' END,
             'rls_enabled', c.relrowsecurity,
             'estimated_rows', CASE WHEN c.reltuples < 0 THEN NULL ELSE c.reltuples::bigint END,
+            'size_bytes', pg_total_relation_size(c.oid),
             'columns', coalesce((
                 SELECT json_agg(json_build_object(
                     'name', a.attname,
@@ -53,6 +54,26 @@ SELECT json_build_object(
                 FROM pg_constraint fk
                 JOIN pg_class target ON target.oid = fk.confrelid
                 WHERE fk.conrelid = c.oid AND fk.contype = 'f'
+            ), '[]'),
+            'indexes', coalesce((
+                SELECT json_agg(json_build_object(
+                    'name', ic.relname,
+                    'columns', (
+                        SELECT json_agg(pg_get_indexdef(i.indexrelid, n, true) ORDER BY n)
+                        FROM generate_series(1, i.indnkeyatts) AS n
+                    ),
+                    'method', am.amname,
+                    'is_primary', i.indisprimary,
+                    'is_unique', i.indisunique,
+                    'size_bytes', pg_relation_size(i.indexrelid),
+                    'scans', coalesce(stats.idx_scan, 0),
+                    'definition', pg_get_indexdef(i.indexrelid)
+                ) ORDER BY i.indisprimary DESC, ic.relname)
+                FROM pg_index i
+                JOIN pg_class ic ON ic.oid = i.indexrelid
+                JOIN pg_am am ON am.oid = ic.relam
+                LEFT JOIN pg_stat_user_indexes stats ON stats.indexrelid = i.indexrelid
+                WHERE i.indrelid = c.oid
             ), '[]'),
             'policies', coalesce((
                 SELECT json_agg(json_build_object(

@@ -1,6 +1,7 @@
 import type { JSX, ReactNode } from 'react'
 
 import { ConsoleBrand } from '@/shared/ui/console-brand'
+import { FlashNotice } from '@/shared/ui/flash-notice'
 
 type AuthScreenProps = {
   /** The form column: heading, mode switch and the current step. */
@@ -22,6 +23,7 @@ export function AuthScreen({ children, showcase }: AuthScreenProps): JSX.Element
         </header>
         <main className="flex flex-1 flex-col justify-center px-6 py-8 sm:px-10">
           <div className="mx-auto flex w-full max-w-[24rem] animate-page-in flex-col gap-6">
+            <FlashNotice />
             {children}
           </div>
         </main>

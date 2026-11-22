@@ -23,12 +23,13 @@ type SettingsSectionProps = {
 export function SettingsSection(props: SettingsSectionProps): JSX.Element {
   const titleId = useId()
   const className = cn(
-    'min-w-0 overflow-hidden rounded-xl border border-border/60 bg-card',
+    // A column, so panels side by side in a stretched grid keep their footers on one line.
+    'flex min-w-0 flex-col overflow-hidden rounded-xl border border-divider bg-card',
     props.isDanger === true && 'border-destructive/30',
   )
   const content = (
     <>
-      <div className="flex flex-col gap-4 p-5">
+      <div className="flex flex-1 flex-col gap-4 p-5">
         <div className="grid gap-1">
           <div className="flex items-center gap-2.5">
             {props.leading}
@@ -79,7 +80,7 @@ function SectionFooter({
   return (
     <div
       className={cn(
-        'flex flex-wrap items-center justify-between gap-3 border-t border-border/60 bg-surface px-5 py-3',
+        'flex flex-wrap items-center justify-between gap-3 border-t border-divider bg-surface px-5 py-3',
         isDanger === true && 'border-destructive/30 bg-destructive/5',
       )}
     >

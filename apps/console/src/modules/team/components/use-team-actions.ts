@@ -36,6 +36,8 @@ export function useTeamActions(projectId: string): TeamActions {
   const runners: Record<MemberAction, (row: MemberRow) => Promise<unknown>> = {
     promote: (row) => roleChange.mutateAsync({ accountId: row.id, role: 'owner' }),
     demote: (row) => roleChange.mutateAsync({ accountId: row.id, role: 'member' }),
+    restrict: (row) => roleChange.mutateAsync({ accountId: row.id, role: 'viewer' }),
+    'allow-edit': (row) => roleChange.mutateAsync({ accountId: row.id, role: 'member' }),
     transfer: (row) => transfer.mutateAsync(row.id),
     remove: (row) => removal.mutateAsync(row.id),
     leave: () => leaving.mutateAsync(),

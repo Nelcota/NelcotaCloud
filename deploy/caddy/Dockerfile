@@ -6,6 +6,8 @@ FROM node:26-alpine AS console
 WORKDIR /repo/apps/console
 COPY apps/console/package.json apps/console/package-lock.json ./
 RUN npm ci
+COPY packages/sdk/package.json packages/sdk/package-lock.json /repo/packages/sdk/
+RUN npm ci --prefix /repo/packages/sdk
 COPY apps/console ./
 COPY packages/sdk/src /repo/packages/sdk/src
 # Vite inlines these into the bundle at build time; both are public values.

@@ -41,7 +41,7 @@ export function DeltaPill({ change, span }: DeltaPillProps): JSX.Element | null 
         TONES[direction],
       )}
     >
-      <Glyph aria-hidden className="size-4" />
+      <Glyph aria-hidden className="size-4.5" />
       {PERCENT_FORMAT.format(rounded)}%<span className="sr-only">{span}</span>
     </span>
   )

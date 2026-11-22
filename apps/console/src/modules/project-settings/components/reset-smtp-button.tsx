@@ -21,6 +21,7 @@ export function ResetSmtpButton({ projectId, serverName }: ResetSmtpButtonProps)
       title="Voltar ao SMTP da NelcotaCloud?"
       description="Os emails passam a sair pela NelcotaCloud. As credenciais do seu servidor são apagadas."
       confirmLabel="Voltar ao padrão"
+      isDestructive
       change={{ subject: serverName, icon: Letter, from: 'Seu servidor', to: 'SMTP da plataforma' }}
       isPending={reset.isPending}
       onConfirm={() => reset.mutateAsync()}

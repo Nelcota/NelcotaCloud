@@ -1,8 +1,9 @@
+use sqlx::error::DatabaseError;
 use sqlx::{PgPool, PgTransaction};
 use uuid::Uuid;
 
 use super::bucket::Bucket;
-use super::project_lock::lock_project;
+use super::project_lock::{begin_catalog_write, catalog_write_error};
 use super::write_admission::admit_write;
 use crate::modules::storage::rejection::storage_error::StorageError;
 use crate::shared::http::api_error::ApiError;
@@ -20,8 +21,7 @@ pub async fn list_buckets(pool: &PgPool, tenant: Uuid) -> Result<Vec<Bucket>, Ap
 
 pub async fn create_bucket(pool: &PgPool, tenant: Uuid, name: &str) -> Result<Bucket, ApiError> {
     let _permit = admit_write(tenant).await?;
-    let mut transaction = pool.begin().await?;
-    lock_project(&mut transaction, tenant).await?;
+    let mut transaction = begin_catalog_write(pool, tenant).await?;
     check_bucket_count(&mut transaction, tenant).await?;
     let bucket = sqlx::query_as(
         "INSERT INTO storage_buckets (id, tenant_id, name) VALUES ($1, $2, $3)
@@ -31,7 +31,17 @@ pub async fn create_bucket(pool: &PgPool, tenant: Uuid, name: &str) -> Result<Bu
     .bind(tenant)
     .bind(name)
     .fetch_optional(&mut *transaction)
-    .await?
+    .await
+    .map_err(|error| {
+        if error
+            .as_database_error()
+            .is_some_and(DatabaseError::is_foreign_key_violation)
+        {
+            return StorageError::BucketNotFound.into();
+        }
+
+        catalog_write_error(error)
+    })?
     .ok_or(StorageError::DuplicateBucket)?;
     transaction.commit().await?;
 
@@ -80,7 +90,8 @@ async fn check_bucket_count(
         sqlx::query_scalar::<_, i64>("SELECT count(*) FROM storage_buckets WHERE tenant_id = $1")
             .bind(tenant)
             .fetch_one(&mut **transaction)
-            .await?;
+            .await
+            .map_err(catalog_write_error)?;
 
     if count >= MAX_PROJECT_BUCKETS {
         return Err(StorageError::BucketLimit.into());

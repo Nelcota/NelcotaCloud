@@ -1,3 +1,4 @@
+use crate::modules::webhooks::endpoint::endpoint_description::EndpointDescriptionError;
 use crate::modules::webhooks::endpoint::webhook_url::WebhookUrlError;
 use crate::shared::crypto::secret_box::SecretBoxError;
 
@@ -5,6 +6,8 @@ use crate::shared::crypto::secret_box::SecretBoxError;
 pub enum WebhookEndpointError {
     #[error(transparent)]
     InvalidUrl(#[from] WebhookUrlError),
+    #[error(transparent)]
+    InvalidDescription(#[from] EndpointDescriptionError),
     #[error("choose at least one event type")]
     NoEventTypes,
     #[error("a project can have at most 5 webhook endpoints")]

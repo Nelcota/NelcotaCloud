@@ -33,6 +33,7 @@ export function userMenuItems(user: User, handlers: MenuHandlers): UserMenuItem[
       action: 'end-sessions',
       label: 'Encerrar sessões',
       icon: LogOut,
+      isDestructive: true,
       onSelect: () => handlers.onConfirm('end-sessions'),
     },
     ...mfaItems(user, handlers),
@@ -72,7 +73,13 @@ function accessItem(user: User, handlers: MenuHandlers): UserMenuItem {
     }
   }
 
-  return { action: 'ban', label: 'Bloquear', icon: Ban, onSelect: () => handlers.onConfirm('ban') }
+  return {
+    action: 'ban',
+    label: 'Bloquear',
+    icon: Ban,
+    isDestructive: true,
+    onSelect: () => handlers.onConfirm('ban'),
+  }
 }
 
 function mfaItems(user: User, handlers: MenuHandlers): UserMenuItem[] {
@@ -85,6 +92,7 @@ function mfaItems(user: User, handlers: MenuHandlers): UserMenuItem[] {
       action: 'reset-mfa',
       label: 'Remover MFA',
       icon: ShieldOff,
+      isDestructive: true,
       onSelect: () => handlers.onConfirm('reset-mfa'),
     },
   ]

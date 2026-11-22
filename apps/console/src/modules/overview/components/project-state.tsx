@@ -1,16 +1,15 @@
 import type { JSX } from 'react'
 
-import { HealthPill } from '@/modules/overview/components/health-pill'
-import type { ProjectHealth } from '@/modules/overview/components/project-health'
+type ProjectStateProps = { slug: string | undefined }
 
-type ProjectStateProps = { slug: string | undefined; health: ProjectHealth }
-
-/** Under the project's name: its slug as a mono pill (like a service's branch) and its state. */
-export function ProjectState({ slug, health }: ProjectStateProps): JSX.Element {
+/**
+ * Under the project's name: its slug as a mono pill (like a service's branch). The verdict is
+ * the sentence under the header, said once.
+ */
+export function ProjectState({ slug }: ProjectStateProps): JSX.Element {
   return (
     <span className="flex flex-wrap items-center gap-2 pt-1">
       <SlugPill slug={slug} />
-      <HealthPill health={health} />
     </span>
   )
 }

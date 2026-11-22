@@ -1,7 +1,9 @@
-import { Users, Crown } from 'lucide-react'
+import { Eye, Users, Crown } from 'lucide-react'
 import type { JSX } from 'react'
 
-type ProjectStatusRowProps = { role: 'owner' | 'member' }
+import type { components } from '@/shared/api/api-schema'
+
+type ProjectStatusRowProps = { role: components['schemas']['ProjectRole'] }
 
 /** A listed project is provisioned and serving; the right side says how the account takes part. */
 export function ProjectStatusRow({ role }: ProjectStatusRowProps): JSX.Element {
@@ -17,10 +19,19 @@ export function ProjectStatusRow({ role }: ProjectStatusRowProps): JSX.Element {
 }
 
 function RoleMark({ role }: ProjectStatusRowProps): JSX.Element {
+  if (role === 'viewer') {
+    return (
+      <span className="inline-flex items-center gap-1 text-muted-foreground">
+        <Eye aria-hidden className="size-3.5" />
+        Leitura
+      </span>
+    )
+  }
+
   if (role === 'owner') {
     return (
       <span className="inline-flex items-center gap-1 text-muted-foreground">
-        <Crown aria-hidden className="size-3" />
+        <Crown aria-hidden className="size-3.5" />
         Dono
       </span>
     )
@@ -28,7 +39,7 @@ function RoleMark({ role }: ProjectStatusRowProps): JSX.Element {
 
   return (
     <span className="inline-flex items-center gap-1 text-muted-foreground">
-      <Users aria-hidden className="size-3" />
+      <Users aria-hidden className="size-3.5" />
       Membro
     </span>
   )

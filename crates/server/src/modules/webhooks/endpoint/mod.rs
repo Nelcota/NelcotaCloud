@@ -1,3 +1,5 @@
+pub mod endpoint_description;
+pub mod endpoint_health_repository;
 pub mod webhook_endpoint_error;
 pub mod webhook_endpoint_repository;
 pub mod webhook_endpoint_store;

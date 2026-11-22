@@ -17,3 +17,14 @@ export function pathOf(url: string): string {
     return ''
   }
 }
+
+/** What names an endpoint: the name its owner gave it, or its host. */
+export function endpointTitle(endpoint: { url: string; description?: string | null }): string {
+  const description = endpoint.description ?? ''
+
+  if (description === '') {
+    return hostOf(endpoint.url)
+  }
+
+  return description
+}

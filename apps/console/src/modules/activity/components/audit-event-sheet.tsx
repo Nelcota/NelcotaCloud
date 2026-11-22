@@ -60,6 +60,7 @@ function OpenEvent({ event, context, actions }: AuditEventSheetProps): JSX.Eleme
         <EventDetails event={event} />
         <CodeBlock
           code={JSON.stringify(event, null, 2)}
+          language="json"
           title="evento.json"
           copyLabel="evento em JSON"
           maxHeight={320}
@@ -76,5 +77,13 @@ function EventDetails({ event }: { event: AuditEvent }): JSX.Element | null {
     return null
   }
 
-  return <CodeBlock code={json} title="details" copyLabel="detalhes do evento" isWrapped />
+  return (
+    <CodeBlock
+      code={json}
+      title="details"
+      language="json"
+      copyLabel="detalhes do evento"
+      isWrapped
+    />
+  )
 }

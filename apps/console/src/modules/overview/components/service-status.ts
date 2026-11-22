@@ -1,3 +1,4 @@
+import { ApiError } from '@/shared/api/api-error'
 import type { components } from '@/shared/api/api-schema'
 import type { StatusTone } from '@/shared/ui/status-badge'
 
@@ -6,16 +7,28 @@ type Schemas = components['schemas']
 export type ServiceStatus = { tone: StatusTone; label: string }
 
 /** What a query exposes that the status needs; works for any TanStack query result. */
-export type QueryState<T> = { status: 'pending' | 'error' | 'success'; data: T | undefined }
+export type QueryState<T> = {
+  status: 'pending' | 'error' | 'success'
+  data: T | undefined
+  error?: Error | null
+}
 
 const CHECKING: ServiceStatus = { tone: 'neutral', label: 'Verificando' }
 const UNAVAILABLE: ServiceStatus = { tone: 'error', label: 'Indisponível' }
+const NOT_CONFIGURED: ServiceStatus = { tone: 'neutral', label: 'Não configurado' }
+
+/** The server runs without that product (Storage without R2): a choice, not a failure. */
+const NOT_CONFIGURED_CODES = new Set(['storage_not_configured'])
 
 /** A query's status read through `describe` once it answers. */
 export function statusOf<T>(
   query: QueryState<T>,
   describe: (data: T) => ServiceStatus,
 ): ServiceStatus {
+  if (query.status === 'error' && isNotConfigured(query.error)) {
+    return NOT_CONFIGURED
+  }
+
   if (query.status === 'error') {
     return UNAVAILABLE
   }
@@ -25,6 +38,10 @@ export function statusOf<T>(
   }
 
   return describe(query.data)
+}
+
+function isNotConfigured(error: Error | null | undefined): boolean {
+  return error instanceof ApiError && NOT_CONFIGURED_CODES.has(error.code)
 }
 
 export function apiStatus(): ServiceStatus {

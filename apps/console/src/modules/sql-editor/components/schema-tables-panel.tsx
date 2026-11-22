@@ -1,8 +1,7 @@
 import { Table } from 'lucide-react'
-import { type JSX, useState } from 'react'
+import { type JSX, useId, useState } from 'react'
 
 import { useSchemaQuery } from '@/modules/database/queries/use-schema-query'
-import { SqlSideSection } from '@/modules/sql-editor/components/sql-side-section'
 import type { components } from '@/shared/api/api-schema'
 import { formatCount } from '@/shared/lib/format-number'
 import { LoadError } from '@/shared/ui/load-error'
@@ -11,12 +10,12 @@ import { SearchField } from '@/shared/ui/search-field'
 
 type TableOverview = components['schemas']['TableOverview']
 
-const SIDE_ITEM =
-  'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-start text-muted-foreground transition-[color,background-color,scale] duration-200 ease-standard hover:bg-surface-hover hover:text-foreground'
+const TABLE_ITEM =
+  'flex h-8 w-full items-center gap-2 rounded-md px-2 text-start text-sm text-muted-foreground transition-colors duration-200 ease-standard hover:bg-surface-hover hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring'
 
 type SchemaTablesPanelProps = {
   projectId: string
-  /** Puts a query for that table in the editor. */
+  /** Opens a query for that table in the editor. */
   onPick: (table: string) => void
 }
 
@@ -24,54 +23,67 @@ type SchemaTablesPanelProps = {
 export function SchemaTablesPanel({ projectId, onPick }: SchemaTablesPanelProps): JSX.Element {
   const schema = useSchemaQuery(projectId)
   const [search, setSearch] = useState('')
-  const filter = search.trim().toLowerCase()
+  const titleId = useId()
   const tables = schema.data?.tables
 
   return (
-    <SqlSideSection title="Tabelas" meta={tables?.length}>
+    <aside aria-labelledby={titleId} className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+      <h2 id={titleId} className="type-label flex items-center gap-1.5 px-2 text-muted-foreground">
+        Tabelas
+        <span className="tabular-nums">{tables?.length}</span>
+      </h2>
       <SearchField
         label="Buscar tabela"
         value={search}
         onValueChange={setSearch}
-        className="mb-1 sm:max-w-none"
+        className="h-8 sm:max-w-none"
       />
       <LoadError error={schema.error} onRetry={() => schema.refetch()} />
-      <TablesContent tables={tables} isPending={schema.isPending} filter={filter} onPick={onPick} />
-    </SqlSideSection>
+      <TablesContent tables={tables} isPending={schema.isPending} search={search} onPick={onPick} />
+    </aside>
   )
 }
 
 type TablesContentProps = {
   tables: TableOverview[] | undefined
   isPending: boolean
-  filter: string
+  search: string
   onPick: (table: string) => void
 }
 
-function TablesContent(props: TablesContentProps): JSX.Element | null {
-  const { tables, onPick } = props
-
-  if (props.isPending) {
-    return <Skeleton className="h-32" />
+function TablesContent({
+  tables,
+  isPending,
+  search,
+  onPick,
+}: TablesContentProps): JSX.Element | null {
+  if (isPending) {
+    return <Skeleton className="h-40" />
   }
 
   if (tables === undefined) {
     return null
   }
 
-  const shown = tables.filter((table) => table.name.toLowerCase().includes(props.filter))
+  const filter = search.trim().toLowerCase()
+  const shown = tables.filter((table) => table.name.toLowerCase().includes(filter))
 
   if (shown.length === 0) {
     return <p className="px-2 py-1.5 text-xs text-muted-foreground">{emptyText(tables.length)}</p>
   }
 
   return (
-    <ul className="scrollbar-thin flex max-h-[22rem] flex-col overflow-y-auto">
+    <ul className="scrollbar-thin flex max-h-72 min-h-0 flex-col overflow-y-auto @min-[52rem]:max-h-none @min-[52rem]:flex-1">
       {shown.map((table) => (
         <li key={table.name}>
-          <button type="button" className={SIDE_ITEM} onClick={() => onPick(table.name)}>
-            <Table aria-hidden className="size-3.5 shrink-0" />
-            <span className="min-w-0 flex-1 truncate font-mono text-xs">{table.name}</span>
+          <button
+            type="button"
+            title={`Consultar ${table.name}`}
+            className={TABLE_ITEM}
+            onClick={() => onPick(table.name)}
+          >
+            <Table aria-hidden className="size-4 shrink-0" />
+            <span className="min-w-0 flex-1 truncate">{table.name}</span>
             <RowCount rows={table.estimated_rows} />
           </button>
         </li>
@@ -95,7 +107,7 @@ function RowCount({ rows }: { rows: number | null | undefined }): JSX.Element | 
   }
 
   return (
-    <span className="shrink-0 text-2xs text-muted-foreground tabular-nums">
+    <span className="shrink-0 font-mono text-2xs text-muted-foreground tabular-nums">
       {formatCount(rows)}
     </span>
   )

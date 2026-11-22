@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { useDeferredValue, useState } from 'react'
+import { useState } from 'react'
 
 import type { UserStatusFilter as Status } from '@/modules/users/api/list-users'
 import { unconfirmedError } from '@/modules/users/components/unconfirmed-error'
@@ -19,17 +19,21 @@ import { showFlash } from '@/shared/lib/flash-notice'
 import { ErrorAlert } from '@/shared/ui/error-alert'
 import { LoadError } from '@/shared/ui/load-error'
 import { Section } from '@/shared/ui/section'
+import { useDebouncedValue } from '@/shared/lib/use-debounced-value'
 
 type User = components['schemas']['User']
+
+/** Typing pauses this long before the list asks the API again. */
+const SEARCH_DELAY_MS = 300
 
 /** The project's users, searched by email, filtered by status and paged, with admin actions. */
 export function UsersBrowser({ projectId }: { projectId: string }): JSX.Element {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<Status>('all')
   const [offset, setOffset] = useState(0)
-  const deferredSearch = useDeferredValue(search)
+  const settledSearch = useDebouncedValue(search.trim(), SEARCH_DELAY_MS)
   const users = useUsersQuery(projectId, {
-    email: deferredSearch,
+    email: settledSearch,
     status,
     offset,
     limit: USERS_PAGE_SIZE,
@@ -62,7 +66,7 @@ export function UsersBrowser({ projectId }: { projectId: string }): JSX.Element 
             pendingUserId: pendingUserId(action.isPending, action.variables),
             onAction: runAction,
           }}
-          filter={{ search: deferredSearch, status }}
+          filter={{ search: settledSearch, status }}
           hasFailed={users.isError}
           onClearFilter={() => changeFilter({ search: '', status: 'all' })}
         />

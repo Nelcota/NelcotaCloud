@@ -5,33 +5,30 @@ import { LIVE_INTERVAL_SECONDS } from '@/modules/activity/components/use-live-re
 import { formatCount } from '@/shared/lib/format-number'
 
 type LogFooterProps = {
-  lines: { shown: number; loaded: number; isLive: boolean }
+  loaded: number
+  isLive: boolean
   more: { hasMore: boolean; isLoading: boolean; onLoad: () => void }
 }
 
-/** Under the lines: how many are on screen, whether they refresh, and the older page. */
-export function LogFooter({ lines, more }: LogFooterProps): JSX.Element {
+/** Under the events: how many are on screen, whether they refresh, and the older page. */
+export function LogFooter({ loaded, isLive, more }: LogFooterProps): JSX.Element {
   return (
-    <div className="flex min-h-9 flex-wrap items-center justify-between gap-2 border-t border-border/60 px-3 py-1">
-      <span className="font-mono text-2xs text-muted-foreground tabular-nums" aria-live="polite">
-        {linesText(lines.shown, lines.loaded)} · {refreshText(lines.isLive)}
+    <div className="flex min-h-10 flex-wrap items-center justify-between gap-2 border-t border-border/60 px-3 py-1">
+      <span className="text-xs text-muted-foreground tabular-nums" aria-live="polite">
+        {eventsText(loaded)} · {refreshText(isLive)}
       </span>
       <LoadMoreButton hasMore={more.hasMore} isLoading={more.isLoading} onLoad={more.onLoad} />
     </div>
   )
 }
 
-/** Pages are read by cursor, so the log knows what is loaded, not the total. */
-function linesText(shown: number, loaded: number): string {
-  if (shown !== loaded) {
-    return `${formatCount(shown)} de ${formatCount(loaded)} linhas`
-  }
-
+/** Pages are read by cursor, so the feed knows what is loaded, not the total. */
+function eventsText(loaded: number): string {
   if (loaded === 1) {
-    return '1 linha'
+    return '1 evento carregado'
   }
 
-  return `${formatCount(loaded)} linhas`
+  return `${formatCount(loaded)} eventos carregados`
 }
 
 function refreshText(isLive: boolean): string {

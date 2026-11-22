@@ -20,7 +20,7 @@ export function SessionRow({ session, isPending, onRevoke }: SessionRowProps): J
   return (
     <li className="flex min-h-11 min-w-0 items-center gap-3 rounded-lg px-2 py-2 transition-colors duration-200 hover:bg-surface">
       <span className="grid size-7 shrink-0 place-items-center rounded-md bg-surface text-muted-foreground">
-        <Monitor aria-hidden className="size-3.5" />
+        <Monitor aria-hidden className="size-4" />
       </span>
       <div className="grid min-w-0 flex-1 gap-0.5">
         <div className="flex min-w-0 items-center gap-2">

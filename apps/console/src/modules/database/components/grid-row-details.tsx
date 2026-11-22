@@ -4,7 +4,7 @@ import { cellText } from '@/modules/database/components/cell-text'
 import { CodeBlock } from '@/shared/ui/code-block'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/shared/ui/primitives/sheet'
 
-export type GridColumn = { name: string; type?: string }
+export type GridColumn = { name: string; type?: string; is_primary_key?: boolean }
 export type GridRow = { number: number; cells: readonly unknown[] }
 
 type GridRowDetailsProps = {

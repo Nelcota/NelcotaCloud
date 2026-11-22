@@ -3,7 +3,12 @@ import type { components } from '@/shared/api/api-schema'
 type TeamView = components['schemas']['TeamView']
 
 /** Someone with access to the project. */
-export type MemberRow = { id: string; email: string; role: 'owner' | 'member'; joinedAt: string }
+export type MemberRow = {
+  id: string
+  email: string
+  role: components['schemas']['ProjectRole']
+  joinedAt: string
+}
 
 /** Someone invited who has not answered yet. */
 export type InvitationRow = {
@@ -17,9 +22,9 @@ export type InvitationRow = {
 export const SEARCH_THRESHOLD = 8
 
 const LOCALE = 'pt-BR'
-const ROLE_ORDER = { owner: 0, member: 1 }
+const ROLE_ORDER = { owner: 0, member: 1, viewer: 2 }
 
-/** Owners first, then by arrival. */
+/** Owners first, then members and viewers, each by arrival. */
 export function memberRows(team: TeamView): MemberRow[] {
   return team.members
     .toSorted(

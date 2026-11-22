@@ -31,7 +31,7 @@ export function CreateEndpointButton({ creator }: CreateEndpointButtonProps): JS
         onOpenChange={setIsOpen}
         title="Novo endpoint"
         submitLabel="Criar endpoint"
-        initial={{ url: '', event_types: ['user.created'] }}
+        initial={{ url: '', description: '', event_types: ['user.created'] }}
         onSubmit={creator.onCreate}
       />
     </>

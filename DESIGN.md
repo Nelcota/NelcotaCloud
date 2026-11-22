@@ -17,10 +17,11 @@ color or a size in a screen.
 - Cal Sans (official variable font, self-hosted in `public/fonts` and preloaded) for the interface, JetBrains Mono (`font-mono`)
   for ids, slugs, hashes, URLs, timestamps in logs, keys, shortcuts, CLI and SQL.
 - Scale, one step above the Veloz mockup (the site shows it scaled down, too small to work in
-  all day): `text-2xs` 11px (meta, kbd, uppercase group labels), `text-xs` 13px (labels,
-  meta, table headers), `text-sm` 14px (body, inputs, tables, sidebar), `text-base` 15px
-  `font-medium` (section and card titles), `text-xl` 22px `font-medium` (page titles),
-  `text-2xl` 26px `font-semibold` (stat figures).
+  all day): `text-2xs` 12px (meta, kbd, uppercase group labels), `text-xs` 14px (labels,
+  meta, table headers), `text-sm` 15px (body, inputs, tables, sidebar), `text-base` 16px
+  `font-medium` (section and card titles), `text-xl` 24px `font-medium` (page titles),
+  `text-2xl` 28px `font-semibold` (stat figures). Icons are 18px (`size-4.5`) beside text,
+  16px in compact controls, 22px in the icon rail; nothing smaller than 12px.
 - Every number uses `tabular-nums`. Numbers are formatted the Brazilian way with
   `shared/lib/format-number` (`15,2 mil`, `86,6%`, `33,1 GB`) and times with
   `shared/lib/format-relative` (`há 14h`, `há 2d`).
@@ -34,6 +35,8 @@ color or a size in a screen.
 - Orange is rare: `brand` (#ff4d00) marks focus, the active item, live markers and charts;
   `primary-fill` (#d63f00, AA with white) fills the one primary button of a view; `primary`
   is orange text that passes AA in each theme.
+- `divider` (#343434 dark, #d6d6d6 light) draws the lines inside a panel (between rows, under
+  the title, above the footer) and under line tabs; `border` alone disappears on `card`.
 - Status words and pills use `success`, `warning`, `destructive`, `info` on a 12–16% tint.
 - Charts: `chart-1` blue (main series) and `chart-2` orange, drawn dashed so the two series
   differ without hue. Add a token when a chart needs a third series.
@@ -41,20 +44,37 @@ color or a size in a screen.
 ## Shape and size
 
 - Radius: 4 (log badges), 6 (pills, kbd), 8 (`rounded-md`: buttons, inputs, menu items),
-  10 (rail items, switcher), 12 (`rounded-xl`: cards, sections, dialogs), 16 (the panel).
-- Buttons: `h-9` default, `h-8` sm, `h-10` lg, 13px medium text, 16px icons. Primary = orange fill;
+  10 (rail items), 12 (`rounded-xl`: cards, sections, dialogs), 16 (the panel).
+- Buttons: `h-9` default, `h-8` sm, `h-10` lg, 14px medium text, 18px icons. Primary = orange fill;
   `outline`/`secondary` = `surface` fill; `ghost` = text only; `destructive` = surface with a
-  red 30% border and red text. Inputs: `h-9`, 14px, `surface` fill, 3:1 border, orange focus.
-- Tables: header 13px muted on no fill, rows 48px with hover `surface`, numeric columns
+  red 30% border and red text; `destructive-ghost` = red text only, for icon buttons in rows
+  (trash cans); `destructive-solid` = red fill with white text, for deleting the
+  project and for the confirm button of every destructive dialog. Every control that deletes,
+  revokes, blocks, ends sessions, removes MFA or discards custom settings is red, both the
+  trigger and its confirmation; rotations with a grace period and role changes stay neutral. Inputs: `h-9`, 15px (16px on phones), `surface` fill, 3:1 border, orange focus.
+- Tables: header 14px muted on no fill, rows 48px with hover `surface`, numeric columns
   right-aligned.
 
 ## Layout
 
-- Shell: an icon rail on the frame; a rounded panel with a 56px top bar (account chip with its
-  initial on a square, ←/→, breadcrumb `Projetos › Projeto › Grupo › Página`, "Buscar… ⌘K"
-  and the "IA" button inside a project) and, inside a project, a 240px sidebar: project
-  switcher (name + slug in mono) and pages in labeled groups (active item: `surface-hover`
-  with the icon in `brand`). Below `lg` the sidebar opens in a sheet.
+- Shell: an icon rail on the frame; a rounded panel with a 56px top bar over a 2px `border`
+  line, all its controls 36px tall (account chip with its initial on a square, ←/→, breadcrumb `Projetos › Projeto › Grupo › Página`, "Buscar… ⌘K"
+  and the "IA" button inside a project) and, inside a project, a 240px sidebar split from the
+  page by a 2px `border` line: the pages in labeled groups separated by space only, no
+  dividers (active item: `surface-hover` with the icon in `brand`). Below `lg` the sidebar opens in a sheet.
+- Shell edge lines (set 2026-11-22 in an alignment pass with the owner):
+  - Sidebar (and the mobile sheet): boxes 8px in from its edge, icons from 18px (centred at
+    26px), labels at 44px; group labels start on the icons' leading edge (18px), and the
+    sheet's footer buttons centre on the icon column. The top bar's account chip continues
+    them: box on the sidebar's box line, avatar on the icon column, name on the label line.
+  - Below `lg` the top bar's menu icon sits on the page's text line, and the sheet keeps a
+    56px top row for its close button, so it never covers a link.
+  - Inside a project, from `lg` on, the account and the arrows fill the sidebar's width and
+    the breadcrumb starts on the page's text line (the page gutter past the sidebar).
+  - The bar's end padding is the page gutter (16/24/32px), so its last control ends on the
+    page actions' edge. The two differ by the page's scrollbar width when the page scrolls,
+    and stop meeting once the page column is centred (wide screens, pages outside a project).
+  - The rail's logo is centred on the top bar's controls.
 - A page: `PageHeader` (20px title, one line of context, actions on the right), then a
   `SummarySentence` when the page reads metrics ("**Saudável.** Nenhum login recusado em 30
   dias."), `StatCard` rows (label, figure, one line of context), and `Section`s (14px title +
@@ -63,9 +83,9 @@ color or a size in a screen.
   narrow screens). Areas with many subsections use a secondary sidebar with labeled groups.
 - Lists of things with state are resource cards (`ResourceCard`: name, kind, mono address,
   status chips, key figures, shortcut footer). Records are table rows. Event streams are
-  activity feeds (`ActivityItem`: message first, `meta · meta · há 2h` line, status pill on the
-  right) or log lines (mono, time in ms, `LevelBadge`, `chave=valor` chips, `FieldFacets` with
-  counts per value, `LiveIndicator`).
+  activity feeds (`ActivityItem`: who acted, message first, `meta · meta · há 2h` line, a status
+  pill on the right only when the event needs a look), grouped by day, with `LiveIndicator`
+  when they refresh on their own.
 - Shortcuts are visible as `Kbd`: "Buscar… ⌘K", "Executar ⌘↵". No single-key shortcuts: they
   cannot be turned off, which fails WCAG 2.1.4.
 

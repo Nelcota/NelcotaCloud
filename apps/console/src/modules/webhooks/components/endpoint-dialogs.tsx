@@ -6,10 +6,8 @@ import { EndpointFormDialog } from '@/modules/webhooks/components/endpoint-form-
 import { hostOf } from '@/modules/webhooks/components/endpoint-host'
 import type { EndpointPanel } from '@/modules/webhooks/components/endpoint-panel-types'
 import { RotateSecretDialog } from '@/modules/webhooks/components/rotate-secret-dialog'
-import {
-  useDeleteWebhookEndpointMutation,
-  useUpdateWebhookEndpointMutation,
-} from '@/modules/webhooks/queries/use-webhook-endpoints'
+import { useDeleteEndpoint } from '@/modules/webhooks/components/use-delete-endpoint'
+import { useUpdateWebhookEndpointMutation } from '@/modules/webhooks/queries/use-webhook-endpoints'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
 
 /** Which dialog of the panel's menu is open, if any. */
@@ -29,11 +27,7 @@ export function EndpointDialogs({
 }: EndpointDialogsProps): JSX.Element {
   const { endpoint, rotation } = panel
   const update = useUpdateWebhookEndpointMutation(panel.projectId)
-  const remove = useDeleteWebhookEndpointMutation(panel.projectId)
-
-  async function deleteEndpoint(): Promise<void> {
-    await remove.mutateAsync(endpoint.id)
-  }
+  const deleteEndpoint = useDeleteEndpoint(panel.projectId, endpoint)
 
   return (
     <>
@@ -42,7 +36,11 @@ export function EndpointDialogs({
         onOpenChange={onOpenChange}
         title="Editar endpoint"
         submitLabel="Salvar"
-        initial={{ url: endpoint.url, event_types: endpoint.event_types }}
+        initial={{
+          url: endpoint.url,
+          description: endpoint.description ?? '',
+          event_types: endpoint.event_types,
+        }}
         onSubmit={(body) => update.mutateAsync({ endpointId: endpoint.id, body })}
       />
       <RotateSecretDialog

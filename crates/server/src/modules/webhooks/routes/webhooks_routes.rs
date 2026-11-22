@@ -8,6 +8,7 @@ use crate::modules::webhooks::routes::delete_webhook_endpoint;
 use crate::modules::webhooks::routes::list_webhook_deliveries;
 use crate::modules::webhooks::routes::list_webhook_endpoints;
 use crate::modules::webhooks::routes::read_webhook_queue_health;
+use crate::modules::webhooks::routes::retry_failed_webhook_deliveries;
 use crate::modules::webhooks::routes::retry_webhook_delivery;
 use crate::modules::webhooks::routes::rotate_webhook_secret;
 use crate::modules::webhooks::routes::send_test_webhook;
@@ -27,6 +28,9 @@ pub fn webhooks_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(send_test_webhook::send_test_webhook))
         .routes(routes!(list_webhook_deliveries::list_webhook_deliveries))
         .routes(routes!(retry_webhook_delivery::retry_webhook_delivery))
+        .routes(routes!(
+            retry_failed_webhook_deliveries::retry_failed_webhook_deliveries
+        ))
         .routes(routes!(
             read_webhook_queue_health::read_webhook_queue_health
         ))

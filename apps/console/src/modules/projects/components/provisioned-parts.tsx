@@ -30,7 +30,7 @@ type PartProps = { icon: IconComponent; title: string; children: ReactNode }
 function Part({ icon: Glyph, title, children }: PartProps): JSX.Element {
   return (
     <li className="flex min-w-0 gap-2.5 rounded-md px-1.5 py-1.5">
-      <Glyph aria-hidden className="mt-px size-3.5 shrink-0 text-muted-foreground" />
+      <Glyph aria-hidden className="mt-px size-4 shrink-0 text-muted-foreground" />
       <div className="grid min-w-0 gap-0.5">
         <p className="text-xs font-medium text-heading">{title}</p>
         <div className="grid min-w-0 text-2xs text-muted-foreground">{children}</div>

@@ -1,5 +1,6 @@
 import { type UseQueryResult, useQuery } from '@tanstack/react-query'
 
+import { auditEventsKey } from '@/modules/activity/queries/use-audit-events-query'
 import { readRecentEvents } from '@/modules/overview/api/read-recent-events'
 import type { components } from '@/shared/api/api-schema'
 
@@ -10,7 +11,8 @@ export function useRecentEventsQuery(
   projectId: string,
 ): UseQueryResult<components['schemas']['AuditPage']> {
   return useQuery({
-    queryKey: ['projects', projectId, 'overview', 'recent-events'],
+    // Under the activity log's key: every change that records an event refreshes this list.
+    queryKey: [...auditEventsKey(projectId), 'overview-recent'],
     queryFn: () => readRecentEvents(projectId, RECENT_EVENTS),
   })
 }

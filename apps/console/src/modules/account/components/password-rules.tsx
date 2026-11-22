@@ -20,7 +20,7 @@ export function PasswordRules({ id, password }: PasswordRulesProps): JSX.Element
     >
       <Check
         aria-hidden
-        className={cn('size-3.5 opacity-40 transition-opacity', isLongEnough && 'opacity-100')}
+        className={cn('size-4 opacity-40 transition-opacity', isLongEnough && 'opacity-100')}
       />
       {MIN_PASSWORD_LENGTH} caracteres ou mais
       <span className="sr-only">{ruleState(isLongEnough)}</span>

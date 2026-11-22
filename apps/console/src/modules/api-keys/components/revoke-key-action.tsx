@@ -46,7 +46,7 @@ export function RevokeKeyAction(props: RevokeKeyActionProps): JSX.Element {
             type="button"
             variant="ghost"
             size="icon-sm"
-            aria-label={`Ações da ${label}`}
+            aria-label={menuLabel(apiKey, label)}
             isPending={props.isPending}
           >
             <Ellipsis aria-hidden />
@@ -86,6 +86,15 @@ function revokeTitle(apiKey: ApiKeySummary): string {
   }
 
   return `Revogar “${apiKey.name}” (${label})?`
+}
+
+/** A named key is announced by its name, so two keys of one kind read apart. */
+function menuLabel(apiKey: ApiKeySummary, label: string): string {
+  if (apiKey.name === '') {
+    return `Ações da ${label}`
+  }
+
+  return `Ações da chave ${apiKey.name} (${label})`
 }
 
 function keyLabel(apiKey: ApiKeySummary): string {

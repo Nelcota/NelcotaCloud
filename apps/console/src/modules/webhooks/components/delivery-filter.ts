@@ -1,39 +1,38 @@
 import type { components } from '@/shared/api/api-schema'
 import type { SegmentOption } from '@/shared/ui/segmented-control'
 
-type DeliveryLogEntry = components['schemas']['DeliveryLogEntry']
+type DeliveryStatus = components['schemas']['DeliveryStatus']
 
-export type DeliveryFilter = 'all' | 'failed' | 'pending'
+export type DeliveryFilter = 'all' | DeliveryStatus
 
 export const DELIVERY_FILTERS: readonly SegmentOption[] = [
   { value: 'all', label: 'Todas' },
   { value: 'failed', label: 'Falhas' },
   { value: 'pending', label: 'Pendentes' },
+  { value: 'delivered', label: 'Entregues' },
 ]
 
-/** What an empty filtered log says. */
+/** What an empty filtered log says; deliveries are kept for 7 days. */
 export const EMPTY_FILTER_TITLES: Record<DeliveryFilter, string> = {
-  all: 'Nenhuma entrega ainda',
-  failed: 'Nenhuma falha nas últimas entregas',
+  all: 'Nenhuma entrega nos últimos 7 dias',
+  failed: 'Nenhuma falha nos últimos 7 dias',
   pending: 'Nada esperando nova tentativa',
+  delivered: 'Nenhuma entrega aceita nos últimos 7 dias',
 }
 
 export function parseDeliveryFilter(value: string): DeliveryFilter {
-  if (value === 'failed' || value === 'pending') {
+  if (value === 'failed' || value === 'pending' || value === 'delivered') {
     return value
   }
 
   return 'all'
 }
 
-/** Filters the loaded rows; the API has no filter, so this covers the newest 50 only. */
-export function filterDeliveries(
-  deliveries: readonly DeliveryLogEntry[],
-  filter: DeliveryFilter,
-): DeliveryLogEntry[] {
+/** The state the API filters by; `null` for every state. */
+export function statusOf(filter: DeliveryFilter): DeliveryStatus | null {
   if (filter === 'all') {
-    return [...deliveries]
+    return null
   }
 
-  return deliveries.filter((delivery) => delivery.status === filter)
+  return filter
 }

@@ -1,8 +1,3 @@
-const TIME = new Intl.DateTimeFormat('pt-BR', {
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-})
 const WEEKDAY_DATE = new Intl.DateTimeFormat('pt-BR', {
   weekday: 'short',
   day: 'numeric',
@@ -16,19 +11,6 @@ const WEEKDAY_DATE_YEAR = new Intl.DateTimeFormat('pt-BR', {
 })
 const UNKNOWN = '—'
 const DAY_MS = 86_400_000
-
-/** "14:03:27,481": the exact millisecond, the way log lines read under their day. */
-export function logClockTime(isoDate: string): string {
-  const date = new Date(isoDate)
-
-  if (Number.isNaN(date.getTime())) {
-    return UNKNOWN
-  }
-
-  const milliseconds = String(date.getMilliseconds()).padStart(3, '0')
-
-  return `${TIME.format(date)},${milliseconds}`
-}
 
 /** The local calendar day of an instant, to group events by the day the reader lives in. */
 export function dayKey(isoDate: string): string {

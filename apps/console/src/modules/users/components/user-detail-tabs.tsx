@@ -35,12 +35,7 @@ export function UserDetailTabs({ projectId, user, runner }: UserDetailTabsProps)
         ))}
       </TabsList>
       <UserTabPanel value="overview">
-        <UserOverviewTab
-          projectId={projectId}
-          user={user}
-          runner={runner}
-          onEditMetadata={() => setTab('metadata')}
-        />
+        <UserOverviewTab projectId={projectId} user={user} runner={runner} />
       </UserTabPanel>
       <UserTabPanel value="sessions">
         <UserSessionsSection projectId={projectId} user={user} runner={runner} />

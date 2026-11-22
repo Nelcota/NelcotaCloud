@@ -25,7 +25,7 @@ services:
       # (docs/deploy.md, "Postgres major upgrades") and the old volume stays as a fallback.
       - postgres-data-19:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U nelcota -d nelcota_control"]
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "nelcota", "-d", "nelcota_control"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -36,6 +36,12 @@ services:
       dockerfile: crates/server/Dockerfile
     restart: unless-stopped
     stop_grace_period: 85s
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/server", "--check-ready"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 12
     depends_on:
       postgres:
         condition: service_healthy
@@ -65,7 +71,7 @@ services:
       postgres:
         condition: service_healthy
       api:
-        condition: service_started
+        condition: service_healthy
     environment:
       CONTROL_PLANE_DATABASE_URL: postgres://nelcota_control_runtime:${DATABASE_RUNTIME_PASSWORD:?set DATABASE_RUNTIME_PASSWORD}@postgres:5432/nelcota_control
       TENANT_DATABASE_BASE_URL: postgres://nelcota_tenant_runtime:${DATABASE_RUNTIME_PASSWORD:?set DATABASE_RUNTIME_PASSWORD}@postgres:5432
@@ -82,7 +88,8 @@ services:
         VITE_PLATFORM_PUBLISHABLE_KEY: ${PLATFORM_PUBLISHABLE_KEY:-}
     restart: unless-stopped
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     environment:
       API_DOMAIN: ${API_DOMAIN}
       CONSOLE_DOMAIN: ${CONSOLE_DOMAIN:?set CONSOLE_DOMAIN}

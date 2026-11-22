@@ -109,7 +109,7 @@ function ResourceShortcuts({
               'flex flex-col items-center gap-0.5 rounded-md px-1 py-1 text-2xs text-muted-foreground hover:bg-surface hover:text-foreground',
             )}
           >
-            <Glyph aria-hidden className="size-3.5" />
+            <Glyph aria-hidden className="size-4" />
             <span className="truncate">{shortcut.label}</span>
           </RouterLink>
         )

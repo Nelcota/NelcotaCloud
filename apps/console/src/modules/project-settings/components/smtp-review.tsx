@@ -35,7 +35,7 @@ export function SmtpReview({ draft }: { draft: SmtpDraft }): JSX.Element {
 function CheckedItem({ label, children }: { label: string; children: ReactNode }): JSX.Element {
   return (
     <div className="grid min-w-0 grid-cols-[1rem_minmax(0,1fr)] items-start gap-x-2.5 gap-y-0.5 py-2.5 text-xs sm:grid-cols-[1rem_7rem_minmax(0,1fr)]">
-      <Check aria-hidden className="mt-px size-3.5 text-success" />
+      <Check aria-hidden className="mt-px size-4 text-success" />
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="col-start-2 min-w-0 wrap-anywhere sm:col-start-3">{children}</dd>
     </div>

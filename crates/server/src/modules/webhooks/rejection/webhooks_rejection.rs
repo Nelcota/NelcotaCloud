@@ -33,9 +33,9 @@ impl From<WebhooksRejection> for ApiError {
 /// Mistakes in what the owner sent are 400s; a missing endpoint is a 404; the rest is ours.
 pub fn endpoint_error_response(error: WebhookEndpointError) -> ApiError {
     match error {
-        WebhookEndpointError::InvalidUrl(_) | WebhookEndpointError::NoEventTypes => {
-            ApiError::invalid_request(error)
-        }
+        WebhookEndpointError::InvalidUrl(_)
+        | WebhookEndpointError::InvalidDescription(_)
+        | WebhookEndpointError::NoEventTypes => ApiError::invalid_request(error),
         WebhookEndpointError::LimitReached => {
             ApiError::from(WebhooksRejection::EndpointLimitReached)
         }

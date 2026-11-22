@@ -3,6 +3,7 @@ mod cache;
 mod database;
 mod fixtures;
 mod live_r2;
+mod notifications;
 mod oauth;
 mod platform;
 mod protocol;

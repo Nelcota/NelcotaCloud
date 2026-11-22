@@ -8,7 +8,7 @@ pub const MAX_ENDPOINTS_PER_TENANT: i64 = 5;
 /// Columns every query returning a `StoredWebhookEndpoint` selects, built at compile time.
 macro_rules! endpoint_columns {
     () => {
-        "id, tenant_id, url, event_types, is_enabled, secret_ciphertext, CASE WHEN previous_secret_expires_at > now() THEN previous_secret_ciphertext END AS active_previous_secret_ciphertext, created_at"
+        "id, tenant_id, url, description, event_types, is_enabled, secret_ciphertext, CASE WHEN previous_secret_expires_at > now() THEN previous_secret_ciphertext END AS active_previous_secret_ciphertext, failing_since, auto_paused_at, created_at"
     };
 }
 
@@ -19,10 +19,13 @@ pub struct StoredWebhookEndpoint {
     pub id: Uuid,
     pub tenant_id: Uuid,
     pub url: String,
+    pub description: Option<String>,
     pub event_types: Vec<String>,
     pub is_enabled: bool,
     pub secret_ciphertext: Vec<u8>,
     pub active_previous_secret_ciphertext: Option<Vec<u8>>,
+    pub failing_since: Option<OffsetDateTime>,
+    pub auto_paused_at: Option<OffsetDateTime>,
     pub created_at: OffsetDateTime,
 }
 
@@ -30,12 +33,15 @@ pub struct NewWebhookEndpoint<'a> {
     pub id: Uuid,
     pub tenant_id: Uuid,
     pub url: &'a str,
+    pub description: Option<&'a str>,
     pub event_types: &'a [String],
     pub secret_ciphertext: &'a [u8],
 }
 
 pub struct WebhookEndpointChanges<'a> {
     pub url: Option<&'a str>,
+    /// `Some(None)` removes the name.
+    pub description: Option<Option<&'a str>>,
     pub event_types: Option<&'a [String]>,
     pub is_enabled: Option<bool>,
 }
@@ -92,8 +98,8 @@ pub async fn insert_endpoint(
     }
 
     let stored = sqlx::query_as(concat!(
-        "INSERT INTO webhook_endpoints (id, tenant_id, url, event_types, secret_ciphertext) \
-         VALUES ($1, $2, $3, $4, $5) RETURNING ",
+        "INSERT INTO webhook_endpoints (id, tenant_id, url, event_types, secret_ciphertext, description) \
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING ",
         endpoint_columns!()
     ))
     .bind(endpoint.id)
@@ -101,6 +107,7 @@ pub async fn insert_endpoint(
     .bind(endpoint.url)
     .bind(endpoint.event_types)
     .bind(endpoint.secret_ciphertext)
+    .bind(endpoint.description)
     .fetch_one(&mut *transaction)
     .await?;
     transaction.commit().await?;
@@ -108,15 +115,23 @@ pub async fn insert_endpoint(
     Ok(Some(stored))
 }
 
-/// Applies only the given changes; `None` when the endpoint does not exist.
+/// Applies only the given changes; `None` when the endpoint does not exist. Enabling an
+/// endpoint starts its health afresh: the owner says the receiver is fixed.
 pub async fn update_endpoint(
     connection: &mut PgConnection,
     (tenant_id, endpoint_id): (Uuid, Uuid),
     changes: WebhookEndpointChanges<'_>,
 ) -> Result<Option<StoredWebhookEndpoint>, sqlx::Error> {
+    let description = changes.description;
+
     sqlx::query_as(concat!(
         "UPDATE webhook_endpoints SET url = COALESCE($3, url), event_types = COALESCE($4, event_types), \
-         is_enabled = COALESCE($5, is_enabled), updated_at = now() WHERE tenant_id = $1 AND id = $2 RETURNING ",
+         is_enabled = COALESCE($5, is_enabled), \
+         description = CASE WHEN $6 THEN $7 ELSE description END, \
+         failing_since = CASE WHEN $5 IS TRUE THEN NULL ELSE failing_since END, \
+         failure_alerted_at = CASE WHEN $5 IS TRUE THEN NULL ELSE failure_alerted_at END, \
+         auto_paused_at = CASE WHEN $5 IS TRUE THEN NULL ELSE auto_paused_at END, \
+         updated_at = now() WHERE tenant_id = $1 AND id = $2 RETURNING ",
         endpoint_columns!()
     ))
     .bind(tenant_id)
@@ -124,6 +139,8 @@ pub async fn update_endpoint(
     .bind(changes.url)
     .bind(changes.event_types)
     .bind(changes.is_enabled)
+    .bind(description.is_some())
+    .bind(description.flatten())
     .fetch_optional(connection)
     .await
 }

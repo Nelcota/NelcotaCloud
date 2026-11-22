@@ -57,7 +57,7 @@ export function FileInput({
           }
         }}
       >
-        <Upload className="mx-auto size-4 text-muted-foreground" aria-hidden />
+        <Upload className="mx-auto size-4.5 text-muted-foreground" aria-hidden />
         <span className="wrap-anywhere">{value?.name ?? placeholder ?? 'Selecionar arquivo'}</span>
         <input
           id={id}

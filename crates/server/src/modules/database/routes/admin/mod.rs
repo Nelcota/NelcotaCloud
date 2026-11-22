@@ -8,4 +8,5 @@ pub mod drop_policy;
 pub mod drop_table;
 pub mod list_migrations;
 pub mod read_schema;
+pub mod read_usage;
 pub mod run_sql;

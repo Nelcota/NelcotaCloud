@@ -8,8 +8,8 @@ import { ProjectSidebar } from '@/app/shell/project-sidebar'
 import { type ProjectLocation, projectLocation } from '@/app/shell/project-sections'
 import { useDocumentTitle } from '@/app/shell/use-document-title'
 import { UnverifiedEmailBanner } from '@/modules/account/components/unverified-email-banner'
+import { ReadOnlyBanner } from '@/modules/team/components/read-only-banner'
 import { useSession } from '@/shared/auth/use-session'
-import { cn } from '@/shared/lib/utils'
 import { FlashNotice } from '@/shared/ui/flash-notice'
 
 /**
@@ -45,8 +45,9 @@ function SignedInShell(): JSX.Element {
           <PanelTopBar location={location} pageTitle={pageTitle} />
           <div className="flex min-h-0 flex-1">
             <ProjectNavigation location={location} />
-            <PageArea pathname={pathname} isWide={location?.section.segment === 'sql'}>
+            <PageArea pathname={pathname}>
               <UnverifiedEmailBanner />
+              <ReadOnlyBanner projectId={location?.projectId ?? null} />
               <FlashNotice />
               <InsideShellContext value={true}>
                 <Outlet />
@@ -67,17 +68,17 @@ function ProjectNavigation({ location }: { location: ProjectLocation | null }): 
   return (
     <aside
       aria-label="Navegação do projeto"
-      className="scrollbar-thin hidden w-60 shrink-0 overflow-y-auto overscroll-contain lg:block"
+      className="scrollbar-thin hidden w-60 shrink-0 overflow-y-auto overscroll-contain border-e-2 border-border lg:block"
     >
       <ProjectSidebar location={location} />
     </aside>
   )
 }
 
-type PageAreaProps = { pathname: string; isWide: boolean; children: ReactNode }
+type PageAreaProps = { pathname: string; children: ReactNode }
 
 /** The scrolling page; focus moves here after navigation so screen readers start at the page. */
-function PageArea({ pathname, isWide, children }: PageAreaProps): JSX.Element {
+function PageArea({ pathname, children }: PageAreaProps): JSX.Element {
   const { hash } = useLocation()
   const page = useRef<HTMLElement>(null)
   const previousPath = useRef(pathname)
@@ -105,10 +106,7 @@ function PageArea({ pathname, isWide, children }: PageAreaProps): JSX.Element {
     >
       <div
         key={pathname}
-        className={cn(
-          '@container mx-auto flex w-full max-w-[76rem] min-w-0 animate-page-in flex-col gap-6 px-4 pt-5 pb-10 sm:px-6 lg:px-8',
-          isWide && 'max-w-none pb-5 lg:px-5',
-        )}
+        className="@container mx-auto flex w-full max-w-[76rem] min-w-0 animate-page-in flex-col gap-6 px-4 pt-5 pb-10 sm:px-6 lg:px-8"
       >
         {children}
       </div>

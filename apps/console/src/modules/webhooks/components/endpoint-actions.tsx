@@ -1,4 +1,4 @@
-import { Ellipsis, Pencil, Send, Trash2, RefreshCw as Refresh } from 'lucide-react'
+import { Ellipsis, Pencil, Trash2, RefreshCw as Refresh } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
@@ -17,10 +17,8 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/ui/primitives/dropdown-menu'
 
-type EndpointActionsProps = { panel: EndpointPanel; onTest: () => void }
-
-/** The panel's menu; edit, new secret and delete open their dialogs after the menu closes. */
-export function EndpointActions({ panel, onTest }: EndpointActionsProps): JSX.Element {
+/** The page's menu; edit, new secret and delete open their dialogs after the menu closes. */
+export function EndpointActions({ panel }: { panel: EndpointPanel }): JSX.Element {
   const { endpoint, rotation } = panel
   const [overlay, setOverlay] = useState<EndpointOverlay>(null)
 
@@ -49,10 +47,6 @@ export function EndpointActions({ panel, onTest }: EndpointActionsProps): JSX.El
           <DropdownMenuItem onSelect={() => setOverlay('edit')}>
             <Pencil aria-hidden />
             Editar
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={onTest}>
-            <Send aria-hidden />
-            Enviar evento de teste
           </DropdownMenuItem>
           <DropdownMenuItem
             disabled={rotation.canRotate === false}

@@ -75,7 +75,10 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   (`DELETE .../membership`), and an owner hands the project over in one transaction
   (`POST .../ownership-transfer`); all lock the project's memberships so it always keeps an owner
   (`last_owner`), and promotion respects the 10-owned-projects limit (`owned_project_limit`).
-  Ownership is never handed out by invitation: invite as member, then promote.
+  Ownership is never handed out by invitation: invite as member, then promote. Owners can
+  make a member a `viewer`: `TenantAdmin` refuses every request of a viewer that may write
+  (any method but GET/HEAD; asking for a file's download link is the one POST allowed) with
+  `read_only_member`, so viewers read everything a member reads and change nothing.
 - User administration: the list filters by `status` (`unverified`, `banned`); a user's detail
   reads their active sessions with the last login (newest refresh token family) and their linked
   identities (provider and date only); `POST .../users/{id}/verification-email` resends the
@@ -105,10 +108,16 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   count; the console overview shows this month and last month.
 - Profile photos (`auth/avatar`): `PUT/DELETE /auth/v1/user/avatar` take the raw image (PNG,
   JPEG, WebP, up to 1 MiB); the server decodes it with `image` (size limits against decompression
-  bombs), crops it to a 256px square and re-encodes it as JPEG (no EXIF), stored in the tenant's
+  bombs; `shared/image`), crops it to a 256px square and re-encodes it as JPEG (no EXIF), stored in the tenant's
   `user_avatars`. `GET /auth/v1/users/{id}/avatar?apikey=<publishable key>&version=…` serves it
   publicly (secret keys are refused in URLs); `User.avatar_updated_at` is the version. The console
   crops in a modal (`react-easy-crop`) and uploads through the SDK (`auth.avatar`).
+- Project logos (`tenants/logo`): `GET/PUT/DELETE /auth/v1/admin/logo` (`TenantAdmin`, rate
+  limited per project, recorded in the project audit) go through the same image normalization,
+  stored in the control plane's `tenant_logos`; `logo_updated_at` on the settings and the project
+  list is the version. Only members read it, so the console fetches it with the session
+  (`ProjectMark`, keyed by version) instead of an `<img>` URL; the logo replaces the mascot.
+  Uploaded in Settings › Geral with the same crop modal, square.
 - Tenant settings (`GET/PATCH /auth/v1/admin/settings`): name, `site_url`,
   `require_email_verification` (default true: password login and refresh need a verified email,
   and signup answers the same for new and existing emails).
@@ -130,6 +139,15 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   and resends are rate limited per project. Receivers must be https on public addresses,
   checked at save and again by the client's DNS resolver on every request (no redirects, no
   proxy); `WEBHOOK_ALLOW_PRIVATE_HOSTS=true` lifts it for local development only.
+  Each attempt records the receiver's answer time and, for a refusal, its first 512 bytes
+  (cleaned of control characters, kept as long as the delivery). The log pages 50 at a time
+  (`?status=&before=<delivery id>`); `POST .../deliveries/retry-failed` queues every given-up
+  delivery again; tests may imitate one of the endpoint's event types with made-up data
+  (`{event_type}`). Endpoints have an optional `description` (80 characters, one line). The
+  worker keeps each endpoint's `failing_since` (first refused attempt since the last
+  success); the API's sweep (`team/notification`, every 5 minutes) emails the project's owners
+  after 6 hours of failures and pauses the endpoint after 5 days (`auto_paused_at`); enabling
+  it again starts its health afresh. The emails never carry the endpoint's URL or name.
 - Database (`modules/database`, Data API at `/rest/v1`, PostgREST-style): the request roles
   `nelcota_anon` (publishable key), `nelcota_authenticated` (plus a user's access token; claims
   in `request.jwt.claims`, read by `auth.uid()`, `auth.jwt()`, `auth.role()`), `nelcota_service`
@@ -159,6 +177,21 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   `unique_violation`, ...); the console's SQL editor (and its schema overview, which never runs
   as the superuser) passes Postgres's message on and keeps at most 1000 rows / 4 MiB of values;
   a last query that found no rows shows its own empty header (prepared again, never re-run).
+  The schema overview also lists each table's indexes (columns, method, size, scans) and its
+  size on disk. The console edits rows in the grid (filters, insert, edit, delete by primary
+  key) through the same Data API as `nelcota_service`.
+- Data API usage (`database/usage`): a middleware on `/rest/v1` counts each response per
+  project, hour, resource, method and status in memory (`UsageSlot` filled by `DataApiCaller`;
+  404s keep no resource name), flushed every 15 s to the control plane's `data_api_usage`
+  (35 days). `GET /database/v1/usage?period=24h|7d|30d` flushes this instance first, then
+  reports totals, a point per hour or UTC day and the busiest tables and statuses.
+- Notifications (`notifications`): up to 5 channels per project (`notification_channels`:
+  email, or Discord/Slack incoming webhooks limited to their own https hosts; destinations
+  sealed, `target_hint` shown) at `/auth/v1/admin/notifications`, each subscribed to events
+  (`webhook_failing`, `login_failures`, `data_api_errors`, `storage_near_limit`). A sweep every
+  5 minutes checks the measured events only for subscribed projects and claims one alert per
+  event per 6 hours (`notification_alerts`, released when no channel got it); webhook failure
+  alerts also reach the channels. Test sends are rate limited per project.
 - Rate limits (`governor`, in memory, single instance; quotas in `rate_limit_quotas.rs`) on
   signup, login (per email from one network, per email, per client IP), the Argon2 work a client
   causes across projects, MFA codes, auth emails (per address, per recipient across projects,
@@ -202,6 +235,10 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   address is fixed at build time by `VITE_API_URL`. It logs in with the SDK (compiled from
   `packages/sdk/src` through a path alias) using the platform tenant's publishable key
   (`VITE_PLATFORM_PUBLISHABLE_KEY`). Never put a secret key or the admin token in the browser.
+- MCP server (`packages/mcp`, `@nelcota/mcp`): stdio MCP server for coding agents, one
+  project per secret key (`NELCOTA_SECRET_KEY`, `NELCOTA_API_URL`): schema, rows, SQL, users,
+  activity and traffic tools over the public API. Depends on `@modelcontextprotocol/sdk` and
+  `zod`; follows the SDK's TypeScript rules.
 - Example app (`examples/react-auth/`): React + Vite app that shows every Auth flow with the SDK
   (same path alias as the console), plus the quickstart in its README. It follows the console's
   TypeScript rules; keep it working when the SDK changes.
@@ -210,8 +247,8 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   trusts the address Caddy appends to `X-Forwarded-For` (`CLIENT_IP_HEADER`). The `backup`
   service sends daily encrypted dumps of every database to Cloudflare R2 (`deploy/backup/`).
   Operations (first boot, platform tenant, backups, staging): `docs/deploy.md`.
-- CI (`.github/workflows/ci.yml`): API (fmt, clippy, tests with Postgres and Mailpit), console and
-  SDK (format, lint, generated types, tests, build), example app (format, lint, build), Docker
+- CI (`.github/workflows/ci.yml`): API (fmt, clippy, tests with Postgres and Mailpit), console,
+  SDK and MCP server (format, lint, generated types, tests, build), example app (format, lint, build), Docker
   images on pushes to `main`.
 - Behind Cloudflare (proxied DNS records, recommended so console assets come from the edge):
   SSL/TLS mode "Full (strict)", `CLIENT_IP_HEADER=cf-connecting-ip`, and the VPS firewall allows
@@ -234,9 +271,16 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
 - `cargo fmt --all` and `cargo clippy --workspace --all-targets --all-features --locked -- -D warnings`.
 - Console, in `apps/console/`: `npm install`, `npm run dev` (http://localhost:5173, API from
   `VITE_API_URL`, default http://localhost:8080), `npm run build` (type check + bundle),
-  `npm run lint`, `npm run format` / `npm run format:check` (oxfmt).
+  `npm run lint`, `npm run format` / `npm run format:check` (oxfmt), `npm test` (Vitest:
+  rules and components in `tests/unit`, the API simulated by `SimulatedApi`, installed before
+  the console modules load). `npm run test:e2e` (Playwright, Chromium) runs `e2e/` against a
+  running stack: `E2E_CONSOLE_URL`, `E2E_API_URL`, `E2E_PLATFORM_KEY` (the platform tenant's
+  publishable key) and `E2E_MAILPIT_URL`; the global setup creates a fresh account, project,
+  table and refused logins, and one setup test signs in once (the login rate limit refuses a
+  sign-in per test). Not in CI: it needs a whole stack.
 - SDK, in `packages/sdk/`: `npm test`, `npm run typecheck`, `npm run lint`, `npm run format`,
   `npm run build`.
+- MCP server, in `packages/mcp/`: the same scripts; `npm run build` writes `dist/index.mjs`.
 - Example app, in `examples/react-auth/`: `npm install`, `npm run dev` (http://localhost:5174; a
   project with that site URL and its publishable key in `.env.local`), `npm run build`,
   `npm run lint`, `npm run format` / `npm run format:check`.
@@ -275,26 +319,31 @@ Modular monolith in `crates/server/src/`: one folder per business context under 
     `login` (start, completion, state), `profile` (one file per provider), `identity`
     (identities, account linking).
   - `team/`: `member` (team members, owner checks), `invitation` (invitations, their email,
-    answers by the invited account).
+    answers by the invited account), `notification` (emails to a project's owners, such as
+    failing webhooks).
   - `webhooks/`: `event` (event types and payloads), `endpoint` (URL policy, storage, use
     cases), `signing` (secrets, signatures), `outbox` (subscriptions cache, recorder, wake-up
     hints), `delivery` (transport and DNS guard, queue, schedule, retries, worker, delivery log,
     test send), `runtime` (what `AppState` holds).
+  - `notifications/`: `channel` (events, targets, storage, sealed destinations), `delivery`
+    (alert text per channel, email and chat delivery, dispatch), `alerts` (throttle, checks,
+    sweep).
   - `database/`: `access` (the caller's role and claims), `execution` (request transaction,
     query guard, error mapping), `schema` (introspection, cache, relationships, function
     resolution), `query` (URL and `Prefer` parsing into a `ReadQuery`), `sql` (statement
     writers), `rows` (read, write and function-call use cases), `admin` (developer session, SQL
-    runner, table and policy DDL, schema overview).
+    runner, table and policy DDL, schema overview), `usage` (Data API counters, flush, report).
 - `shared/`: infrastructure with no business rules (`crypto`, `http` (generic `ApiError`, client
   IP, bearer token), JSON validation, request id and span, `database` migrators, `email` SMTP
-  sender, `net` public host checks). `shared` never imports from `modules`.
+  sender, `net` public host checks, `image` square image normalization and upload errors).
+  `shared` never imports from `modules`.
 - A new file goes into the sub-package of its subject; create a sub-package when a module has
   several files about one subject. Never leave loose files at a module root; `mod.rs` files only
   declare modules.
 - Split a file when it has more than one reason to change: a type and its storage, two providers,
   two endpoints, a rule and its HTTP mapping.
 - Dependencies point one way: `tenants → shared`, `webhooks → tenants`,
-  `auth → webhooks, tenants`, `oauth → auth, webhooks, tenants`, `team → auth, tenants`,
+  `auth → webhooks, tenants`, `oauth → auth, webhooks, tenants`, `team → auth, webhooks, tenants`,
   `database → auth (rate limits), tenants`.
   Never create a cycle; if two modules need each other, the shared piece belongs in the lower one.
 - A new product of the BaaS (storage, functions) starts as a new module; split modules
@@ -310,13 +359,14 @@ dependencies. In `apps/console/src/`:
 
 - `main.tsx`: mounts the app with its providers; nothing else.
 - `app/`: composition root. `router.tsx` maps URLs to module pages (only logic: the login guard),
-  `lazy-routes/` has one lazy route per page. `shell/` holds the signed-in layout: an icon rail on
+  `public-routes.ts` holds login and the email pages, `lazy-routes/` has one lazy route per page. `shell/` holds the signed-in layout: an icon rail on
   the black frame (projects, account, invitations, theme, account menu) and a rounded panel with a
-  top bar (history, breadcrumbs, search) and, inside a project, a sidebar with the project
-  switcher and grouped pages. A sheet holds the navigation on narrow screens. The app also contains auth and router status pages,
+  top bar (history, breadcrumbs, search) and, inside a project, a sidebar with the
+  grouped pages. A sheet holds the navigation on narrow screens. The app also contains auth and router status pages,
   the query client, and `global.css` for the light and dark themes.
 - `modules/<module>/`: everything one context owns (`account`, `projects`, `overview`, `api-keys`,
-  `users`, `project-settings`, `system-status`, `team`, `webhooks`, `activity`, `database`):
+  `users`, `project-settings`, `system-status`, `team`, `webhooks`, `activity`, `database`,
+  `notifications`):
   - `pages/`: one file per route; composes components, no fetching or business logic.
   - `components/`: UI of the module, one component per file.
   - `queries/`: TanStack Query hooks (`use-*-query.ts`, `use-*-mutation.ts`); the only place that
@@ -333,7 +383,7 @@ dependencies. In `apps/console/src/`:
   `FlashNotice`, `StatCard`, `Notice`, `StatusBadge`, `PendingButton`, `TextField`,
   `SwitchField`, `SelectField`, `SearchField`, `SegmentedControl`, `ChoiceCards`, `DataList`,
   `CodeBlock`, `EmptyState`, and the Veloz-style `SummarySentence`, `ResourceCard`,
-  `ActivityItem`, `LevelBadge`, `LiveIndicator`, `FieldFacets`, `ChartLegend`,
+  `ActivityItem`, `LevelBadge`, `LiveIndicator`, `ChartLegend`,
   `AnimatedNumber`), `lib` (including `format-number` and `format-relative` for pt-BR figures). Layout is plain Tailwind markup over the primitives: no
   stack, text or wrapper components that restyle primitives. `shared` never imports from `modules` or `app`.
 - Use shadcn/ui primitives from `shared/ui/primitives/` and semantic tokens defined in

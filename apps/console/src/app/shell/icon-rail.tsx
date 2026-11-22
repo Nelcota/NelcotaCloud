@@ -17,12 +17,13 @@ export function IconRail({ location }: { location: ProjectLocation | null }): JS
   return (
     <nav
       aria-label="Console"
-      className="hidden w-16 shrink-0 flex-col items-center gap-1 py-3 md:flex"
+      className="hidden w-16 shrink-0 flex-col items-center gap-1 py-2 md:flex"
     >
+      {/* Centred on the top bar's controls, which start below the same 8px frame gutter. */}
       <RouterLink
         href="/"
         aria-label="NelcotaCloud, todos os projetos"
-        className="mb-3 grid size-10 place-items-center rounded-lg hover:bg-surface"
+        className="my-2 grid size-10 place-items-center rounded-lg hover:bg-surface"
       >
         <LogoMark size={32} />
       </RouterLink>

@@ -18,6 +18,8 @@ type ConfirmButtonProps = {
   confirmLabel: string
   onConfirm: () => void | Promise<void>
   isDestructive?: boolean
+  /** Solid red instead of red outline, for the one action of a page that destroys everything. */
+  isSolid?: boolean
   isDisabled?: boolean
   isPending?: boolean
   /** See `ConfirmDialog`: text to type before an irreversible action. */
@@ -61,7 +63,7 @@ function Trigger({
   onOpen: () => void
 }): JSX.Element {
   const Glyph = props.icon
-  const variant = props.isDestructive === true ? 'destructive' : 'outline'
+  const variant = triggerVariant(props)
   const glyph = Glyph === undefined ? null : <Glyph aria-hidden data-icon="inline-start" />
 
   if (props.isIconOnly === true) {
@@ -70,7 +72,7 @@ function Trigger({
         <TooltipTrigger asChild>
           <PendingButton
             type="button"
-            variant="ghost"
+            variant={iconVariant(props)}
             size="icon-sm"
             aria-label={props.label}
             disabled={props.isDisabled}
@@ -98,4 +100,27 @@ function Trigger({
       {props.label}
     </PendingButton>
   )
+}
+
+/** Icon-only triggers sit in rows: no fill, but a destructive one is still red. */
+function iconVariant(props: ConfirmButtonProps): 'destructive-ghost' | 'ghost' {
+  if (props.isDestructive === true) {
+    return 'destructive-ghost'
+  }
+
+  return 'ghost'
+}
+
+type TriggerVariant = 'destructive-solid' | 'destructive' | 'outline'
+
+function triggerVariant(props: ConfirmButtonProps): TriggerVariant {
+  if (props.isDestructive !== true) {
+    return 'outline'
+  }
+
+  if (props.isSolid === true) {
+    return 'destructive-solid'
+  }
+
+  return 'destructive'
 }

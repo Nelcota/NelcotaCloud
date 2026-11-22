@@ -11,7 +11,10 @@ type EventTypePickerProps = {
   hasMeanings?: boolean
 }
 
-/** Which events the endpoint receives, grouped by subject, each group with its own "all". */
+/**
+ * Which events the endpoint receives, grouped by subject, each group with its own "all". On a
+ * wide panel the groups sit side by side; a dialog keeps them stacked.
+ */
 export function EventTypePicker({
   selected,
   onChange,
@@ -25,7 +28,7 @@ export function EventTypePicker({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="grid items-start gap-4 @min-[44rem]:grid-cols-2">
       {EVENT_GROUPS.map((group) => (
         <EventGroupFieldset
           key={group.label}

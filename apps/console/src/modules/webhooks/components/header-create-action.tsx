@@ -17,7 +17,8 @@ export function HeaderCreateAction({
   endpoints,
   creator,
 }: HeaderCreateActionProps): JSX.Element | null {
-  if (endpoints !== undefined && endpoints.length === 0) {
+  // Hidden while loading too: an empty list shows its own form, so the button would blink.
+  if (endpoints === undefined || endpoints.length === 0) {
     return null
   }
 

@@ -1,57 +1,64 @@
 import type { JSX } from 'react'
-import { useRef, useState } from 'react'
 
-import { loadSavedQuery, saveQuery } from '@/modules/sql-editor/components/saved-query'
-import { SqlQueryPanel } from '@/modules/sql-editor/components/sql-query-panel'
+import { HistoryStepButtons } from '@/modules/sql-editor/components/history-step-buttons'
+import { SqlApiSheet } from '@/modules/sql-editor/components/sql-api-sheet'
+import { SqlCodeEditor } from '@/modules/sql-editor/components/sql-code-editor'
 import { SqlResultPanel } from '@/modules/sql-editor/components/sql-result-panel'
 import { SqlResultStatus } from '@/modules/sql-editor/components/sql-result-status'
-import { SqlSidePanel } from '@/modules/sql-editor/components/sql-side-panel'
-import { useSqlHistory } from '@/modules/sql-editor/components/use-sql-history'
-import { useRunSqlMutation } from '@/modules/sql-editor/queries/use-run-sql-mutation'
+import { SqlRunButton } from '@/modules/sql-editor/components/sql-run-button'
+import { TablesMenu } from '@/modules/sql-editor/components/tables-menu'
+import { useSqlEditor } from '@/modules/sql-editor/components/use-sql-editor'
+import { PageHeader } from '@/shared/ui/page-header'
+import { Section } from '@/shared/ui/section'
 
 /**
- * The SQL box above its result, with the project's tables, ready examples and the last queries
- * in a sidebar beside them; a query runs with the button or Ctrl/Cmd+Enter.
+ * The page's header with the run action, the query and its result, laid out like the other
+ * pages; a query runs with the button or Ctrl/Cmd+Enter, only the selection when text is selected.
  */
 export function SqlEditor({ projectId }: { projectId: string }): JSX.Element {
-  const [query, setQuery] = useState(() => loadSavedQuery(projectId))
-  const [durationMs, setDurationMs] = useState<number | null>(null)
-  const startedAt = useRef(0)
-  const run = useRunSqlMutation(projectId)
-  const history = useSqlHistory(projectId)
-  const outcome = { result: run.data, error: run.error, isRunning: run.isPending }
-
-  function change(value: string): void {
-    setQuery(value)
-    saveQuery(projectId, value)
-  }
-
-  function execute(): void {
-    if (query.trim() === '' || run.isPending) {
-      return
-    }
-
-    history.record(query)
-    startedAt.current = performance.now()
-    setDurationMs(null)
-    run.mutate(query, { onSuccess: () => setDurationMs(performance.now() - startedAt.current) })
-  }
+  const editor = useSqlEditor(projectId)
+  const { query, outcome } = editor
 
   return (
-    <div className="@container">
-      <div className="grid items-start gap-5 @min-[52rem]:grid-cols-[15rem_minmax(0,1fr)]">
-        <div className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-card">
-          <SqlQueryPanel
-            query={query}
-            isRunning={run.isPending}
-            status={<SqlResultStatus {...outcome} durationMs={durationMs} />}
-            onChange={change}
-            onRun={execute}
-          />
-          <SqlResultPanel {...outcome} />
-        </div>
-        <SqlSidePanel projectId={projectId} history={history.entries} onPick={change} />
-      </div>
+    <div onKeyDown={editor.runOnShortcut} className="flex flex-col gap-6">
+      <PageHeader
+        title="Editor SQL"
+        description="Roda como nelcota_developer, sem RLS, por até 15 s: pode alterar dados."
+        actions={
+          <>
+            <SqlApiSheet />
+            <SqlRunButton
+              isRunning={outcome.isRunning}
+              isDisabled={query.trim() === ''}
+              hasSelection={editor.hasSelection}
+              onRun={editor.execute}
+            />
+          </>
+        }
+      />
+      <Section
+        title="Consulta"
+        isFramed
+        action={
+          <div className="flex items-center gap-1">
+            <TablesMenu projectId={projectId} onPick={editor.pick} />
+            <HistoryStepButtons steps={editor.steps} />
+          </div>
+        }
+      >
+        <SqlCodeEditor
+          value={query}
+          onChange={editor.change}
+          onSelectionChange={editor.setSelected}
+        />
+      </Section>
+      <Section title="Resultado" meta={<SqlResultStatus {...outcome} />} isFramed>
+        <SqlResultPanel
+          {...outcome}
+          isQueryEmpty={query.trim() === ''}
+          onPickExample={editor.pick}
+        />
+      </Section>
     </div>
   )
 }

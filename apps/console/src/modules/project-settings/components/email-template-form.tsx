@@ -1,3 +1,4 @@
+import { showFlash } from '@/shared/lib/flash-notice'
 import type { FormEvent, JSX } from 'react'
 import { useState } from 'react'
 
@@ -10,7 +11,6 @@ import {
 import type { components } from '@/shared/api/api-schema'
 import { ErrorAlert } from '@/shared/ui/error-alert'
 import { PendingButton } from '@/shared/ui/pending-button'
-import { SavedNote } from '@/shared/ui/saved-note'
 import { SettingsSection } from '@/shared/ui/settings-section'
 import { TextAreaField, TextField } from '@/shared/ui/text-field'
 
@@ -49,7 +49,7 @@ export function EmailTemplateForm({
 
   function submit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault()
-    save.mutate({ kind: template.kind, text })
+    save.mutate({ kind: template.kind, text }, { onSuccess: () => showFlash('Texto salvo.') })
   }
 
   return (
@@ -60,7 +60,6 @@ export function EmailTemplateForm({
         onSubmit={submit}
         footer={
           <>
-            <SavedNote isSaved={save.isSuccess} message="Texto salvo" />
             <ResetTemplateButton
               isCustomized={template.is_customized}
               isPending={reset.isPending}

@@ -1,15 +1,16 @@
 import { type UseQueryResult, useQuery } from '@tanstack/react-query'
 
 import { type CountQuery, countRows } from '@/modules/database/api/read-rows'
+import { filtersKey } from '@/modules/database/components/row-filter'
 import { tableRowsKey } from '@/modules/database/queries/use-table-rows-query'
 
-/** The table's row count, once per table (not per page); refreshed with its rows. */
+/** The rows the filters match, once per filter list (not per page); refreshed with its rows. */
 export function useTableCountQuery(
   projectId: string,
   query: CountQuery,
 ): UseQueryResult<number | null> {
   return useQuery({
-    queryKey: [...tableRowsKey(projectId, query.table), 'count'],
+    queryKey: [...tableRowsKey(projectId, query.table), 'count', filtersKey(query.filters)],
     queryFn: ({ signal }) => countRows(projectId, query, signal),
   })
 }

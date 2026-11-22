@@ -1,5 +1,6 @@
 pub(super) mod metrics;
 mod overload;
+mod provisioning;
 mod services;
 mod storage;
 mod storage_contention;
@@ -9,11 +10,13 @@ use crate::support::TestResult;
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "generates HTTP load; run against disposable test services"]
 async fn local_http_stress() -> TestResult {
-    let services = services::exercise_services().await;
-    let storage = storage::exercise_storage().await;
+    services::exercise_services().await
+}
 
-    services?;
-    storage
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "drives the upload and download lifecycle against disposable test services"]
+async fn local_storage_transfer_stress() -> TestResult {
+    storage::exercise_storage().await
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -26,4 +29,10 @@ async fn local_database_overload_stress() -> TestResult {
 #[ignore = "holds a project row while driving concurrent storage writes"]
 async fn local_storage_contention_stress() -> TestResult {
     storage_contention::exercise_storage_contention().await
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "provisions concurrent projects on a disposable database server"]
+async fn local_provisioning_stress() -> TestResult {
+    provisioning::exercise_provisioning().await
 }

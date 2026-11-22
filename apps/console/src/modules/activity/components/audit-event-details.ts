@@ -26,19 +26,6 @@ export function detailText(event: AuditEvent): string {
   }).join(' · ')
 }
 
-/** The text facts the short line leaves out, as key and value pairs for the log's chips. */
-export function extraDetails(event: AuditEvent): [string, string][] {
-  const shortKeys = new Set(SHORT_DETAILS.map((detail) => detail.key))
-  const entries = Array.from(textDetails(event))
-
-  return entries.filter(([key]) => shortKeys.has(key) === false)
-}
-
-/** One text fact from the event's details; `null` when it does not have it. */
-export function detailValue(event: AuditEvent, key: string): string | null {
-  return textDetails(event).get(key) ?? null
-}
-
 /** The details as formatted JSON for the detail panel; `null` when the event has none. */
 export function detailsJson(event: AuditEvent): string | null {
   const details = event.details ?? null

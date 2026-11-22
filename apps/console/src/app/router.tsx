@@ -1,13 +1,8 @@
-import {
-  Outlet,
-  createRootRoute,
-  createRoute,
-  createRouter,
-  redirect,
-} from '@tanstack/react-router'
+import { createRoute, createRouter, redirect } from '@tanstack/react-router'
 
-import { AuthLayout } from '@/app/auth-layout'
 import { NotFoundPage } from '@/app/not-found-page'
+import { loginRoute, publicRoute, resetPasswordRoute, verifyEmailRoute } from '@/app/public-routes'
+import { rootRoute } from '@/app/root-route'
 import { RouteErrorPage } from '@/app/route-error-page'
 import { AppShell } from '@/app/shell/app-shell'
 import { nelcota } from '@/shared/auth/nelcota'
@@ -16,38 +11,6 @@ import { nelcota } from '@/shared/auth/nelcota'
  * Maps URLs to module pages; no logic lives here besides the login guard. Every page is a lazy
  * route: its code is downloaded the first time it is visited, or when a link to it is hovered.
  */
-const rootRoute = createRootRoute({ component: Outlet })
-
-/** Login and the pages opened from emails, outside the console shell. */
-const publicRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  id: '_public',
-  component: AuthLayout,
-})
-
-const loginRoute = createRoute({
-  getParentRoute: () => publicRoute,
-  path: '/login',
-  beforeLoad: () => {
-    if (nelcota.auth.getSession() !== null) {
-      throw redirect({ to: '/' })
-    }
-  },
-}).lazy(() => import('@/app/lazy-routes/login').then((module) => module.loginLazyRoute))
-
-const verifyEmailRoute = createRoute({
-  getParentRoute: () => publicRoute,
-  path: '/auth/verify-email',
-}).lazy(() =>
-  import('@/app/lazy-routes/verify-email').then((module) => module.verifyEmailLazyRoute),
-)
-
-const resetPasswordRoute = createRoute({
-  getParentRoute: () => publicRoute,
-  path: '/auth/reset-password',
-}).lazy(() =>
-  import('@/app/lazy-routes/reset-password').then((module) => module.resetPasswordLazyRoute),
-)
 
 /** Everything below needs a console session and lives in the console shell. */
 const authenticatedRoute = createRoute({
@@ -108,6 +71,13 @@ const webhooksRoute = createRoute({ getParentRoute: () => projectRoute, path: '/
   () => import('@/app/lazy-routes/webhooks').then((module) => module.webhooksLazyRoute),
 )
 
+const webhookDetailRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: '/webhooks/$endpointId',
+}).lazy(() =>
+  import('@/app/lazy-routes/webhook-detail').then((module) => module.webhookDetailLazyRoute),
+)
+
 const databaseRoute = createRoute({ getParentRoute: () => projectRoute, path: '/database' }).lazy(
   () => import('@/app/lazy-routes/database').then((module) => module.databaseLazyRoute),
 )
@@ -153,6 +123,7 @@ const routeTree = rootRoute.addChildren([
       providersRoute,
       emailRoute,
       webhooksRoute,
+      webhookDetailRoute,
       databaseRoute,
       databaseTableRoute,
       storageRoute,

@@ -1,5 +1,6 @@
 import type { JSX } from 'react'
 
+import { ApiTrafficSection } from '@/modules/database/components/api-traffic-section'
 import { DatabaseFacts } from '@/modules/database/components/database-facts'
 import { DatabaseHeaderActions } from '@/modules/database/components/database-header-actions'
 import { TablesBrowser } from '@/modules/database/components/tables-browser'
@@ -19,6 +20,7 @@ export function DatabasePage(): JSX.Element {
         <DatabaseFacts />
       </PageHeader>
       <TablesBrowser key={projectId} projectId={projectId} />
+      <ApiTrafficSection key={`traffic-${projectId}`} projectId={projectId} />
     </div>
   )
 }

@@ -11,8 +11,10 @@ use crate::shared::rate_limiting::quota_spec::{InvalidQuota, QuotaSpec};
 use crate::modules::database::access::rate_limit_quotas::{
     DATA_API_PER_CLIENT_IP, DATA_API_PER_PROJECT,
 };
+use crate::modules::notifications::channel::rate_limit_quotas::NOTIFICATION_TESTS_PER_PROJECT;
 use crate::modules::oauth::login::rate_limit_quotas::OAUTH_START_PER_CLIENT_IP;
 use crate::modules::team::invitation::rate_limit_quotas::INVITATIONS_PER_ACCOUNT;
+use crate::modules::tenants::logo::rate_limit_quotas::LOGO_CHANGES_PER_PROJECT;
 use crate::modules::tenants::provisioning::rate_limit_quotas::{
     PROJECT_CREATION_PER_ACCOUNT, PROJECT_CREATION_PER_CLIENT_IP,
 };
@@ -48,7 +50,11 @@ pub struct RateLimits {
     /// Data API requests with the secret key or from the console, per project.
     pub data_api_per_project: AccountLimiter,
     pub webhook_queue_health: AccountLimiter,
+    /// Logo uploads and removals, per project (keyed by the project and the nil user).
+    pub project_logo_changes: AccountLimiter,
     pub cache_per_project: AccountLimiter,
+    /// Test alerts, per project (keyed by the project and the nil user).
+    pub notification_tests: AccountLimiter,
     /// Every request, per client IP across every route and project.
     pub requests_per_client_ip: ClientIpLimiter,
 }
@@ -64,7 +70,9 @@ impl RateLimits {
             data_api_per_client_ip: ClientIpLimiter::new(&DATA_API_PER_CLIENT_IP)?,
             data_api_per_project: AccountLimiter::new(&DATA_API_PER_PROJECT)?,
             webhook_queue_health: AccountLimiter::new(&WEBHOOK_QUEUE_HEALTH_PER_PROJECT)?,
+            project_logo_changes: AccountLimiter::new(&LOGO_CHANGES_PER_PROJECT)?,
             cache_per_project: AccountLimiter::new(&CACHE_PER_PROJECT)?,
+            notification_tests: AccountLimiter::new(&NOTIFICATION_TESTS_PER_PROJECT)?,
             requests_per_client_ip: ClientIpLimiter::new(&REQUESTS_PER_CLIENT_IP)?,
         })
     }
@@ -77,7 +85,9 @@ impl RateLimits {
         self.data_api_per_client_ip.forget_idle_keys();
         self.data_api_per_project.forget_idle_keys();
         self.webhook_queue_health.forget_idle_keys();
+        self.project_logo_changes.forget_idle_keys();
         self.cache_per_project.forget_idle_keys();
+        self.notification_tests.forget_idle_keys();
         self.requests_per_client_ip.forget_idle_keys();
     }
 }

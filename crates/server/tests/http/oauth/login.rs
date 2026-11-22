@@ -6,6 +6,7 @@ use serde_json::json;
 
 use crate::auth::mfa::user_with_totp;
 use crate::fixtures::fake_github::{FAKE_CLIENT_ID, FAKE_CLIENT_SECRET, FakeAccount};
+use crate::stress::metrics::{Load, exercise};
 use crate::support::{
     CreatedTenant, Session, TEST_PASSWORD, TEST_SITE_URL, TestResult, TestServer, error_code,
     unique_email,
@@ -15,6 +16,29 @@ mod google;
 
 const APP_CALLBACK: &str = "http://app.test/callback";
 const AUTHORIZE_PATH: &str = "/auth/v1/oauth/github/authorize";
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "drives concurrent OAuth flows against disposable test services"]
+async fn stress_oauth_login() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    configure_github(&server, &tenant).await?;
+
+    let count = 20;
+    let trial = exercise("oauth-pkce-login", Load::burst(count, 10), async |index| {
+        let email = unique_email("stress-oauth");
+        let account = github_account(u64::try_from(index)?, &email, true);
+        let session = full_login(&server, &tenant, &account).await?;
+        assert_eq!(session.user.email, email);
+
+        Ok("200".to_owned())
+    })
+    .await;
+
+    server.drop_tenant(&tenant).await?;
+
+    trial?.require(&[("200", count)])
+}
 
 /// What the tenant's app keeps while the user signs in at the provider.
 struct AppLogin {

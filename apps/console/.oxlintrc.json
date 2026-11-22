@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "ignorePatterns": ["src/shared/api/api-schema.d.ts"],
+  "ignorePatterns": ["src/shared/api/api-schema.d.ts", "test-results/**", "playwright-report/**"],
   "plugins": ["react", "typescript", "unicorn", "import", "oxc"],
   "categories": {
     "correctness": "error",
@@ -47,13 +47,18 @@
     "import/no-unassigned-import": [
       "error",
       {
-        "allow": ["**/*.css"]
+        "allow": ["**/*.css", "@testing-library/jest-dom/vitest"]
       }
     ]
   },
   "overrides": [
     {
-      "files": ["vite.config.ts"],
+      "files": [
+        "vite.config.ts",
+        "vitest.config.ts",
+        "playwright.config.ts",
+        "e2e/support/global-setup.ts"
+      ],
       "rules": {
         "import/no-default-export": "off"
       }

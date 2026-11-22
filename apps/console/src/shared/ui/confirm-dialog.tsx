@@ -96,6 +96,7 @@ export function ConfirmDialog(props: ConfirmDialogProps): JSX.Element {
     try {
       await result
       setIsWorking(false)
+      setTypedText('')
       notifyOpen(props, false)
     } catch (failure) {
       setIsWorking(false)

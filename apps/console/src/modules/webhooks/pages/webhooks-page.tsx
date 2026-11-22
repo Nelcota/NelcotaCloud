@@ -1,17 +1,12 @@
 import type { JSX } from 'react'
-import { useState } from 'react'
 
 import type { EndpointCreator } from '@/modules/webhooks/components/create-endpoint-button'
-import type { EndpointFormValues } from '@/modules/webhooks/components/endpoint-form-dialog'
-import type { LastRotation } from '@/modules/webhooks/components/endpoint-panel-types'
 import { HeaderCreateAction } from '@/modules/webhooks/components/header-create-action'
-import { useEndpointSelection } from '@/modules/webhooks/components/use-endpoint-selection'
 import { WebhookSecretNotice } from '@/modules/webhooks/components/webhook-secret-notice'
 import { webhookApiSnippets } from '@/modules/webhooks/components/webhook-api-snippets'
 import { WebhooksContent } from '@/modules/webhooks/components/webhooks-content'
 import {
   useCreateWebhookEndpointMutation,
-  useRotateWebhookSecretMutation,
   useWebhookEndpointsQuery,
 } from '@/modules/webhooks/queries/use-webhook-endpoints'
 import type { components } from '@/shared/api/api-schema'
@@ -29,31 +24,16 @@ export function WebhooksPage(): JSX.Element {
   const projectId = useProjectId()
   const endpoints = useWebhookEndpointsQuery(projectId)
   const creation = useCreateWebhookEndpointMutation(projectId)
-  const rotation = useRotateWebhookSecretMutation(projectId)
-  const selection = useEndpointSelection(endpoints.data)
-  const [lastRotation, setLastRotation] = useState<LastRotation | null>(null)
-  const secret = revealedSecret(creation.data ?? rotation.data)
-  const canIssueSecret =
-    secret === undefined && creation.isPending === false && rotation.isPending === false
+  const secret = revealedSecret(creation.data)
   const count = endpoints.data?.length ?? 0
+  // One secret on screen at a time: the next endpoint waits until this one is stored.
   const creator: EndpointCreator = {
-    isDisabled: canIssueSecret === false || count >= MAX_ENDPOINTS,
-    onCreate: create,
-  }
-
-  // The new endpoint opens at once, so its secret and its panel are seen together.
-  async function create(values: EndpointFormValues): Promise<void> {
-    const created = await creation.mutateAsync(values)
-    selection.select(created.endpoint.id)
-  }
-
-  async function rotate(endpointId: string): Promise<void> {
-    await rotation.mutateAsync(endpointId)
-    setLastRotation({ endpointId, rotatedAt: Date.now() })
+    isDisabled: secret !== undefined || creation.isPending || count >= MAX_ENDPOINTS,
+    onCreate: (values) => creation.mutateAsync(values),
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <PageHeader
         title="Webhooks"
         description="Eventos assinados para o seu servidor, no formato Standard Webhooks."
@@ -65,26 +45,13 @@ export function WebhooksPage(): JSX.Element {
         }
       />
       <LoadError error={endpoints.error} onRetry={() => endpoints.refetch()} />
-      <WebhookSecretNotice
-        revealed={secret}
-        onDismiss={() => {
-          creation.reset()
-          rotation.reset()
-        }}
-      />
+      <WebhookSecretNotice revealed={secret} onDismiss={() => creation.reset()} />
       <WebhooksContent
         projectId={projectId}
         endpoints={endpoints.data}
         hasFailed={endpoints.isError}
         limit={MAX_ENDPOINTS}
-        selection={selection}
         creator={creator}
-        rotation={{
-          canRotate: canIssueSecret,
-          isRotating: rotation.isPending,
-          lastRotation,
-          onRotate: rotate,
-        }}
       />
     </div>
   )

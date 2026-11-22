@@ -46,7 +46,14 @@ export function CreateBucketDialog(props: CreateBucketDialogProps): JSX.Element 
       return
     }
 
-    creation.mutate(name, { onSuccess: (bucket) => props.onCreated(bucket.id) })
+    creation.mutate(name, {
+      // The parent closes the dialog, past changeOpen: clear here so it reopens empty.
+      onSuccess: (bucket) => {
+        setName('')
+        creation.reset()
+        props.onCreated(bucket.id)
+      },
+    })
   }
 
   return (

@@ -92,21 +92,38 @@ pub async fn exercise(
         .buffer_unordered(concurrency);
     let mut timings = Vec::with_capacity(count);
     let mut counts = BTreeMap::new();
+    let mut timings_by_outcome = BTreeMap::<String, Vec<Duration>>::new();
 
     while let Some((elapsed, outcome)) = samples.next().await {
         timings.push(elapsed);
+        timings_by_outcome
+            .entry(outcome.clone())
+            .or_default()
+            .push(elapsed);
         let total = counts.entry(outcome).or_insert(0_usize);
         *total = total.saturating_add(1);
     }
 
     let elapsed = started.elapsed().as_secs_f64();
     timings.sort_unstable();
+    let outcome_percentiles = timings_by_outcome
+        .into_iter()
+        .map(|(outcome, mut timings)| {
+            timings.sort_unstable();
+            let percentiles = json!({
+                "p50_ms": percentile(&timings, 50),
+                "p95_ms": percentile(&timings, 95),
+                "p99_ms": percentile(&timings, 99),
+            });
+            (outcome, percentiles)
+        })
+        .collect::<BTreeMap<_, _>>();
     let report = json!({
         "scenario": name, "operations": count, "concurrency": concurrency,
         "seconds": elapsed, "operations_per_second": f64::from(u32::try_from(count)?) / elapsed,
         "p50_ms": percentile(&timings, 50), "p95_ms": percentile(&timings, 95),
         "p99_ms": percentile(&timings, 99), "max_ms": percentile(&timings, 100),
-        "outcomes": counts
+        "outcomes": counts, "outcome_percentiles": outcome_percentiles
     });
     writeln!(std::io::stdout().lock(), "{report}")?;
 

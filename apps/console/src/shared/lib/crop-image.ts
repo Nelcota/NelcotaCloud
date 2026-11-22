@@ -1,6 +1,9 @@
 /** A rectangle of the source image, in its own pixels. */
 export type PixelArea = { x: number; y: number; width: number; height: number }
 
+/** The image the user picked and the square of it they chose in the editor. */
+export type ImageSelection = { file: Blob; area: PixelArea }
+
 /** Large enough for sharp 2x avatars, small enough to stay far below the API's upload limit. */
 const OUTPUT_SIZE = 512
 const OUTPUT_TYPE = 'image/jpeg'

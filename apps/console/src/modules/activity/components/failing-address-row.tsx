@@ -51,7 +51,7 @@ function BlockAction({ ip, isBlocked, onBlock }: BlockActionProps): JSX.Element 
   }
 
   return (
-    <Button type="button" variant="outline" size="sm" onClick={() => onBlock(ip)}>
+    <Button type="button" variant="destructive" size="sm" onClick={() => onBlock(ip)}>
       Bloquear
     </Button>
   )

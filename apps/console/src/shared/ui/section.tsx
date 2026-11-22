@@ -47,7 +47,7 @@ function SectionHeading(props: SectionProps & { titleId: string }): JSX.Element 
     >
       <div className="grid min-w-0 gap-0.5">
         <div className="flex items-center gap-2">
-          {Glyph !== undefined && <Glyph aria-hidden className="size-4 text-muted-foreground" />}
+          {Glyph !== undefined && <Glyph aria-hidden className="size-4.5 text-muted-foreground" />}
           <h2 id={props.titleId} className="text-base font-medium">
             {props.title}
           </h2>

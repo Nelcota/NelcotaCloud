@@ -1,38 +1,36 @@
 import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query'
 import type { JSX } from 'react'
 
+import { ActivityDays } from '@/modules/activity/components/activity-days'
+import { ActivityFeedLoading } from '@/modules/activity/components/activity-feed-loading'
+import type { FeedRowView } from '@/modules/activity/components/feed-row-view'
 import { LogFooter } from '@/modules/activity/components/log-footer'
-import { LogLines } from '@/modules/activity/components/log-lines'
-import { LogLinesLoading } from '@/modules/activity/components/log-lines-loading'
-import type { LogRowView } from '@/modules/activity/components/log-row-view'
 import {
   type ActivityFilters,
   isNarrowed,
 } from '@/modules/activity/components/use-activity-filters'
-import type { LogFacets } from '@/modules/activity/components/use-log-facets'
 import type { components } from '@/shared/api/api-schema'
 import { cn } from '@/shared/lib/utils'
 import { EmptyState } from '@/shared/ui/empty-state'
 import { LoadError } from '@/shared/ui/load-error'
 import { Button } from '@/shared/ui/primitives/button'
 
-type Schemas = components['schemas']
-
 type ActivityFeedBodyProps = {
-  pages: UseInfiniteQueryResult<InfiniteData<Schemas['AuditPage'], number | undefined>>
-  facets: LogFacets
-  view: LogRowView & { filters: ActivityFilters; isLive: boolean; onClear: () => void }
+  pages: UseInfiniteQueryResult<
+    InfiniteData<components['schemas']['AuditPage'], number | undefined>
+  >
+  view: FeedRowView & { filters: ActivityFilters; isLive: boolean; onClear: () => void }
 }
 
-/** The log's frame in each of its states: loading, failed, empty, filtered out, or the lines. */
-export function ActivityFeedBody({ pages, facets, view }: ActivityFeedBodyProps): JSX.Element {
-  const shown = facets.shown
+/** The feed's frame in each of its states: loading, failed, empty, filtered out, or the events. */
+export function ActivityFeedBody({ pages, view }: ActivityFeedBodyProps): JSX.Element {
+  const events = pages.data?.pages.flatMap((page) => page.events)
 
-  if (shown === undefined) {
-    return <LogLinesLoading error={pages.error} onRetry={() => pages.refetch()} />
+  if (events === undefined) {
+    return <ActivityFeedLoading error={pages.error} onRetry={() => pages.refetch()} />
   }
 
-  if (facets.loadedCount === 0) {
+  if (events.length === 0) {
     return <NoEvents filters={view.filters} onClear={view.onClear} />
   }
 
@@ -41,9 +39,12 @@ export function ActivityFeedBody({ pages, facets, view }: ActivityFeedBodyProps)
       aria-busy={pages.isPlaceholderData}
       className={cn('transition-opacity', pages.isPlaceholderData && 'opacity-60')}
     >
-      <ShownLines events={shown} facets={facets} view={view} />
+      <div className="p-1.5">
+        <ActivityDays events={events} view={view} />
+      </div>
       <LogFooter
-        lines={{ shown: shown.length, loaded: facets.loadedCount, isLive: view.isLive }}
+        loaded={events.length}
+        isLive={view.isLive}
         more={{
           hasMore: pages.hasNextPage,
           isLoading: pages.isFetchingNextPage,
@@ -54,27 +55,6 @@ export function ActivityFeedBody({ pages, facets, view }: ActivityFeedBodyProps)
         <LoadError error={pages.error} onRetry={() => pages.fetchNextPage()} />
       </div>
     </div>
-  )
-}
-
-type ShownLinesProps = { events: Schemas['AuditEvent'][]; facets: LogFacets; view: LogRowView }
-
-function ShownLines({ events, facets, view }: ShownLinesProps): JSX.Element {
-  if (events.length > 0) {
-    return <LogLines events={events} view={view} />
-  }
-
-  return (
-    <EmptyState
-      isCompact
-      title="Nenhuma linha carregada com esses campos"
-      description="Os campos filtram só as linhas já carregadas. Carregue mais ou limpe os campos."
-      actions={
-        <Button type="button" variant="outline" size="sm" onClick={facets.clearFields}>
-          Limpar campos
-        </Button>
-      }
-    />
   )
 }
 

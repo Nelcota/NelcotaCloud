@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::app_state::AppState;
 use crate::modules::tenants::access::admin_actor::AdminActor;
 use crate::modules::tenants::access::api_key_tenant::{API_KEY_HEADER, ApiKeyTenant};
+use crate::modules::tenants::access::viewer_access::ensure_role_allows;
 use crate::modules::tenants::platform::platform_account::verify_platform_token;
 use crate::modules::tenants::platform::project_access::role_in_project;
 use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
@@ -40,7 +41,8 @@ impl FromRequestParts<AppState> for TenantAdmin {
         let access_token = bearer_token(parts).ok_or(TenantsRejection::MissingApiKey)?;
         let project_id = project_id(parts)?;
         let account = verify_platform_token(state, access_token).await?;
-        role_in_project(&state.control_plane_pool, project_id, &account).await?;
+        let role = role_in_project(&state.control_plane_pool, project_id, &account).await?;
+        ensure_role_allows(role, parts)?;
         record_tenant(project_id);
 
         Ok(Self {

@@ -9,6 +9,7 @@ import {
 } from '@/modules/overview/components/ai-agent-prompts'
 import { CopyContextButton } from '@/modules/overview/components/copy-context-button'
 import { CopyPromptButton } from '@/modules/overview/components/copy-prompt-button'
+import { McpSetupNote } from '@/modules/overview/components/mcp-setup-note'
 import type { AiContext } from '@/modules/overview/components/ai-context'
 import { useAiContext } from '@/modules/overview/queries/use-ai-context'
 import { CodeBlock } from '@/shared/ui/code-block'
@@ -35,7 +36,6 @@ export function AiAssistantDialog({ projectId }: { projectId: string }): JSX.Ele
       <Button
         type="button"
         variant="outline"
-        size="sm"
         aria-haspopup="dialog"
         className="font-mono"
         onClick={() => setIsOpen(true)}
@@ -90,6 +90,7 @@ function AssistantBody({ projectId }: { projectId: string }): JSX.Element {
       <div className="empty:hidden">
         <LoadError error={error} onRetry={retry} />
       </div>
+      <McpSetupNote />
       <DialogFooter>
         <CopyContextButton context={context} />
         <CopyPromptButton prompt={prompt} />

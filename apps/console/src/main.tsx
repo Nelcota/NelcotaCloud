@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client'
 
 import { ConsoleRoot } from '@/app/console-root'
 import { router } from '@/app/router'
+import { forgetSqlDrafts } from '@/modules/sql-editor/components/forget-sql-drafts'
 import { nelcota } from '@/shared/auth/nelcota'
 
 const ROOT_ELEMENT_ID = 'root'
@@ -23,6 +24,7 @@ nelcota.auth.onAuthStateChange((event, session) => {
   }
 
   accountId = nextAccountId
+  forgetSqlDrafts()
   void router.invalidate()
 })
 

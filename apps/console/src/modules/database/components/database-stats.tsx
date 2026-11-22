@@ -25,11 +25,7 @@ export function DatabaseStats({ tables }: { tables: TableOverview[] }): JSX.Elem
         value={formatCount(policyCount)}
         hint={`em ${formatCount(withPolicies)} de ${countLabel(plain.length, 'tabela', 'tabelas')}`}
       />
-      <StatCard
-        label="Linhas estimadas"
-        value={formatCount(estimatedTotal(tables))}
-        hint="pelo Postgres"
-      />
+      <StatCard label="Linhas estimadas" value={estimatedText(tables)} hint="pelo Postgres" />
     </div>
   )
 }
@@ -42,7 +38,7 @@ function RlsCard({ plain, open }: { plain: number; open: number }): JSX.Element 
       <StatCard
         label="Com RLS"
         value={protectedCount}
-        aside={<ShieldCheck aria-hidden className="mb-1 size-4 text-success" />}
+        aside={<ShieldCheck aria-hidden className="mb-1 size-4.5 text-success" />}
         hint="todas protegidas"
       />
     )
@@ -52,7 +48,7 @@ function RlsCard({ plain, open }: { plain: number; open: number }): JSX.Element 
     <StatCard
       label="Com RLS"
       value={`${protectedCount} de ${formatCount(plain)}`}
-      aside={<ShieldWarning aria-hidden className="mb-1 size-4 text-warning" />}
+      aside={<ShieldWarning aria-hidden className="mb-1 size-4.5 text-warning" />}
       hint={<span className="text-warning">{formatCount(open)} sem RLS</span>}
     />
   )
@@ -67,6 +63,17 @@ function kindsHint(otherKinds: number): string {
 }
 
 /** Tables never analyzed have no estimate yet; they count as zero. */
+/** A dash until Postgres analyzed some table, like the table list: zero would be a guess. */
+function estimatedText(tables: TableOverview[]): string {
+  if (
+    tables.every((table) => table.estimated_rows === null || table.estimated_rows === undefined)
+  ) {
+    return '—'
+  }
+
+  return formatCount(estimatedTotal(tables))
+}
+
 function estimatedTotal(tables: TableOverview[]): number {
   return tables.reduce((total, table) => total + Math.max(table.estimated_rows ?? 0, 0), 0)
 }

@@ -1,11 +1,14 @@
 import type { JSX } from 'react'
 
 import { settingsApiSnippets } from '@/modules/project-settings/components/settings-api-snippets'
-import { SettingsNav } from '@/modules/project-settings/components/settings-nav'
 import { SettingsPaneContent } from '@/modules/project-settings/components/settings-pane-content'
-import type { SettingsPaneId } from '@/modules/project-settings/components/settings-panes'
-import { SettingsPaneView } from '@/modules/project-settings/components/settings-pane-view'
-import { useSettingsPane } from '@/modules/project-settings/components/use-settings-pane'
+import { SettingsTabList } from '@/modules/project-settings/components/settings-tab-list'
+import { SettingsTabPanel } from '@/modules/project-settings/components/settings-tab-panel'
+import {
+  SETTINGS_TABS,
+  type SettingsTabId,
+} from '@/modules/project-settings/components/settings-tabs'
+import { useSettingsTab } from '@/modules/project-settings/components/use-settings-tab'
 import { useSettingsQuery } from '@/modules/project-settings/queries/use-project-settings'
 import { usePublishableKey } from '@/modules/project-settings/queries/use-publishable-key'
 import type { components } from '@/shared/api/api-schema'
@@ -14,15 +17,16 @@ import { ApiSheet } from '@/shared/ui/api-sheet'
 import { LoadError } from '@/shared/ui/load-error'
 import { PageHeader } from '@/shared/ui/page-header'
 import { Skeleton } from '@/shared/ui/primitives/skeleton'
+import { Tabs } from '@/shared/ui/primitives/tabs'
 
 export function SettingsPage(): JSX.Element {
   const projectId = useProjectId()
   const settings = useSettingsQuery(projectId)
-  const pane = useSettingsPane()
+  const { tab, select } = useSettingsTab()
   const publishableKey = usePublishableKey(projectId)
 
   return (
-    <div className="flex flex-col gap-6">
+    <Tabs value={tab} onValueChange={select} className="mx-auto w-full max-w-4xl gap-5">
       <PageHeader
         title="Configurações"
         description="Identidade, endpoints, acesso e segurança do projeto."
@@ -33,31 +37,32 @@ export function SettingsPage(): JSX.Element {
             snippets={settingsApiSnippets(publishableKey)}
           />
         }
-      />
-      <div className="grid gap-5 lg:grid-cols-[12.5rem_minmax(0,1fr)] lg:gap-8">
-        <SettingsNav projectId={projectId} current={pane} />
-        <SettingsPaneView pane={pane}>
+      >
+        <SettingsTabList />
+      </PageHeader>
+      {SETTINGS_TABS.map((item) => (
+        <SettingsTabPanel key={item.id} value={item.id}>
           <LoadError error={settings.error} onRetry={() => settings.refetch()} />
           <PaneBody
             projectId={projectId}
-            paneId={pane.id}
+            tabId={item.id}
             settings={settings.data}
             hasFailed={settings.isError}
           />
-        </SettingsPaneView>
-      </div>
-    </div>
+        </SettingsTabPanel>
+      ))}
+    </Tabs>
   )
 }
 
 type PaneBodyProps = {
   projectId: string
-  paneId: SettingsPaneId
+  tabId: SettingsTabId
   settings: components['schemas']['TenantSettings'] | undefined
   hasFailed: boolean
 }
 
-function PaneBody({ projectId, paneId, settings, hasFailed }: PaneBodyProps): JSX.Element | null {
+function PaneBody({ projectId, tabId, settings, hasFailed }: PaneBodyProps): JSX.Element | null {
   if (settings === undefined && hasFailed) {
     return null
   }
@@ -66,14 +71,14 @@ function PaneBody({ projectId, paneId, settings, hasFailed }: PaneBodyProps): JS
     return <PaneSkeleton />
   }
 
-  return <SettingsPaneContent paneId={paneId} projectId={projectId} settings={settings} />
+  return <SettingsPaneContent tabId={tabId} projectId={projectId} settings={settings} />
 }
 
 function PaneSkeleton(): JSX.Element {
   return (
     <div className="grid gap-4" aria-hidden>
-      <Skeleton className="h-40 rounded-xl" />
       <Skeleton className="h-52 rounded-xl" />
+      <Skeleton className="h-36 rounded-xl" />
     </div>
   )
 }

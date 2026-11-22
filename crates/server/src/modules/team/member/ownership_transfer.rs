@@ -57,7 +57,7 @@ pub async fn transfer_ownership(
         return Err(OwnershipError::NotMember);
     }
 
-    if destination_role == ProjectRole::Member {
+    if destination_role != ProjectRole::Owner {
         ensure_below_owner_limit(&mut transaction, to.account_id).await?;
         set_role(&mut transaction, to, ProjectRole::Owner).await?;
     }

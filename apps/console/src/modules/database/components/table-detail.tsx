@@ -63,10 +63,23 @@ function TableLoading({ error, onRetry }: TableLoadingProps): JSX.Element {
   }
 
   return (
-    <div role="status" aria-label="Carregando tabela" className="flex flex-col gap-5">
+    <div role="status" aria-label="Carregando tabela" className="flex flex-col gap-4">
       <Skeleton className="h-4 w-20" />
-      <Skeleton className="h-8 w-72" />
-      <Skeleton className="h-9 w-full max-w-sm" />
+      <div className="grid gap-2">
+        <Skeleton className="h-8 w-64" />
+        <div className="flex gap-2">
+          <Skeleton className="h-6 w-14" />
+          <Skeleton className="h-6 w-14" />
+          <Skeleton className="h-6 w-20" />
+        </div>
+      </div>
+      <Skeleton className="h-8 w-full max-w-sm" />
+      <div className="flex gap-5 border-b pb-2">
+        <Skeleton className="h-5 w-14" />
+        <Skeleton className="h-5 w-20" />
+        <Skeleton className="h-5 w-20" />
+        <Skeleton className="h-5 w-24" />
+      </div>
       <Skeleton className="h-72 rounded-xl" />
     </div>
   )

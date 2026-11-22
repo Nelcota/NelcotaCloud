@@ -25,8 +25,8 @@ pub struct MemberRoleBody {
     pub role: ProjectRole,
 }
 
-/// `PATCH /platform/v1/projects/{project_id}/members/{account_id}`: makes a member an owner,
-/// or an owner a member. Owners only; the project always keeps at least one owner.
+/// `PATCH /platform/v1/projects/{project_id}/members/{account_id}`: sets a member's role
+/// (owner, member or viewer). Owners only; the project always keeps at least one owner.
 #[utoipa::path(
     patch,
     path = "/platform/v1/projects/{project_id}/members/{account_id}",

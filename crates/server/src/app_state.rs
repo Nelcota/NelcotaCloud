@@ -13,6 +13,7 @@ use crate::modules::cache::entries::cache_store::CacheStore;
 use crate::modules::database::execution::database_sessions::DatabaseSessions;
 use crate::modules::database::execution::session_slots::SessionSlots;
 use crate::modules::database::schema::schema_cache::SchemaCache;
+use crate::modules::database::usage::usage_buffer::DataApiUsageBuffer;
 use crate::modules::oauth::login::oauth_login_context::OAuthLoginContext;
 use crate::modules::oauth::provider::provider_endpoints::OAuthEndpoints;
 use crate::modules::storage::object_store::r2_store::R2Store;
@@ -48,6 +49,8 @@ pub struct AppState {
     pub schema_cache: Arc<SchemaCache>,
     /// Bounds Data API and developer sessions running at once, across projects.
     pub database_session_slots: Arc<SessionSlots>,
+    /// Data API responses counted per project, written to the control plane in the background.
+    pub data_api_usage: Arc<DataApiUsageBuffer>,
     pub secret_box: Arc<SecretBox>,
     pub signing_keys: Arc<SigningKeyCache>,
     pub tenant_provisioning_slots: Arc<tokio::sync::Semaphore>,
@@ -74,7 +77,7 @@ impl AppState {
     pub(crate) fn require_storage(&self) -> Result<&R2Store, ApiError> {
         self.storage_store
             .as_ref()
-            .ok_or_else(|| StorageError::Unavailable.into())
+            .ok_or_else(|| StorageError::NotConfigured.into())
     }
 
     pub fn storage_transfer(&self) -> Result<StorageTransfer<'_>, ApiError> {

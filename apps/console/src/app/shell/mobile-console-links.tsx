@@ -26,7 +26,7 @@ export function MobileConsoleLinks({ current }: MobileConsoleLinksProps): JSX.El
               isCurrent && 'bg-surface-hover font-medium text-foreground',
             )}
           >
-            <Glyph aria-hidden className={cn('size-4 shrink-0', isCurrent && 'text-brand')} />
+            <Glyph aria-hidden className={cn('size-4.5 shrink-0', isCurrent && 'text-brand')} />
             {section.label}
           </RouterLink>
         )

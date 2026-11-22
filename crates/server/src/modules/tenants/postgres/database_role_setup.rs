@@ -1,6 +1,7 @@
 use sqlx::AssertSqlSafe;
 
 use crate::modules::tenants::postgres::database_roles::tenant_authenticator_role;
+use crate::modules::tenants::postgres::tenant_pool_limits::TenantPoolLimits;
 use crate::modules::tenants::provisioning::tenant_slug::TenantSlug;
 
 /// The request roles exist once per Postgres server (privileges are granted inside each tenant
@@ -37,6 +38,7 @@ $roles$;
 pub fn tenant_role_statements(slug: &TenantSlug, password: &str) -> AssertSqlSafe<String> {
     let role = tenant_authenticator_role(slug);
     let database = slug.database_name();
+    let connection_limit = TenantPoolLimits::DATA_API.connections_per_tenant;
 
     AssertSqlSafe(format!(
         "
@@ -49,7 +51,7 @@ BEGIN
 END
 $role$;
 ALTER ROLE \"{role}\" WITH LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION
-    NOBYPASSRLS CONNECTION LIMIT 5 PASSWORD '{password}';
+    NOBYPASSRLS CONNECTION LIMIT {connection_limit} PASSWORD '{password}';
 ALTER ROLE \"{role}\" RESET ALL;
 GRANT nelcota_anon, nelcota_authenticated, nelcota_service, nelcota_developer TO \"{role}\";
 REVOKE ALL ON DATABASE \"{database}\" FROM PUBLIC;

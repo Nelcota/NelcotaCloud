@@ -3,6 +3,7 @@ use serde_json::{Value, json};
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpListener;
 
+use crate::stress::metrics::{Load, exercise, status};
 use crate::support::{
     Session, TEST_SITE_URL, TestResult, TestServer, error_code, field, random_slug, unique_email,
 };
@@ -88,6 +89,43 @@ fn text_at(value: &Value, pointer: &str) -> String {
         .as_str()
         .unwrap_or_default()
         .to_owned()
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "drives team writes and reads against disposable test services"]
+async fn stress_team_invitations_and_readback() -> TestResult {
+    let server = TestServer::start().await?;
+    let (platform, owner) = server
+        .create_platform_account(&unique_email("stress-team-owner"))
+        .await?;
+    let project_id = create_project(&server, &owner).await?;
+    let invites = 20;
+    let reads = 320;
+    let writes = exercise("team-invite", Load::burst(invites, 10), async |_| {
+        let email = unique_email("stress-invite");
+        status(invite(&server, &owner, &project_id, &email).await?).await
+    })
+    .await?;
+    let accepted = writes.count("201");
+    let listed = exercise("team-list", Load::burst(reads, 24), async |_| {
+        let team = read_team(&server, &owner, &project_id).await?;
+        assert_eq!(field(&team, "/members").as_array().map(Vec::len), Some(1));
+        assert_eq!(
+            field(&team, "/invitations").as_array().map(Vec::len),
+            Some(accepted)
+        );
+
+        Ok("200".to_owned())
+    })
+    .await;
+
+    delete_project(&server, &owner, &project_id).await?;
+    server.drop_tenant(&platform).await?;
+    writes.require_only(&["201", "429 too_many_requests"])?;
+    assert!(accepted >= 10);
+    assert!(writes.count("429 too_many_requests") > 0);
+
+    listed?.require(&[("200", reads)])
 }
 
 #[tokio::test]
@@ -555,5 +593,82 @@ async fn owners_hand_the_project_over_in_one_step() -> TestResult {
     assert_eq!(error_code(already_member).await?, "already_member");
 
     delete_project(&server, &member, &project_id).await?;
+    server.drop_tenant(&platform).await
+}
+
+async fn as_project_member(
+    server: &TestServer,
+    (account, project_id): (&Session, &str),
+    request: (Method, &str, Option<Value>),
+) -> TestResult<Response> {
+    let (method, path, body) = request;
+    let mut builder = server
+        .client
+        .request(method, server.url(path))
+        .bearer_auth(&account.access_token)
+        .header("x-nelcota-project", project_id);
+
+    if let Some(body) = body {
+        builder = builder.json(&body);
+    }
+
+    Ok(builder.send().await?)
+}
+
+#[tokio::test]
+async fn viewers_read_the_project_and_change_nothing() -> TestResult {
+    let server = TestServer::start().await?;
+    let (platform, owner) = server
+        .create_platform_account(&unique_email("owner"))
+        .await?;
+    let project_id = create_project(&server, &owner).await?;
+    let viewer = join_as_member(&server, &platform, &owner, &project_id).await?;
+    let demoted = change_role(&server, &owner, (&project_id, &viewer), "viewer").await?;
+    assert_eq!(demoted.status(), StatusCode::NO_CONTENT);
+    let as_viewer = (&viewer, project_id.as_str());
+
+    let settings = as_project_member(
+        &server,
+        as_viewer,
+        (Method::GET, "/auth/v1/admin/settings", None),
+    )
+    .await?;
+    assert_eq!(settings.status(), StatusCode::OK);
+    let renamed = as_project_member(
+        &server,
+        as_viewer,
+        (
+            Method::PATCH,
+            "/auth/v1/admin/settings",
+            Some(json!({ "name": "Renamed" })),
+        ),
+    )
+    .await?;
+    assert_eq!(renamed.status(), StatusCode::FORBIDDEN);
+    assert_eq!(error_code(renamed).await?, "read_only_member");
+    let query = as_project_member(
+        &server,
+        as_viewer,
+        (
+            Method::POST,
+            "/database/v1/sql",
+            Some(json!({ "query": "select 1" })),
+        ),
+    )
+    .await?;
+    assert_eq!(query.status(), StatusCode::FORBIDDEN);
+
+    let team = read_team(&server, &viewer, &project_id).await?;
+    assert_eq!(field(&team, "/can_manage"), false);
+    let by_viewer = change_role(&server, &viewer, (&project_id, &viewer), "member").await?;
+    assert_eq!(by_viewer.status(), StatusCode::FORBIDDEN);
+    let removed_path = format!(
+        "/platform/v1/projects/{project_id}/members/{}",
+        viewer.user.id
+    );
+    let removed = as_account(&server, &owner, (Method::DELETE, &removed_path, None)).await?;
+    assert_eq!(removed.status(), StatusCode::NO_CONTENT);
+
+    delete_project(&server, &owner, &project_id).await?;
     server.drop_tenant(&platform).await
 }

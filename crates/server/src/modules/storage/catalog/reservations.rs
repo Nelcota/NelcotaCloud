@@ -2,7 +2,7 @@ use sqlx::{PgPool, PgTransaction};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::project_lock::lock_project;
+use super::project_lock::{begin_catalog_write, catalog_write_error};
 use super::write_admission::admit_write;
 use crate::modules::storage::access::storage_caller::StorageCaller;
 use crate::modules::storage::catalog::file_input::FileInput;
@@ -10,8 +10,8 @@ use crate::modules::storage::catalog::object_key::ObjectKey;
 use crate::modules::storage::rejection::storage_error::StorageError;
 use crate::shared::http::api_error::ApiError;
 
-const PROJECT_BYTES: i64 = 1024 * 1024 * 1024;
-const MAX_OBJECTS: i64 = 10_000;
+pub const PROJECT_BYTES: i64 = 1024 * 1024 * 1024;
+pub const MAX_OBJECTS: i64 = 10_000;
 pub const CONFIRMATION_GRACE_SECONDS: f64 = 15.0 * 60.0;
 
 pub struct ReservedUpload {
@@ -26,8 +26,7 @@ pub async fn reserve(
     upload: Reservation<'_>,
 ) -> Result<ReservedUpload, ApiError> {
     let _permit = admit_write(caller.tenant_id).await?;
-    let mut transaction = pool.begin().await?;
-    lock_project(&mut transaction, caller.tenant_id).await?;
+    let mut transaction = begin_catalog_write(pool, caller.tenant_id).await?;
 
     if let Some(request_id) = upload.input.request_id
         && let Some(existing) =
@@ -37,7 +36,6 @@ pub async fn reserve(
         return Ok(existing);
     }
 
-    check_quota(&mut transaction, caller.tenant_id, upload.input.size_bytes).await?;
     insert_reservation(&mut transaction, caller, &upload).await?;
     transaction.commit().await?;
 
@@ -64,12 +62,28 @@ async fn insert_reservation(
         input,
         expires_at,
     } = upload;
-    let result = sqlx::query(
-        "INSERT INTO storage_objects (
-            id, tenant_id, bucket_id, owner_id, name, content_type, size_bytes, upload_expires_at, request_id
+    // This statement takes its snapshot after acquiring the catalog lock. Both live objects
+    // and pending deletions are charged before inserting the reservation.
+    let (allowed, inserted): (bool, bool) = sqlx::query_as(
+        "WITH quota AS (
+             SELECT count(*) < $10
+                AND COALESCE(sum(size_bytes), 0) + $7::bigint <= $11::bigint AS allowed
+             FROM (
+                 SELECT size_bytes FROM storage_objects WHERE tenant_id = $2
+                 UNION ALL SELECT size_bytes FROM storage_object_deletions WHERE tenant_id = $2
+             ) charged
+         ), inserted AS (
+             INSERT INTO storage_objects (
+                 id, tenant_id, bucket_id, owner_id, name, content_type,
+                 size_bytes, upload_expires_at, request_id
+             )
+             SELECT $1, bucket.tenant_id, bucket.id, $4, $5, $6, $7, $8, $9
+             FROM storage_buckets AS bucket CROSS JOIN quota
+             WHERE bucket.tenant_id = $2 AND bucket.id = $3 AND quota.allowed
+             FOR KEY SHARE OF bucket
+             RETURNING id
          )
-         SELECT $1, tenant_id, id, $4, $5, $6, $7, $8, $9 FROM storage_buckets
-         WHERE tenant_id = $2 AND id = $3 FOR KEY SHARE",
+         SELECT allowed, EXISTS (SELECT 1 FROM inserted) FROM quota",
     )
     .bind(key.id)
     .bind(caller.tenant_id)
@@ -80,10 +94,17 @@ async fn insert_reservation(
     .bind(input.size_bytes)
     .bind(*expires_at)
     .bind(input.request_id)
-    .execute(&mut **transaction)
-    .await?;
+    .bind(MAX_OBJECTS)
+    .bind(PROJECT_BYTES)
+    .fetch_one(&mut **transaction)
+    .await
+    .map_err(catalog_write_error)?;
 
-    if result.rows_affected() == 0 {
+    if allowed == false {
+        return Err(StorageError::QuotaExceeded.into());
+    }
+
+    if inserted == false {
         return Err(StorageError::BucketNotFound.into());
     }
 
@@ -122,7 +143,8 @@ async fn find_reservation(
     .bind(upload.input.size_bytes)
     .bind(CONFIRMATION_GRACE_SECONDS)
     .fetch_optional(&mut **transaction)
-    .await?;
+    .await
+    .map_err(catalog_write_error)?;
     let Some(existing) = existing else {
         return Ok(None);
     };
@@ -140,26 +162,4 @@ async fn find_reservation(
         expires_at: existing.expires_at,
         can_upload: existing.can_upload,
     }))
-}
-
-async fn check_quota(
-    transaction: &mut PgTransaction<'_>,
-    tenant_id: Uuid,
-    size_bytes: i64,
-) -> Result<(), ApiError> {
-    let (count, bytes) = sqlx::query_as::<_, (i64, i64)>(
-        "SELECT count(*), COALESCE(sum(size_bytes), 0)::bigint FROM (
-            SELECT size_bytes FROM storage_objects WHERE tenant_id = $1
-            UNION ALL SELECT size_bytes FROM storage_object_deletions WHERE tenant_id = $1
-        ) charged",
-    )
-    .bind(tenant_id)
-    .fetch_one(&mut **transaction)
-    .await?;
-
-    if count >= MAX_OBJECTS || bytes.saturating_add(size_bytes) > PROJECT_BYTES {
-        return Err(StorageError::QuotaExceeded.into());
-    }
-
-    Ok(())
 }

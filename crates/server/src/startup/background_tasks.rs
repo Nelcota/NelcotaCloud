@@ -1,15 +1,18 @@
 use std::time::Duration;
 
-use tokio::sync::{oneshot, watch};
+use tokio::sync::watch;
 use tokio::task::JoinSet;
 use tokio::time::{interval, timeout};
 
 use crate::app_state::AppState;
 use crate::modules::auth::rate_limiting::shared_auth_limits::prune_auth_quotas;
+use crate::modules::database::usage::usage_flush::run_usage_flush;
+use crate::modules::notifications::alerts::alert_sweep::run_alert_sweep;
 use crate::modules::oauth::login::oauth_state_repository::delete_expired_authorizations;
 use crate::modules::storage::cleanup::owner_cleanup::run_owner_cleanup;
 use crate::modules::storage::cleanup::storage_cleanup::run_cleanup;
 use crate::modules::team::member::account_removal::recover_account_removals;
+use crate::modules::team::notification::webhook_failure_sweep::run_webhook_failure_sweep;
 use crate::modules::tenants::audit::project_audit_queue::recover_project_changes;
 use crate::modules::tenants::provisioning::tenant_deletion_recovery::recover_deletions;
 use crate::modules::webhooks::health::worker_heartbeat::{TELEMETRY_TIMEOUT, prune_heartbeats};
@@ -35,6 +38,9 @@ impl BackgroundTasks {
             stopped.clone(),
         ));
         tasks.spawn(run_audit_maintenance(state.clone(), stopped.clone()));
+        tasks.spawn(run_webhook_failure_sweep(state.clone(), stopped.clone()));
+        tasks.spawn(run_usage_flush(state.clone(), stopped.clone()));
+        tasks.spawn(run_alert_sweep(state.clone(), stopped.clone()));
         tasks.spawn(run_owner_cleanup(
             state.control_plane_pool.clone(),
             state.tenant_pools.clone(),
@@ -54,29 +60,20 @@ impl BackgroundTasks {
         Self { stop, tasks }
     }
 
-    pub async fn supervise(
-        mut self,
-        shutdown: impl Future<Output = ()>,
-        stop_http: oneshot::Sender<()>,
-    ) -> Result<(), StartupError> {
-        let outcome = tokio::select! {
-            () = shutdown => Ok(()),
-            exited = self.tasks.join_next() => {
-                tracing::error!(?exited, "background task exited before shutdown");
-                Err(StartupError::BackgroundTaskStopped)
-            }
-        };
-        if stop_http.send(()).is_err() {
-            tracing::debug!("HTTP service is already stopped");
-        }
+    pub(super) async fn wait_for_exit(&mut self) -> StartupError {
+        let exited = self.tasks.join_next().await;
+        tracing::error!(?exited, "background task exited before shutdown");
 
+        StartupError::BackgroundTaskStopped
+    }
+
+    pub(super) async fn stop(mut self) {
         self.stop.send_replace(true);
+
         if timeout(DRAIN_TIMEOUT, self.drain()).await.is_err() {
             tracing::warn!("background shutdown exceeded its drain deadline");
             self.tasks.shutdown().await;
         }
-
-        outcome
     }
 
     async fn drain(&mut self) {

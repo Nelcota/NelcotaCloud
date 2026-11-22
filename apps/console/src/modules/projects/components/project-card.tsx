@@ -1,7 +1,8 @@
 import type { JSX } from 'react'
 
-import { ProjectAvatar } from '@/shared/ui/project-avatar'
 import { ProjectActiveUsers } from '@/modules/projects/components/project-active-users'
+import { ProjectMark } from '@/modules/projects/components/project-mark'
+import { markSourceOf } from '@/modules/projects/components/project-mark-source'
 import { projectShortcuts } from '@/modules/projects/components/project-shortcuts'
 import { ProjectStatusRow } from '@/modules/projects/components/project-status-row'
 import { siteLabel } from '@/modules/projects/components/site-label'
@@ -21,7 +22,7 @@ export function ProjectCard({ project }: { project: ProjectSummary }): JSX.Eleme
       name={project.name}
       href={href}
       kind={<span className="font-mono">{project.slug}</span>}
-      leading={<ProjectAvatar name={project.name} mascotId={project.mascot_id} size="sm" />}
+      leading={<ProjectMark project={markSourceOf(project)} size="sm" />}
       address={siteLabel(project.site_url)}
       status={<ProjectStatusRow role={project.role} />}
       metrics={[

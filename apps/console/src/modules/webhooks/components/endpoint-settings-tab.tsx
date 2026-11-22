@@ -5,7 +5,7 @@ import { DELETE_DESCRIPTION } from '@/modules/webhooks/components/endpoint-copy'
 import { hostOf } from '@/modules/webhooks/components/endpoint-host'
 import type { WebhookEndpoint } from '@/modules/webhooks/components/endpoint-panel-types'
 import { EndpointUrlForm } from '@/modules/webhooks/components/endpoint-url-form'
-import { useDeleteWebhookEndpointMutation } from '@/modules/webhooks/queries/use-webhook-endpoints'
+import { useDeleteEndpoint } from '@/modules/webhooks/components/use-delete-endpoint'
 import { ConfirmButton } from '@/shared/ui/confirm-button'
 import { SettingsSection } from '@/shared/ui/settings-section'
 
@@ -16,11 +16,7 @@ export function EndpointSettingsTab({
   projectId,
   endpoint,
 }: EndpointSettingsTabProps): JSX.Element {
-  const remove = useDeleteWebhookEndpointMutation(projectId)
-
-  async function deleteEndpoint(): Promise<void> {
-    await remove.mutateAsync(endpoint.id)
-  }
+  const deleteEndpoint = useDeleteEndpoint(projectId, endpoint)
 
   return (
     <>

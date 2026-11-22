@@ -5,6 +5,7 @@ pub mod endpoint_ownership;
 pub mod list_webhook_deliveries;
 pub mod list_webhook_endpoints;
 pub mod read_webhook_queue_health;
+pub mod retry_failed_webhook_deliveries;
 pub mod retry_webhook_delivery;
 pub mod rotate_webhook_secret;
 pub mod send_test_webhook;

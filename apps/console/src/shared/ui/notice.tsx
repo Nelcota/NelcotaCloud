@@ -43,7 +43,7 @@ export function Notice({
       role={role}
       className={cn('flex items-start gap-3 rounded-xl px-4 py-3', TONES[tone], className)}
     >
-      <Glyph aria-hidden className="mt-0.5 size-4 shrink-0" />
+      <Glyph aria-hidden className="mt-0.5 size-4.5 shrink-0" />
       <div className="grid min-w-0 flex-1 gap-0.5">
         <NoticeTitle title={title} />
         <NoticeBody body={children} />

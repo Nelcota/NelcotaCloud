@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { BackToTables } from '@/modules/database/components/back-to-tables'
 import { RlsOffNotice } from '@/modules/database/components/rls-off-notice'
 import { TableColumnsSection } from '@/modules/database/components/table-columns-section'
+import { TableIndexesSection } from '@/modules/database/components/table-indexes-section'
 import { TableDangerZone } from '@/modules/database/components/table-danger-zone'
 import { TableHeading } from '@/modules/database/components/table-heading'
 import { TablePoliciesSection } from '@/modules/database/components/table-policies-section'
@@ -48,8 +49,9 @@ export function LoadedTable(props: LoadedTableProps): JSX.Element {
         <TabsContent value="rows">
           <TableRowsSection projectId={projectId} table={table} />
         </TabsContent>
-        <TabsContent value="columns">
+        <TabsContent value="columns" className="flex flex-col gap-6">
           <TableColumnsSection {...props} />
+          <TableIndexesSection table={table} />
         </TabsContent>
         <TabsContent value="policies">
           <TablePoliciesSection projectId={projectId} table={table} />

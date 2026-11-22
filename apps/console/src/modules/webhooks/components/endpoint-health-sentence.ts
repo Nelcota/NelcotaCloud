@@ -3,21 +3,39 @@ import type { HealthKind } from '@/modules/webhooks/components/endpoint-health-s
 import { formatCount } from '@/shared/lib/format-number'
 import { formatRelative } from '@/shared/lib/format-relative'
 
-type SentenceWriter = (summary: DeliverySummary, now: number) => string
+/** When the sentence is read, and since when the endpoint refuses deliveries (`null`: it does not). */
+export type SentenceContext = { now: number; failingSince: string | null }
+
+type SentenceWriter = (summary: DeliverySummary, context: SentenceContext) => string
 
 const SENTENCES: Record<HealthKind, SentenceWriter> = {
+  auto_paused: () =>
+    'Recusou as entregas por 5 dias seguidos. Ligue de novo depois de corrigir o servidor.',
   paused: () => 'Nenhum evento é enviado até você retomar.',
-  failing: (summary) =>
-    `${counted(summary.failedLastDay, 'falha', 'falhas')} nas últimas 24 horas. ${accepted(summary)}`,
-  retrying: (summary) =>
-    `${counted(summary.pending, 'entrega aguarda', 'entregas aguardam')} nova tentativa. ${accepted(summary)}`,
+  failing: (summary, context) =>
+    `${refusingSince(context)}${counted(summary.failedLastDay, 'falha', 'falhas')} nas últimas 24 horas. ${accepted(summary)}`,
+  retrying: (summary, context) =>
+    `${refusingSince(context)}${counted(summary.pending, 'entrega aguarda', 'entregas aguardam')} nova tentativa. ${accepted(summary)}`,
   idle: () => 'Nenhum evento saiu ainda. Eventos de teste não entram no histórico.',
-  delivering: (summary, now) => `${accepted(summary)}${lastSent(summary, now)}`,
+  delivering: (summary, context) => `${accepted(summary)}${lastSent(summary, context.now)}`,
 }
 
 /** The plain sentence after the verdict, built only from the loaded deliveries. */
-export function healthSentence(kind: HealthKind, summary: DeliverySummary, now: number): string {
-  return SENTENCES[kind](summary, now)
+export function healthSentence(
+  kind: HealthKind,
+  summary: DeliverySummary,
+  context: SentenceContext,
+): string {
+  return SENTENCES[kind](summary, context)
+}
+
+/** "Começou a recusar entregas há 7h. " when the run of failures is known. */
+function refusingSince(context: SentenceContext): string {
+  if (context.failingSince === null) {
+    return ''
+  }
+
+  return `Começou a recusar entregas ${formatRelative(context.failingSince, context.now)}. `
 }
 
 function accepted(summary: DeliverySummary): string {

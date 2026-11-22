@@ -236,6 +236,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/v1/admin/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /admin/logo`: the project's logo, for the people who manage it. */
+        get: operations["read_project_logo"];
+        /**
+         * `PUT /admin/logo`: the body is the image itself (PNG, JPEG or WebP, up to 1 MiB). The server
+         *     crops it to a centered square, resizes it and stores it as JPEG.
+         */
+        put: operations["upload_project_logo"];
+        post?: never;
+        /**
+         * `DELETE /admin/logo`: the project goes back to its mascot or initials; succeeds when there
+         *     was no logo.
+         */
+        delete: operations["remove_project_logo"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /admin/notifications`: where the project sends its alerts. */
+        get: operations["list_notification_channels"];
+        put?: never;
+        /** `POST /admin/notifications`: adds an email address or a Discord or Slack webhook. */
+        post: operations["create_notification_channel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/notifications/{channel_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** `DELETE /admin/notifications/{channel_id}`: stops sending alerts there. */
+        delete: operations["delete_notification_channel"];
+        options?: never;
+        head?: never;
+        /** `PATCH /admin/notifications/{channel_id}`: which events the channel receives. */
+        patch: operations["change_notification_channel"];
+        trace?: never;
+    };
+    "/auth/v1/admin/notifications/{channel_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** `POST /admin/notifications/{channel_id}/test`: sends a test alert to the channel now. */
+        post: operations["test_notification_channel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/v1/admin/oauth": {
         parameters: {
             query?: never;
@@ -653,7 +731,10 @@ export interface paths {
         delete: operations["delete_webhook_endpoint"];
         options?: never;
         head?: never;
-        /** `PATCH /admin/webhooks/{endpoint_id}`: changes the URL, the events or whether it is enabled. */
+        /**
+         * `PATCH /admin/webhooks/{endpoint_id}`: changes the URL, the name, the events or whether it
+         *     is enabled. Enabling it starts its delivery health afresh.
+         */
         patch: operations["change_webhook_endpoint"];
         trace?: never;
     };
@@ -664,10 +745,33 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** `GET /admin/webhooks/{endpoint_id}/deliveries`: the endpoint's 50 newest deliveries. */
+        /**
+         * `GET /admin/webhooks/{endpoint_id}/deliveries`: the endpoint's deliveries, newest first, 50
+         *     at a time; deliveries are kept for 7 days.
+         */
         get: operations["list_webhook_deliveries"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/webhooks/{endpoint_id}/deliveries/retry-failed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `POST /admin/webhooks/{endpoint_id}/deliveries/retry-failed`: sends every delivery that
+         *     gave up again, right away.
+         */
+        post: operations["retry_failed_webhook_deliveries"];
         delete?: never;
         options?: never;
         head?: never;
@@ -724,8 +828,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * `POST /admin/webhooks/{endpoint_id}/test`: sends a signed `webhook.test` event now and
-         *     answers with what the endpoint replied.
+         * `POST /admin/webhooks/{endpoint_id}/test`: sends a signed test event now and answers with
+         *     what the endpoint replied.
          */
         post: operations["send_test_webhook"];
         delete?: never;
@@ -1407,6 +1511,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/database/v1/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /database/v1/usage`: the project's Data API traffic, for the console's metrics. */
+        get: operations["read_usage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -1665,8 +1786,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * `PATCH /platform/v1/projects/{project_id}/members/{account_id}`: makes a member an owner,
-         *     or an owner a member. Owners only; the project always keeps at least one owner.
+         * `PATCH /platform/v1/projects/{project_id}/members/{account_id}`: sets a member's role
+         *     (owner, member or viewer). Owners only; the project always keeps at least one owner.
          */
         patch: operations["change_role"];
         trace?: never;
@@ -2090,6 +2211,15 @@ export interface components {
         ChangeTableRequest: {
             rls_enabled: boolean;
         };
+        /** @description The events a channel receives, replacing the previous ones. */
+        ChannelEventsBody: {
+            events: components["schemas"]["NotificationEvent"][];
+        };
+        /**
+         * @description How a channel delivers.
+         * @enum {string}
+         */
+        ChannelKind: "email" | "discord" | "slack";
         /** @description A column of a table created (or added) from the console. */
         ColumnDefinition: {
             /**
@@ -2209,6 +2339,35 @@ export interface components {
             days: components["schemas"]["DailyActivity"][];
         };
         /**
+         * @description The project's Data API traffic over a period: totals, a point per hour or day, and the
+         *     busiest tables, statuses and methods.
+         */
+        DataApiUsageReport: {
+            /**
+             * Format: int64
+             * @description Responses 400 to 499: bad queries, refused credentials, rate limits.
+             */
+            client_errors: number;
+            /**
+             * Format: int64
+             * @description Time spent answering, summed over every request (divide by `requests` for the mean).
+             */
+            duration_milliseconds: number;
+            methods: components["schemas"]["MethodUsage"][];
+            /** Format: int64 */
+            requests: number;
+            /** @description The ten busiest tables and functions; an empty name gathers names that matched nothing. */
+            resources: components["schemas"]["ResourceUsage"][];
+            /** @description Oldest first, every hour or day present even when empty. */
+            series: components["schemas"]["UsagePoint"][];
+            /**
+             * Format: int64
+             * @description Responses 500 and above.
+             */
+            server_errors: number;
+            statuses: components["schemas"]["StatusUsage"][];
+        };
+        /**
          * @description One delivery as the delivery log shows it. The payload is not included: it has personal
          *     data and is already in the receiver's hands.
          */
@@ -2224,7 +2383,14 @@ export interface components {
             id: string;
             /** Format: date-time */
             last_attempt_at?: string | null;
+            /**
+             * Format: int32
+             * @description How long the receiver took to answer the last attempt; `null` when it never answered.
+             */
+            last_duration_ms?: number | null;
             last_error?: string | null;
+            /** @description The start (512 bytes at most) of the receiver's answer when it refused the last attempt. */
+            last_response_body?: string | null;
             /** Format: int32 */
             last_response_status?: number | null;
             /**
@@ -2311,6 +2477,24 @@ export interface components {
          *     clients send and receive a file instead of a list of numbers.
          */
         ImageFile: string;
+        IndexOverview: {
+            /** @description Key columns, or expressions (`lower(email)`), in order. */
+            columns: string[];
+            /** @description The `CREATE INDEX` statement that rebuilds it. */
+            definition: string;
+            is_primary: boolean;
+            is_unique: boolean;
+            /** @description `btree`, `gin`, `gist`, `hash`, `brin`... */
+            method: string;
+            name: string;
+            /**
+             * Format: int64
+             * @description Times the planner used it since the statistics were last reset.
+             */
+            scans: number;
+            /** Format: int64 */
+            size_bytes: number;
+        };
         InvitationBody: {
             email: string;
         };
@@ -2351,6 +2535,11 @@ export interface components {
         LoginResponse: components["schemas"]["SessionTokens"] | components["schemas"]["MfaRequired"];
         MemberRoleBody: {
             role: components["schemas"]["ProjectRole"];
+        };
+        MethodUsage: {
+            method: string;
+            /** Format: int64 */
+            requests: number;
         };
         MfaChallengeBody: {
             code: string;
@@ -2404,6 +2593,32 @@ export interface components {
              */
             version: number;
         };
+        /** @description A new channel: where to send, and which events. */
+        NewChannelBody: {
+            events: components["schemas"]["NotificationEvent"][];
+            kind: components["schemas"]["ChannelKind"];
+            /** @description An email address, or the Discord or Slack incoming webhook URL. */
+            target: string;
+        };
+        /** @description A channel as the console shows it: never the sealed destination, only its hint. */
+        NotificationChannel: {
+            /** Format: date-time */
+            created_at: string;
+            events: components["schemas"]["NotificationEvent"][];
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["ChannelKind"];
+            /** @description The email address, or `hooks.slack.com/…KEY9` for a chat webhook. */
+            target_hint: string;
+        };
+        NotificationChannelList: {
+            channels: components["schemas"]["NotificationChannel"][];
+        };
+        /**
+         * @description Something a project can be alerted about.
+         * @enum {string}
+         */
+        NotificationEvent: "webhook_failing" | "login_failures" | "data_api_errors" | "storage_near_limit";
         OAuthCodeBody: {
             code: string;
             code_verifier: string;
@@ -2455,17 +2670,28 @@ export interface components {
             credentials: components["schemas"]["CacheCredential"][];
             enabled: boolean;
         };
+        /** @description The logo just stored; `updated_at` is its version, the same as `logo_updated_at` elsewhere. */
+        ProjectLogoView: {
+            /** Format: date-time */
+            updated_at: string;
+        };
         /**
-         * @description What a platform account may do in a project: owners can also delete it.
+         * @description What a platform account may do in a project: owners can also delete it and manage the
+         *     team; viewers only read (`TenantAdmin` refuses their changes).
          * @enum {string}
          */
-        ProjectRole: "owner" | "member";
+        ProjectRole: "owner" | "member" | "viewer";
         /** @description A project (tenant) as one of its members sees it in the console. */
         ProjectSummary: {
             /** Format: date-time */
             created_at: string;
             /** Format: uuid */
             id: string;
+            /**
+             * Format: date-time
+             * @description When the logo last changed; `null` while the project has none. Also the logo's version.
+             */
+            logo_updated_at?: string | null;
             /**
              * Format: int32
              * @description Zero selects the automatic mascot. Values 1 through 32 select a catalog entry.
@@ -2527,9 +2753,26 @@ export interface components {
         RefreshTokenBody: {
             refresh_token: string;
         };
+        /** @description How many given-up deliveries went back to the queue. */
+        RequeuedDeliveries: {
+            /** Format: int64 */
+            queued: number;
+        };
         ResetPasswordBody: {
             password: string;
             token: string;
+        };
+        ResourceUsage: {
+            /** Format: int64 */
+            client_errors: number;
+            /** Format: int64 */
+            duration_milliseconds: number;
+            /** @description `todos`, or `rpc/search` for a function. */
+            name: string;
+            /** Format: int64 */
+            requests: number;
+            /** Format: int64 */
+            server_errors: number;
         };
         RotatedSigningKey: {
             /**
@@ -2634,6 +2877,12 @@ export interface components {
             /** Format: int64 */
             rows_affected: number;
         };
+        StatusUsage: {
+            /** Format: int64 */
+            requests: number;
+            /** Format: int32 */
+            status: number;
+        };
         StorageObject: {
             /** Format: uuid */
             bucket_id: string;
@@ -2652,11 +2901,17 @@ export interface components {
              */
             estimated_rows?: number | null;
             foreign_keys: components["schemas"]["ForeignKeyOverview"][];
+            indexes: components["schemas"]["IndexOverview"][];
             /** @description `table`, `view`, `materialized_view` or `foreign_table`. */
             kind: string;
             name: string;
             policies: components["schemas"]["PolicyOverview"][];
             rls_enabled: boolean;
+            /**
+             * Format: int64
+             * @description Disk taken by the table with its indexes and TOAST data; `0` for views.
+             */
+            size_bytes: number;
         };
         /** @description A console account with access to the project. */
         TeamMember: {
@@ -2676,6 +2931,11 @@ export interface components {
         };
         /** @description Settings a tenant manages itself with its secret key. */
         TenantSettings: {
+            /**
+             * Format: date-time
+             * @description When the logo last changed; `null` while the project has none. Also the logo's version.
+             */
+            logo_updated_at?: string | null;
             /**
              * Format: int32
              * @description Zero selects the automatic mascot. Values 1 through 32 select a catalog entry.
@@ -2698,12 +2958,23 @@ export interface components {
         /** @description What the receiver answered to the test event. */
         TestDeliveryResult: {
             delivered: boolean;
+            /**
+             * Format: int32
+             * @description How long the endpoint took to answer; `null` when it never answered.
+             */
+            duration_ms?: number | null;
             error?: string | null;
+            /** @description The start of the endpoint's answer when it refused the event. */
+            response_excerpt?: string | null;
             /**
              * Format: int32
              * @description HTTP status the endpoint answered; `null` when it could not be reached.
              */
             response_status?: number | null;
+        };
+        /** @description What to send; with no body (or no type), a `webhook.test` event. */
+        TestWebhookBody: {
+            event_type?: components["schemas"]["WebhookEventType"] | null;
         };
         /** @description The authenticator to add to an app; it becomes active after its first code is verified. */
         TotpEnrollmentResponse: {
@@ -2740,6 +3011,19 @@ export interface components {
             user_metadata?: {
                 [key: string]: unknown;
             } | null;
+        };
+        UsagePoint: {
+            /** Format: int64 */
+            client_errors: number;
+            /** Format: int64 */
+            requests: number;
+            /** Format: int64 */
+            server_errors: number;
+            /**
+             * Format: date-time
+             * @description The first instant of the hour or UTC day.
+             */
+            start: string;
         };
         User: {
             /**
@@ -2809,6 +3093,8 @@ export interface components {
             sessions: components["schemas"]["SessionSummary"][];
         };
         WebhookEndpointBody: {
+            /** @description A name for the endpoint ("Sincronizar CRM"), up to 80 characters on one line. */
+            description?: string | null;
             /** @description The events this endpoint receives. */
             event_types: components["schemas"]["WebhookEventType"][];
             /** @description `https://…` on a public host; it receives signed `POST` requests. */
@@ -2816,6 +3102,8 @@ export interface components {
         };
         /** @description Only the fields sent are changed. */
         WebhookEndpointChangesBody: {
+            /** @description A new name; an empty one removes it. */
+            description?: string | null;
             event_types?: components["schemas"]["WebhookEventType"][] | null;
             /** @description Disabled endpoints receive no new events. */
             is_enabled?: boolean | null;
@@ -2823,9 +3111,21 @@ export interface components {
         };
         /** @description An endpoint as its owner sees it; the secret is never shown again after creation. */
         WebhookEndpointView: {
+            /**
+             * Format: date-time
+             * @description When the platform paused it after failing for 5 days; `null` unless it did.
+             */
+            auto_paused_at?: string | null;
             /** Format: date-time */
             created_at: string;
+            /** @description The name its owner gave it ("Sincronizar CRM"), if any. */
+            description?: string | null;
             event_types: components["schemas"]["WebhookEventType"][];
+            /**
+             * Format: date-time
+             * @description When its current run of refused attempts started; `null` while it delivers.
+             */
+            failing_since?: string | null;
             /** Format: uuid */
             id: string;
             /** @description Disabled endpoints receive no new events. */
@@ -3542,6 +3842,371 @@ export interface operations {
             };
             /** @description Requires the secret API key, or membership in the project */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    read_project_logo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The logo, a square JPEG */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": components["schemas"]["ImageFile"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The project has no logo */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    upload_project_logo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The image file: PNG, JPEG or WebP, up to 1 MiB */
+        requestBody: {
+            content: {
+                "application/octet-stream": components["schemas"]["ImageFile"];
+            };
+        };
+        responses: {
+            /** @description The new logo's version */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectLogoView"];
+                };
+            };
+            /** @description Empty, unreadable or unsupported image */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The image is larger than 1 MiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many logo changes */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    remove_project_logo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Logo removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many logo changes */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_notification_channels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The project's channels, oldest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationChannelList"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_notification_channel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewChannelBody"];
+            };
+        };
+        responses: {
+            /** @description Channel added */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationChannel"];
+                };
+            };
+            /** @description Invalid address, or a URL outside Discord and Slack */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The project already has 5 channels */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_notification_channel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the channel */
+                channel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Channel removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such channel in this project */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    change_notification_channel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the channel */
+                channel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChannelEventsBody"];
+            };
+        };
+        responses: {
+            /** @description Channel changed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationChannel"];
+                };
+            };
+            /** @description No events, or an unknown one */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such channel in this project */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    test_notification_channel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the channel */
+                channel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The channel accepted the test alert */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such channel in this project */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many test alerts for this project */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The email server or chat service refused it */
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4872,7 +5537,13 @@ export interface operations {
     };
     list_webhook_deliveries: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Only deliveries in this state. */
+                status?: "pending" | "delivered" | "failed";
+                /** @description Only deliveries older than this one (the last delivery of the previous page). */
+                before?: string;
+                limit?: number;
+            };
             header?: never;
             path: {
                 /** @description Id of the endpoint */
@@ -4891,6 +5562,15 @@ export interface operations {
                     "application/json": components["schemas"]["DeliveryLogEntry"][];
                 };
             };
+            /** @description Invalid state, cursor or limit */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             /** @description Requires the secret API key, or membership in the project */
             403: {
                 headers: {
@@ -4902,6 +5582,65 @@ export interface operations {
             };
             /** @description No such endpoint in this project */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    retry_failed_webhook_deliveries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the endpoint */
+                endpoint_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Queued; they are sent within seconds */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequeuedDeliveries"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such endpoint in this project */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The endpoint is disabled */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many test events and resends for this project */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5021,7 +5760,12 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        /** @description Optional: the event type to imitate */
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TestWebhookBody"] | null;
+            };
+        };
         responses: {
             /** @description The endpoint's answer (also when it failed) */
             200: {
@@ -5030,6 +5774,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TestDeliveryResult"];
+                };
+            };
+            /** @description Unknown event type */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
                 };
             };
             /** @description Requires the secret API key, or membership in the project */
@@ -6936,6 +7689,47 @@ export interface operations {
                 content?: never;
             };
             /** @description Invalid request, or refused by Postgres (its message) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    read_usage: {
+        parameters: {
+            query?: {
+                /** @description `24h` (one point per hour), `7d` or `30d` (one per UTC day). `24h` by default. */
+                period?: "24h" | "7d" | "30d";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Totals, a point per hour or day, and the busiest tables */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataApiUsageReport"];
+                };
+            };
+            /** @description Unknown period */
             400: {
                 headers: {
                     [name: string]: unknown;

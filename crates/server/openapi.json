@@ -1120,6 +1120,494 @@
         ]
       }
     },
+    "/auth/v1/admin/logo": {
+      "get": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`GET /admin/logo`: the project's logo, for the people who manage it.",
+        "operationId": "read_project_logo",
+        "responses": {
+          "200": {
+            "description": "The logo, a square JPEG",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageFile"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The project has no logo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`PUT /admin/logo`: the body is the image itself (PNG, JPEG or WebP, up to 1 MiB). The server\ncrops it to a centered square, resizes it and stores it as JPEG.",
+        "operationId": "upload_project_logo",
+        "requestBody": {
+          "description": "The image file: PNG, JPEG or WebP, up to 1 MiB",
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageFile"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The new logo's version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectLogoView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Empty, unreadable or unsupported image",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The image is larger than 1 MiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many logo changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "tenant-admin"
+        ],
+        "summary": "`DELETE /admin/logo`: the project goes back to its mascot or initials; succeeds when there\nwas no logo.",
+        "operationId": "remove_project_logo",
+        "responses": {
+          "204": {
+            "description": "Logo removed"
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many logo changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/notifications": {
+      "get": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "`GET /admin/notifications`: where the project sends its alerts.",
+        "operationId": "list_notification_channels",
+        "responses": {
+          "200": {
+            "description": "The project's channels, oldest first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationChannelList"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "`POST /admin/notifications`: adds an email address or a Discord or Slack webhook.",
+        "operationId": "create_notification_channel",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewChannelBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Channel added",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationChannel"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid address, or a URL outside Discord and Slack",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The project already has 5 channels",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/notifications/{channel_id}": {
+      "delete": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "`DELETE /admin/notifications/{channel_id}`: stops sending alerts there.",
+        "operationId": "delete_notification_channel",
+        "parameters": [
+          {
+            "name": "channel_id",
+            "in": "path",
+            "description": "Id of the channel",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Channel removed"
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such channel in this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "`PATCH /admin/notifications/{channel_id}`: which events the channel receives.",
+        "operationId": "change_notification_channel",
+        "parameters": [
+          {
+            "name": "channel_id",
+            "in": "path",
+            "description": "Id of the channel",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChannelEventsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Channel changed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationChannel"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No events, or an unknown one",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such channel in this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/notifications/{channel_id}/test": {
+      "post": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "`POST /admin/notifications/{channel_id}/test`: sends a test alert to the channel now.",
+        "operationId": "test_notification_channel",
+        "parameters": [
+          {
+            "name": "channel_id",
+            "in": "path",
+            "description": "Id of the channel",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The channel accepted the test alert"
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such channel in this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many test alerts for this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The email server or chat service refused it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
     "/auth/v1/admin/oauth": {
       "get": {
         "tags": [
@@ -2992,7 +3480,7 @@
         "tags": [
           "webhooks"
         ],
-        "summary": "`PATCH /admin/webhooks/{endpoint_id}`: changes the URL, the events or whether it is enabled.",
+        "summary": "`PATCH /admin/webhooks/{endpoint_id}`: changes the URL, the name, the events or whether it\nis enabled. Enabling it starts its delivery health afresh.",
         "operationId": "change_webhook_endpoint",
         "parameters": [
           {
@@ -3074,7 +3562,7 @@
         "tags": [
           "webhooks"
         ],
-        "summary": "`GET /admin/webhooks/{endpoint_id}/deliveries`: the endpoint's 50 newest deliveries.",
+        "summary": "`GET /admin/webhooks/{endpoint_id}/deliveries`: the endpoint's deliveries, newest first, 50\nat a time; deliveries are kept for 7 days.",
         "operationId": "list_webhook_deliveries",
         "parameters": [
           {
@@ -3085,6 +3573,39 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Only deliveries in this state.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "delivered",
+                "failed"
+              ]
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "description": "Only deliveries older than this one (the last delivery of the previous page).",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
             }
           }
         ],
@@ -3102,6 +3623,16 @@
               }
             }
           },
+          "400": {
+            "description": "Invalid state, cursor or limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
           "403": {
             "description": "Requires the secret API key, or membership in the project",
             "content": {
@@ -3114,6 +3645,88 @@
           },
           "404": {
             "description": "No such endpoint in this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/auth/v1/admin/webhooks/{endpoint_id}/deliveries/retry-failed": {
+      "post": {
+        "tags": [
+          "webhooks"
+        ],
+        "summary": "`POST /admin/webhooks/{endpoint_id}/deliveries/retry-failed`: sends every delivery that\ngave up again, right away.",
+        "operationId": "retry_failed_webhook_deliveries",
+        "parameters": [
+          {
+            "name": "endpoint_id",
+            "in": "path",
+            "description": "Id of the endpoint",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Queued; they are sent within seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequeuedDeliveries"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such endpoint in this project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The endpoint is disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many test events and resends for this project",
             "content": {
               "application/json": {
                 "schema": {
@@ -3286,7 +3899,7 @@
         "tags": [
           "webhooks"
         ],
-        "summary": "`POST /admin/webhooks/{endpoint_id}/test`: sends a signed `webhook.test` event now and\nanswers with what the endpoint replied.",
+        "summary": "`POST /admin/webhooks/{endpoint_id}/test`: sends a signed test event now and answers with\nwhat the endpoint replied.",
         "operationId": "send_test_webhook",
         "parameters": [
           {
@@ -3300,6 +3913,23 @@
             }
           }
         ],
+        "requestBody": {
+          "description": "Optional: the event type to imitate",
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/TestWebhookBody"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "The endpoint's answer (also when it failed)",
@@ -3307,6 +3937,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TestDeliveryResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown event type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             }
@@ -5841,6 +6481,73 @@
         ]
       }
     },
+    "/database/v1/usage": {
+      "get": {
+        "tags": [
+          "database-admin"
+        ],
+        "summary": "`GET /database/v1/usage`: the project's Data API traffic, for the console's metrics.",
+        "operationId": "read_usage",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "description": "`24h` (one point per hour), `7d` or `30d` (one per UTC day). `24h` by default.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "The window a usage report covers, ending now.",
+              "enum": [
+                "24h",
+                "7d",
+                "30d"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Totals, a point per hour or day, and the busiest tables",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataApiUsageReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown period",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -6851,7 +7558,7 @@
         "tags": [
           "platform"
         ],
-        "summary": "`PATCH /platform/v1/projects/{project_id}/members/{account_id}`: makes a member an owner,\nor an owner a member. Owners only; the project always keeps at least one owner.",
+        "summary": "`PATCH /platform/v1/projects/{project_id}/members/{account_id}`: sets a member's role\n(owner, member or viewer). Owners only; the project always keeps at least one owner.",
         "operationId": "change_role",
         "parameters": [
           {
@@ -8968,6 +9675,30 @@
           }
         }
       },
+      "ChannelEventsBody": {
+        "type": "object",
+        "description": "The events a channel receives, replacing the previous ones.",
+        "required": [
+          "events"
+        ],
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationEvent"
+            }
+          }
+        }
+      },
+      "ChannelKind": {
+        "type": "string",
+        "description": "How a channel delivers.",
+        "enum": [
+          "email",
+          "discord",
+          "slack"
+        ]
+      },
       "ColumnDefinition": {
         "type": "object",
         "description": "A column of a table created (or added) from the console.",
@@ -9302,6 +10033,67 @@
           }
         }
       },
+      "DataApiUsageReport": {
+        "type": "object",
+        "description": "The project's Data API traffic over a period: totals, a point per hour or day, and the\nbusiest tables, statuses and methods.",
+        "required": [
+          "requests",
+          "client_errors",
+          "server_errors",
+          "duration_milliseconds",
+          "series",
+          "resources",
+          "statuses",
+          "methods"
+        ],
+        "properties": {
+          "client_errors": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Responses 400 to 499: bad queries, refused credentials, rate limits."
+          },
+          "duration_milliseconds": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Time spent answering, summed over every request (divide by `requests` for the mean)."
+          },
+          "methods": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MethodUsage"
+            }
+          },
+          "requests": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "resources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceUsage"
+            },
+            "description": "The ten busiest tables and functions; an empty name gathers names that matched nothing."
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UsagePoint"
+            },
+            "description": "Oldest first, every hour or day present even when empty."
+          },
+          "server_errors": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Responses 500 and above."
+          },
+          "statuses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatusUsage"
+            }
+          }
+        }
+      },
       "DeliveryLogEntry": {
         "type": "object",
         "description": "One delivery as the delivery log shows it. The payload is not included: it has personal\ndata and is already in the receiver's hands.",
@@ -9340,11 +10132,26 @@
             ],
             "format": "date-time"
           },
+          "last_duration_ms": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "How long the receiver took to answer the last attempt; `null` when it never answered."
+          },
           "last_error": {
             "type": [
               "string",
               "null"
             ]
+          },
+          "last_response_body": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The start (512 bytes at most) of the receiver's answer when it refused the last attempt."
           },
           "last_response_status": {
             "type": [
@@ -9577,6 +10384,54 @@
         "format": "binary",
         "description": "Raw image bytes in a request or response body, described as a binary file so generated\nclients send and receive a file instead of a list of numbers."
       },
+      "IndexOverview": {
+        "type": "object",
+        "required": [
+          "name",
+          "columns",
+          "method",
+          "is_primary",
+          "is_unique",
+          "size_bytes",
+          "scans",
+          "definition"
+        ],
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Key columns, or expressions (`lower(email)`), in order."
+          },
+          "definition": {
+            "type": "string",
+            "description": "The `CREATE INDEX` statement that rebuilds it."
+          },
+          "is_primary": {
+            "type": "boolean"
+          },
+          "is_unique": {
+            "type": "boolean"
+          },
+          "method": {
+            "type": "string",
+            "description": "`btree`, `gin`, `gist`, `hash`, `brin`..."
+          },
+          "name": {
+            "type": "string"
+          },
+          "scans": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Times the planner used it since the statistics were last reset."
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "InvitationBody": {
         "type": "object",
         "required": [
@@ -9714,6 +10569,22 @@
         "properties": {
           "role": {
             "$ref": "#/components/schemas/ProjectRole"
+          }
+        }
+      },
+      "MethodUsage": {
+        "type": "object",
+        "required": [
+          "method",
+          "requests"
+        ],
+        "properties": {
+          "method": {
+            "type": "string"
+          },
+          "requests": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -9860,6 +10731,88 @@
           }
         },
         "additionalProperties": false
+      },
+      "NewChannelBody": {
+        "type": "object",
+        "description": "A new channel: where to send, and which events.",
+        "required": [
+          "kind",
+          "target",
+          "events"
+        ],
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationEvent"
+            }
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ChannelKind"
+          },
+          "target": {
+            "type": "string",
+            "description": "An email address, or the Discord or Slack incoming webhook URL."
+          }
+        }
+      },
+      "NotificationChannel": {
+        "type": "object",
+        "description": "A channel as the console shows it: never the sealed destination, only its hint.",
+        "required": [
+          "id",
+          "kind",
+          "target_hint",
+          "events",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationEvent"
+            }
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ChannelKind"
+          },
+          "target_hint": {
+            "type": "string",
+            "description": "The email address, or `hooks.slack.com/…KEY9` for a chat webhook."
+          }
+        }
+      },
+      "NotificationChannelList": {
+        "type": "object",
+        "required": [
+          "channels"
+        ],
+        "properties": {
+          "channels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationChannel"
+            }
+          }
+        }
+      },
+      "NotificationEvent": {
+        "type": "string",
+        "description": "Something a project can be alerted about.",
+        "enum": [
+          "webhook_failing",
+          "login_failures",
+          "data_api_errors",
+          "storage_near_limit"
+        ]
       },
       "OAuthCodeBody": {
         "type": "object",
@@ -10036,12 +10989,26 @@
           }
         }
       },
+      "ProjectLogoView": {
+        "type": "object",
+        "description": "The logo just stored; `updated_at` is its version, the same as `logo_updated_at` elsewhere.",
+        "required": [
+          "updated_at"
+        ],
+        "properties": {
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "ProjectRole": {
         "type": "string",
-        "description": "What a platform account may do in a project: owners can also delete it.",
+        "description": "What a platform account may do in a project: owners can also delete it and manage the\nteam; viewers only read (`TenantAdmin` refuses their changes).",
         "enum": [
           "owner",
-          "member"
+          "member",
+          "viewer"
         ]
       },
       "ProjectSummary": {
@@ -10065,6 +11032,14 @@
           "id": {
             "type": "string",
             "format": "uuid"
+          },
+          "logo_updated_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When the logo last changed; `null` while the project has none. Also the logo's version."
           },
           "mascot_id": {
             "type": "integer",
@@ -10220,6 +11195,20 @@
           }
         }
       },
+      "RequeuedDeliveries": {
+        "type": "object",
+        "description": "How many given-up deliveries went back to the queue.",
+        "required": [
+          "queued"
+        ],
+        "properties": {
+          "queued": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
       "ResetPasswordBody": {
         "type": "object",
         "required": [
@@ -10232,6 +11221,38 @@
           },
           "token": {
             "type": "string"
+          }
+        }
+      },
+      "ResourceUsage": {
+        "type": "object",
+        "required": [
+          "name",
+          "requests",
+          "client_errors",
+          "server_errors",
+          "duration_milliseconds"
+        ],
+        "properties": {
+          "client_errors": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "duration_milliseconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string",
+            "description": "`todos`, or `rpc/search` for a function."
+          },
+          "requests": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "server_errors": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -10545,6 +11566,23 @@
           }
         }
       },
+      "StatusUsage": {
+        "type": "object",
+        "required": [
+          "status",
+          "requests"
+        ],
+        "properties": {
+          "requests": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "StorageObject": {
         "type": "object",
         "required": [
@@ -10581,8 +11619,10 @@
           "name",
           "kind",
           "rls_enabled",
+          "size_bytes",
           "columns",
           "foreign_keys",
+          "indexes",
           "policies"
         ],
         "properties": {
@@ -10606,6 +11646,12 @@
               "$ref": "#/components/schemas/ForeignKeyOverview"
             }
           },
+          "indexes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IndexOverview"
+            }
+          },
           "kind": {
             "type": "string",
             "description": "`table`, `view`, `materialized_view` or `foreign_table`."
@@ -10621,6 +11667,11 @@
           },
           "rls_enabled": {
             "type": "boolean"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Disk taken by the table with its indexes and TOAST data; `0` for views."
           }
         }
       },
@@ -10687,6 +11738,14 @@
           "mascot_id"
         ],
         "properties": {
+          "logo_updated_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When the logo last changed; `null` while the project has none. Also the logo's version."
+          },
           "mascot_id": {
             "type": "integer",
             "format": "int32",
@@ -10748,11 +11807,26 @@
           "delivered": {
             "type": "boolean"
           },
+          "duration_ms": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "How long the endpoint took to answer; `null` when it never answered."
+          },
           "error": {
             "type": [
               "string",
               "null"
             ]
+          },
+          "response_excerpt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The start of the endpoint's answer when it refused the event."
           },
           "response_status": {
             "type": [
@@ -10762,6 +11836,23 @@
             "format": "int32",
             "description": "HTTP status the endpoint answered; `null` when it could not be reached.",
             "minimum": 0
+          }
+        }
+      },
+      "TestWebhookBody": {
+        "type": "object",
+        "description": "What to send; with no body (or no type), a `webhook.test` event.",
+        "properties": {
+          "event_type": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/WebhookEventType",
+                "description": "Sends a made-up event of this type instead, to exercise the receiver's real handler."
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },
@@ -10854,6 +11945,34 @@
           }
         },
         "additionalProperties": false
+      },
+      "UsagePoint": {
+        "type": "object",
+        "required": [
+          "start",
+          "requests",
+          "client_errors",
+          "server_errors"
+        ],
+        "properties": {
+          "client_errors": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "requests": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "server_errors": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The first instant of the hour or UTC day."
+          }
+        }
       },
       "User": {
         "type": "object",
@@ -11028,6 +12147,13 @@
           "event_types"
         ],
         "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A name for the endpoint (\"Sincronizar CRM\"), up to 80 characters on one line."
+          },
           "event_types": {
             "type": "array",
             "items": {
@@ -11045,6 +12171,13 @@
         "type": "object",
         "description": "Only the fields sent are changed.",
         "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A new name; an empty one removes it."
+          },
           "event_types": {
             "type": [
               "array",
@@ -11080,15 +12213,38 @@
           "created_at"
         ],
         "properties": {
+          "auto_paused_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When the platform paused it after failing for 5 days; `null` unless it did."
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The name its owner gave it (\"Sincronizar CRM\"), if any."
           },
           "event_types": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/WebhookEventType"
             }
+          },
+          "failing_since": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When its current run of refused attempts started; `null` while it delivers."
           },
           "id": {
             "type": "string",
@@ -11210,6 +12366,10 @@
     {
       "name": "webhooks",
       "description": "Signed HTTP calls to the tenant's servers when its users change (Standard Webhooks)"
+    },
+    {
+      "name": "notifications",
+      "description": "Where a project's alerts go: email, Discord and Slack"
     },
     {
       "name": "platform",

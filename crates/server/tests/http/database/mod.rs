@@ -6,3 +6,4 @@ mod data_api_writes;
 mod migration_history;
 mod migrations;
 pub(super) mod support;
+mod usage;

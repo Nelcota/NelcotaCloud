@@ -16,13 +16,21 @@ const SQUARE = 1
 const CENTER = { x: 0, y: 0 }
 const PERCENT = 100
 
+/** Round for a person's photo, square for a project's logo. */
+export type CropShape = 'round' | 'rect'
+
 type AvatarCropEditorProps = {
   imageUrl: string
+  cropShape: CropShape
   onAreaChange: (area: PixelArea) => void
 }
 
-/** Drag to place the photo inside the circle; zoom with the slider, the wheel or a pinch. */
-export function AvatarCropEditor({ imageUrl, onAreaChange }: AvatarCropEditorProps): JSX.Element {
+/** Drag to place the image inside the frame; zoom with the slider, the wheel or a pinch. */
+export function AvatarCropEditor({
+  imageUrl,
+  cropShape,
+  onAreaChange,
+}: AvatarCropEditorProps): JSX.Element {
   const zoomLabelId = useId()
   const [crop, setCrop] = useState(CENTER)
   const [zoom, setZoom] = useState(MIN_ZOOM)
@@ -45,9 +53,9 @@ export function AvatarCropEditor({ imageUrl, onAreaChange }: AvatarCropEditorPro
           minZoom={MIN_ZOOM}
           maxZoom={MAX_ZOOM}
           aspect={SQUARE}
-          cropShape="round"
+          cropShape={cropShape}
           showGrid={false}
-          cropperProps={{ role: 'group', 'aria-label': 'Enquadramento da foto' }}
+          cropperProps={{ role: 'group', 'aria-label': 'Enquadramento da imagem' }}
           mediaProps={{ alt: '' }}
           onMediaLoaded={setMediaSize}
           onCropSizeChange={setCropSize}

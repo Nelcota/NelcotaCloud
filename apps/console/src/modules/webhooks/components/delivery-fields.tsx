@@ -1,6 +1,7 @@
 import type { JSX } from 'react'
 
 import { fullDeliveryDate } from '@/modules/webhooks/components/delivery-dates'
+import { formatDuration } from '@/modules/webhooks/components/format-duration'
 import type { components } from '@/shared/api/api-schema'
 import { DataList, DataListItem } from '@/shared/ui/data-list'
 import { IdChip } from '@/shared/ui/id-chip'
@@ -20,6 +21,7 @@ export function DeliveryFields({ delivery }: { delivery: DeliveryLogEntry }): JS
       <DataListItem label="Resposta">
         <span className="font-mono">{responseText(delivery.last_response_status)}</span>
       </DataListItem>
+      <OptionalDuration ms={delivery.last_duration_ms ?? null} />
       <DataListItem label="Tentativas">
         <span className="tabular-nums">{delivery.attempts}</span>
       </DataListItem>
@@ -28,6 +30,18 @@ export function DeliveryFields({ delivery }: { delivery: DeliveryLogEntry }): JS
       <OptionalDate label="Próxima tentativa" value={delivery.next_attempt_at} />
       <DeliveryError error={delivery.last_error} />
     </DataList>
+  )
+}
+
+function OptionalDuration({ ms }: { ms: number | null }): JSX.Element | null {
+  if (ms === null) {
+    return null
+  }
+
+  return (
+    <DataListItem label="Tempo de resposta">
+      <span className="tabular-nums">{formatDuration(ms)}</span>
+    </DataListItem>
   )
 }
 

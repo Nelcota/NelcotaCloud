@@ -1,3 +1,5 @@
+import { Database, FolderOpen, Mail, ShieldCheck, Webhook } from 'lucide-react'
+
 import { useSchemaQuery } from '@/modules/database/queries/use-schema-query'
 import {
   apiStatus,
@@ -12,10 +14,14 @@ import { useBucketsQuery } from '@/modules/overview/queries/use-buckets-query'
 import { useWebhookEndpointsQuery } from '@/modules/overview/queries/use-webhook-endpoints-query'
 import { useSmtpQuery } from '@/modules/project-settings/queries/use-project-settings'
 import { useApiHealthQuery } from '@/modules/system-status/queries/use-api-health-query'
+import type { IconComponent } from '@/shared/ui/icon-component'
 
 export type Service = {
   name: string
-  /** The API path the service answers under, or the admin route that configures it. */
+  icon: IconComponent
+  /** What it is, under the name. */
+  kind: string
+  /** The API path the service answers under. */
   path: string
   to: string
   status: ServiceStatus
@@ -31,30 +37,45 @@ export function useServices(projectId: string): Service[] {
   const webhooks = useWebhookEndpointsQuery(projectId)
 
   return [
-    { name: 'Auth', path: '/auth/v1', to: `${base}/users`, status: statusOf(health, apiStatus) },
     {
-      name: 'Banco (Data API)',
+      name: 'Auth',
+      icon: ShieldCheck,
+      kind: 'Contas, sessões e MFA',
+      path: '/auth/v1',
+      to: `${base}/users`,
+      status: statusOf(health, apiStatus),
+    },
+    {
+      name: 'Banco',
+      icon: Database,
+      kind: 'Postgres com API REST',
       path: '/rest/v1',
       to: `${base}/database`,
       status: statusOf(schema, databaseStatus),
     },
     {
       name: 'Arquivos',
+      icon: FolderOpen,
+      kind: 'Buckets e uploads',
       path: '/storage/v1',
       to: `${base}/storage`,
       status: statusOf(buckets, storageStatus),
     },
     {
-      name: 'Email',
-      path: '/auth/v1/admin/smtp',
-      to: `${base}/email`,
-      status: statusOf(smtp, emailStatus),
-    },
-    {
       name: 'Webhooks',
+      icon: Webhook,
+      kind: 'Eventos assinados',
       path: '/auth/v1/admin/webhooks',
       to: `${base}/webhooks`,
       status: statusOf(webhooks, webhooksStatus),
+    },
+    {
+      name: 'Email',
+      icon: Mail,
+      kind: 'Links de acesso',
+      path: '/auth/v1/admin/smtp',
+      to: `${base}/email`,
+      status: statusOf(smtp, emailStatus),
     },
   ]
 }

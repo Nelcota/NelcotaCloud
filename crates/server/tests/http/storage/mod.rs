@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use reqwest::StatusCode;
 use serde_json::{Value, json};
+use sqlx::Connection;
 use uuid::Uuid;
 use wiremock::matchers::{method, path_regex};
 use wiremock::{Mock, MockServer, Request, ResponseTemplate};
@@ -13,6 +14,101 @@ use crate::support::{CreatedTenant, TestResult, TestServer, error_code, field, u
 mod cleanup;
 
 const BUCKETS: &str = "/storage/v1/buckets";
+
+#[tokio::test]
+async fn a_contended_catalog_lock_returns_busy_and_a_retry_can_reserve() -> TestResult {
+    let provider = mock_storage().await;
+    let server = TestServer::start_with_storage(provider.uri()).await?;
+    let tenant = server.create_tenant().await?;
+    let bucket = create_bucket(&server, &tenant).await?;
+    let path = format!("{BUCKETS}/{bucket}/uploads");
+    let mut connection = server.control_plane().await?;
+    let mut held = connection.begin().await?;
+    sqlx::query(
+        "SELECT pg_advisory_xact_lock(hashtextextended('storage_catalog:' || $1::uuid::text, 0))",
+    )
+    .bind(tenant.tenant_id)
+    .execute(&mut *held)
+    .await?;
+
+    let input = json!({ "name": "retry.txt", "content_type": "text/plain", "size_bytes": 3 });
+    let refused = server
+        .post_auth(&path, &tenant.secret_key, input.clone())
+        .await?;
+    held.rollback().await?;
+    assert_eq!(refused.status(), StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(error_code(refused).await?, "service_busy");
+    let reserved = server.post_auth(&path, &tenant.secret_key, input).await?;
+    assert_eq!(reserved.status(), StatusCode::CREATED);
+
+    server.drop_tenant(&tenant).await
+}
+
+#[tokio::test]
+async fn a_reservation_waiting_for_the_catalog_lock_counts_the_previous_commit() -> TestResult {
+    let provider = mock_storage().await;
+    let server = TestServer::start_with_storage(provider.uri()).await?;
+    let tenant = server.create_tenant().await?;
+    let bucket = create_bucket(&server, &tenant).await?;
+    let path = format!("{BUCKETS}/{bucket}/uploads");
+    let mut connection = server.control_plane().await?;
+    let mut observer = server.control_plane().await?;
+    let mut held = connection.begin().await?;
+    let holder: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
+        .fetch_one(&mut *held)
+        .await?;
+    sqlx::query(
+        "SELECT pg_advisory_xact_lock(hashtextextended('storage_catalog:' || $1::uuid::text, 0))",
+    )
+    .bind(tenant.tenant_id)
+    .execute(&mut *held)
+    .await?;
+    sqlx::query(
+        "INSERT INTO storage_objects (id, tenant_id, bucket_id, name, content_type, size_bytes, upload_expires_at)
+         VALUES ($1, $2, $3, 'charged.txt', 'text/plain', 1073741824, now() + interval '10 minutes')",
+    )
+    .bind(Uuid::new_v4())
+    .bind(tenant.tenant_id)
+    .bind(Uuid::parse_str(&bucket)?)
+    .execute(&mut *held)
+    .await?;
+
+    let commit_when_waiting = async {
+        tokio::time::timeout(Duration::from_secs(2), async {
+            loop {
+                let blocked: bool = sqlx::query_scalar(
+                    "SELECT EXISTS (
+                         SELECT 1 FROM pg_locks
+                         WHERE locktype = 'advisory' AND NOT granted
+                           AND $1 = ANY (pg_blocking_pids(pid))
+                     )",
+                )
+                .bind(holder)
+                .fetch_one(&mut observer)
+                .await?;
+
+                if blocked {
+                    return Ok::<_, sqlx::Error>(());
+                }
+
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await??;
+        held.commit().await?;
+
+        Ok(())
+    };
+    let input = json!({ "name": "over-quota.txt", "content_type": "text/plain", "size_bytes": 3 });
+    let (response, ()) = tokio::try_join!(
+        server.post_auth(&path, &tenant.secret_key, input),
+        commit_when_waiting,
+    )?;
+    assert_eq!(response.status(), StatusCode::CONFLICT);
+    assert_eq!(error_code(response).await?, "storage_quota_exceeded");
+
+    server.drop_tenant(&tenant).await
+}
 
 #[tokio::test]
 async fn private_storage_supports_the_entire_file_lifecycle() -> TestResult {

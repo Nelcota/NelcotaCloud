@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde_json::json;
 use sqlx::Connection;
@@ -47,6 +47,7 @@ async fn queued_reservations(
     tenant: &CreatedTenant,
     path: &str,
 ) -> TestResult {
+    let started = Instant::now();
     let report = exercise("storage-contended-reservations", Load::burst(WRITES, WRITES), async |index| {
         let body = json!({ "name": format!("wait-{index}.txt"), "content_type": "text/plain", "size_bytes": 3 });
         let response = server.post_auth(path, &tenant.secret_key, body).await?;
@@ -54,7 +55,10 @@ async fn queued_reservations(
         status(response).await
     })
     .await?;
-    report.require(&[("201", WRITES)])
+    report.require(&[("201", WRITES)])?;
+    assert!(started.elapsed() < Duration::from_secs(2));
+
+    Ok(())
 }
 
 async fn probe_neighbor(server: &TestServer, tenant: &CreatedTenant) -> TestResult {

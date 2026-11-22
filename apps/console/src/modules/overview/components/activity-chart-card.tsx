@@ -43,10 +43,7 @@ function ChartFrame({ days, children }: { days: number; children: ReactNode }): 
         <h2 id="activity-chart-title" className="text-base font-medium text-heading">
           Logins e cadastros
         </h2>
-        <p className="text-xs text-muted-foreground">
-          Contagem por dia nos últimos {days} dias, em UTC. Cadastros sem logins depois costumam ser
-          contas abandonadas.
-        </p>
+        <p className="text-xs text-muted-foreground">Por dia, nos últimos {days} dias (UTC).</p>
       </div>
       {children}
     </section>

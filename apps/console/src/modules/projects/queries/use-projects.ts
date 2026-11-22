@@ -35,7 +35,7 @@ export function useCreateProjectMutation(): UseMutationResult<
 
   return useMutation({
     mutationFn: createProject,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY, exact: true }),
   })
 }
 
@@ -44,6 +44,6 @@ export function useDeleteProjectMutation(): UseMutationResult<void, Error, strin
 
   return useMutation({
     mutationFn: deleteProject,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY, exact: true }),
   })
 }

@@ -20,13 +20,9 @@ export function OptionalDate({ value, missing }: OptionalDateProps): JSX.Element
 export function UserEmailFact({ user }: { user: User }): JSX.Element {
   const verifiedAt = user.email_verified_at
 
+  // The header's badge already says the email is not confirmed.
   if (verifiedAt === null || verifiedAt === undefined) {
-    return (
-      <>
-        {user.email}
-        <span className="text-warning"> · não confirmado</span>
-      </>
-    )
+    return <>{user.email}</>
   }
 
   return (

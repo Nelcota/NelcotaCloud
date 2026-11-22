@@ -73,7 +73,14 @@ Before upgrading a deployment that predates the restricted runtime roles, add a 
 `DATABASE_RUNTIME_PASSWORD` to the production environment with `openssl rand -hex 32`.
 The API uses the administration credential for provisioning and migrations. Its request pools
 and the webhook worker use restricted roles. On startup the API migrates the control plane
-and prepares existing tenant databases. The worker leaves schema changes to the API.
+before its readiness check can pass. Compose waits for that check before starting Caddy and
+the worker. The API prepares each existing project database on demand and during its rolling
+maintenance scan. A project database with a failed migration is retried independently. The
+worker only connects to a project after its schema and runtime grants are ready.
+
+For multi-replica upgrades or rollbacks between releases with different storage catalog locks,
+stop all running API replicas before starting replacements. Storage writers must use the same
+lock while enforcing project quotas.
 
 ### Postgres major upgrades
 
@@ -109,9 +116,13 @@ major version (`deploy/backup/Dockerfile`), since `pg_dump` must not be older th
 
 ## 5. Backups
 
-The `backup` service dumps the control plane and every `tenant_*` database daily, encrypts them
-and uploads them to R2. It publishes the checksum manifest after every dump has uploaded and
-keeps complete snapshot directories for `BACKUP_RETENTION_DAYS` (30) days.
+The `backup` service dumps the control plane and every project registered in its snapshot daily,
+encrypts the archives and uploads them to R2. Each project dump must match the project UUID from
+that inventory. A missing database or a project that has yet to receive its identity migration
+causes the run to fail and retry within five minutes. The job publishes the checksum manifest
+after every dump has uploaded and keeps complete snapshot directories for `BACKUP_RETENTION_DAYS`
+(30) days. Each database has its own consistent snapshot. Project writes across separate
+databases can be captured at different times.
 
 ```bash
 # List snapshots
@@ -130,8 +141,9 @@ enough disk space for the original databases, the restored copies and the downlo
 Older snapshots without a manifest still go through the staging restore and inventory check.
 
 Restore with the original `POSTGRES_USER`. On a fresh cluster, start and stop the API before
-restoring so the roles referenced in the archives exist. The API repairs project authenticator
-roles when it prepares the restored tenants.
+restoring so the shared roles referenced in the archives exist. Restore clears each project's
+preparation marker so that the API reapplies its grants and authenticator role on the target
+cluster.
 
 Rehearse a restore on staging every few months; an untested backup is not a backup.
 

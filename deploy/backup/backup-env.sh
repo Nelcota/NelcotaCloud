@@ -20,6 +20,7 @@ export RCLONE_CONFIG_BACKUP_REMOTE="store:${BACKUP_BUCKET}/postgres"
 RCLONE_CONFIG_BACKUP_PASSWORD="$(rclone obscure "${BACKUP_ENCRYPTION_PASSWORD}")"
 export RCLONE_CONFIG_BACKUP_PASSWORD
 export LC_ALL=C
+export PGCONNECT_TIMEOUT="${PGCONNECT_TIMEOUT:-5}"
 
 SNAPSHOT_MANIFEST=snapshot.sha256
 LEGACY_SNAPSHOT_PATTERN='^[0-9]{8}T[0-9]{6}Z$'
@@ -35,9 +36,3 @@ snapshot_checksums() (
     cd "$1" || exit 1
     sha256sum -- globals.sql ./*.dump
 )
-
-# The control plane plus every tenant database (tenant_<slug>).
-list_databases() {
-    psql --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align --dbname=postgres --command \
-        "SELECT datname FROM pg_database WHERE datname = 'nelcota_control' OR datname LIKE 'tenant\_%' ORDER BY datname"
-}

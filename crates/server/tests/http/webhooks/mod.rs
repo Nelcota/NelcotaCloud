@@ -1,6 +1,8 @@
 mod audit_feed;
+mod delivery_insights;
 mod delivery_leases;
 mod endpoint_atomicity;
+mod endpoint_health;
 mod endpoints;
 mod queue_health;
 pub(super) mod receiver;

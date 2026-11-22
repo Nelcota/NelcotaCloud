@@ -1,3 +1,4 @@
+import { type RowFilter, restQueryString } from '@/modules/database/components/row-filter'
 import { apiClient, projectHeaders } from '@/shared/api/api-client'
 import { dataOf } from '@/shared/api/api-result'
 
@@ -10,10 +11,12 @@ export type RowsPageQuery = {
   table: string
   offset: number
   limit: number
+  filters: readonly RowFilter[]
 }
 
 export type CountQuery = {
   table: string
+  filters: readonly RowFilter[]
   /** The planner's estimate of the table's rows; `null` before it was ever analyzed. */
   estimatedRows: number | null
 }
@@ -32,7 +35,11 @@ export async function readRows(
   const headers = { ...projectHeaders(projectId), Prefer: 'order=primary-key' }
   const page = { limit: query.limit, offset: query.offset }
   const params = { path: { table: query.table }, query: page }
-  const rows = dataOf(await apiClient.GET('/rest/v1/{table}', { headers, params, signal }))
+  const querySerializer = (values: Record<string, unknown>): string =>
+    restQueryString(values, query.filters)
+  const rows = dataOf(
+    await apiClient.GET('/rest/v1/{table}', { headers, params, signal, querySerializer }),
+  )
 
   return { offset: query.offset, rows: rows.filter(isRow) }
 }
@@ -45,7 +52,14 @@ export async function countRows(
 ): Promise<number | null> {
   const headers = { ...projectHeaders(projectId), Prefer: countPreference(query.estimatedRows) }
   const params = { path: { table: query.table }, query: { limit: 0 } }
-  const result = await apiClient.GET('/rest/v1/{table}', { headers, params, signal })
+  const querySerializer = (values: Record<string, unknown>): string =>
+    restQueryString(values, query.filters)
+  const result = await apiClient.GET('/rest/v1/{table}', {
+    headers,
+    params,
+    signal,
+    querySerializer,
+  })
   dataOf(result)
 
   return totalOf(result.response.headers.get('Content-Range'))

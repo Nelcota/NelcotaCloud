@@ -15,7 +15,7 @@ import type { components } from '@/shared/api/api-schema'
 
 type Schemas = components['schemas']
 
-function settingsKey(projectId: string): readonly string[] {
+export function settingsKey(projectId: string): readonly string[] {
   return ['projects', projectId, 'settings']
 }
 
@@ -36,7 +36,7 @@ export function useUpdateSettingsMutation(
     mutationFn: (body: Schemas['TenantSettingsBody']) => updateSettings(projectId, body),
     onSuccess: (settings) => {
       queryClient.setQueryData(settingsKey(projectId), settings)
-      void queryClient.invalidateQueries({ queryKey: ['projects'] })
+      void queryClient.invalidateQueries({ queryKey: ['projects'], exact: true })
     },
   })
 }

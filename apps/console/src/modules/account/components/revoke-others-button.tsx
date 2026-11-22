@@ -10,8 +10,8 @@ export function RevokeOthersButton(): JSX.Element {
 
   return (
     <ConfirmButton
-      label="Encerrar outras sessões dispositivos"
-      title="Encerrar outras sessões dispositivos?"
+      label="Encerrar outras sessões"
+      title="Encerrar as outras sessões?"
       description="Todas as sessões terminam, menos esta. Quem estiver usando sua conta em outro lugar precisa entrar de novo."
       confirmLabel="Encerrar outras sessões"
       change={{

@@ -1,6 +1,7 @@
 import { CirclePlus as Plus } from 'lucide-react'
 import { CONSOLE_SECTIONS } from '@/app/shell/console-sections'
 import { PROJECT_SECTIONS, sectionPath } from '@/app/shell/project-sections'
+import type { ProjectMarkSource } from '@/modules/projects/components/project-mark-source'
 import type { components } from '@/shared/api/api-schema'
 import type { IconComponent } from '@/shared/ui/icon-component'
 
@@ -11,7 +12,7 @@ export type CommandGroupId = 'project-pages' | 'projects' | 'console'
 /** What is drawn before an item: its page's icon, or the project's avatar. */
 export type CommandMark =
   | { kind: 'icon'; icon: IconComponent }
-  | { kind: 'project'; name: string; mascotId: number }
+  | { kind: 'project'; project: ProjectMarkSource }
 
 /** One place the search can open. */
 export type CommandItem = {
@@ -87,7 +88,15 @@ function projectLinks(projects: ProjectSummary[]): CommandItem[] {
     context: 'Projeto',
     to: `/projects/${project.id}`,
     group: 'projects',
-    mark: { kind: 'project', name: project.name, mascotId: project.mascot_id },
+    mark: {
+      kind: 'project',
+      project: {
+        id: project.id,
+        name: project.name,
+        mascotId: project.mascot_id,
+        logoVersion: project.logo_updated_at,
+      },
+    },
   }))
 }
 

@@ -4,10 +4,12 @@ use std::time::Duration;
 use moka::future::Cache;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Connection, PgConnection, PgPool};
+use tokio::sync::Semaphore;
+use tokio::time::timeout;
 use uuid::Uuid;
 
 use crate::modules::tenants::postgres::tenant_database_server::{
-    TenantDatabaseError, TenantDatabaseServer, ensure_database_identity,
+    TenantDatabaseError, TenantDatabaseServer, ensure_prepared_database,
 };
 use crate::modules::tenants::postgres::tenant_pool_limits::TenantPoolLimits;
 use crate::modules::tenants::provisioning::tenant_repository::find_tenant_slug;
@@ -23,6 +25,9 @@ const DATA_API_POOL_RESET_TIMEOUT: Duration = Duration::from_secs(2);
 const TENANT_POOL_ACQUIRE_TIMEOUT: Duration = Duration::from_secs(5);
 /// Pools of tenants without requests for this long are dropped, closing their connections.
 const POOL_TIME_TO_IDLE: Duration = Duration::from_secs(30 * 60);
+const PARALLEL_PREPARATIONS: usize = 4;
+const PREPARATION_WAIT: Duration = Duration::from_secs(5);
+const PREPARATION_TIMEOUT: Duration = Duration::from_secs(45);
 
 #[derive(Debug, thiserror::Error)]
 pub enum TenantPoolError {
@@ -34,6 +39,10 @@ pub enum TenantPoolError {
     TenantDatabase(#[from] TenantDatabaseError),
     #[error("stored tenant slug is invalid: {0}")]
     InvalidSlug(#[from] InvalidTenantSlug),
+    #[error("tenant database preparation is busy")]
+    PreparationBusy,
+    #[error("tenant database preparation timed out")]
+    PreparationTimedOut,
 }
 
 /// Lazily opens and caches the connection pools of each tenant database.
@@ -41,14 +50,13 @@ pub enum TenantPoolError {
 /// One for the platform's own code (Auth, webhooks) and one for the Data API, so project traffic can never
 /// take the connections Auth needs.
 ///
-/// Concurrent first requests of one tenant open its pool (and run its migrations) once, while
-/// other tenants are never blocked by it. A failed opening is not cached: the next request
-/// retries.
+/// Concurrent first requests share one opening per tenant. A failed opening can be retried.
 pub struct TenantPoolRegistry {
     control_plane_pool: PgPool,
     tenant_database_base_url: String,
     pools: Cache<Uuid, PgPool>,
     data_api_pools: Cache<Uuid, PgPool>,
+    preparations: Semaphore,
     mode: TenantPoolMode,
     limits: TenantPoolLimits,
 }
@@ -66,6 +74,7 @@ impl TenantPoolRegistry {
             tenant_database_base_url,
             pools: pool_cache(TenantPoolLimits::API),
             data_api_pools: pool_cache(TenantPoolLimits::DATA_API),
+            preparations: Semaphore::new(PARALLEL_PREPARATIONS),
             mode: TenantPoolMode::Legacy,
             limits: TenantPoolLimits::API,
         }
@@ -86,6 +95,10 @@ impl TenantPoolRegistry {
     pub fn with_managed_schema(mut self) -> Self {
         self.mode = TenantPoolMode::ManagedWorker;
         self
+    }
+
+    pub(crate) fn manages_schema(&self) -> bool {
+        matches!(self.mode, TenantPoolMode::ManagedApi { .. })
     }
 
     pub async fn pool_for(&self, tenant_id: Uuid) -> Result<PgPool, Arc<TenantPoolError>> {
@@ -122,18 +135,26 @@ impl TenantPoolRegistry {
             }
             _ => server.auth_options(&slug)?,
         };
-        if matches!(self.mode, TenantPoolMode::Legacy)
-            && server
-                .prepare_registered_database(&self.control_plane_pool, &slug, tenant_id)
-                .await?
-                == false
-        {
-            return Err(TenantPoolError::TenantNotFound(tenant_id));
+        if matches!(self.mode, TenantPoolMode::ManagedWorker) == false {
+            let _permit = timeout(PREPARATION_WAIT, self.preparations.acquire())
+                .await
+                .map_err(|_| TenantPoolError::PreparationBusy)?
+                .map_err(|_| TenantPoolError::PreparationBusy)?;
+            let prepared = timeout(
+                PREPARATION_TIMEOUT,
+                server.prepare_registered_database(&self.control_plane_pool, &slug, tenant_id),
+            )
+            .await
+            .map_err(|_| TenantPoolError::PreparationTimedOut)??;
+
+            if prepared == false {
+                return Err(TenantPoolError::TenantNotFound(tenant_id));
+            }
         }
 
         Ok(tenant_pool_options(self.limits)
             .after_connect(move |connection, _| {
-                Box::pin(ensure_database_identity(connection, tenant_id))
+                Box::pin(ensure_prepared_database(connection, tenant_id))
             })
             .connect_lazy_with(options))
     }
@@ -149,7 +170,7 @@ impl TenantPoolRegistry {
         Ok(tenant_pool_options(TenantPoolLimits::DATA_API)
             .idle_timeout(DATA_API_POOL_IDLE_TIMEOUT)
             .after_connect(move |connection, _| {
-                Box::pin(ensure_database_identity(connection, tenant_id))
+                Box::pin(ensure_prepared_database(connection, tenant_id))
             })
             .after_release(|connection, _| Box::pin(reset_data_api_connection(connection)))
             .connect_lazy_with(options))
@@ -165,7 +186,7 @@ impl TenantPoolRegistry {
     /// The server that holds every tenant database.
     pub fn database_server(&self) -> TenantDatabaseServer<'_> {
         let server = TenantDatabaseServer::new(&self.tenant_database_base_url);
-        if matches!(self.mode, TenantPoolMode::ManagedApi { .. }) {
+        if self.manages_schema() {
             return server.with_runtime_role();
         }
 

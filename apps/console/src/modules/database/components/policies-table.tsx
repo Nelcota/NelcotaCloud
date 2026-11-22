@@ -47,5 +47,13 @@ function Condition({ label, condition }: ConditionProps): JSX.Element | null {
     return null
   }
 
-  return <CodeBlock code={condition} title={label} copyLabel={`condição ${label}`} isWrapped />
+  return (
+    <CodeBlock
+      code={condition}
+      title={label}
+      language="sql"
+      copyLabel={`condição ${label}`}
+      isWrapped
+    />
+  )
 }

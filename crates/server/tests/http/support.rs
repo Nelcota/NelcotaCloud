@@ -10,6 +10,7 @@ use reqwest::{Client, Response};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use server::app_config::AppConfig;
+use server::app_state::AppState;
 use server::modules::oauth::provider::provider_endpoints::{OAuthEndpoints, ProviderEndpoints};
 use server::modules::storage::object_store::r2_config::R2Config;
 use server::router::build_router;
@@ -100,6 +101,8 @@ pub struct TestServer {
     _fake_turnstile: FakeTurnstile,
     /// Slug the server treats as the platform tenant; created on demand by tests.
     pub platform_slug: String,
+    /// The running server's state, for tests that drive a background job by hand.
+    pub state: AppState,
     base_url: String,
     admin_token: String,
     mailpit_api_url: String,
@@ -238,7 +241,7 @@ impl TestServer {
         let _server_task = tokio::spawn(
             axum::serve(
                 listener,
-                build_router(state).into_make_service_with_connect_info::<SocketAddr>(),
+                build_router(state.clone()).into_make_service_with_connect_info::<SocketAddr>(),
             )
             .into_future(),
         );
@@ -259,6 +262,7 @@ impl TestServer {
             fake_github,
             _fake_turnstile: fake_turnstile,
             platform_slug,
+            state,
             base_url,
             admin_token,
             mailpit_api_url: std::env::var("MAILPIT_API_URL")?,
@@ -272,6 +276,10 @@ impl TestServer {
 
     pub fn tenant_database_base_url(&self) -> &str {
         self.config.tenant_database_base_url.trim_end_matches('/')
+    }
+
+    pub fn config(&self) -> AppConfig {
+        self.config.clone()
     }
 
     pub fn url(&self, path: &str) -> String {

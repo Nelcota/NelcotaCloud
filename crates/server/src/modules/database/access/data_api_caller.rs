@@ -6,6 +6,7 @@ use uuid::Uuid;
 use crate::app_state::AppState;
 use crate::modules::auth::integration::session_token::verify_session_token;
 use crate::modules::database::access::request_role::RequestRole;
+use crate::modules::database::usage::usage_slot::{UsageSlot, UsageTarget};
 use crate::modules::tenants::access::api_key_tenant::{API_KEY_HEADER, ApiKeyTenant};
 use crate::modules::tenants::access::tenant_admin::TenantAdmin;
 use crate::modules::tenants::api_keys::api_key_kind::ApiKeyKind;
@@ -43,11 +44,13 @@ impl FromRequestParts<AppState> for DataApiCaller {
     async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, ApiError> {
         if parts.headers.contains_key(API_KEY_HEADER) == false {
             let admin = TenantAdmin::from_request_parts(parts, state).await?;
+            count_usage_for(parts, state, admin.tenant_id);
             return Self::service(state, admin.tenant_id);
         }
 
         let tenant = ApiKeyTenant::from_request_parts(parts, state).await?;
         let tenant_id = tenant.tenant_id;
+        count_usage_for(parts, state, tenant_id);
 
         if tenant.api_key_kind == ApiKeyKind::Secret {
             return Self::service(state, tenant_id);
@@ -67,6 +70,18 @@ impl FromRequestParts<AppState> for DataApiCaller {
 
         Self::user(state, tenant_id, access_token).await
     }
+}
+
+/// From here on the response counts in the project's Data API usage, refusals included.
+fn count_usage_for(parts: &Parts, state: &AppState, tenant_id: Uuid) {
+    let Some(slot) = parts.extensions.get::<UsageSlot>() else {
+        return;
+    };
+
+    slot.fill(UsageTarget {
+        tenant_id,
+        buffer: state.data_api_usage.clone(),
+    });
 }
 
 impl DataApiCaller {

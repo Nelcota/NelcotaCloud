@@ -16,7 +16,7 @@ export function SiteUrl({ url }: { url: string | undefined }): JSX.Element | nul
     >
       <span className="shrink-0 text-muted-foreground">Site</span>
       <span className="min-w-0 truncate font-mono">{url}</span>
-      <ArrowUpRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+      <ArrowUpRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
       <span className="sr-only">(abre em nova aba)</span>
     </a>
   )

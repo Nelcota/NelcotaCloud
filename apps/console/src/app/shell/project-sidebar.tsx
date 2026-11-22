@@ -1,6 +1,5 @@
 import type { JSX } from 'react'
 
-import { ProjectSwitcher } from '@/app/shell/project-switcher'
 import {
   PROJECT_GROUPS,
   type ProjectLocation,
@@ -12,14 +11,13 @@ import { ariaCurrentPage } from '@/shared/lib/aria-current'
 import { cn } from '@/shared/lib/utils'
 import { RouterLink } from '@/shared/routing/router-link'
 
-/** The open project at the top, then its pages in labeled groups, like a resource's tabs. */
+/** The open project's pages in labeled groups, like a resource's tabs. */
 export function ProjectSidebar({ location }: { location: ProjectLocation }): JSX.Element {
   return (
-    <div className="flex flex-col gap-1 px-2 pt-2 pb-4">
-      <ProjectSwitcher projectId={location.projectId} />
-      <nav aria-label="Páginas do projeto" className="flex flex-col gap-3 pt-2">
+    <div className="flex flex-col px-2 pt-2 pb-4">
+      <nav aria-label="Páginas do projeto" className="flex flex-col">
         {PROJECT_GROUPS.map((group) => (
-          <div key={group.id} className="grid gap-px">
+          <div key={group.id} className="grid gap-px py-3 first:pt-0 last:pb-0">
             <GroupLabel label={group.label} />
             <ul className="grid gap-px">
               {sectionsOf(group.id).map((section) => (
@@ -44,7 +42,8 @@ function GroupLabel({ label }: { label: string | null }): JSX.Element | null {
     return null
   }
 
-  return <p className="type-label px-2 pt-1 pb-1.5 text-muted-foreground">{label}</p>
+  /* The links' own padding (px-2.5), so the label starts on the icons' leading edge. */
+  return <p className="type-label px-2.5 pt-1 pb-1.5 text-muted-foreground">{label}</p>
 }
 
 type SectionLinkProps = { projectId: string; section: ProjectSection; isCurrent: boolean }
@@ -63,7 +62,7 @@ function SectionLink({ projectId, section, isCurrent }: SectionLinkProps): JSX.E
     >
       <Glyph
         aria-hidden
-        className={cn('size-4 shrink-0 transition-colors', isCurrent && 'text-brand')}
+        className={cn('size-4.5 shrink-0 transition-colors', isCurrent && 'text-brand')}
       />
       <span className="truncate">{section.label}</span>
     </RouterLink>

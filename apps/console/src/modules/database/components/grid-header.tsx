@@ -1,3 +1,4 @@
+import { KeyRound } from 'lucide-react'
 import type { JSX } from 'react'
 
 import type { GridColumn } from '@/modules/database/components/grid-row-details'
@@ -24,13 +25,24 @@ export function GridHeader({ columns, isNumeric }: GridHeaderProps): JSX.Element
             key={index}
             className={cn(STICKY_HEAD, isNumeric[index] === true && 'text-end')}
           >
-            {column.name}
+            <span className="inline-flex items-center gap-1">
+              <KeyMark isKey={column.is_primary_key === true} />
+              {column.name}
+            </span>
             <ColumnType type={column.type} />
           </TableHead>
         ))}
       </TableRow>
     </TableHeader>
   )
+}
+
+function KeyMark({ isKey }: { isKey: boolean }): JSX.Element | null {
+  if (isKey === false) {
+    return null
+  }
+
+  return <KeyRound aria-label="Chave primária" className="size-3.5 shrink-0 text-primary" />
 }
 
 function ColumnType({ type }: { type?: string }): JSX.Element | null {

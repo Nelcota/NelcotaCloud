@@ -2,23 +2,44 @@ use futures_util::future::join_all;
 use sqlx::PgPool;
 use tokio::sync::watch;
 use tokio::time::{Instant, timeout_at};
+use uuid::Uuid;
 
 use crate::modules::webhooks::delivery::delivery_claim_repository::{
-    ClaimedDelivery, LEASE_DURATION, claim_due_deliveries,
+    ClaimedDelivery, DeliveryLease, LEASE_DURATION, claim_due_deliveries,
 };
 use crate::modules::webhooks::delivery::delivery_queue_repository::{
-    AttemptResult, mark_delivered, mark_failed,
+    AttemptResult, DeliveredAttempt, mark_delivered, mark_failed,
 };
 use crate::modules::webhooks::delivery::delivery_targets::DeliveryTargets;
 use crate::modules::webhooks::delivery::retry_schedule::retry_delay;
 use crate::modules::webhooks::delivery::webhook_request::{
-    DeliveryOutcome, DeliveryTarget, WebhookMessage,
+    AttemptReport, DeliveryOutcome, DeliveryTarget, WebhookMessage,
 };
 use crate::modules::webhooks::delivery::webhook_transport::WebhookTransport;
+use crate::modules::webhooks::endpoint::endpoint_health_repository::{
+    record_endpoint_failure, record_endpoint_success,
+};
 use crate::modules::webhooks::health::worker_heartbeat::WorkerProgress;
+
+/// What recording an attempt needs from its claim, once the payload has gone into the request.
+struct ClaimedAttempt {
+    lease: DeliveryLease,
+    attempts: i32,
+}
+
+impl ClaimedAttempt {
+    fn of(delivery: &ClaimedDelivery) -> Self {
+        Self {
+            lease: delivery.lease,
+            attempts: delivery.attempts,
+        }
+    }
+}
 
 pub struct DeliveryBatch<'a> {
     pub pool: &'a PgPool,
+    /// Where each endpoint's run of failures is kept, for the owners' alerts.
+    pub control_plane_pool: &'a PgPool,
     pub transport: &'a WebhookTransport,
     pub targets: &'a DeliveryTargets,
     pub progress: &'a watch::Sender<WorkerProgress>,
@@ -66,40 +87,74 @@ impl DeliveryBatch<'_> {
             return Ok(false);
         }
 
+        let claimed = ClaimedAttempt::of(&delivery);
+        let endpoint_id = delivery.endpoint_id;
         let message = WebhookMessage {
             id: delivery.event_id.to_string(),
             body: delivery.payload,
         };
         let sent = timeout_at(deadline, self.transport.send(target, &message)).await;
-        let outcome = match sent {
-            Ok(outcome) => outcome,
+        let report = match sent {
+            Ok(report) => report,
             Err(error) => {
-                tracing::warn!(delivery_id = %delivery.lease.delivery_id, %error, "webhook send reached its lease deadline");
+                tracing::warn!(delivery_id = %claimed.lease.delivery_id, %error, "webhook send reached its lease deadline");
                 return Ok(false);
             }
         };
-        let recorded = match outcome {
+        let is_delivered = matches!(report.outcome, DeliveryOutcome::Delivered { .. });
+        let recorded = self.record(&claimed, report).await?;
+        self.record_endpoint_health(endpoint_id, is_delivered).await;
+
+        if recorded == false {
+            tracing::warn!(delivery_id = %claimed.lease.delivery_id, "webhook attempt lost its lease before completion");
+        }
+
+        Ok(recorded)
+    }
+
+    async fn record(
+        &self,
+        delivery: &ClaimedAttempt,
+        report: AttemptReport,
+    ) -> Result<bool, sqlx::Error> {
+        let lease = delivery.lease;
+        let duration_ms = report.duration_ms;
+
+        match report.outcome {
             DeliveryOutcome::Delivered { status } => {
-                mark_delivered(self.pool, delivery.lease, status).await?
+                let attempt = DeliveredAttempt {
+                    lease,
+                    status,
+                    duration_ms,
+                };
+                mark_delivered(self.pool, attempt).await
             }
             DeliveryOutcome::Failed { status, error } => {
                 let attempt = AttemptResult {
-                    lease: delivery.lease,
+                    lease,
                     status,
                     error: Some(&error),
+                    duration_ms,
+                    response_excerpt: report.response_excerpt.as_deref(),
                 };
                 let retry_in = u32::try_from(delivery.attempts)
                     .ok()
                     .and_then(|previous| previous.checked_add(1))
                     .and_then(retry_delay);
-                mark_failed(self.pool, attempt, retry_in).await?
+                mark_failed(self.pool, attempt, retry_in).await
             }
+        }
+    }
+
+    /// Advisory: a control plane hiccup is logged and the delivery stays recorded.
+    async fn record_endpoint_health(&self, endpoint_id: Uuid, is_delivered: bool) {
+        let recorded = match is_delivered {
+            true => record_endpoint_success(self.control_plane_pool, endpoint_id).await,
+            false => record_endpoint_failure(self.control_plane_pool, endpoint_id).await,
         };
 
-        if recorded == false {
-            tracing::warn!(delivery_id = %delivery.lease.delivery_id, "webhook attempt lost its lease before completion");
+        if let Err(error) = recorded {
+            tracing::warn!(%error, %endpoint_id, "could not record a webhook endpoint's health");
         }
-
-        Ok(recorded)
     }
 }

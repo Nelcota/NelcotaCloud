@@ -27,7 +27,7 @@ export function RailLink({ href, label, icon: Glyph, isCurrent }: RailLinkProps)
             isCurrent && 'bg-surface-hover text-foreground',
           )}
         >
-          <Glyph aria-hidden className="size-5" />
+          <Glyph aria-hidden className="size-5.5" />
         </RouterLink>
       </TooltipTrigger>
       <TooltipContent side="right">{label}</TooltipContent>

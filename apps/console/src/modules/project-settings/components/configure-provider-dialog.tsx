@@ -44,6 +44,7 @@ export function ConfigureProviderDialog(props: ConfigureProviderDialogProps): JS
 
   async function finish(): Promise<void> {
     await save.mutateAsync({ client_id: clientId.trim(), client_secret: clientSecret.trim() })
+    setClientSecret('')
   }
 
   return (

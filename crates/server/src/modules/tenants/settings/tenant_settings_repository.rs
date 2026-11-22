@@ -8,7 +8,9 @@ use crate::modules::tenants::settings::tenant_settings::TenantSettings;
 /// time with `concat!` instead of `format!` on every call.
 macro_rules! settings_columns {
     () => {
-        "name, site_url, require_email_verification, mascot_id"
+        "name, site_url, require_email_verification, mascot_id, \
+         (SELECT updated_at FROM tenant_logos WHERE tenant_logos.tenant_id = tenants.id) \
+         AS logo_updated_at"
     };
 }
 

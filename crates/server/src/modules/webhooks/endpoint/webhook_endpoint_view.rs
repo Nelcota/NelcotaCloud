@@ -11,9 +11,17 @@ use crate::modules::webhooks::event::webhook_event_type::{WebhookEventType, know
 pub struct WebhookEndpointView {
     pub id: Uuid,
     pub url: String,
+    /// The name its owner gave it ("Sincronizar CRM"), if any.
+    pub description: Option<String>,
     pub event_types: Vec<WebhookEventType>,
     /// Disabled endpoints receive no new events.
     pub is_enabled: bool,
+    /// When its current run of refused attempts started; `null` while it delivers.
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub failing_since: Option<OffsetDateTime>,
+    /// When the platform paused it after failing for 5 days; `null` unless it did.
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub auto_paused_at: Option<OffsetDateTime>,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
 }
@@ -33,8 +41,11 @@ impl From<StoredWebhookEndpoint> for WebhookEndpointView {
         Self {
             id: stored.id,
             url: stored.url,
+            description: stored.description,
             event_types,
             is_enabled: stored.is_enabled,
+            failing_since: stored.failing_since,
+            auto_paused_at: stored.auto_paused_at,
             created_at: stored.created_at,
         }
     }

@@ -45,7 +45,7 @@ GRANT USAGE ON SCHEMA auth TO nelcota_tenant_runtime;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA auth TO nelcota_tenant_runtime;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA auth TO nelcota_tenant_runtime;
 REVOKE ALL ON TABLE auth._sqlx_migrations, auth.schema_version FROM nelcota_tenant_runtime;
-REVOKE INSERT, UPDATE, DELETE ON auth.tenant_identity FROM nelcota_tenant_runtime;
+REVOKE ALL ON auth.tenant_identity FROM nelcota_tenant_runtime;
 GRANT EXECUTE ON FUNCTION auth.terminate_project_backend(integer, timestamptz) TO nelcota_tenant_runtime;
 ";
 

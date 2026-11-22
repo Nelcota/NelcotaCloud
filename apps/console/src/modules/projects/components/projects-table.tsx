@@ -1,6 +1,7 @@
 import type { JSX } from 'react'
 
-import { ProjectAvatar } from '@/shared/ui/project-avatar'
+import { ProjectMark } from '@/modules/projects/components/project-mark'
+import { markSourceOf } from '@/modules/projects/components/project-mark-source'
 import { RoleBadge } from '@/modules/projects/components/role-badge'
 import { siteLabel } from '@/modules/projects/components/site-label'
 import type { components } from '@/shared/api/api-schema'
@@ -57,7 +58,7 @@ function ProjectRow({ project }: { project: ProjectSummary }): JSX.Element {
     <TableRow>
       <TableCell>
         <div className="flex min-w-0 items-center gap-3">
-          <ProjectAvatar name={project.name} mascotId={project.mascot_id} />
+          <ProjectMark project={markSourceOf(project)} size="sm" />
           <RouterLink
             href={`/projects/${project.id}`}
             className="truncate font-medium text-heading hover:underline"

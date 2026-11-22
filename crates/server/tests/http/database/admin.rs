@@ -181,6 +181,11 @@ async fn manages_tables_columns_and_policies() -> TestResult {
         field(&todos, "/policies/0/using"),
         "(owner_id = auth.uid())"
     );
+    assert_eq!(field(&todos, "/indexes/0/is_primary"), true);
+    assert_eq!(field(&todos, "/indexes/0/columns"), &json!(["id"]));
+    assert_eq!(field(&todos, "/indexes/0/method"), "btree");
+    assert!(field(&todos, "/indexes/0/scans").is_i64());
+    assert!(field(&todos, "/size_bytes").as_i64() > Some(0));
 
     let user = server.sign_up(&tenant, &unique_email("todo")).await?;
     let as_user = Credentials::user(&tenant, &user.access_token);

@@ -13,7 +13,7 @@ import {
 } from '@/modules/project-settings/queries/use-captcha'
 import { PendingButton } from '@/shared/ui/pending-button'
 import { Input } from '@/shared/ui/primitives/input'
-import { SavedNote } from '@/shared/ui/saved-note'
+import { showFlash } from '@/shared/lib/flash-notice'
 
 type CaptchaFormProps = { projectId: string; siteKey: string | null }
 
@@ -30,7 +30,16 @@ export function CaptchaForm({ projectId, siteKey }: CaptchaFormProps): JSX.Eleme
 
   function submit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault()
-    save.mutate({ site_key: newSiteKey.trim(), secret_key: secretKey.trim() })
+    save.mutate(
+      { site_key: newSiteKey.trim(), secret_key: secretKey.trim() },
+      {
+        // The secret leaves the page once stored: nothing keeps it in memory after the save.
+        onSuccess: () => {
+          setSecretKey('')
+          showFlash('Captcha ativo.')
+        },
+      },
+    )
   }
 
   return (
@@ -45,7 +54,6 @@ export function CaptchaForm({ projectId, siteKey }: CaptchaFormProps): JSX.Eleme
       onSubmit={submit}
       footer={
         <>
-          <SavedNote isSaved={save.isSuccess} message="Captcha ativo" />
           <DisableCaptchaButton
             siteKey={siteKey}
             isPending={remove.isPending}

@@ -25,7 +25,7 @@ export function SettingsRow({
   return (
     <div
       className={cn(
-        'grid gap-2 py-3 sm:items-center sm:gap-6',
+        'grid gap-2 py-3.5 sm:items-center sm:gap-6',
         isWide === true && 'sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]',
         isWide !== true && 'sm:grid-cols-[minmax(0,1fr)_auto]',
       )}

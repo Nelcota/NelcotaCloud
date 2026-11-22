@@ -5,6 +5,7 @@ import { RECENT_SIGN_UP_DAYS, useRecentSignUps } from '@/modules/users/queries/u
 import { type StatusTotals, useStatusTotals } from '@/modules/users/queries/use-status-totals'
 import { formatCount, formatShare } from '@/shared/lib/format-number'
 import { AnimatedNumber } from '@/shared/ui/animated-number'
+import { Skeleton } from '@/shared/ui/primitives/skeleton'
 import { StatCard } from '@/shared/ui/stat-card'
 import { SummarySentence } from '@/shared/ui/summary-sentence'
 
@@ -54,7 +55,7 @@ function UsersVerdict({ totals }: { totals: StatusTotals }): JSX.Element | null 
 
 function Figure({ value }: { value: number | undefined }): JSX.Element {
   if (value === undefined) {
-    return <span className="text-muted-foreground">—</span>
+    return <Skeleton className="my-1 h-7 w-14" />
   }
 
   return <AnimatedNumber value={value} format={formatCount} />

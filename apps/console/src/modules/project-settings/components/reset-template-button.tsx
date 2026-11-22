@@ -24,6 +24,7 @@ export function ResetTemplateButton({
       title="Voltar ao texto padrão?"
       description="O texto deste email volta a ser o padrão da plataforma, em inglês. O seu se perde."
       confirmLabel="Usar texto padrão"
+      isDestructive
       isPending={isPending}
       onConfirm={onReset}
     />

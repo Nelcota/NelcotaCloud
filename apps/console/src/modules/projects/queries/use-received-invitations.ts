@@ -31,7 +31,7 @@ export function useAcceptInvitationMutation(): UseMutationResult<
     mutationFn: acceptInvitation,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: INVITATIONS_KEY })
-      await queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY })
+      await queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY, exact: true })
     },
   })
 }

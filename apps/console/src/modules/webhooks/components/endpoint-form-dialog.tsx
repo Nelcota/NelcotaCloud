@@ -1,6 +1,7 @@
 import type { JSX } from 'react'
 import { useState } from 'react'
 
+import { EndpointNameField } from '@/modules/webhooks/components/endpoint-name-field'
 import { EndpointReview } from '@/modules/webhooks/components/endpoint-review'
 import { EndpointUrlField } from '@/modules/webhooks/components/endpoint-url-field'
 import { urlProblem } from '@/modules/webhooks/components/endpoint-url-rules'
@@ -10,7 +11,12 @@ import { withHttps, withoutHttps } from '@/shared/lib/web-address'
 import { missingUnless } from '@/shared/ui/step-dialog/missing-unless'
 import { StepDialog } from '@/shared/ui/step-dialog/step-dialog'
 
-export type EndpointFormValues = { url: string; event_types: WebhookEventType[] }
+/** `description` is the optional name; a blank one removes it. */
+export type EndpointFormValues = {
+  url: string
+  description: string
+  event_types: WebhookEventType[]
+}
 
 export type EndpointFormDialogProps = {
   isOpen: boolean
@@ -36,10 +42,11 @@ export function EndpointFormDialog(props: EndpointFormDialogProps): JSX.Element 
 
 function EndpointForm(props: EndpointFormDialogProps): JSX.Element {
   const [url, setUrl] = useState(withoutHttps(props.initial.url))
+  const [name, setName] = useState(props.initial.description)
   const [eventTypes, setEventTypes] = useState(props.initial.event_types)
 
   async function save(): Promise<void> {
-    await props.onSubmit({ url: withHttps(url), event_types: eventTypes })
+    await props.onSubmit({ url: withHttps(url), description: name.trim(), event_types: eventTypes })
   }
 
   return (
@@ -55,7 +62,12 @@ function EndpointForm(props: EndpointFormDialogProps): JSX.Element {
           label: 'Endereço',
           description: 'Para onde a NelcotaCloud envia os eventos.',
           missing: urlProblem(url),
-          content: <EndpointUrlField value={url} onChange={setUrl} hasAutoFocus />,
+          content: (
+            <div className="flex flex-col gap-4">
+              <EndpointUrlField value={url} onChange={setUrl} hasAutoFocus />
+              <EndpointNameField value={name} onChange={setName} />
+            </div>
+          ),
         },
         {
           label: 'Eventos',
@@ -67,7 +79,9 @@ function EndpointForm(props: EndpointFormDialogProps): JSX.Element {
           label: 'Revisar',
           description: 'Confira antes de salvar.',
           missing: null,
-          content: <EndpointReview url={withHttps(url)} eventTypes={eventTypes} />,
+          content: (
+            <EndpointReview url={withHttps(url)} name={name.trim()} eventTypes={eventTypes} />
+          ),
         },
       ]}
     />

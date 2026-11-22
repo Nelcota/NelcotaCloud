@@ -5,7 +5,7 @@ import { TableRowMenu } from '@/modules/database/components/table-row-menu'
 import { isPlainTable, kindLabel } from '@/modules/database/components/table-kinds'
 import { tableHref } from '@/modules/database/components/table-href'
 import type { components } from '@/shared/api/api-schema'
-import { formatCount } from '@/shared/lib/format-number'
+import { formatBytes, formatCount } from '@/shared/lib/format-number'
 import { RouterLink } from '@/shared/routing/router-link'
 import {
   Table,
@@ -34,6 +34,7 @@ export function TablesTable({ projectId, tables }: TablesTableProps): JSX.Elemen
           <TableHead className="text-end">Colunas</TableHead>
           <TableHead className="text-end">Políticas</TableHead>
           <TableHead className="text-end">Linhas (est.)</TableHead>
+          <TableHead className="text-end">Tamanho</TableHead>
           <TableHead className="w-10">
             <span className="sr-only">Ações</span>
           </TableHead>
@@ -59,6 +60,7 @@ export function TablesTable({ projectId, tables }: TablesTableProps): JSX.Elemen
             <TableCell className="text-end text-foreground tabular-nums">
               {estimatedRows(table)}
             </TableCell>
+            <TableCell className={NUMBER_CELL}>{tableSize(table)}</TableCell>
             <TableCell className="py-1 text-end">
               <TableRowMenu table={table.name} />
             </TableCell>
@@ -78,6 +80,15 @@ function estimatedRows(table: TableOverview): string {
   }
 
   return formatCount(rows)
+}
+
+/** Views take no space of their own. */
+function tableSize(table: TableOverview): string {
+  if (table.size_bytes === 0) {
+    return '—'
+  }
+
+  return formatBytes(table.size_bytes)
 }
 
 /** Views and other kinds have no policies of their own. */

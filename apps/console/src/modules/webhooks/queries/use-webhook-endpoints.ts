@@ -60,7 +60,10 @@ export function useDeleteWebhookEndpointMutation(
 
   return useMutation({
     mutationFn: (endpointId: string) => deleteWebhookEndpoint(projectId, endpointId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: webhookEndpointsKey(projectId) }),
+    // Not awaited: the deleted endpoint's page leaves first instead of flashing "not found".
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: webhookEndpointsKey(projectId) })
+    },
   })
 }
 

@@ -4,17 +4,27 @@ import type { JSX } from 'react'
 import { AvatarUploadDialog } from '@/modules/account/components/avatar-upload-dialog'
 import { ProfileFacts } from '@/modules/account/components/profile-facts'
 import { RemovePhotoButton } from '@/modules/account/components/remove-photo-button'
-import { useRemoveAvatarMutation } from '@/modules/account/queries/use-avatar'
+import {
+  useRemoveAvatarMutation,
+  useUploadAvatarMutation,
+} from '@/modules/account/queries/use-avatar'
 import { useCurrentAccount } from '@/shared/auth/use-current-account'
 import { Avatar } from '@/shared/ui/avatar'
 import { SettingsSection } from '@/shared/ui/settings-section'
 import { StatusBadge } from '@/shared/ui/status-badge'
+
+const PHOTO_COPY = {
+  title: 'Foto de perfil',
+  description: 'Arraste para enquadrar a foto no círculo; o zoom aproxima.',
+  saveLabel: 'Salvar foto',
+}
 
 /** Who the console account is: photo, email and its state, then its technical facts. */
 export function ProfileSection({ session }: { session: Session }): JSX.Element {
   const { user } = session
   const { photoUrl } = useCurrentAccount()
   const removal = useRemoveAvatarMutation()
+  const upload = useUploadAvatarMutation()
 
   return (
     <SettingsSection title="Perfil">
@@ -32,7 +42,11 @@ export function ProfileSection({ session }: { session: Session }): JSX.Element {
             isPending={removal.isPending}
             onConfirm={() => removal.mutateAsync()}
           />
-          <AvatarUploadDialog triggerLabel={uploadLabel(photoUrl)} />
+          <AvatarUploadDialog
+            copy={{ ...PHOTO_COPY, triggerLabel: uploadLabel(photoUrl) }}
+            cropShape="round"
+            upload={upload}
+          />
         </div>
       </div>
       <ProfileFacts user={user} />

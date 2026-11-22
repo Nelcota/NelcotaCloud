@@ -34,6 +34,7 @@ export function DeleteProjectButton({
       change={{ subject: projectName, icon: Database, from: 'Ativo', to: 'Excluído' }}
       confirmationText={slug}
       isDestructive
+      isSolid
       isPending={deletion.isPending}
       onConfirm={deleteProject}
     />

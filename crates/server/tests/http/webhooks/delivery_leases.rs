@@ -1,9 +1,12 @@
 use std::time::Duration;
 
-use server::modules::webhooks::delivery::delivery_claim_repository::claim_due_deliveries;
+use server::modules::webhooks::delivery::delivery_claim_repository::{
+    DeliveryLease, claim_due_deliveries,
+};
 use server::modules::webhooks::delivery::delivery_log_repository::{Requeue, requeue_delivery};
 use server::modules::webhooks::delivery::delivery_queue_repository::{
-    AttemptResult, abandon_orphaned_deliveries, mark_delivered, mark_failed, next_due_at,
+    AttemptResult, DeliveredAttempt, abandon_orphaned_deliveries, mark_delivered, mark_failed,
+    next_due_at,
 };
 use sqlx::PgPool;
 use time::OffsetDateTime;
@@ -67,7 +70,7 @@ async fn a_reclaimed_delivery_rejects_completion_from_the_previous_owner() -> Te
         Requeue::InProgress
     );
     expire_lease(&pool, delivery_id).await?;
-    assert!(mark_delivered(&pool, previous.lease, 200).await? == false);
+    assert!(mark_delivered(&pool, delivered(previous.lease, 200)).await? == false);
     let recovered = claim_due_deliveries(&pool, &[endpoint_id]).await?;
     let current = recovered.first().ok_or("expected a recovered claim")?;
     assert_eq!(current.event_id, previous.event_id);
@@ -78,10 +81,12 @@ async fn a_reclaimed_delivery_rejects_completion_from_the_previous_owner() -> Te
         lease: previous.lease,
         status: Some(500),
         error: Some("fixture"),
+        duration_ms: Some(12),
+        response_excerpt: Some("busy"),
     };
     assert!(mark_failed(&pool, stale_failure, Some(Duration::from_secs(1))).await? == false);
-    assert!(mark_delivered(&pool, current.lease, 204).await?);
-    assert!(mark_delivered(&pool, current.lease, 200).await? == false);
+    assert!(mark_delivered(&pool, delivered(current.lease, 204)).await?);
+    assert!(mark_delivered(&pool, delivered(current.lease, 200)).await? == false);
 
     let result: (i32, i32) = sqlx::query_as(
         "SELECT attempts, last_response_status FROM webhook_deliveries WHERE id = $1",
@@ -136,4 +141,12 @@ async fn expire_lease(pool: &PgPool, delivery_id: Uuid) -> TestResult {
         .await?;
 
     Ok(())
+}
+
+fn delivered(lease: DeliveryLease, status: u16) -> DeliveredAttempt {
+    DeliveredAttempt {
+        lease,
+        status,
+        duration_ms: Some(8),
+    }
 }

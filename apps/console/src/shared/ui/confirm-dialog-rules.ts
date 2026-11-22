@@ -20,9 +20,11 @@ export function changesOf(change: ConfirmDialogProps['change']): ConfirmChange[]
 }
 
 /** Destructive actions are red; weighty ones (handing a project over) stay neutral. */
-export function confirmVariant(props: ConfirmDialogProps): 'destructive' | 'outline' | 'default' {
+export function confirmVariant(
+  props: ConfirmDialogProps,
+): 'destructive-solid' | 'outline' | 'default' {
   if (props.isDestructive === true) {
-    return 'destructive'
+    return 'destructive-solid'
   }
 
   if (props.isWeighty === true) {

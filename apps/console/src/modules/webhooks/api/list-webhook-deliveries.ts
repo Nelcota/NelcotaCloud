@@ -4,13 +4,20 @@ import type { components } from '@/shared/api/api-schema'
 
 type DeliveryLogEntry = components['schemas']['DeliveryLogEntry']
 
-/** The endpoint's 50 newest deliveries. */
+/** One state only, older than a delivery (the last of the previous page), or both. */
+export type DeliveryLogPage = {
+  status?: components['schemas']['DeliveryStatus']
+  before?: string
+}
+
+/** The endpoint's deliveries, newest first, 50 at a time. */
 export async function listWebhookDeliveries(
   projectId: string,
   endpointId: string,
+  page: DeliveryLogPage = {},
 ): Promise<DeliveryLogEntry[]> {
   const headers = projectHeaders(projectId)
-  const params = { path: { endpoint_id: endpointId } }
+  const params = { path: { endpoint_id: endpointId }, query: page }
 
   return dataOf(
     await apiClient.GET('/auth/v1/admin/webhooks/{endpoint_id}/deliveries', { headers, params }),

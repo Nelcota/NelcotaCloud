@@ -41,7 +41,7 @@ cleanup() {
     rm -rf -- "${work_dir}"
 }
 trap cleanup EXIT
-rclone copy --quiet "backup:${snapshot}" "${work_dir}"
+rclone copy "backup:${snapshot}" "${work_dir}"
 
 if [[ ! -s "${work_dir}/nelcota_control.dump" ]]; then
     echo "snapshot is missing the control-plane dump" >&2
@@ -102,11 +102,18 @@ while IFS='|' read -r database tenant_id; do
     fi
 
     # A recycled slug can refer to different projects in two otherwise valid dumps.
-    restored_id="$(psql --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+    restored_id="$(psql --no-psqlrc --set=ON_ERROR_STOP=1 --quiet --tuples-only --no-align \
         --dbname="${staged[$database]}" <<'SQL'
 SELECT to_regclass('auth.tenant_identity') IS NOT NULL AS has_identity \gset
 \if :has_identity
 SELECT tenant_id FROM auth.tenant_identity WHERE singleton;
+SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'auth' AND table_name = 'tenant_identity' AND column_name = 'prepared_through'
+) AS has_preparation \gset
+\if :has_preparation
+UPDATE auth.tenant_identity SET prepared_through = 0 WHERE singleton;
+\endif
 \else
 SELECT 'legacy';
 \endif

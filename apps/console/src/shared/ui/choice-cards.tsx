@@ -71,7 +71,7 @@ function ChoiceCard<Value extends string>({ choice }: { choice: Choice<Value> })
       )}
     >
       <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-surface-hover text-muted-foreground group-has-data-checked:border-primary/40 group-has-data-checked:text-primary">
-        <Glyph aria-hidden className="size-4" />
+        <Glyph aria-hidden className="size-4.5" />
       </span>
       <span className="grid min-w-0 flex-1 gap-1">
         <span className="flex items-center gap-2 text-sm font-medium text-heading">

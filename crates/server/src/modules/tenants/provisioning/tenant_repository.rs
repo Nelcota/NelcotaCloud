@@ -58,18 +58,6 @@ pub async fn tenant_ids_after(
     .await
 }
 
-pub async fn tenant_slugs_after(
-    pool: &PgPool,
-    after: &str,
-    limit: i64,
-) -> Result<Vec<(String, Uuid)>, sqlx::Error> {
-    sqlx::query_as("SELECT slug, id FROM tenants WHERE slug > $1 ORDER BY slug LIMIT $2")
-        .bind(after)
-        .bind(limit)
-        .fetch_all(pool)
-        .await
-}
-
 pub async fn find_tenant_id_by_slug<'e>(
     executor: impl PgExecutor<'e>,
     slug: &TenantSlug,

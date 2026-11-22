@@ -1,6 +1,8 @@
 import { useId, type JSX } from 'react'
 
 import { FormError } from '@/modules/project-settings/components/form-error'
+import { ProjectLogoRow } from '@/modules/project-settings/components/project-logo-row'
+import { ProjectMeta } from '@/modules/project-settings/components/project-meta'
 import { SaveFooter } from '@/modules/project-settings/components/save-footer'
 import { SettingsGroup } from '@/modules/project-settings/components/settings-group'
 import { rowDescriptionId } from '@/modules/project-settings/components/row-description-id'
@@ -11,15 +13,19 @@ import type { components } from '@/shared/api/api-schema'
 import { withoutHttps } from '@/shared/lib/web-address'
 import { Input } from '@/shared/ui/primitives/input'
 
+type Schemas = components['schemas']
+
 type GeneralSettingsFormProps = {
   projectId: string
-  settings: components['schemas']['TenantSettings']
+  settings: Schemas['TenantSettings']
+  project: Schemas['ProjectSummary'] | undefined
 }
 
 /** The project's name and the site its emails and social logins return to. */
 export function GeneralSettingsForm({
   projectId,
   settings,
+  project,
 }: GeneralSettingsFormProps): JSX.Element {
   const nameId = useId()
   const siteId = useId()
@@ -28,7 +34,7 @@ export function GeneralSettingsForm({
   return (
     <SettingsGroup
       title="Projeto"
-      description="O nome entra nos emails que os usuários recebem."
+      description={<ProjectMeta project={project} />}
       onSubmit={submit}
       footer={
         <SaveFooter
@@ -38,7 +44,13 @@ export function GeneralSettingsForm({
         />
       }
     >
-      <SettingsRow title="Nome do projeto" controlId={nameId} isWide>
+      <ProjectLogoRow projectId={projectId} settings={settings} />
+      <SettingsRow
+        title="Nome do projeto"
+        description="Aparece nos emails que os usuários recebem."
+        controlId={nameId}
+        isWide
+      >
         <Input
           id={nameId}
           required

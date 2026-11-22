@@ -15,6 +15,11 @@ export const MESSAGES_BY_CODE: Record<string, string> = {
   too_many_requests: 'Muitas tentativas em pouco tempo. Espere um minuto e tente de novo.',
   slug_taken: 'Esse identificador já está em uso. Escolha outro.',
   project_access_denied: 'Você não tem mais acesso a este projeto. Peça um novo convite a um dono.',
+  read_only_member:
+    'Você tem acesso só de leitura neste projeto. Peça a um dono para permitir edição.',
+  notification_channel_limit:
+    'O projeto já tem 5 canais de notificação. Remova um para adicionar outro.',
+  notification_test_failed: 'O canal não aceitou o teste. Confira o endereço ou a URL do webhook.',
   admin_access_denied: 'Só donos fazem isso neste projeto. Peça a um dono.',
   secret_key_required: 'Essa ação exige a chave secreta.',
   smtp_delivery_failed:
@@ -31,6 +36,7 @@ export const MESSAGES_BY_CODE: Record<string, string> = {
   invitation_delivery_in_progress: 'O email do convite está sendo enviado. Aguarde o resultado.',
   payload_too_large: 'O arquivo é grande demais. Envie até 25 MiB.',
   storage_unavailable: 'O armazenamento está indisponível. Tente de novo em alguns minutos.',
+  storage_not_configured: 'Os arquivos não estão ativados neste servidor.',
   storage_bucket_not_found: 'Este bucket não existe mais. Recarregue a página.',
   storage_object_not_found: 'Este arquivo não existe mais. Recarregue a página.',
   storage_bucket_exists: 'Já existe um bucket com esse nome.',

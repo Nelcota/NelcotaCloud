@@ -85,7 +85,7 @@ function useMembershipMutation<TVariables>(
   return useMutation({
     mutationFn: action,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY })
+      await queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY, exact: true })
       await queryClient.invalidateQueries({ queryKey: teamKey(projectId) })
     },
   })

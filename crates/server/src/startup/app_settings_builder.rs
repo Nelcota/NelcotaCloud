@@ -35,7 +35,9 @@ pub async fn build_settings(
 }
 
 /// An unset or blank `CLIENT_IP_HEADER` means the TCP peer address is the client IP.
-fn parse_client_ip_header(raw_header: Option<&str>) -> Result<Option<HeaderName>, StartupError> {
+pub(super) fn parse_client_ip_header(
+    raw_header: Option<&str>,
+) -> Result<Option<HeaderName>, StartupError> {
     let header = raw_header
         .map(str::trim)
         .filter(|header| header.is_empty() == false)

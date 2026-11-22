@@ -10,7 +10,7 @@ import {
 } from '@/app/shell/command-items'
 import { PaletteFooter } from '@/app/shell/command-palette-footer'
 import { ThemeCommand } from '@/app/shell/command-theme-action'
-import { ProjectAvatar } from '@/shared/ui/project-avatar'
+import { ProjectMark } from '@/modules/projects/components/project-mark'
 import { useProjectsQuery } from '@/modules/projects/queries/use-projects'
 import {
   Command,
@@ -99,7 +99,7 @@ function CommandItemMark({ mark }: { mark: CommandMark }): JSX.Element {
   if (mark.kind === 'project') {
     return (
       <span aria-hidden className="flex">
-        <ProjectAvatar name={mark.name} mascotId={mark.mascotId} size="xs" />
+        <ProjectMark project={mark.project} size="xs" />
       </span>
     )
   }

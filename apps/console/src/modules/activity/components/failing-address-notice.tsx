@@ -39,7 +39,12 @@ export function FailingAddressNotice({
         }
         action={
           <div className="flex shrink-0 gap-2">
-            <Button type="button" size="sm" onClick={() => setBlockTarget(ip)}>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={() => setBlockTarget(ip)}
+            >
               Bloquear
             </Button>
             <Button type="button" variant="outline" size="sm" onClick={() => onShowEvents(ip)}>

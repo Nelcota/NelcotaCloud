@@ -19,7 +19,7 @@ export function ConfirmChangePreview({ change }: { change: ConfirmChange }): JSX
 
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-3 rounded-lg border bg-surface px-3 py-2.5 text-sm">
-      <Glyph aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+      <Glyph aria-hidden className="size-4.5 shrink-0 text-muted-foreground" />
       <span className="min-w-0 flex-1 font-medium wrap-anywhere">{change.subject}</span>
       <span className="sr-only">
         {change.from} passa a {change.to}

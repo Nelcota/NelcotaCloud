@@ -2,42 +2,37 @@ import type { JSX } from 'react'
 import { useState } from 'react'
 
 import { ActivityFeedBody } from '@/modules/activity/components/activity-feed-body'
+import { ActivityToolbar } from '@/modules/activity/components/activity-toolbar'
 import { AuditEventSheet } from '@/modules/activity/components/audit-event-sheet'
 import { BlockAddressDialog } from '@/modules/activity/components/block-address-dialog'
-import { DetectedFields } from '@/modules/activity/components/detected-fields'
-import { LogPanelHeader } from '@/modules/activity/components/log-panel-header'
-import { LogQueryForm } from '@/modules/activity/components/log-query-form'
 import {
   type ActivityFiltersControl,
   auditFilterOf,
 } from '@/modules/activity/components/use-activity-filters'
 import { useAuditRowContext } from '@/modules/activity/components/use-audit-row-context'
 import { useLiveRefetch } from '@/modules/activity/components/use-live-refetch'
-import { useLogFacets } from '@/modules/activity/components/use-log-facets'
 import { useAuditEventsQuery } from '@/modules/activity/queries/use-audit-events-query'
 import type { components } from '@/shared/api/api-schema'
 
 type ActivityLogProps = {
   projectId: string
-  /** One user's events, without the user field or address blocking. */
+  /** One user's events, without the user's email or address blocking. */
   userId?: string
   control: ActivityFiltersControl
 }
 
-/** The log viewer: search and detected fields, the lines, and the panel of the event picked. */
+/** The audit trail: the filters, the events by day, and the panel of the event picked. */
 export function ActivityLog({ projectId, userId, control }: ActivityLogProps): JSX.Element {
   const pages = useAuditEventsQuery({ projectId, filter: auditFilterOf(control.filters, userId) })
   const context = useAuditRowContext(projectId)
   const [openEvent, setOpenEvent] = useState<components['schemas']['AuditEvent'] | null>(null)
   const [blockTarget, setBlockTarget] = useState<string | null>(null)
   const [isLive, setIsLive] = useState(true)
-  const showsUser = userId === undefined
-  const events = pages.data?.pages.flatMap((page) => page.events)
-  const facets = useLogFacets({ events, control, showsUser })
-  useLiveRefetch(pages.refetch, isLive)
+  // Refreshing an infinite list reloads every page: live mode follows only the first one.
+  useLiveRefetch(pages.refetch, isLive && (pages.data?.pages.length ?? 1) <= 1)
 
-  /** Applies the box at once; with the same search, reads the log again. */
-  function run(): void {
+  /** With a new search, applies it at once; with the same one, reads the feed again. */
+  function searchNow(): void {
     const text = control.filters.searchText.trim()
 
     if (text !== control.filters.search) {
@@ -54,30 +49,24 @@ export function ActivityLog({ projectId, userId, control }: ActivityLogProps): J
   }
 
   return (
-    <div className="grid min-w-0 gap-4 lg:grid-cols-[15rem_minmax(0,1fr)]">
-      <aside aria-label="Filtros do log" className="flex min-w-0 flex-col gap-5">
-        <LogQueryForm control={control} onRun={run} />
-        <DetectedFields facets={facets} />
-      </aside>
-      <div className="flex min-w-0 flex-col gap-2">
-        <LogPanelHeader control={control} isLive={isLive} onLiveChange={setIsLive} />
-        <div className="min-w-0 overflow-hidden rounded-xl bg-card">
-          <ActivityFeedBody
-            pages={pages}
-            facets={facets}
-            view={{
-              context,
-              showsUser,
-              filters: control.filters,
-              isLive,
-              onClear: () => {
-                control.clear()
-                facets.clearFields()
-              },
-              onOpen: setOpenEvent,
-            }}
-          />
-        </div>
+    <div className="flex min-w-0 flex-col gap-3">
+      <ActivityToolbar
+        control={control}
+        live={{ isLive, onLiveChange: setIsLive }}
+        onSearchNow={searchNow}
+      />
+      <div className="min-w-0 rounded-xl bg-card">
+        <ActivityFeedBody
+          pages={pages}
+          view={{
+            context,
+            showsUser: userId === undefined,
+            filters: control.filters,
+            isLive,
+            onClear: control.clear,
+            onOpen: setOpenEvent,
+          }}
+        />
       </div>
       <AuditEventSheet
         event={openEvent}
