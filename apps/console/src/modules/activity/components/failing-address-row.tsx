@@ -1,6 +1,7 @@
 import type { JSX } from 'react'
 
 import type { components } from '@/shared/api/api-schema'
+import { formatCount } from '@/shared/lib/format-number'
 import { Button } from '@/shared/ui/primitives/button'
 import { TableCell, TableRow } from '@/shared/ui/primitives/table'
 import { StatusBadge } from '@/shared/ui/status-badge'
@@ -25,12 +26,8 @@ export function FailingAddressRow({
   return (
     <TableRow>
       <TableCell className="py-2 font-mono text-xs">{ip}</TableCell>
-      <TableCell className="py-2 text-end tabular-nums">
-        {address.failures.toLocaleString('pt-BR')}
-      </TableCell>
-      <TableCell className="py-2 text-end tabular-nums">
-        {address.accounts.toLocaleString('pt-BR')}
-      </TableCell>
+      <TableCell className="py-2 text-end tabular-nums">{formatCount(address.failures)}</TableCell>
+      <TableCell className="py-2 text-end tabular-nums">{formatCount(address.accounts)}</TableCell>
       <TableCell className="hidden py-2 text-muted-foreground sm:table-cell">
         <Timestamp value={address.last_seen_at} format="relative" />
       </TableCell>

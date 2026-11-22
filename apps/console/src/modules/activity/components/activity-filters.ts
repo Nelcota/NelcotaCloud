@@ -9,9 +9,9 @@ export const DEFAULT_DAYS = 7
 
 export const PERIOD_OPTIONS: readonly SegmentOption[] = [
   { label: '24h', value: '1' },
-  { label: '7 dias', value: '7' },
-  { label: '30 dias', value: '30' },
-  { label: '90 dias', value: '90' },
+  { label: '7d', value: '7' },
+  { label: '30d', value: '30' },
+  { label: '90d', value: '90' },
 ]
 
 const KIND_LABELS: Record<KindFilter, string> = {

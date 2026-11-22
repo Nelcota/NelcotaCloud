@@ -23,7 +23,7 @@ export function FailingAddressesTable(props: FailingAddressesTableProps): JSX.El
 
   if (props.addresses.length === 0) {
     return (
-      <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+      <p className="px-4 py-6 text-center text-xs text-muted-foreground">
         Nenhum login recusado no período.
       </p>
     )

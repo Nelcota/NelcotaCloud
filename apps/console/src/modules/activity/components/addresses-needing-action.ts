@@ -1,5 +1,6 @@
 import { hostOf } from '@/modules/activity/components/address-host'
 import type { components } from '@/shared/api/api-schema'
+import { formatCount } from '@/shared/lib/format-number'
 
 type Schemas = components['schemas']
 type FailingAddress = Schemas['FailingAddress']
@@ -25,7 +26,7 @@ export function failuresText(failures: number): string {
     return '1 login recusado'
   }
 
-  return `${failures.toLocaleString('pt-BR')} logins recusados`
+  return `${formatCount(failures)} logins recusados`
 }
 
 /** "Tentou 3 contas diferentes", "Tentou 1 conta". */
@@ -34,5 +35,5 @@ export function accountsText(accounts: number): string {
     return 'Tentou 1 conta'
   }
 
-  return `Tentou ${accounts.toLocaleString('pt-BR')} contas diferentes`
+  return `Tentou ${formatCount(accounts)} contas diferentes`
 }

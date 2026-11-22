@@ -1,4 +1,4 @@
-import Download from '~icons/solar/download-minimalistic-linear'
+import { Download } from 'lucide-react'
 import type { JSX } from 'react'
 
 import type { AuditFilter } from '@/modules/activity/api/list-audit-events'

@@ -28,6 +28,7 @@ export function ActivityHeader({ projectId, control }: ActivityHeaderProps): JSX
         <>
           <SegmentedControl
             label="Período"
+            isMono
             options={PERIOD_OPTIONS}
             value={String(control.filters.days)}
             onValueChange={(value) => {

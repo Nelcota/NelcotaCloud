@@ -19,7 +19,7 @@ export function ActivityPage(): JSX.Element {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <ActivityHeader projectId={projectId} control={control} />
       <ActivityStats projectId={projectId} days={days} onShowEvents={showFailures} />
       <ActivityLog projectId={projectId} control={control} />

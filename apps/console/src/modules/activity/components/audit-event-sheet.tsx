@@ -50,7 +50,7 @@ function OpenEvent({ event, context, actions }: AuditEventSheetProps): JSX.Eleme
   return (
     <>
       <div className="grid gap-1 border-b px-5 py-4 pe-12">
-        <SheetTitle className="text-lg font-semibold">{actionText(event)}</SheetTitle>
+        <SheetTitle className="text-base font-medium">{actionText(event)}</SheetTitle>
         <SheetDescription className="tabular-nums">
           {formatDateTime(event.occurred_at)}
         </SheetDescription>

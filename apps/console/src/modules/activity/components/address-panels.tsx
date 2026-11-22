@@ -20,7 +20,11 @@ export function AddressPanels({ projectId, days, onShowEvents }: AddressPanelsPr
 
   return (
     <div className="flex flex-col gap-3">
-      <CollapsiblePanel title="Endereços com mais recusas" count={failing?.length}>
+      <CollapsiblePanel
+        title="Endereços com mais recusas"
+        description="Quem errou a senha mais vezes no período"
+        count={failing?.length}
+      >
         <FailingAddressesTable
           projectId={projectId}
           addresses={failing ?? []}
@@ -28,7 +32,11 @@ export function AddressPanels({ projectId, days, onShowEvents }: AddressPanelsPr
           onShowEvents={onShowEvents}
         />
       </CollapsiblePanel>
-      <CollapsiblePanel title="Endereços bloqueados" count={blocks.data?.length}>
+      <CollapsiblePanel
+        title="Endereços bloqueados"
+        description="Logins, cadastros e links por email recusados"
+        count={blocks.data?.length}
+      >
         <BlockedAddressesTable projectId={projectId} />
       </CollapsiblePanel>
     </div>
