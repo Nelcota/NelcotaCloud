@@ -1,7 +1,7 @@
+import { Server } from 'lucide-react'
 import AmazonSesLogo from '~icons/logos/aws-ses'
 import GmailLogo from '~icons/logos/google-gmail'
 import MicrosoftLogo from '~icons/logos/microsoft-icon'
-import Server from '~icons/solar/server-linear'
 
 import { ResendLogo } from '@/modules/project-settings/components/resend-logo'
 import type { SmtpSecurity } from '@/modules/project-settings/components/smtp-url'

@@ -15,8 +15,8 @@ export function ProviderAppGuide({
   const guide = PROVIDER_GUIDES[provider]
 
   return (
-    <div className="flex flex-col gap-4">
-      <ol className="grid gap-2.5">
+    <div className="flex flex-col gap-3">
+      <ol className="grid gap-2 rounded-xl bg-surface p-3">
         <GuideStep number={1}>
           Abra{' '}
           <a
@@ -42,14 +42,14 @@ export function ProviderAppGuide({
 
 function GuideStep({ number, children }: { number: number; children: ReactNode }): JSX.Element {
   return (
-    <li className="flex items-start gap-3 text-sm text-pretty">
+    <li className="flex items-start gap-2.5 text-xs text-pretty">
       <span
         aria-hidden
-        className="grid size-5 shrink-0 place-items-center rounded-full border bg-surface text-xs font-medium text-muted-foreground tabular-nums"
+        className="grid h-4 min-w-4 shrink-0 place-items-center rounded-sm bg-surface-hover px-1 font-mono text-2xs text-muted-foreground tabular-nums"
       >
         {number}
       </span>
-      <span className="min-w-0 pt-px">{children}</span>
+      <span className="min-w-0">{children}</span>
     </li>
   )
 }

@@ -28,6 +28,7 @@ export function SmtpTestSection({ projectId }: { projectId: string }): JSX.Eleme
   return (
     <SettingsSection
       title="Testar o envio"
+      description="Um email de teste pelo seu servidor confirma a entrega."
       onSubmit={submit}
       footer={
         <>

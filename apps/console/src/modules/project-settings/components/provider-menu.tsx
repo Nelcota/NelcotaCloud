@@ -1,6 +1,4 @@
-import Login from '~icons/solar/login-3-linear'
-import MenuDots from '~icons/solar/menu-dots-bold'
-import TrashBin from '~icons/solar/trash-bin-trash-linear'
+import { LogIn as Login, Ellipsis as MenuDots, Trash2 as TrashBin } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
@@ -31,7 +29,7 @@ export function ProviderMenu({ projectId, provider }: ProviderMenuProps): JSX.El
           <Button
             type="button"
             variant="ghost"
-            size="icon"
+            size="icon-sm"
             aria-label={`Mais ações: ${providerName}`}
           >
             <MenuDots aria-hidden />

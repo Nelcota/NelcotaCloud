@@ -1,4 +1,4 @@
-import Letter from '~icons/solar/letter-linear'
+import { Mail as Letter } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { useResetSmtpMutation } from '@/modules/project-settings/queries/use-project-settings'

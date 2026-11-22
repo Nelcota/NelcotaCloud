@@ -28,6 +28,7 @@ export function GeneralSettingsForm({
   return (
     <SettingsGroup
       title="Projeto"
+      description="O nome entra nos emails que os usuários recebem."
       onSubmit={submit}
       footer={
         <SaveFooter

@@ -48,7 +48,7 @@ export function ConfigureProviderDialog(props: ConfigureProviderDialogProps): JS
 
   return (
     <>
-      <Button type="button" variant="outline" onClick={open}>
+      <Button type="button" variant="outline" size="sm" onClick={open}>
         {props.triggerLabel}
       </Button>
       <StepDialog
@@ -64,7 +64,7 @@ export function ConfigureProviderDialog(props: ConfigureProviderDialogProps): JS
             description: 'Crie um app de login no provedor e cole nele a URL de callback.',
             missing: missingUnless(isAppCreated, 'Confirme que o app foi criado'),
             content: (
-              <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-4">
                 <ProviderAppGuide provider={provider} callbackUrl={props.callbackUrl} />
                 <CheckboxField
                   label={`Já criei o app no ${providerName} e colei a URL de callback`}
@@ -109,10 +109,10 @@ export function ConfigureProviderDialog(props: ConfigureProviderDialogProps): JS
             description: 'Confira antes de ativar o login.',
             missing: null,
             content: (
-              <DataList className="rounded-xl border bg-card px-4">
+              <DataList className="rounded-xl bg-surface px-4">
                 <DataListItem label="Provedor">{providerName}</DataListItem>
                 <DataListItem label="Client ID">
-                  <code className="font-mono text-sm wrap-anywhere">{clientId.trim()}</code>
+                  <code className="font-mono wrap-anywhere">{clientId.trim()}</code>
                 </DataListItem>
                 <DataListItem label="Client secret">{STORED_SECRET}</DataListItem>
               </DataList>

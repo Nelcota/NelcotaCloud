@@ -10,7 +10,7 @@ export function ApiEndpointsPane({ projectId }: { projectId: string }): JSX.Elem
   return (
     <>
       <ProjectIdentifiers projectId={projectId} />
-      <SettingsGroup title="Endpoints" footerNote="Envie a chave do projeto no header apikey.">
+      <SettingsGroup title="Endpoints" description="Envie a chave do projeto no header apikey.">
         {PROJECT_ENDPOINTS.map((endpoint) => (
           <EndpointRow key={endpoint.label} {...endpoint} />
         ))}

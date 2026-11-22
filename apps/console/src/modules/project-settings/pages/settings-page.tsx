@@ -22,7 +22,7 @@ export function SettingsPage(): JSX.Element {
   const publishableKey = usePublishableKey(projectId)
 
   return (
-    <>
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Configurações"
         description="Identidade, endpoints, acesso e segurança do projeto."
@@ -34,7 +34,7 @@ export function SettingsPage(): JSX.Element {
           />
         }
       />
-      <div className="grid gap-6 lg:grid-cols-[13.75rem_minmax(0,1fr)] lg:gap-10">
+      <div className="grid gap-5 lg:grid-cols-[12.5rem_minmax(0,1fr)] lg:gap-8">
         <SettingsNav projectId={projectId} current={pane} />
         <SettingsPaneView pane={pane}>
           <LoadError error={settings.error} onRetry={() => settings.refetch()} />
@@ -46,7 +46,7 @@ export function SettingsPage(): JSX.Element {
           />
         </SettingsPaneView>
       </div>
-    </>
+    </div>
   )
 }
 
@@ -71,9 +71,9 @@ function PaneBody({ projectId, paneId, settings, hasFailed }: PaneBodyProps): JS
 
 function PaneSkeleton(): JSX.Element {
   return (
-    <div className="grid gap-5" aria-hidden>
-      <Skeleton className="h-36 rounded-xl" />
-      <Skeleton className="h-56 rounded-xl" />
+    <div className="grid gap-4" aria-hidden>
+      <Skeleton className="h-40 rounded-xl" />
+      <Skeleton className="h-52 rounded-xl" />
     </div>
   )
 }

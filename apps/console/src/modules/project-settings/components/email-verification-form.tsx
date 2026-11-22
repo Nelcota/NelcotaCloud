@@ -25,6 +25,7 @@ export function EmailVerificationForm({
   return (
     <SettingsGroup
       title="Acesso"
+      description="Vale para o login com senha e a renovação da sessão."
       onSubmit={submit}
       footer={
         <SaveFooter

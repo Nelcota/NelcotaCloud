@@ -11,7 +11,7 @@ export function SecurityPane({ projectId }: { projectId: string }): JSX.Element 
   return (
     <>
       <CaptchaSection projectId={projectId} />
-      <SettingsGroup title="Proteções">
+      <SettingsGroup title="Proteções" description="O que o app lê e quem já foi barrado.">
         <EndpointRow
           label="Site key para o app"
           meaning="O app lê a site key do widget aqui, com a chave publicável."

@@ -1,5 +1,4 @@
-import LockKeyhole from '~icons/solar/lock-keyhole-linear'
-import ShieldKeyhole from '~icons/solar/shield-keyhole-linear'
+import { LockKeyhole, ShieldEllipsis as ShieldKeyhole } from 'lucide-react'
 
 import type { SmtpSecurity } from '@/modules/project-settings/components/smtp-url'
 import type { Choice } from '@/shared/ui/choice-cards'

@@ -1,4 +1,4 @@
-import ArrowUpRight from '~icons/solar/arrow-right-up-linear'
+import { ArrowUpRight } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { RouterLink } from '@/shared/routing/router-link'

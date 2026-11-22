@@ -51,7 +51,7 @@ function ProviderLoginHint({ preset }: { preset: SmtpPreset | null }): JSX.Eleme
   }
 
   return (
-    <p className="rounded-lg border bg-surface px-3.5 py-3 text-sm text-pretty text-muted-foreground">
+    <p className="rounded-lg bg-surface px-3 py-2.5 text-xs text-pretty text-muted-foreground">
       {preset.loginHint} <LoginLink link={preset.loginLink} />
     </p>
   )

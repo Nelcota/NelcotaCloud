@@ -17,7 +17,7 @@ export function EmailPage(): JSX.Element {
   const publishableKey = usePublishableKey(projectId)
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Email"
         description="Verificação, redefinição de senha e link mágico."

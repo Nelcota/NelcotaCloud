@@ -67,17 +67,20 @@ export function OAuthRedirectsPanel({ projectId, urls }: OAuthRedirectsPanelProp
 function RedirectList({ urls }: { urls: string[] }): JSX.Element {
   if (urls.length === 0) {
     return (
-      <p className="px-5 py-4 text-sm text-muted-foreground">
+      <p className="px-4 py-3 text-xs text-muted-foreground">
         Nenhuma cadastrada: só URLs sob o site do projeto.
       </p>
     )
   }
 
   return (
-    <ul className="divide-y">
+    <ul className="divide-y divide-border/60">
       {urls.map((url) => (
-        <li key={url} className="flex items-center gap-2 py-2 ps-5 pe-2">
-          <code className="min-w-0 flex-1 font-mono text-sm wrap-anywhere">{url}</code>
+        <li
+          key={url}
+          className="flex min-h-10 items-center gap-2 py-1 ps-4 pe-2 transition-colors hover:bg-surface"
+        >
+          <code className="min-w-0 flex-1 font-mono text-xs wrap-anywhere">{url}</code>
           <CopyButton value={url} description={url} isIconOnly />
         </li>
       ))}

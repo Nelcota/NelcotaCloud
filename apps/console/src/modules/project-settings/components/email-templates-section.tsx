@@ -1,4 +1,3 @@
-import { Tabs as TabsPrimitive } from 'radix-ui'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
@@ -7,7 +6,7 @@ import { EmailTemplateEditor } from '@/modules/project-settings/components/email
 import { useEmailTemplatesQuery } from '@/modules/project-settings/queries/use-email-templates'
 import { useSettingsQuery } from '@/modules/project-settings/queries/use-project-settings'
 import { LoadError } from '@/shared/ui/load-error'
-import { Tabs, TabsList, TabsTrigger } from '@/shared/ui/primitives/tabs'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/primitives/tabs'
 import { Section } from '@/shared/ui/section'
 
 type EmailChoice = { value: EmailKind; label: string }
@@ -45,19 +44,15 @@ export function EmailTemplatesSection({ projectId }: { projectId: string }): JSX
     >
       <LoadError error={templates.error} onRetry={() => templates.refetch()} />
       <Tabs value={kind} onValueChange={select} className="gap-4">
-        <TabsList
-          variant="line"
-          aria-label="Modelo de email"
-          className="w-full justify-start border-b pb-1"
-        >
+        <TabsList variant="line" aria-label="Modelo de email" className="w-full">
           {EMAIL_CHOICES.map((choice) => (
-            <TabsTrigger key={choice.value} value={choice.value} className="flex-none px-2.5">
+            <TabsTrigger key={choice.value} value={choice.value}>
               {choice.label}
             </TabsTrigger>
           ))}
         </TabsList>
         {EMAIL_CHOICES.map((choice) => (
-          <TabsPrimitive.Content key={choice.value} value={choice.value} className="outline-none">
+          <TabsContent key={choice.value} value={choice.value}>
             <EmailTemplateEditor
               projectId={projectId}
               title={choice.label}
@@ -69,7 +64,7 @@ export function EmailTemplatesSection({ projectId }: { projectId: string }): JSX
                 onRetry: () => templates.refetch(),
               }}
             />
-          </TabsPrimitive.Content>
+          </TabsContent>
         ))}
       </Tabs>
     </Section>

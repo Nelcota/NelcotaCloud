@@ -1,0 +1,13 @@
+import type { JSX } from 'react'
+
+/** The uppercase label over a group of the settings sidebar. */
+export function SettingsNavGroupLabel({ id, label }: { id: string; label: string }): JSX.Element {
+  return (
+    <p
+      id={id}
+      className="px-2 pt-1 pb-1.5 text-2xs font-medium tracking-[0.025em] text-muted-foreground uppercase"
+    >
+      {label}
+    </p>
+  )
+}

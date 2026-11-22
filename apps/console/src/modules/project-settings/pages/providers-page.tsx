@@ -24,7 +24,7 @@ export function ProvidersPage(): JSX.Element {
   const publishableKey = usePublishableKey(projectId)
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Login social"
         description="Google e GitHub com o app OAuth do próprio projeto, sempre com PKCE."

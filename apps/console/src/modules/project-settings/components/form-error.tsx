@@ -9,7 +9,7 @@ export function FormError({ error }: { error: Error | null }): JSX.Element | nul
   }
 
   return (
-    <div className="px-6 py-5">
+    <div className="py-3">
       <ErrorAlert error={error} />
     </div>
   )

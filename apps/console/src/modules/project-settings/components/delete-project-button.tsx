@@ -1,4 +1,4 @@
-import Database from '~icons/solar/database-linear'
+import { Database } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 import type { JSX } from 'react'
 

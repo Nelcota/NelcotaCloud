@@ -13,7 +13,7 @@ type EndpointRowProps = {
 export function EndpointRow({ label, meaning, value }: EndpointRowProps): JSX.Element {
   return (
     <SettingsRow title={label} description={meaning} isWide>
-      <IdChip label={label} value={value} className="w-full py-1" />
+      <IdChip label={label} value={value} className="w-full" />
     </SettingsRow>
   )
 }

@@ -19,7 +19,7 @@ type SiteUrlInputProps = {
 /** The address field of a settings row, which labels it; `https://` shows until a scheme is typed. */
 export function SiteUrlInput({ id, value, onChange, describedBy }: SiteUrlInputProps): JSX.Element {
   return (
-    <InputGroup className="min-h-9">
+    <InputGroup className="min-h-8">
       <InputGroupInput
         id={id}
         name="site_url"

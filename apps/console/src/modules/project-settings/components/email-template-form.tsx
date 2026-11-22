@@ -55,9 +55,9 @@ export function EmailTemplateForm({
   return (
     <div className="grid items-start gap-4 lg:grid-cols-2">
       <SettingsSection
-        title={labels.title}
+        title="Texto"
+        description="Sem links nem domínios: só o botão leva ao seu site."
         onSubmit={submit}
-        footerNote="Sem links nem domínios: só o botão leva ao seu site."
         footer={
           <>
             <SavedNote isSaved={save.isSuccess} message="Texto salvo" />
@@ -92,7 +92,7 @@ export function EmailTemplateForm({
         />
         <ErrorAlert error={save.error ?? reset.error} />
       </SettingsSection>
-      <EmailPreview text={text} appName={labels.appName} />
+      <EmailPreview text={text} appName={labels.appName} kindLabel={labels.title} />
     </div>
   )
 }

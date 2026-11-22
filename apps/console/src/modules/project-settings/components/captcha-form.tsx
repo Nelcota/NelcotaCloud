@@ -36,9 +36,13 @@ export function CaptchaForm({ projectId, siteKey }: CaptchaFormProps): JSX.Eleme
   return (
     <SettingsGroup
       title="Cloudflare Turnstile"
-      meta={<CaptchaStatus siteKey={siteKey} />}
+      description={
+        <span className="flex flex-wrap items-center gap-2">
+          <CaptchaStatus siteKey={siteKey} />
+          {captchaRule(siteKey)}
+        </span>
+      }
       onSubmit={submit}
-      footerNote={captchaRule(siteKey)}
       footer={
         <>
           <SavedNote isSaved={save.isSuccess} message="Captcha ativo" />

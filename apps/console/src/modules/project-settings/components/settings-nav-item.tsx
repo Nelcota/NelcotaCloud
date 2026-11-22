@@ -3,23 +3,33 @@ import { useEffect, useRef, type JSX } from 'react'
 import type { SettingsPane } from '@/modules/project-settings/components/settings-panes'
 import { cn } from '@/shared/lib/utils'
 
+export type SettingsNavLook = 'sidebar' | 'pill'
+
 type SettingsNavItemProps = {
   pane: SettingsPane
   isCurrent: boolean
+  /** A row of the sidebar on wide screens, a scrolling pill on narrow ones. */
+  look: SettingsNavLook
 }
 
-export function SettingsNavItem({ pane, isCurrent }: SettingsNavItemProps): JSX.Element {
+const LOOKS: Record<SettingsNavLook, string> = {
+  sidebar: 'h-8 px-2 text-sm',
+  pill: 'h-7 px-2.5 text-xs',
+}
+
+export function SettingsNavItem({ pane, isCurrent, look }: SettingsNavItemProps): JSX.Element {
   const Glyph = pane.icon
   const link = useRef<HTMLAnchorElement>(null)
+  const isDanger = pane.isDanger === true
 
-  // On narrow screens the tabs scroll sideways; keep the open one in sight after a reload.
+  // The pills scroll sideways; keep the open one in sight after a reload.
   useEffect(() => {
-    if (isCurrent === false) {
+    if (isCurrent === false || look === 'sidebar') {
       return
     }
 
     link.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
-  }, [isCurrent])
+  }, [isCurrent, look])
 
   return (
     <a
@@ -27,16 +37,21 @@ export function SettingsNavItem({ pane, isCurrent }: SettingsNavItemProps): JSX.
       href={`#${pane.id}`}
       aria-current={currentOf(isCurrent)}
       className={cn(
-        'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm whitespace-nowrap text-muted-foreground transition-[color,background-color,scale] outline-none hover:bg-surface-hover hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-[0.98] motion-reduce:active:scale-100',
-        isCurrent && 'bg-surface font-medium text-heading',
-        isCurrent && pane.isDanger === true && 'text-destructive',
+        'flex min-w-0 items-center gap-2 rounded-md whitespace-nowrap text-muted-foreground transition-[color,background-color,scale] duration-200 ease-standard outline-none hover:bg-surface hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring active:scale-[0.97] motion-reduce:active:scale-100',
+        LOOKS[look],
+        isCurrent && 'bg-surface-hover font-medium text-foreground hover:bg-surface-hover',
+        isDanger && 'text-destructive hover:text-destructive',
       )}
     >
       <Glyph
         aria-hidden
-        className={cn('size-4 shrink-0', pane.isDanger === true && 'text-destructive')}
+        className={cn(
+          'size-4 shrink-0 transition-colors',
+          isCurrent && 'text-brand',
+          isDanger && 'text-destructive',
+        )}
       />
-      {pane.label}
+      <span className="truncate">{pane.label}</span>
     </a>
   )
 }

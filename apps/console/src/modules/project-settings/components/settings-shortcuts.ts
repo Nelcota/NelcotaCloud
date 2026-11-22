@@ -1,8 +1,10 @@
-import Letter from '~icons/solar/letter-linear'
-import Link from '~icons/solar/link-minimalistic-2-linear'
-import Key from '~icons/solar/key-linear'
-import Webhooks from '~icons/solar/share-linear'
-import Team from '~icons/solar/users-group-rounded-linear'
+import {
+  Mail as Letter,
+  Link2 as Link,
+  KeyRound as Key,
+  Share2 as Webhooks,
+  Users as Team,
+} from 'lucide-react'
 import type { IconComponent } from '@/shared/ui/icon-component'
 
 export type SettingsShortcut = {

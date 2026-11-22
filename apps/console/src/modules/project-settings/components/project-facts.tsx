@@ -1,7 +1,8 @@
-import type { JSX, ReactNode } from 'react'
+import type { JSX } from 'react'
 
 import type { components } from '@/shared/api/api-schema'
-import { IdChip } from '@/shared/ui/id-chip'
+import { CopyButton } from '@/shared/ui/copy-button'
+import { DataList, DataListItem } from '@/shared/ui/data-list'
 import { Skeleton } from '@/shared/ui/primitives/skeleton'
 import { StatusBadge, type StatusTone } from '@/shared/ui/status-badge'
 import { Timestamp } from '@/shared/ui/timestamp'
@@ -12,41 +13,43 @@ type ProjectRole = Schemas['ProjectRole']
 const ROLE_LABELS: Record<ProjectRole, string> = { owner: 'Dono', member: 'Membro' }
 const ROLE_TONES: Record<ProjectRole, StatusTone> = { owner: 'brand', member: 'neutral' }
 
-/** Id, slug, creation date and the viewer's role, in one row of facts under the name. */
+/** Id, slug, creation date and the viewer's role, as read-only facts under the name. */
 export function ProjectFacts({
   project,
 }: {
   project: Schemas['ProjectSummary'] | undefined
 }): JSX.Element {
   if (project === undefined) {
-    return <Skeleton className="h-16 rounded-none border-t" />
+    return <Skeleton className="h-40 rounded-lg" />
   }
 
   return (
-    <dl className="grid gap-x-6 gap-y-4 border-t bg-surface/50 px-6 py-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_auto_auto]">
-      <Fact label="ID do projeto">
-        <IdChip label="ID do projeto" value={project.id} />
-      </Fact>
-      <Fact label="Slug">
-        <IdChip label="Slug" value={project.slug} />
-      </Fact>
-      <Fact label="Criado em">
-        <span className="text-sm">
+    <DataList className="-my-2.5">
+      <DataListItem label="ID do projeto">
+        <CopyableFact label="ID do projeto" value={project.id} />
+      </DataListItem>
+      <DataListItem label="Slug">
+        <CopyableFact label="Slug" value={project.slug} />
+      </DataListItem>
+      <DataListItem label="Criado em">
+        <span className="tabular-nums">
           <Timestamp value={project.created_at} format="date" />
         </span>
-      </Fact>
-      <Fact label="Seu papel">
+      </DataListItem>
+      <DataListItem label="Seu papel">
         <StatusBadge tone={ROLE_TONES[project.role]}>{ROLE_LABELS[project.role]}</StatusBadge>
-      </Fact>
-    </dl>
+      </DataListItem>
+    </DataList>
   )
 }
 
-function Fact({ label, children }: { label: string; children: ReactNode }): JSX.Element {
+function CopyableFact({ label, value }: { label: string; value: string }): JSX.Element {
   return (
-    <div className="grid min-w-0 content-start gap-1.5">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="min-w-0">{children}</dd>
-    </div>
+    <span className="-my-1 flex min-w-0 items-center gap-1">
+      <code className="min-w-0 truncate font-mono" title={value}>
+        {value}
+      </code>
+      <CopyButton value={value} description={label} isIconOnly />
+    </span>
   )
 }

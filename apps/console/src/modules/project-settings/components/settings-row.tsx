@@ -25,7 +25,7 @@ export function SettingsRow({
   return (
     <div
       className={cn(
-        'grid gap-3 px-6 py-5 sm:items-center sm:gap-8',
+        'grid gap-2 py-3 sm:items-center sm:gap-6',
         isWide === true && 'sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]',
         isWide !== true && 'sm:grid-cols-[minmax(0,1fr)_auto]',
       )}
@@ -47,7 +47,7 @@ export function SettingsRow({
 }
 
 function RowTitle({ controlId, children }: { controlId?: string; children: string }): JSX.Element {
-  const className = 'text-sm font-medium text-heading'
+  const className = 'text-sm font-medium text-foreground'
 
   if (controlId === undefined) {
     return <span className={className}>{children}</span>
@@ -68,7 +68,7 @@ function RowDescription({ controlId, children }: RowDescriptionProps): JSX.Eleme
   }
 
   return (
-    <p id={descriptionIdOf(controlId)} className="text-sm text-muted-foreground">
+    <p id={descriptionIdOf(controlId)} className="text-xs text-muted-foreground">
       {children}
     </p>
   )
