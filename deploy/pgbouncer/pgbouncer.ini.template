@@ -1,0 +1,38 @@
+; Rendered by entrypoint.sh. Every project database is reached through the wildcard entry;
+; clients authenticate with their project's direct connection role (nelcota_c_<slug>), whose
+; SCRAM secret is looked up through pgbouncer.user_lookup, which answers for those roles only.
+[databases]
+* = host=${POSTGRES_HOST} port=${POSTGRES_PORT} auth_user=nelcota_pgbouncer
+
+[pgbouncer]
+listen_addr = 0.0.0.0
+listen_port = 6543
+auth_type = scram-sha-256
+auth_file = /etc/pgbouncer/userlist.txt
+auth_user = nelcota_pgbouncer
+auth_query = SELECT uname, phash FROM pgbouncer.user_lookup($1)
+auth_dbname = postgres
+
+; Transaction pooling suits serverless apps and ORMs; prepared statements are tracked by
+; PgBouncer itself, so drivers that prepare them keep working.
+pool_mode = transaction
+max_prepared_statements = 200
+max_client_conn = 2000
+default_pool_size = 5
+; Matches the role's CONNECTION LIMIT on the server: one project cannot take every connection.
+max_db_connections = 10
+server_idle_timeout = 60
+query_wait_timeout = 30
+ignore_startup_parameters = extra_float_digits,options
+
+client_tls_sslmode = require
+client_tls_cert_file = ${TLS_CERT_FILE}
+client_tls_key_file = ${TLS_KEY_FILE}
+client_tls_protocols = tlsv1.2,tlsv1.3
+; Inside the compose network only.
+server_tls_sslmode = disable
+
+admin_users =
+stats_users =
+log_connections = 0
+log_disconnections = 0

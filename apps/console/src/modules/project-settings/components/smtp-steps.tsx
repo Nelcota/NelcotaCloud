@@ -42,10 +42,13 @@ export function smtpSteps(step: SmtpStepProps): DialogStep[] {
       content: <SmtpSenderStep {...step} />,
     },
     {
-      label: 'Revisar',
-      description: 'Confira antes de salvar.',
-      missing: null,
-      content: <SmtpReview draft={draft} />,
+      label: 'Testar',
+      description: 'Confira e envie um email de teste.',
+      missing: missingUnless(
+        draft.testRecipient.trim().includes('@'),
+        'Digite quem recebe o teste',
+      ),
+      content: <SmtpReview {...step} />,
     },
   ]
 

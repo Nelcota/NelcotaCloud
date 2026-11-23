@@ -2,6 +2,7 @@ import type { Session } from '@nelcota/sdk'
 import type { JSX } from 'react'
 
 import { AccountTabPanel } from '@/modules/account/components/account-tab-panel'
+import { ACCOUNT_TABS, useAccountTab } from '@/modules/account/components/account-tabs'
 import { MfaSection } from '@/modules/account/components/mfa-section'
 import { PasswordSection } from '@/modules/account/components/password-section'
 import { ProfileSection } from '@/modules/account/components/profile-section'
@@ -10,35 +11,30 @@ import { useSession } from '@/shared/auth/use-session'
 import { PageHeader } from '@/shared/ui/page-header'
 import { Tabs, TabsList, TabsTrigger } from '@/shared/ui/primitives/tabs'
 
-const TABS = [
-  { value: 'profile', label: 'Perfil' },
-  { value: 'security', label: 'Segurança' },
-  { value: 'sessions', label: 'Sessões' },
-]
-
 /** The console account itself: who it is, how it is protected and where it is signed in. */
 export function AccountPage(): JSX.Element {
   const session = useSession()
+  const { tab, select } = useAccountTab()
 
   return (
-    <Tabs defaultValue="profile" className="mx-auto w-full max-w-4xl gap-5">
+    <Tabs value={tab} onValueChange={select} className="mx-auto w-full max-w-4xl gap-5">
       <PageHeader title="Minha conta">
         <TabsList variant="line" aria-label="Seções da conta" className="w-full">
-          {TABS.map((tab) => (
-            <TabsTrigger key={tab.value} value={tab.value}>
-              {tab.label}
+          {ACCOUNT_TABS.map((accountTab) => (
+            <TabsTrigger key={accountTab.id} value={accountTab.id}>
+              {accountTab.label}
             </TabsTrigger>
           ))}
         </TabsList>
       </PageHeader>
-      <AccountTabPanel value="profile">
+      <AccountTabPanel value="perfil">
         <ProfilePanels session={session} />
       </AccountTabPanel>
-      <AccountTabPanel value="security">
+      <AccountTabPanel value="seguranca">
         <MfaSection />
         <PasswordPanel session={session} />
       </AccountTabPanel>
-      <AccountTabPanel value="sessions">
+      <AccountTabPanel value="sessoes">
         <SessionsSection />
       </AccountTabPanel>
     </Tabs>

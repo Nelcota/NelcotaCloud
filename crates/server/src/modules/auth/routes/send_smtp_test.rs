@@ -6,9 +6,10 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::app_state::AppState;
-use crate::modules::auth::email::smtp_test_delivery::deliver_smtp_test;
+use crate::modules::auth::email::smtp_test_delivery::{SmtpTest, deliver_smtp_test};
 use crate::modules::auth::user::email_address::EmailAddress;
 use crate::modules::tenants::access::tenant_admin::TenantAdmin;
+use crate::modules::tenants::routes::configure_smtp::SmtpSettingsBody;
 use crate::modules::tenants::smtp::smtp_settings_repository::find_smtp_settings;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::client_ip::ClientIp;
@@ -20,12 +21,17 @@ pub struct SmtpTestBody {
     /// Where the test email goes.
     #[validate(length(min = 1, max = 254))]
     pub to: String,
+    /// Settings to try before saving them; nothing is stored. Without it, the saved server.
+    #[validate(nested)]
+    pub server: Option<SmtpSettingsBody>,
 }
 
 /// `POST /admin/smtp/test`: sends a test email through the tenant's own SMTP server.
 ///
 /// Waits for the server to accept the message, so the owner sees a delivery problem right
-/// away. Only for a configured server: the platform's server is not offered as a free relay.
+/// away. Either the saved server or, with `server`, settings about to be saved (checked by the
+/// same host policy), so a wrong password is caught before auth emails depend on it. Never the
+/// platform's server: it is not offered as a free relay.
 #[utoipa::path(
     post,
     path = "/auth/v1/admin/smtp/test",
@@ -34,7 +40,7 @@ pub struct SmtpTestBody {
     request_body = SmtpTestBody,
     responses(
         (status = 204, description = "The SMTP server accepted the test email"),
-        (status = 400, description = "Invalid recipient", body = ErrorBody),
+        (status = 400, description = "Invalid recipient, or invalid unsaved settings", body = ErrorBody),
         (status = 403, description = "Requires the secret API key, or membership in the project", body = ErrorBody),
         (status = 409, description = "The project uses the platform's SMTP server", body = ErrorBody),
         (status = 429, description = "Too many test emails", body = ErrorBody),
@@ -50,7 +56,12 @@ pub async fn send_smtp_test(
     let tenant_id = admin.tenant_id;
     let recipient = EmailAddress::parse(&body.to)
         .map_err(|_| ApiError::InvalidRequest("invalid email address".to_owned()))?;
-    require_own_smtp(&state, tenant_id).await?;
+    let server = body.server.as_ref();
+
+    if server.is_none() {
+        require_own_smtp(&state, tenant_id).await?;
+    }
+
     let attempt = Attempt {
         tenant_id,
         email: recipient.as_str(),
@@ -58,7 +69,12 @@ pub async fn send_smtp_test(
     };
     state.rate_limits.auth.check_email(&attempt).await?;
 
-    deliver_smtp_test(&state.auth_mailer(), tenant_id, &recipient).await?;
+    let test = SmtpTest {
+        tenant_id,
+        recipient: &recipient,
+        server,
+    };
+    deliver_smtp_test(&state.auth_mailer(), &test).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

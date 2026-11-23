@@ -56,6 +56,11 @@ export const MESSAGES_BY_CODE: Record<string, string> = {
   query_timeout:
     'A consulta passou de 15 segundos e foi cancelada. Filtre menos linhas ou crie um índice.',
   table_not_found: 'Essa tabela não existe mais. Recarregue a página.',
+  invalid_value: 'Algum valor não combina com o tipo da coluna. Confira números, datas e JSON.',
+  filter_required: 'Atualizar ou excluir linhas exige pelo menos um filtro.',
+  database_busy: 'O banco está ocupado. Tente de novo em alguns segundos.',
+  transaction_conflict: 'Outra alteração aconteceu ao mesmo tempo. Tente de novo.',
+  response_too_large: 'A resposta passaria de 16 MiB. Selecione menos colunas ou linhas.',
   permission_denied:
     'As políticas da tabela recusaram o acesso. Crie uma política que libere este comando.',
   invalid_captcha_secret:

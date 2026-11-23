@@ -22,6 +22,8 @@ export type SmtpDraft = {
   password: string
   senderName: string
   senderEmail: string
+  /** Who receives the test email sent before saving. */
+  testRecipient: string
 }
 
 /** What every step of the SMTP dialog takes: the draft and how to change it. */
@@ -40,6 +42,7 @@ export const EMPTY_SMTP_DRAFT: SmtpDraft = {
   password: '',
   senderName: '',
   senderEmail: '',
+  testRecipient: '',
 }
 
 export const DEFAULT_PORTS: Record<SmtpSecurity, number> = { tls: 465, starttls: 587 }

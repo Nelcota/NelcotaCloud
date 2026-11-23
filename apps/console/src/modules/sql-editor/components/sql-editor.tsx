@@ -1,5 +1,6 @@
 import type { JSX } from 'react'
 
+import { DestructiveRunDialog } from '@/modules/sql-editor/components/destructive-run-dialog'
 import { HistoryStepButtons } from '@/modules/sql-editor/components/history-step-buttons'
 import { SqlApiSheet } from '@/modules/sql-editor/components/sql-api-sheet'
 import { SqlCodeEditor } from '@/modules/sql-editor/components/sql-code-editor'
@@ -8,6 +9,7 @@ import { SqlResultStatus } from '@/modules/sql-editor/components/sql-result-stat
 import { SqlRunButton } from '@/modules/sql-editor/components/sql-run-button'
 import { TablesMenu } from '@/modules/sql-editor/components/tables-menu'
 import { useSqlEditor } from '@/modules/sql-editor/components/use-sql-editor'
+import { useReadOnlyReason } from '@/shared/auth/write-access'
 import { PageHeader } from '@/shared/ui/page-header'
 import { Section } from '@/shared/ui/section'
 
@@ -18,6 +20,8 @@ import { Section } from '@/shared/ui/section'
 export function SqlEditor({ projectId }: { projectId: string }): JSX.Element {
   const editor = useSqlEditor(projectId)
   const { query, outcome } = editor
+  // The API refuses every query of a viewer, reads included: SQL runs as the project's owner.
+  const readOnlyReason = useReadOnlyReason()
 
   return (
     <div onKeyDown={editor.runOnShortcut} className="flex flex-col gap-6">
@@ -29,7 +33,7 @@ export function SqlEditor({ projectId }: { projectId: string }): JSX.Element {
             <SqlApiSheet />
             <SqlRunButton
               isRunning={outcome.isRunning}
-              isDisabled={query.trim() === ''}
+              isDisabled={query.trim() === '' || readOnlyReason !== null}
               hasSelection={editor.hasSelection}
               onRun={editor.execute}
             />
@@ -59,6 +63,11 @@ export function SqlEditor({ projectId }: { projectId: string }): JSX.Element {
           onPickExample={editor.pick}
         />
       </Section>
+      <DestructiveRunDialog
+        pendingRun={editor.pendingRun}
+        onConfirm={editor.confirmRun}
+        onCancel={editor.cancelRun}
+      />
     </div>
   )
 }

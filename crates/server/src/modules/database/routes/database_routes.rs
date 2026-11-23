@@ -12,8 +12,11 @@ use crate::modules::database::routes::admin::drop_column;
 use crate::modules::database::routes::admin::drop_policy;
 use crate::modules::database::routes::admin::drop_table;
 use crate::modules::database::routes::admin::list_migrations;
+use crate::modules::database::routes::admin::read_connection;
 use crate::modules::database::routes::admin::read_schema;
+use crate::modules::database::routes::admin::read_types;
 use crate::modules::database::routes::admin::read_usage;
+use crate::modules::database::routes::admin::reset_connection_password;
 use crate::modules::database::routes::admin::run_sql;
 use crate::modules::database::routes::data_api::call_function;
 use crate::modules::database::routes::data_api::delete_rows;
@@ -27,6 +30,11 @@ pub fn database_routes() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
         .merge(data_api_routes())
         .routes(routes!(read_schema::read_schema))
+        .routes(routes!(read_types::read_types))
+        .routes(routes!(read_connection::read_connection))
+        .routes(routes!(
+            reset_connection_password::reset_connection_password
+        ))
         .routes(routes!(read_usage::read_usage))
         .routes(routes!(create_table::create_table))
         .routes(routes!(drop_table::drop_table, change_table::change_table))

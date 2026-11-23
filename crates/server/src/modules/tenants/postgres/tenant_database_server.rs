@@ -11,9 +11,13 @@ use crate::modules::tenants::postgres::authenticator_password::{
     MissingServerPassword, authenticator_password,
 };
 use crate::modules::tenants::postgres::database_role_setup::{
-    CREATE_SHARED_ROLES, drop_tenant_role_statement, tenant_role_statements,
+    CLOSE_TENANT_DATABASES, CREATE_SHARED_ROLES, DIRECT_ROLE_EXISTS, direct_role_statements,
+    drop_tenant_role_statement, tenant_role_statements,
 };
-use crate::modules::tenants::postgres::database_roles::tenant_authenticator_role;
+use crate::modules::tenants::postgres::database_roles::{
+    tenant_authenticator_role, tenant_direct_role,
+};
+use crate::modules::tenants::postgres::pooler_lookup::configure_pooler_lookup;
 use crate::modules::tenants::postgres::runtime_roles::{
     TENANT_RUNTIME_ROLE, configure_runtime_roles, grant_tenant_runtime,
 };
@@ -83,6 +87,12 @@ impl<'a> TenantDatabaseServer<'a> {
         configure_runtime_roles(options, password).await
     }
 
+    /// Lets the connection pooler look up direct connection roles (see `pooler_lookup`).
+    pub async fn prepare_pooler_lookup(&self, password: &str) -> Result<(), sqlx::Error> {
+        let options = self.database_options(MAINTENANCE_DATABASE)?;
+        configure_pooler_lookup(options, password).await
+    }
+
     pub fn runtime_auth_options(
         &self,
         slug: &TenantSlug,
@@ -123,6 +133,8 @@ impl<'a> TenantDatabaseServer<'a> {
     /// Creates the request roles shared by every project (once per server).
     pub async fn ensure_roles(&self) -> Result<(), sqlx::Error> {
         self.run_maintenance_statement(AssertSqlSafe(CREATE_SHARED_ROLES.to_owned()))
+            .await?;
+        self.run_maintenance_statement(AssertSqlSafe(CLOSE_TENANT_DATABASES.to_owned()))
             .await
     }
 
@@ -135,6 +147,28 @@ impl<'a> TenantDatabaseServer<'a> {
         Ok(())
     }
 
+    /// Creates the project's direct connection role, or replaces its password.
+    pub async fn reset_direct_role(
+        &self,
+        slug: &TenantSlug,
+        password: &str,
+    ) -> Result<(), sqlx::Error> {
+        self.run_maintenance_statement(direct_role_statements(slug, password))
+            .await
+    }
+
+    pub async fn has_direct_role(&self, slug: &TenantSlug) -> Result<bool, sqlx::Error> {
+        let options = self.database_options(MAINTENANCE_DATABASE)?;
+        let mut connection = PgConnection::connect_with(&options).await?;
+        let exists = sqlx::query_scalar(DIRECT_ROLE_EXISTS)
+            .bind(tenant_direct_role(slug))
+            .fetch_one(&mut connection)
+            .await;
+        connection.close().await?;
+
+        exists
+    }
+
     pub async fn create_database(&self, slug: &TenantSlug) -> Result<(), TenantDatabaseError> {
         let database_name = slug.database_name();
         // Identifiers cannot be bound as parameters; TenantSlug only allows [a-z0-9_].
@@ -142,6 +176,9 @@ impl<'a> TenantDatabaseServer<'a> {
         self.run_maintenance_statement(AssertSqlSafe(statement))
             .await
             .map_err(map_duplicate_database)?;
+        // Closed from its first moment, before anything else could connect to it.
+        self.run_maintenance_statement(AssertSqlSafe(CLOSE_TENANT_DATABASES.to_owned()))
+            .await?;
 
         Ok(())
     }

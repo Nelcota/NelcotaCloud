@@ -4,7 +4,7 @@ import {
   LogOut,
   ShieldAlert as ShieldWarning,
 } from 'lucide-react'
-import { useNavigate } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import type { JSX } from 'react'
 
 import { useIsMfaOff } from '@/app/shell/use-is-mfa-off'
@@ -100,7 +100,7 @@ export function AccountMenu(): JSX.Element | null {
   )
 }
 
-/** Leads to the account page to turn MFA on; shown only while it is off. */
+/** Leads to the account's Segurança tab to turn MFA on; shown only while it is off. */
 function MfaItem({ isMfaOff }: { isMfaOff: boolean }): JSX.Element | null {
   if (isMfaOff === false) {
     return null
@@ -108,10 +108,10 @@ function MfaItem({ isMfaOff }: { isMfaOff: boolean }): JSX.Element | null {
 
   return (
     <DropdownMenuItem asChild>
-      <RouterLink href="/account">
+      <Link to="/account" hash="seguranca">
         <ShieldWarning aria-hidden className="text-warning" />
         Ativar verificação em duas etapas
-      </RouterLink>
+      </Link>
     </DropdownMenuItem>
   )
 }

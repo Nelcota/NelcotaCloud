@@ -6,6 +6,7 @@ import { InsideShellContext } from '@/app/shell/inside-shell-context'
 import { PanelTopBar } from '@/app/shell/panel-top-bar'
 import { ProjectSidebar } from '@/app/shell/project-sidebar'
 import { type ProjectLocation, projectLocation } from '@/app/shell/project-sections'
+import { ProjectWriteAccess } from '@/app/shell/project-write-access'
 import { useDocumentTitle } from '@/app/shell/use-document-title'
 import { UnverifiedEmailBanner } from '@/modules/account/components/unverified-email-banner'
 import { ReadOnlyBanner } from '@/modules/team/components/read-only-banner'
@@ -50,7 +51,9 @@ function SignedInShell(): JSX.Element {
               <ReadOnlyBanner projectId={location?.projectId ?? null} />
               <FlashNotice />
               <InsideShellContext value={true}>
-                <Outlet />
+                <ProjectWriteAccess projectId={location?.projectId ?? null}>
+                  <Outlet />
+                </ProjectWriteAccess>
               </InsideShellContext>
             </PageArea>
           </div>

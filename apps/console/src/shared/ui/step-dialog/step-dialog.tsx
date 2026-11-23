@@ -13,6 +13,7 @@ import {
 import { cn } from '@/shared/lib/utils'
 import { missingNoteReference } from '@/shared/lib/missing-unless'
 import { MissingNote } from '@/shared/ui/missing-note'
+import { useReadOnlyReason } from '@/shared/auth/write-access'
 import { FocusedError } from '@/shared/ui/step-dialog/focused-error'
 import { BackButton, ForwardButton } from '@/shared/ui/step-dialog/step-dialog-buttons'
 import { StepTrack } from '@/shared/ui/step-dialog/step-track'
@@ -50,7 +51,8 @@ export function StepDialog(props: StepDialogProps): JSX.Element {
   const step = props.steps[index]
   const lastIndex = props.steps.length - 1
   const missingId = useId()
-  const missing = step?.missing ?? null
+  // A viewer learns on the first step that the wizard cannot be saved, not after filling it.
+  const missing = useReadOnlyReason() ?? step?.missing ?? null
 
   function changeOpen(isOpen: boolean): void {
     if (isWorking) {
@@ -76,7 +78,7 @@ export function StepDialog(props: StepDialogProps): JSX.Element {
     // The dialog is portaled, but React still bubbles its submit to a form around the trigger.
     event.stopPropagation()
 
-    if (step === undefined || step.missing !== null || isWorking) {
+    if (step === undefined || missing !== null || isWorking) {
       return
     }
 

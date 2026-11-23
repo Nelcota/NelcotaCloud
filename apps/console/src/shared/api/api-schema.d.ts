@@ -439,7 +439,9 @@ export interface paths {
         /**
          * `POST /admin/smtp/test`: sends a test email through the tenant's own SMTP server.
          * @description Waits for the server to accept the message, so the owner sees a delivery problem right
-         *     away. Only for a configured server: the platform's server is not offered as a free relay.
+         *     away. Either the saved server or, with `server`, settings about to be saved (checked by the
+         *     same host policy), so a wrong password is caught before auth emails depend on it. Never the
+         *     platform's server: it is not offered as a free relay.
          */
         post: operations["send_smtp_test"];
         delete?: never;
@@ -1340,6 +1342,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/database/v1/connection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * `GET /database/v1/connection`: host, port, database and user for connecting to the
+         *     project's Postgres directly (ORMs, `psql`), without the password.
+         */
+        get: operations["read_connection"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/database/v1/connection/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `POST /database/v1/connection/password`: a new password for direct connections, shown only
+         *     in this response. The previous one stops working for new connections.
+         */
+        post: operations["reset_connection_password"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/database/v1/migrations": {
         parameters: {
             query?: never;
@@ -1506,6 +1548,26 @@ export interface paths {
         post?: never;
         /** `DELETE /database/v1/tables/{table}/policies/{policy}`: removes a policy. */
         delete: operations["drop_policy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/database/v1/types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * `GET /database/v1/types`: TypeScript types of the project's tables, views, functions and
+         *     enums, generated from the schema as it is now.
+         */
+        get: operations["read_types"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2367,6 +2429,10 @@ export interface components {
             server_errors: number;
             statuses: components["schemas"]["StatusUsage"][];
         };
+        DatabaseTypes: {
+            /** @description The `Database` type of the `public` schema, for `createClient<Database>()` of the SDK. */
+            typescript: string;
+        };
         /**
          * @description One delivery as the delivery log shows it. The payload is not included: it has personal
          *     data and is already in the receiver's hands.
@@ -2402,6 +2468,20 @@ export interface components {
         };
         /** @enum {string} */
         DeliveryStatus: "pending" | "delivered" | "failed";
+        /** @description How to reach the project's Postgres directly, without the password. */
+        DirectConnectionView: {
+            database: string;
+            /** @description `false` when this server does not offer direct connections. */
+            enabled: boolean;
+            /** @description A password was set at least once; it is never shown again. */
+            has_password: boolean;
+            host?: string | null;
+            /** Format: int32 */
+            port?: number | null;
+            /** @description `require`, `verify-full` or `disable` (local development). */
+            ssl_mode: string;
+            user: string;
+        };
         /** @description Body of the endpoints that email a link to an address. */
         EmailBody: {
             /** @description Cloudflare Turnstile token; required when the project turned the captcha on. */
@@ -2599,6 +2679,12 @@ export interface components {
             kind: components["schemas"]["ChannelKind"];
             /** @description An email address, or the Discord or Slack incoming webhook URL. */
             target: string;
+        };
+        /** @description A new password for direct connections, shown only in this response. */
+        NewConnectionPassword: {
+            /** @description The full `postgresql://` URL with the new password, for an ORM's `DATABASE_URL`. */
+            connection_string: string;
+            password: string;
         };
         /** @description A channel as the console shows it: never the sealed destination, only its hint. */
         NotificationChannel: {
@@ -2858,6 +2944,7 @@ export interface components {
             smtp_port?: number | null;
         };
         SmtpTestBody: {
+            server?: components["schemas"]["SmtpSettingsBody"] | null;
             /** @description Where the test email goes. */
             to: string;
         };
@@ -4596,7 +4683,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Invalid recipient */
+            /** @description Invalid recipient, or invalid unsaved settings */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -7183,6 +7270,73 @@ export interface operations {
             };
         };
     };
+    read_connection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The connection details */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DirectConnectionView"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    reset_connection_password: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The new password and connection string */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewConnectionPassword"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description This server does not offer direct connections */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     list: {
         parameters: {
             query?: {
@@ -7695,6 +7849,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    read_types: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The generated types */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatabaseTypes"];
                 };
             };
             /** @description Requires the secret API key, or membership in the project */

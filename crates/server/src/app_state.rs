@@ -10,6 +10,7 @@ use crate::modules::auth::mfa::factor_code_access::FactorCodeAccess;
 use crate::modules::auth::session::session_grant::TokenSigning;
 use crate::modules::auth::usage::project_usage_cache::ProjectUsageCache;
 use crate::modules::cache::entries::cache_store::CacheStore;
+use crate::modules::database::direct_connection::direct_connection_settings::DirectConnectionSettings;
 use crate::modules::database::execution::database_sessions::DatabaseSessions;
 use crate::modules::database::execution::session_slots::SessionSlots;
 use crate::modules::database::schema::schema_cache::SchemaCache;
@@ -196,4 +197,6 @@ pub struct AppSettings {
     pub client_ip_header: Option<HeaderName>,
     /// Cloudflare Turnstile's `siteverify`; a fake server in tests.
     pub captcha_verify_url: String,
+    /// Where apps reach project databases directly; `None` when the server does not offer it.
+    pub direct_connection: Option<DirectConnectionSettings>,
 }

@@ -120,15 +120,78 @@ async fn send_test(
     tenant: &CreatedTenant,
     to: &str,
 ) -> TestResult<reqwest::Response> {
+    post_test(server, tenant, json!({ "to": to })).await
+}
+
+async fn post_test(
+    server: &TestServer,
+    tenant: &CreatedTenant,
+    body: Value,
+) -> TestResult<reqwest::Response> {
     let response = server
         .client
         .post(server.url("/auth/v1/admin/smtp/test"))
         .header("apikey", &tenant.secret_key)
-        .json(&json!({ "to": to }))
+        .json(&body)
         .send()
         .await?;
 
     Ok(response)
+}
+
+/// Settings about to be saved are tried as they are, and trying them stores nothing.
+#[tokio::test]
+async fn unsaved_settings_are_tested_without_being_saved() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    let recipient = unique_email("smtp-unsaved");
+    let smtp_url = std::env::var("SMTP_URL")?;
+    let body = json!({
+        "to": recipient,
+        "server": {
+            "smtp_url": smtp_url,
+            "email_from": format!("Acme Mail <{TENANT_SENDER}>"),
+        },
+    });
+
+    let sent = post_test(&server, &tenant, body).await?;
+
+    assert_eq!(sent.status(), StatusCode::NO_CONTENT);
+    assert_eq!(sender_of_latest_email(&recipient).await?, TENANT_SENDER);
+    let current: Value = smtp_request(&server, &tenant, Method::GET, None)
+        .await?
+        .json()
+        .await?;
+    assert_eq!(field(&current, "/is_custom"), false);
+    server.drop_tenant(&tenant).await
+}
+
+/// Unsaved settings fail like a save would (400), or like a test of a dead server (502).
+#[tokio::test]
+async fn unsaved_settings_that_cannot_send_fail_the_test() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    let port = closed_port().await?;
+    let to = unique_email("smtp-unsaved-bad");
+    let invalid = json!({
+        "to": to,
+        "server": { "smtp_url": "http://smtp.example.com", "email_from": TENANT_SENDER },
+    });
+    let unreachable = json!({
+        "to": to,
+        "server": {
+            "smtp_url": format!("smtp://127.0.0.1:{port}"),
+            "email_from": TENANT_SENDER,
+        },
+    });
+
+    let refused = post_test(&server, &tenant, invalid).await?;
+    assert_eq!(refused.status(), StatusCode::BAD_REQUEST);
+    let failed = post_test(&server, &tenant, unreachable).await?;
+
+    assert_eq!(failed.status(), StatusCode::BAD_GATEWAY);
+    assert_eq!(error_code(failed).await?, "smtp_delivery_failed");
+    server.drop_tenant(&tenant).await
 }
 
 #[tokio::test]

@@ -47,6 +47,15 @@ export function DataGrid(props: DataGridProps): JSX.Element {
     setIsOpen(true)
   }
 
+  // The whole row opens it, except when the click ends a drag that selected a value to copy.
+  function showUnlessSelecting(row: GridRow): void {
+    if ((window.getSelection()?.toString() ?? '') !== '') {
+      return
+    }
+
+    showRow(row)
+  }
+
   if (data.length === 0) {
     return <EmptyState icon={<Rows aria-hidden />} isCompact title="Nenhuma linha no resultado" />
   }
@@ -61,7 +70,11 @@ export function DataGrid(props: DataGridProps): JSX.Element {
           <GridHeader columns={columns} isNumeric={isNumeric} />
           <TableBody>
             {data.map((row) => (
-              <TableRow key={row.number} className="[&>td]:border-b [&>td]:border-border/60">
+              <TableRow
+                key={row.number}
+                className="cursor-pointer [&>td]:border-b [&>td]:border-border/60"
+                onClick={() => showUnlessSelecting(row)}
+              >
                 <TableCell className="sticky start-0 z-[1] h-9 w-12 bg-card px-1 py-0 ps-1">
                   <RowButton row={row} onShow={showRow} />
                 </TableCell>
@@ -101,7 +114,10 @@ function RowButton({ row, onShow }: RowButtonProps): JSX.Element {
       size="xs"
       aria-label={`Ver linha ${number}`}
       className="w-full justify-end font-mono text-muted-foreground tabular-nums"
-      onClick={() => onShow(row)}
+      onClick={(click) => {
+        click.stopPropagation()
+        onShow(row)
+      }}
     >
       {number}
     </Button>

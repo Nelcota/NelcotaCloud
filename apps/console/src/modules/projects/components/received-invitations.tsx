@@ -43,7 +43,9 @@ export function ReceivedInvitations(): JSX.Element | null {
                 invitation={invitation}
                 isPending={isAnswering(invitation.id, [acceptance, refusal])}
                 onAccept={() => accept(invitation.id)}
-                onDecline={() => refusal.mutate(invitation.id)}
+                onDecline={async () => {
+                  await refusal.mutateAsync(invitation.id)
+                }}
               />
             ))}
           </ul>

@@ -1,6 +1,7 @@
 import type { KeyboardEvent } from 'react'
 import { useRef, useState } from 'react'
 
+import { destructiveStatements } from '@/modules/sql-editor/components/destructive-statement'
 import { loadSavedQuery, saveQuery } from '@/modules/sql-editor/components/saved-query'
 import {
   type HistorySteps,
@@ -19,6 +20,9 @@ export type SqlOutcome = {
   durationMs: number | null
 }
 
+/** A run waiting for a yes because it erases data; `statements` names what it would run. */
+export type PendingRun = { text: string; statements: string[] }
+
 export type SqlEditorState = {
   query: string
   /** Typing in the box. */
@@ -31,6 +35,10 @@ export type SqlEditorState = {
   /** Back and forward through the queries run here. */
   steps: HistorySteps
   execute: () => void
+  /** The destructive run waiting for confirmation, if any. */
+  pendingRun: PendingRun | null
+  confirmRun: () => void
+  cancelRun: () => void
   /** Ctrl/Cmd+Enter from anywhere inside the element that receives it. */
   runOnShortcut: (event: KeyboardEvent<HTMLElement>) => void
 }
@@ -40,6 +48,7 @@ export function useSqlEditor(projectId: string): SqlEditorState {
   const [query, setQuery] = useState(() => loadSavedQuery(projectId))
   const [selected, setSelected] = useState('')
   const [durationMs, setDurationMs] = useState<number | null>(null)
+  const [pendingRun, setPendingRun] = useState<PendingRun | null>(null)
   const startedAt = useRef(0)
   const run = useRunSqlMutation(projectId)
   const history = useSqlHistory(projectId)
@@ -73,6 +82,26 @@ export function useSqlEditor(projectId: string): SqlEditorState {
       return
     }
 
+    const statements = destructiveStatements(text)
+
+    if (statements.length > 0) {
+      setPendingRun({ text, statements })
+      return
+    }
+
+    runNow(text)
+  }
+
+  function confirmRun(): void {
+    if (pendingRun === null) {
+      return
+    }
+
+    setPendingRun(null)
+    runNow(pendingRun.text)
+  }
+
+  function runNow(text: string): void {
     history.record(text)
     steps.reset()
     startedAt.current = performance.now()
@@ -102,6 +131,9 @@ export function useSqlEditor(projectId: string): SqlEditorState {
     outcome: { result: run.data, error: run.error, isRunning: run.isPending, durationMs },
     steps,
     execute,
+    pendingRun,
+    confirmRun,
+    cancelRun: () => setPendingRun(null),
     runOnShortcut,
   }
 }

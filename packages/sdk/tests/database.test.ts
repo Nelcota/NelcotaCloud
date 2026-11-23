@@ -24,8 +24,8 @@ describe('database queries', () => {
     })
 
     const { data, count } = await client
-      .from<{ id: number; title: string }>('posts')
-      .select('id, title, author:authors(name)', { count: 'exact' })
+      .from('posts')
+      .select<{ id: number; title: string }>('id, title, author:authors(name)', { count: 'exact' })
       .eq('published', true)
       .gte('views', 100)
       .in('tag', ['rust', 'a,b'])
@@ -113,7 +113,7 @@ describe('database queries', () => {
       body: { error: 'permission_denied', message: 'denied' },
     })
 
-    const sum = await client.rpc<number>('add', { a: 1, b: 2 })
+    const sum = await client.rpc('add', { a: 1, b: 2 })
     const failure = await client
       .from('secrets')
       .select()

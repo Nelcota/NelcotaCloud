@@ -6,6 +6,7 @@ import { ACTION_COPY } from '@/modules/team/components/team-action-copy'
 import { type MemberAction, leaveBlockedReason } from '@/modules/team/components/team-row-actions'
 import { type MemberRow, ownerCount } from '@/modules/team/components/team-rows'
 import type { components } from '@/shared/api/api-schema'
+import { ReadOnlyContext } from '@/shared/auth/write-access'
 import { ConfirmButton } from '@/shared/ui/confirm-button'
 import { SettingsSection } from '@/shared/ui/settings-section'
 
@@ -40,17 +41,20 @@ export function LeaveProjectSection(props: LeaveProjectSectionProps): JSX.Elemen
       description={blockedReason ?? 'Você perde o acesso na hora e só volta com um novo convite.'}
       isDanger
       footer={
-        <ConfirmButton
-          label={copy.label}
-          icon={copy.icon}
-          title={copy.title('você')}
-          description={copy.description('você')}
-          confirmLabel={copy.confirmLabel}
-          change={{ subject: 'você', icon: User, from: copy.from(ownRow), to: copy.to }}
-          isDestructive
-          isDisabled={blockedReason !== null}
-          onConfirm={() => props.onAction(target, 'leave')}
-        />
+        // Leaving goes through the account, not the project: viewers may leave too.
+        <ReadOnlyContext value={false}>
+          <ConfirmButton
+            label={copy.label}
+            icon={copy.icon}
+            title={copy.title('você')}
+            description={copy.description('você')}
+            confirmLabel={copy.confirmLabel}
+            change={{ subject: 'você', icon: User, from: copy.from(ownRow), to: copy.to }}
+            isDestructive
+            isDisabled={blockedReason !== null}
+            onConfirm={() => props.onAction(target, 'leave')}
+          />
+        </ReadOnlyContext>
       }
     />
   )

@@ -1,6 +1,7 @@
 import type { FormEvent, JSX, ReactNode } from 'react'
 import { useId, useState } from 'react'
 
+import { useReadOnlyReason } from '@/shared/auth/write-access'
 import type { ConfirmChange } from '@/shared/ui/confirm-change'
 import { ConfirmChangeList } from '@/shared/ui/confirm-change-list'
 import {
@@ -64,7 +65,10 @@ const SIZES = { md: 'sm:max-w-md', lg: 'sm:max-w-xl', xl: 'sm:max-w-3xl' }
  * Asks before an action runs. Controlled, so a menu item can open it after the menu closes;
  * `ConfirmButton` wraps it for the common case of a plain button.
  */
-export function ConfirmDialog(props: ConfirmDialogProps): JSX.Element {
+export function ConfirmDialog(dialogProps: ConfirmDialogProps): JSX.Element {
+  // A viewer's confirmation waits on the same note as a missing value: the API would refuse it.
+  const readOnlyReason = useReadOnlyReason()
+  const props = { ...dialogProps, missing: readOnlyReason ?? dialogProps.missing }
   const [typedText, setTypedText] = useState('')
   const [isWorking, setIsWorking] = useState(false)
   const [error, setError] = useState<unknown>(null)

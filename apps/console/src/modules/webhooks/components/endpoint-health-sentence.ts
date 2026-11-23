@@ -11,7 +11,7 @@ type SentenceWriter = (summary: DeliverySummary, context: SentenceContext) => st
 const SENTENCES: Record<HealthKind, SentenceWriter> = {
   auto_paused: () =>
     'Recusou as entregas por 5 dias seguidos. Ligue de novo depois de corrigir o servidor.',
-  paused: () => 'Nenhum evento é enviado até você retomar.',
+  paused: () => 'Os eventos desta pausa não são enviados, nem depois de retomar.',
   failing: (summary, context) =>
     `${refusingSince(context)}${counted(summary.failedLastDay, 'falha', 'falhas')} nas últimas 24 horas. ${accepted(summary)}`,
   retrying: (summary, context) =>

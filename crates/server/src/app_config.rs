@@ -1,5 +1,8 @@
 use serde::Deserialize;
 
+use crate::modules::database::direct_connection::direct_connection_settings::{
+    DirectConnectionSettings, DirectConnectionValues,
+};
 use crate::modules::storage::object_store::r2_config::R2Config;
 
 use crate::startup::config_error::{ConfigError, MASTER_KEY_HEX_LENGTH, MIN_ADMIN_TOKEN_LENGTH};
@@ -36,6 +39,16 @@ pub struct AppConfig {
     pub platform_tenant_slug: Option<String>,
     /// Tests only: where captcha tokens are checked instead of Cloudflare Turnstile.
     pub captcha_verify_url: Option<String>,
+    /// Host apps use for direct Postgres connections (the `PgBouncer` in front of the server).
+    /// Unset, direct connections are off.
+    pub database_public_host: Option<String>,
+    /// Port of that host; 6543 by default.
+    pub database_public_port: Option<u16>,
+    /// `require` (default), `verify-full`, or `disable` for local development only.
+    pub database_public_ssl_mode: Option<String>,
+    /// 64 hex characters: password of the role `PgBouncer` uses to look up direct connection
+    /// roles. Set it (here and in the pooler) to serve direct connections through `PgBouncer`.
+    pub pooler_auth_password: Option<String>,
 }
 
 impl AppConfig {
@@ -80,6 +93,13 @@ impl AppConfig {
                 .captcha_verify_url
                 .map(|url| url.trim().to_owned())
                 .filter(|url| url.is_empty() == false),
+            database_public_host: self.database_public_host,
+            database_public_port: self.database_public_port,
+            database_public_ssl_mode: self.database_public_ssl_mode,
+            pooler_auth_password: self
+                .pooler_auth_password
+                .map(|password| password.trim().to_owned())
+                .filter(|password| password.is_empty() == false),
         }
     }
 
@@ -91,6 +111,7 @@ impl AppConfig {
         }
 
         self.storage_config()?;
+        self.direct_connection()?;
         validate_public_base_url(&self.public_base_url)?;
         validate_tenant_database_base_url(&self.tenant_database_base_url)
     }
@@ -102,6 +123,14 @@ impl AppConfig {
             self.storage_r2_access_key_id.as_deref(),
             self.storage_r2_secret_access_key.as_deref(),
         ])
+    }
+
+    pub fn direct_connection(&self) -> Result<Option<DirectConnectionSettings>, ConfigError> {
+        DirectConnectionSettings::parse(&DirectConnectionValues {
+            host: self.database_public_host.as_deref(),
+            port: self.database_public_port,
+            ssl_mode: self.database_public_ssl_mode.as_deref(),
+        })
     }
 
     pub fn expected_webhook_workers(&self) -> u16 {
@@ -150,6 +179,14 @@ impl AppConfig {
             return Err(ConfigError::InvalidDatabaseRuntimePassword);
         }
 
+        if self
+            .pooler_auth_password
+            .as_ref()
+            .is_some_and(|password| is_hex_secret(password) == false)
+        {
+            return Err(ConfigError::InvalidPoolerAuthPassword);
+        }
+
         Ok(())
     }
 
@@ -163,6 +200,11 @@ impl AppConfig {
     pub fn oauth_callback_url(&self) -> String {
         format!("{}/oauth/callback", self.token_issuer())
     }
+}
+
+/// 64 hex characters, like the other generated database secrets.
+fn is_hex_secret(secret: &str) -> bool {
+    secret.len() == MASTER_KEY_HEX_LENGTH && secret.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
 
 #[cfg(test)]
@@ -193,6 +235,10 @@ mod tests {
             storage_r2_secret_access_key: None,
             platform_tenant_slug: None,
             captcha_verify_url: None,
+            database_public_host: None,
+            database_public_port: None,
+            database_public_ssl_mode: None,
+            pooler_auth_password: None,
         }
     }
 

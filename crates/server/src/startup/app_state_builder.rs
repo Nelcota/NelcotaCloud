@@ -75,6 +75,12 @@ pub async fn build_app_state_with_endpoints(
             .await
             .map_err(StartupError::DatabaseRoles)?;
     }
+    if let Some(password) = config.pooler_auth_password.as_deref() {
+        database_server
+            .prepare_pooler_lookup(password)
+            .await
+            .map_err(StartupError::DatabaseRoles)?;
+    }
     let (webhooks, webhook_hints) = build_webhooks(config, &control_plane_pool)?;
 
     let state = AppState {

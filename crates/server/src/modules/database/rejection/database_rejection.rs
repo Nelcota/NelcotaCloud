@@ -53,6 +53,8 @@ pub enum DatabaseRejection {
     MigrationMismatch(i64),
     #[error("migration {version} must be newer than applied version {latest}")]
     MigrationOutOfOrder { version: i64, latest: i64 },
+    #[error("direct database connections are not enabled on this server")]
+    DirectConnectionDisabled,
 }
 
 impl DatabaseRejection {
@@ -81,6 +83,7 @@ impl DatabaseRejection {
             Self::ExclusionViolation(_) => (StatusCode::CONFLICT, "exclusion_violation"),
             Self::MigrationMismatch(_) => (StatusCode::CONFLICT, "migration_mismatch"),
             Self::MigrationOutOfOrder { .. } => (StatusCode::CONFLICT, "migration_out_of_order"),
+            Self::DirectConnectionDisabled => (StatusCode::CONFLICT, "direct_connection_disabled"),
         }
     }
 
@@ -138,6 +141,7 @@ mod tests {
                 version: 1,
                 latest: 2,
             },
+            DatabaseRejection::DirectConnectionDisabled,
         ];
         let mut seen_codes = HashSet::new();
 

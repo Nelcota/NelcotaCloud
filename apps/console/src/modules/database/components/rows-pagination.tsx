@@ -26,10 +26,7 @@ export function RowsPagination(props: RowsPaginationProps): JSX.Element {
       <span className="text-xs text-muted-foreground tabular-nums">
         <RangeLabel offset={offset} lastShown={lastShown} />
         <TotalLabel total={props.total} />
-        <span title="O console lê e grava como nelcota_service, que ignora as políticas.">
-          {' '}
-          · sem RLS
-        </span>
+        <span> · o console vê todas as linhas, sem aplicar as políticas</span>
       </span>
       <PageControls {...props} />
     </div>

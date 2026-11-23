@@ -61,6 +61,39 @@ services:
       STORAGE_R2_BUCKET: ${STORAGE_R2_BUCKET:-}
       STORAGE_R2_ACCESS_KEY_ID: ${STORAGE_R2_ACCESS_KEY_ID:-}
       STORAGE_R2_SECRET_ACCESS_KEY: ${STORAGE_R2_SECRET_ACCESS_KEY:-}
+      # Direct Postgres connections through PgBouncer (profile direct-connections, see
+      # docs/deploy.md). Empty host: the console says the server does not offer them.
+      DATABASE_PUBLIC_HOST: ${DATABASE_PUBLIC_HOST:-}
+      DATABASE_PUBLIC_PORT: ${DATABASE_PUBLIC_PORT:-6543}
+      DATABASE_PUBLIC_SSL_MODE: ${DATABASE_PUBLIC_SSL_MODE:-require}
+      POOLER_AUTH_PASSWORD: ${POOLER_AUTH_PASSWORD:-}
+
+  # Direct Postgres connections (ORMs, psql) for every project, on DATABASE_PUBLIC_PORT with TLS.
+  # Off unless started with --profile direct-connections; the API must have the same
+  # POOLER_AUTH_PASSWORD so it creates the lookup role PgBouncer authenticates through.
+  pgbouncer:
+    profiles: ["direct-connections"]
+    build:
+      context: .
+      dockerfile: deploy/pgbouncer/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      POOLER_AUTH_PASSWORD: ${POOLER_AUTH_PASSWORD:?set POOLER_AUTH_PASSWORD}
+      DATABASE_PUBLIC_HOST: ${DATABASE_PUBLIC_HOST:?set DATABASE_PUBLIC_HOST}
+      PGBOUNCER_TLS_CERT_FILE: ${PGBOUNCER_TLS_CERT_FILE:-}
+      PGBOUNCER_TLS_KEY_FILE: ${PGBOUNCER_TLS_KEY_FILE:-}
+    ports:
+      - "${DATABASE_PUBLIC_PORT:-6543}:6543"
+    volumes:
+      - pgbouncer-tls:/var/lib/pgbouncer/tls
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "6543"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
 
   webhook-worker:
     build: *server-build
@@ -131,3 +164,4 @@ volumes:
   postgres-data-19:
   caddy-data:
   caddy-config:
+  pgbouncer-tls:

@@ -119,25 +119,41 @@ impl TenantEmailSenders {
         String::from_utf8(url_bytes).map_err(|_| TenantSmtpError::InvalidUrlEncoding)
     }
 
+    /// A sender for settings an owner is about to save, under the same host policy as stored
+    /// ones, so they can be tried before they take effect. Never cached.
+    pub async fn unsaved_sender(
+        &self,
+        smtp_url: &str,
+        email_from: &str,
+    ) -> Result<EmailSender, TenantSmtpError> {
+        self.pinned_sender(smtp_url, email_from).await
+    }
+
     async fn load_sender(
         &self,
         tenant_id: Uuid,
         stored: StoredSmtpSettings,
     ) -> Result<Arc<EmailSender>, TenantSmtpError> {
         let smtp_url = self.open_smtp_url(tenant_id, &stored.smtp_url_ciphertext)?;
-        let endpoint = SmtpEndpoint::parse(&smtp_url)?;
+        let sender = self.pinned_sender(&smtp_url, &stored.email_from).await?;
+
+        Ok(Arc::new(sender))
+    }
+
+    async fn pinned_sender(
+        &self,
+        smtp_url: &str,
+        email_from: &str,
+    ) -> Result<EmailSender, TenantSmtpError> {
+        let endpoint = SmtpEndpoint::parse(smtp_url)?;
         let addresses = self.check_endpoint(&endpoint).await?;
         let address = first_reachable_address(&addresses, endpoint.port).await?;
-
         let connection = PinnedConnection {
-            smtp_url: &smtp_url,
+            smtp_url,
             endpoint: &endpoint,
             address,
         };
 
-        Ok(Arc::new(pinned_email_sender(
-            &connection,
-            &stored.email_from,
-        )?))
+        Ok(pinned_email_sender(&connection, email_from)?)
     }
 }

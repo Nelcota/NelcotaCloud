@@ -1,20 +1,20 @@
-import { List as Rows, Plus } from 'lucide-react'
+import type { UseQueryResult } from '@tanstack/react-query'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
 import { type RowsPage, isCountEstimated } from '@/modules/database/api/read-rows'
 import { DataGrid } from '@/modules/database/components/data-grid'
+import { NoRows } from '@/modules/database/components/no-rows'
 import { RowEditorSheet } from '@/modules/database/components/row-editor-sheet'
 import type { RowFilter } from '@/modules/database/components/row-filter'
-import { RowsPagination } from '@/modules/database/components/rows-pagination'
+import { RowsFilterFailure } from '@/modules/database/components/rows-filter-failure'
+import { RowsFooter } from '@/modules/database/components/rows-footer'
 import { RowsToolbar } from '@/modules/database/components/rows-toolbar'
 import { type RowEditor, useRowEditor } from '@/modules/database/components/use-row-editor'
 import { useTableCountQuery } from '@/modules/database/queries/use-table-count-query'
 import { ROWS_PAGE_SIZE, useTableRowsQuery } from '@/modules/database/queries/use-table-rows-query'
 import type { components } from '@/shared/api/api-schema'
-import { EmptyState } from '@/shared/ui/empty-state'
 import { LoadError } from '@/shared/ui/load-error'
-import { Button } from '@/shared/ui/primitives/button'
 import { Skeleton } from '@/shared/ui/primitives/skeleton'
 
 type TableOverview = components['schemas']['TableOverview']
@@ -40,13 +40,14 @@ export function TableRowsSection({ projectId, table }: TableRowsSectionProps): J
     setOffset(0)
   }
 
-  if (page.data === undefined) {
+  // Without filters a failed first load has nothing to undo; with them, the toolbar stays.
+  if (page.data === undefined && filters.length === 0) {
     return <RowsLoading error={page.error} onRetry={() => page.refetch()} />
   }
 
   return (
     <section aria-label="Linhas" aria-busy={page.isPlaceholderData} className="flex flex-col gap-3">
-      <LoadError error={page.error} onRetry={() => page.refetch()} />
+      <LoadError error={refreshError(page)} onRetry={() => page.refetch()} />
       <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
         <RowsToolbar
           columns={table.columns}
@@ -59,11 +60,15 @@ export function TableRowsSection({ projectId, table }: TableRowsSectionProps): J
           }}
           onInsert={editor.openNew}
         />
-        <RowsBody table={table} page={page.data} filters={filters} editor={editor} />
-        <RowsPagination
-          offset={page.data.offset}
-          pageSize={ROWS_PAGE_SIZE}
-          shown={page.data.rows.length}
+        <RowsContent
+          table={table}
+          page={page}
+          filters={filters}
+          editor={editor}
+          onClearFilters={() => changeFilters([])}
+        />
+        <RowsFooter
+          page={page.data}
           total={total.data ?? null}
           isTotalEstimated={isCountEstimated(estimatedRows)}
           isChangingPage={page.isPlaceholderData}
@@ -81,6 +86,15 @@ export function TableRowsSection({ projectId, table }: TableRowsSectionProps): J
   )
 }
 
+/** A failed refresh of rows already on screen; a failed first load is shown in their place. */
+function refreshError(page: UseQueryResult<RowsPage>): Error | null {
+  if (page.data === undefined) {
+    return null
+  }
+
+  return page.error
+}
+
 type RowsLoadingProps = { error: Error | null; onRetry: () => void }
 
 function RowsLoading({ error, onRetry }: RowsLoadingProps): JSX.Element {
@@ -95,59 +109,50 @@ function RowsLoading({ error, onRetry }: RowsLoadingProps): JSX.Element {
   )
 }
 
-type RowsBodyProps = {
+type RowsContentProps = {
   table: TableOverview
-  page: RowsPage
+  page: UseQueryResult<RowsPage>
   filters: readonly RowFilter[]
   editor: RowEditor
+  onClearFilters: () => void
 }
 
-function RowsBody({ table, page, filters, editor }: RowsBodyProps): JSX.Element {
-  const columns = table.columns
+function RowsContent(props: RowsContentProps): JSX.Element {
+  const { table, page, filters, editor, onClearFilters } = props
+  const rows = page.data
+
+  if (rows === undefined && page.error !== null) {
+    return <RowsFilterFailure error={page.error} onClearFilters={onClearFilters} />
+  }
+
+  if (rows === undefined) {
+    return (
+      <div role="status" aria-label="Carregando linhas" className="p-3">
+        <Skeleton className="h-48 rounded-lg" />
+      </div>
+    )
+  }
 
   // A later page can come back empty (rows deleted meanwhile): the footer keeps the way back.
-  if (page.rows.length === 0 && page.offset === 0) {
-    return <NoRows hasFilters={filters.length > 0} onInsert={editor.openNew} />
+  if (rows.rows.length === 0 && rows.offset === 0) {
+    return (
+      <NoRows
+        hasFilters={filters.length > 0}
+        onInsert={editor.openNew}
+        onClearFilters={onClearFilters}
+      />
+    )
   }
+
+  const columns = table.columns
 
   return (
     <DataGrid
       label={`Linhas de ${table.name}`}
       columns={columns}
-      rows={page.rows.map((row) => columns.map((column) => row[column.name]))}
-      rowOffset={page.offset}
+      rows={rows.rows.map((row) => columns.map((column) => row[column.name]))}
+      rowOffset={rows.offset}
       onRowOpen={editor.openRow}
     />
-  )
-}
-
-type NoRowsProps = { hasFilters: boolean; onInsert?: () => void }
-
-function NoRows({ hasFilters, onInsert }: NoRowsProps): JSX.Element {
-  if (hasFilters) {
-    return <EmptyState isCompact title="Nenhuma linha com esses filtros" />
-  }
-
-  return (
-    <EmptyState
-      isCompact
-      icon={<Rows aria-hidden />}
-      title="Nenhuma linha"
-      description="Insira a primeira aqui, pelo Editor SQL ou pela API do app."
-      actions={<InsertAction onInsert={onInsert} />}
-    />
-  )
-}
-
-function InsertAction({ onInsert }: { onInsert?: () => void }): JSX.Element | null {
-  if (onInsert === undefined) {
-    return null
-  }
-
-  return (
-    <Button type="button" size="sm" onClick={onInsert}>
-      <Plus aria-hidden data-icon="inline-start" />
-      Inserir linha
-    </Button>
   )
 }

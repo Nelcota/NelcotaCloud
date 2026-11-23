@@ -32,7 +32,7 @@ function sdkSnippet(): string {
 
 function httpSnippet(key: string): string {
   return [
-    '# 1. O navegador abre (redirect_to precisa estar nas URLs de redirecionamento)',
+    '# 1. O navegador abre (redirect_to precisa estar nas URLs de retorno do app)',
     `GET ${API_BASE_URL}/auth/v1/oauth/{google|github}/authorize`,
     `    ?apikey=${key}`,
     '    &redirect_to=https%3A%2F%2Fseuapp.com%2Fauth%2Fcallback',

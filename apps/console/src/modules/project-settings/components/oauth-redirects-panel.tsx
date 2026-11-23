@@ -32,8 +32,8 @@ export function OAuthRedirectsPanel({ projectId, urls }: OAuthRedirectsPanelProp
 
   return (
     <Section
-      title="URLs de redirecionamento"
-      description="Os redirect_to aceitos: callbacks do app para onde o login volta."
+      title="URLs de retorno do app"
+      description="Páginas do seu app para onde o login social pode voltar. Não confunda com a URL de callback de cada provedor."
       meta={countOf(urls)}
       isFramed
       action={
@@ -47,14 +47,14 @@ export function OAuthRedirectsPanel({ projectId, urls }: OAuthRedirectsPanelProp
       <ConfirmDialog
         isOpen={isOpen}
         onOpenChange={setIsOpen}
-        title="Editar callbacks do app"
+        title="Editar URLs de retorno"
         description="Só estas URLs exatas recebem o usuário de volta."
-        confirmLabel="Salvar callbacks"
+        confirmLabel="Salvar URLs"
         size="lg"
         onConfirm={confirm}
       >
         <TextAreaField
-          label="URLs de callback"
+          label="URLs de retorno"
           hint="Uma por linha. Vazia, só o site do projeto é aceito."
           isCode
           rows={4}

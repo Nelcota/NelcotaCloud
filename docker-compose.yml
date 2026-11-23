@@ -30,6 +30,22 @@ services:
       - "127.0.0.1:1026:1025"
       - "127.0.0.1:8026:8025"
 
+  # Direct connections like production (docker compose --profile pooler up -d): set
+  # POOLER_AUTH_PASSWORD, DATABASE_PUBLIC_HOST=localhost and DATABASE_PUBLIC_PORT=6544 in .env.
+  pgbouncer:
+    profiles: ["pooler"]
+    build:
+      context: .
+      dockerfile: deploy/pgbouncer/Dockerfile
+    environment:
+      POOLER_AUTH_PASSWORD: ${POOLER_AUTH_PASSWORD:-0000000000000000000000000000000000000000000000000000000000000000}
+      DATABASE_PUBLIC_HOST: localhost
+    ports:
+      - "127.0.0.1:6544:6543"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres-data:
     # One volume per major version: a new major cannot read the previous one's files, so data

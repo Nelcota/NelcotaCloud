@@ -2,6 +2,7 @@ import type { JSX } from 'react'
 import { useState } from 'react'
 
 import type { ConfirmChange } from '@/shared/ui/confirm-change'
+import { useReadOnlyReason } from '@/shared/auth/write-access'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
 import type { IconComponent } from '@/shared/ui/icon-component'
 import { PendingButton } from '@/shared/ui/pending-button'
@@ -33,8 +34,14 @@ type ConfirmButtonProps = {
 }
 
 /** A button whose action runs only after the user confirms it in a dialog. */
-export function ConfirmButton(props: ConfirmButtonProps): JSX.Element {
+export function ConfirmButton(buttonProps: ConfirmButtonProps): JSX.Element {
   const [isOpen, setIsOpen] = useState(false)
+  // Its actions all write, so a viewer's trigger is off instead of opening a dead end.
+  const readOnlyReason = useReadOnlyReason()
+  const props = {
+    ...buttonProps,
+    isDisabled: buttonProps.isDisabled === true || readOnlyReason !== null,
+  }
 
   return (
     <>

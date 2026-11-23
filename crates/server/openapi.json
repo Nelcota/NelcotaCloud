@@ -2108,7 +2108,7 @@
           "tenant-admin"
         ],
         "summary": "`POST /admin/smtp/test`: sends a test email through the tenant's own SMTP server.",
-        "description": "Waits for the server to accept the message, so the owner sees a delivery problem right\naway. Only for a configured server: the platform's server is not offered as a free relay.",
+        "description": "Waits for the server to accept the message, so the owner sees a delivery problem right\naway. Either the saved server or, with `server`, settings about to be saved (checked by the\nsame host policy), so a wrong password is caught before auth emails depend on it. Never the\nplatform's server: it is not offered as a free relay.",
         "operationId": "send_smtp_test",
         "requestBody": {
           "content": {
@@ -2125,7 +2125,7 @@
             "description": "The SMTP server accepted the test email"
           },
           "400": {
-            "description": "Invalid recipient",
+            "description": "Invalid recipient, or invalid unsaved settings",
             "content": {
               "application/json": {
                 "schema": {
@@ -5745,6 +5745,96 @@
         ]
       }
     },
+    "/database/v1/connection": {
+      "get": {
+        "tags": [
+          "database-admin"
+        ],
+        "summary": "`GET /database/v1/connection`: host, port, database and user for connecting to the\nproject's Postgres directly (ORMs, `psql`), without the password.",
+        "operationId": "read_connection",
+        "responses": {
+          "200": {
+            "description": "The connection details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectConnectionView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/database/v1/connection/password": {
+      "post": {
+        "tags": [
+          "database-admin"
+        ],
+        "summary": "`POST /database/v1/connection/password`: a new password for direct connections, shown only\nin this response. The previous one stops working for new connections.",
+        "operationId": "reset_connection_password",
+        "responses": {
+          "200": {
+            "description": "The new password and connection string",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewConnectionPassword"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "This server does not offer direct connections",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
     "/database/v1/migrations": {
       "get": {
         "tags": [
@@ -6455,6 +6545,46 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requires the secret API key, or membership in the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "platform_account": [],
+            "project": []
+          }
+        ]
+      }
+    },
+    "/database/v1/types": {
+      "get": {
+        "tags": [
+          "database-admin"
+        ],
+        "summary": "`GET /database/v1/types`: TypeScript types of the project's tables, views, functions and\nenums, generated from the schema as it is now.",
+        "operationId": "read_types",
+        "responses": {
+          "200": {
+            "description": "The generated types",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatabaseTypes"
                 }
               }
             }
@@ -10094,6 +10224,18 @@
           }
         }
       },
+      "DatabaseTypes": {
+        "type": "object",
+        "required": [
+          "typescript"
+        ],
+        "properties": {
+          "typescript": {
+            "type": "string",
+            "description": "The `Database` type of the `public` schema, for `createClient<Database>()` of the SDK."
+          }
+        }
+      },
       "DeliveryLogEntry": {
         "type": "object",
         "description": "One delivery as the delivery log shows it. The payload is not included: it has personal\ndata and is already in the receiver's hands.",
@@ -10180,6 +10322,51 @@
           "delivered",
           "failed"
         ]
+      },
+      "DirectConnectionView": {
+        "type": "object",
+        "description": "How to reach the project's Postgres directly, without the password.",
+        "required": [
+          "enabled",
+          "database",
+          "user",
+          "ssl_mode",
+          "has_password"
+        ],
+        "properties": {
+          "database": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "`false` when this server does not offer direct connections."
+          },
+          "has_password": {
+            "type": "boolean",
+            "description": "A password was set at least once; it is never shown again."
+          },
+          "host": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "port": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          },
+          "ssl_mode": {
+            "type": "string",
+            "description": "`require`, `verify-full` or `disable` (local development)."
+          },
+          "user": {
+            "type": "string"
+          }
+        }
       },
       "EmailBody": {
         "type": "object",
@@ -10753,6 +10940,23 @@
           "target": {
             "type": "string",
             "description": "An email address, or the Discord or Slack incoming webhook URL."
+          }
+        }
+      },
+      "NewConnectionPassword": {
+        "type": "object",
+        "description": "A new password for direct connections, shown only in this response.",
+        "required": [
+          "password",
+          "connection_string"
+        ],
+        "properties": {
+          "connection_string": {
+            "type": "string",
+            "description": "The full `postgresql://` URL with the new password, for an ORM's `DATABASE_URL`."
+          },
+          "password": {
+            "type": "string"
           }
         }
       },
@@ -11515,6 +11719,17 @@
           "to"
         ],
         "properties": {
+          "server": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SmtpSettingsBody",
+                "description": "Settings to try before saving them; nothing is stored. Without it, the saved server."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "to": {
             "type": "string",
             "description": "Where the test email goes."

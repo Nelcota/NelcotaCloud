@@ -23,6 +23,11 @@ export function isRlsOff(table: TableOverview): boolean {
   return isPlainTable(table) && table.rls_enabled === false
 }
 
+/** RLS on without a single policy: safe, but apps see no rows until a policy lets them. */
+export function isRlsLocked(table: TableOverview): boolean {
+  return isPlainTable(table) && table.rls_enabled && table.policies.length === 0
+}
+
 /** The planner's estimate, or `null` before the table was ever analyzed. */
 export function estimatedRowsLabel(table: TableOverview): string | null {
   const rows = table.estimated_rows

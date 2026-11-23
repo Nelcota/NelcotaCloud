@@ -231,6 +231,10 @@ impl TestServer {
             storage_r2_endpoint: storage.map(|config| config.endpoint.to_owned()),
             platform_tenant_slug: Some(platform_slug.clone()),
             captcha_verify_url: Some(fake_turnstile.verify_url.clone()),
+            database_public_host: Some("db.nelcota.test".to_owned()),
+            database_public_port: None,
+            database_public_ssl_mode: None,
+            pooler_auth_password: None,
         };
         let fake_github = FakeGitHub::start().await;
         let endpoints = fake_endpoints(&fake_github, google);

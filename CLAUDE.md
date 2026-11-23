@@ -180,6 +180,21 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   The schema overview also lists each table's indexes (columns, method, size, scans) and its
   size on disk. The console edits rows in the grid (filters, insert, edit, delete by primary
   key) through the same Data API as `nelcota_service`.
+- Types (`database/types`): `GET /database/v1/types` reads the `public` catalog through the
+  developer session (one static query) and writes the SDK's `Database` TypeScript type: tables
+  (`Row`, `Insert` without generated columns, `Update`), views, functions (overloads as unions),
+  enums; empty sections are `{ [_ in never]: never }` so table names keep their autocomplete.
+- Direct connections (`database/direct_connection`): each project may get the login role
+  `nelcota_c_<slug>` (NOINHERIT, `SET role = nelcota_developer` as a role default, 60 s statement
+  timeout, CONNECTION LIMIT 10, CONNECT on its own database only). `POST
+  /database/v1/connection/password` sets a random password and returns it once (never stored);
+  `GET /database/v1/connection` shows host, port, database and user. `DATABASE_PUBLIC_HOST`,
+  `_PORT` and `_SSL_MODE` turn it on (unset: `direct_connection_disabled`). Since the developer
+  role owns `public` everywhere, every `tenant_*` database must stay closed to `PUBLIC`
+  (`CLOSE_TENANT_DATABASES`, run at startup, after `CREATE DATABASE` and before a password is
+  set). PgBouncer (`deploy/pgbouncer`, transaction mode, TLS required) authenticates through
+  `pgbouncer.user_lookup`, created by the API when `POOLER_AUTH_PASSWORD` is set and limited to
+  `nelcota_c_*` roles.
 - Data API usage (`database/usage`): a middleware on `/rest/v1` counts each response per
   project, hour, resource, method and status in memory (`UsageSlot` filled by `DataApiCaller`;
   404s keep no resource name), flushed every 15 s to the control plane's `data_api_usage`
@@ -225,6 +240,8 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   dependencies. It keeps the session, renews it before expiry (one refresh in flight), handles
   OAuth with PKCE, magic links, MFA and sessions, and queries the database
   (`from('t').select(...).eq(...).execute()`, `rpc`) as the logged-in user. On servers,
+  `createClient<Database>()` takes the generated `Database` type (names, rows, inserts, updates,
+  `rpc` arguments and results follow it; without it everything is a plain record).
   `createAccessTokenVerifier` verifies access tokens using cached JWKS (WebCrypto Ed25519),
   and `verifyWebhook` verifies webhooks. Types are generated from `openapi.json`. Uses
   TypeScript 7; `api:types` runs openapi-typescript with its own TypeScript 5.9 through `npx`
@@ -239,6 +256,13 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   project per secret key (`NELCOTA_SECRET_KEY`, `NELCOTA_API_URL`): schema, rows, SQL, users,
   activity and traffic tools over the public API. Depends on `@modelcontextprotocol/sdk` and
   `zod`; follows the SDK's TypeScript rules.
+- CLI (`packages/cli`, `@nelcota/cli`, bin `nelcota`): no runtime dependencies (`node:util`
+  `parseArgs`, `fetch`), one project per secret key like the MCP server (`NELCOTA_API_URL`,
+  `NELCOTA_SECRET_KEY`, or `--local`). `init`, `migrations new|list|push` (files
+  `nelcota/migrations/<UTC YYYYMMDDHHMMSS>_<name>.sql`, applied through
+  `/database/v1/migrations`), `gen types`, `db url`, `db reset-password`, and `dev start|stop|
+  status` (a local stack in `.nelcota/dev/` with Docker and the API image
+  `ghcr.io/nelcota/nelcota-api`, published by CI from `main`). Follows the SDK's TypeScript rules.
 - Example app (`examples/react-auth/`): React + Vite app that shows every Auth flow with the SDK
   (same path alias as the console), plus the quickstart in its README. It follows the console's
   TypeScript rules; keep it working when the SDK changes.
@@ -246,10 +270,12 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
   service: it serves the built console, proxies the API, and obtains TLS certificates. The API
   trusts the address Caddy appends to `X-Forwarded-For` (`CLIENT_IP_HEADER`). The `backup`
   service sends daily encrypted dumps of every database to Cloudflare R2 (`deploy/backup/`).
+  Direct Postgres connections go through the `pgbouncer` service (profile `direct-connections`,
+  on a DNS-only host).
   Operations (first boot, platform tenant, backups, staging): `docs/deploy.md`.
 - CI (`.github/workflows/ci.yml`): API (fmt, clippy, tests with Postgres and Mailpit), console,
-  SDK and MCP server (format, lint, generated types, tests, build), example app (format, lint, build), Docker
-  images on pushes to `main`.
+  SDK, MCP server and CLI (format, lint, generated types, tests, build), example app (format, lint, build), Docker
+  images (the API image is pushed to GHCR on pushes to `main`).
 - Behind Cloudflare (proxied DNS records, recommended so console assets come from the edge):
   SSL/TLS mode "Full (strict)", `CLIENT_IP_HEADER=cf-connecting-ip`, and the VPS firewall allows
   ports 80/443 only from Cloudflare's IP ranges. Caching needs no rule: hashed assets are
@@ -281,6 +307,10 @@ NelcotaCloud: a Backend-as-a-Service written in Rust. Products: multitenant Auth
 - SDK, in `packages/sdk/`: `npm test`, `npm run typecheck`, `npm run lint`, `npm run format`,
   `npm run build`.
 - MCP server, in `packages/mcp/`: the same scripts; `npm run build` writes `dist/index.mjs`.
+- CLI, in `packages/cli/`: the same scripts; `node dist/index.mjs --help`.
+- `docker compose --profile pooler up -d pgbouncer`: local PgBouncer on 127.0.0.1:6544 (the same
+  `POOLER_AUTH_PASSWORD` in `.env` and the shell; `DATABASE_PUBLIC_HOST=localhost` and
+  `DATABASE_PUBLIC_PORT=6544` for the API).
 - Example app, in `examples/react-auth/`: `npm install`, `npm run dev` (http://localhost:5174; a
   project with that site URL and its publishable key in `.env.local`), `npm run build`,
   `npm run lint`, `npm run format` / `npm run format:check`.
@@ -332,7 +362,9 @@ Modular monolith in `crates/server/src/`: one folder per business context under 
     query guard, error mapping), `schema` (introspection, cache, relationships, function
     resolution), `query` (URL and `Prefer` parsing into a `ReadQuery`), `sql` (statement
     writers), `rows` (read, write and function-call use cases), `admin` (developer session, SQL
-    runner, table and policy DDL, schema overview), `usage` (Data API counters, flush, report).
+    runner, table and policy DDL, schema overview), `usage` (Data API counters, flush, report),
+    `types` (catalog query, TypeScript writer), `direct_connection` (settings, connection string,
+    password reset).
 - `shared/`: infrastructure with no business rules (`crypto`, `http` (generic `ApiError`, client
   IP, bearer token), JSON validation, request id and span, `database` migrators, `email` SMTP
   sender, `net` public host checks, `image` square image normalization and upload errors).

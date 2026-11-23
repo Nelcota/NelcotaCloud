@@ -31,6 +31,7 @@ pub async fn build_settings(
             .captcha_verify_url
             .clone()
             .unwrap_or_else(|| TURNSTILE_VERIFY_URL.to_owned()),
+        direct_connection: config.direct_connection()?,
     })
 }
 

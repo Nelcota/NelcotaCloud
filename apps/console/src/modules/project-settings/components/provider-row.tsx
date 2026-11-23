@@ -39,8 +39,9 @@ export function ProviderRow(props: ProviderRowProps): JSX.Element {
         <ProviderStatus configured={configured} />
       </div>
       <IdChip
-        label={`URL de callback: ${providerName}`}
+        label="URL de callback"
         value={callbackUrl}
+        isLabelVisible
         className="col-span-2 w-full md:col-span-1"
       />
       <div className="col-span-2 flex items-center justify-end gap-1 md:col-span-1">

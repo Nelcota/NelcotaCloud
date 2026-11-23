@@ -11,6 +11,7 @@ import {
   useRemoveCaptchaMutation,
   useSaveCaptchaMutation,
 } from '@/modules/project-settings/queries/use-captcha'
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
 import { PendingButton } from '@/shared/ui/pending-button'
 import { Input } from '@/shared/ui/primitives/input'
 import { showFlash } from '@/shared/lib/flash-notice'
@@ -26,20 +27,34 @@ export function CaptchaForm({ projectId, siteKey }: CaptchaFormProps): JSX.Eleme
   const remove = useRemoveCaptchaMutation(projectId)
   const [newSiteKey, setNewSiteKey] = useState(siteKey ?? '')
   const [secretKey, setSecretKey] = useState('')
+  const [isConfirming, setIsConfirming] = useState(false)
   const state = stateOf(siteKey)
 
+  // Turning it on refuses every signup and login that comes without a token: ask first.
   function submit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault()
-    save.mutate(
-      { site_key: newSiteKey.trim(), secret_key: secretKey.trim() },
-      {
-        // The secret leaves the page once stored: nothing keeps it in memory after the save.
-        onSuccess: () => {
-          setSecretKey('')
-          showFlash('Captcha ativo.')
-        },
-      },
-    )
+
+    if (state === 'off') {
+      setIsConfirming(true)
+      return
+    }
+
+    save.mutate(keys(), { onSuccess: afterSave })
+  }
+
+  async function saveKeys(): Promise<void> {
+    await save.mutateAsync(keys())
+    afterSave()
+  }
+
+  function keys(): { site_key: string; secret_key: string } {
+    return { site_key: newSiteKey.trim(), secret_key: secretKey.trim() }
+  }
+
+  // The secret leaves the page once stored: nothing keeps it in memory after the save.
+  function afterSave(): void {
+    setSecretKey('')
+    showFlash('Captcha ativo.')
   }
 
   return (
@@ -100,6 +115,15 @@ export function CaptchaForm({ projectId, siteKey }: CaptchaFormProps): JSX.Eleme
         />
       </SettingsRow>
       <FormError error={save.error ?? remove.error} />
+      <ConfirmDialog
+        isOpen={isConfirming}
+        onOpenChange={setIsConfirming}
+        title="Exigir captcha agora?"
+        description="Cadastro, login com senha e os links por email passam a ser recusados sem o token do Turnstile. Ative só depois que o seu app mostrar o widget e enviar captcha_token."
+        confirmLabel="Ativar captcha"
+        isWeighty
+        onConfirm={saveKeys}
+      />
     </SettingsGroup>
   )
 }
