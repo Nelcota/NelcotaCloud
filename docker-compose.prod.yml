@@ -81,6 +81,12 @@ services:
       STORAGE_R2_SECRET_ACCESS_KEY: ${STORAGE_R2_SECRET_ACCESS_KEY:-}
       WEBHOOK_WORKER_REPLICAS: ${WEBHOOK_WORKER_REPLICAS:-2}
       CACHE_VALKEY_URL: ${CACHE_VALKEY_URL:-}
+      # Direct Postgres connections through PgBouncer (profile direct-connections, see
+      # docs/deploy.md). Empty host: the console says the server does not offer them.
+      DATABASE_PUBLIC_HOST: ${DATABASE_PUBLIC_HOST:-}
+      DATABASE_PUBLIC_PORT: ${DATABASE_PUBLIC_PORT:-6543}
+      DATABASE_PUBLIC_SSL_MODE: ${DATABASE_PUBLIC_SSL_MODE:-require}
+      POOLER_AUTH_PASSWORD: ${POOLER_AUTH_PASSWORD:-}
     healthcheck:
       test:
         - CMD
@@ -90,6 +96,33 @@ services:
           exec 3<>/dev/tcp/127.0.0.1/8080;
           printf 'GET /ready HTTP/1.0\r\n%s: 127.0.0.1\r\n\r\n' "$$CLIENT_IP_HEADER" >&3;
           grep -q '^HTTP/1[.][01] 200 ' <&3
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+  # Direct Postgres connections (ORMs, psql) for every project, on DATABASE_PUBLIC_PORT with TLS.
+  # Off unless started with --profile direct-connections; the API must have the same
+  # POOLER_AUTH_PASSWORD so it creates the lookup role PgBouncer authenticates through.
+  pgbouncer:
+    profiles: ["direct-connections"]
+    build:
+      context: .
+      dockerfile: deploy/pgbouncer/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      POOLER_AUTH_PASSWORD: ${POOLER_AUTH_PASSWORD:?set POOLER_AUTH_PASSWORD}
+      DATABASE_PUBLIC_HOST: ${DATABASE_PUBLIC_HOST:?set DATABASE_PUBLIC_HOST}
+      PGBOUNCER_TLS_CERT_FILE: ${PGBOUNCER_TLS_CERT_FILE:-}
+      PGBOUNCER_TLS_KEY_FILE: ${PGBOUNCER_TLS_KEY_FILE:-}
+    ports:
+      - "${DATABASE_PUBLIC_PORT:-6543}:6543"
+    volumes:
+      - pgbouncer-tls:/var/lib/pgbouncer/tls
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "6543"]
       interval: 10s
       timeout: 3s
       retries: 6
@@ -172,3 +205,4 @@ volumes:
     name: ${POSTGRES_DATA_VOLUME:-${COMPOSE_PROJECT_NAME}_postgres-data}
   caddy-data:
   caddy-config:
+  pgbouncer-tls:

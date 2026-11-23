@@ -10,9 +10,11 @@ use crate::modules::auth::mfa::factor_code_access::FactorCodeAccess;
 use crate::modules::auth::session::session_grant::TokenSigning;
 use crate::modules::auth::usage::project_usage_cache::ProjectUsageCache;
 use crate::modules::cache::entries::cache_store::CacheStore;
+use crate::modules::database::direct_connection::direct_connection_settings::DirectConnectionSettings;
 use crate::modules::database::execution::database_sessions::DatabaseSessions;
 use crate::modules::database::execution::session_slots::SessionSlots;
 use crate::modules::database::schema::schema_cache::SchemaCache;
+use crate::modules::database::usage::usage_buffer::DataApiUsageBuffer;
 use crate::modules::oauth::login::oauth_login_context::OAuthLoginContext;
 use crate::modules::oauth::provider::provider_endpoints::OAuthEndpoints;
 use crate::modules::storage::object_store::r2_store::R2Store;
@@ -48,6 +50,8 @@ pub struct AppState {
     pub schema_cache: Arc<SchemaCache>,
     /// Bounds Data API and developer sessions running at once, across projects.
     pub database_session_slots: Arc<SessionSlots>,
+    /// Data API responses counted per project, written to the control plane in the background.
+    pub data_api_usage: Arc<DataApiUsageBuffer>,
     pub secret_box: Arc<SecretBox>,
     pub signing_keys: Arc<SigningKeyCache>,
     pub tenant_provisioning_slots: Arc<tokio::sync::Semaphore>,
@@ -111,7 +115,6 @@ impl AppState {
         TenantRemoval {
             control_plane_pool: &self.control_plane_pool,
             tenant_pools: &self.tenant_pools,
-            signing_keys: &self.signing_keys,
         }
     }
 
@@ -125,8 +128,7 @@ impl AppState {
     pub fn auth_email_links(&self) -> EmailLinkDelivery<'_> {
         EmailLinkDelivery {
             mailer: self.auth_mailer(),
-            webhooks: Arc::clone(&self.webhooks),
-            limiter: &self.rate_limits.email,
+            limiter: &self.rate_limits.auth,
             captcha: self.captcha_requirement(),
         }
     }
@@ -155,7 +157,7 @@ impl AppState {
 
     pub fn factor_code_access(&self) -> FactorCodeAccess<'_> {
         FactorCodeAccess {
-            limiter: &self.rate_limits.mfa,
+            limiter: &self.rate_limits.auth,
             secret_box: &self.secret_box,
         }
     }
@@ -171,7 +173,6 @@ impl AppState {
 
     pub fn smtp_settings_store(&self) -> SmtpSettingsStore<'_> {
         SmtpSettingsStore {
-            control_plane_pool: &self.control_plane_pool,
             secret_box: &self.secret_box,
             email_senders: &self.email_senders,
         }
@@ -183,7 +184,6 @@ impl AppState {
         WebhookEndpointStore {
             control_plane_pool: &self.control_plane_pool,
             secret_box: &self.secret_box,
-            subscriptions: &webhooks.subscriptions,
             policy: webhooks.transport.policy(),
         }
     }
@@ -213,4 +213,6 @@ pub struct AppSettings {
     pub client_ip_header: Option<HeaderName>,
     /// Cloudflare Turnstile's `siteverify`; a fake server in tests.
     pub captcha_verify_url: String,
+    /// Where apps reach project databases directly; `None` when the server does not offer it.
+    pub direct_connection: Option<DirectConnectionSettings>,
 }

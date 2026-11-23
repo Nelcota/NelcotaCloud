@@ -12,12 +12,14 @@ export function CachePage(): JSX.Element {
   return (
     <div className="grid gap-6">
       <PageHeader title="Cache" />
-      {project?.role === 'member' && (
+      {project !== undefined && project.role !== 'owner' && (
         <p className="text-muted-foreground text-sm">
           Apenas donos do projeto podem gerenciar o cache.
         </p>
       )}
-      {project?.role !== 'member' && <ProjectCacheScreen key={projectId} projectId={projectId} />}
+      {(project === undefined || project.role === 'owner') && (
+        <ProjectCacheScreen key={projectId} projectId={projectId} />
+      )}
     </div>
   )
 }

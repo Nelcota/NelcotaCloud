@@ -1,7 +1,8 @@
 use axum::Json;
 use axum::extract::rejection::JsonRejection;
-use axum::extract::{FromRequest, Request};
+use axum::extract::{FromRequest, OptionalFromRequest, Request};
 use axum::http::StatusCode;
+use axum::http::header::CONTENT_TYPE;
 use serde::de::DeserializeOwned;
 use validator::Validate;
 
@@ -19,12 +20,32 @@ where
     type Rejection = ApiError;
 
     async fn from_request(request: Request, state: &S) -> Result<Self, Self::Rejection> {
-        let Json(body) = Json::<T>::from_request(request, state)
+        let Json(body) = <Json<T> as FromRequest<S>>::from_request(request, state)
             .await
             .map_err(|rejection| map_rejection(&rejection))?;
         body.validate().map_err(ApiError::invalid_request)?;
 
         Ok(Self(body))
+    }
+}
+
+/// An optional body: a request without a content type has none; one with a body is parsed and
+/// validated like `ValidatedJson`.
+impl<T, S> OptionalFromRequest<S> for ValidatedJson<T>
+where
+    T: DeserializeOwned + Validate,
+    S: Send + Sync,
+{
+    type Rejection = ApiError;
+
+    async fn from_request(request: Request, state: &S) -> Result<Option<Self>, Self::Rejection> {
+        if request.headers().get(CONTENT_TYPE).is_none() {
+            return Ok(None);
+        }
+
+        let body = <Self as FromRequest<S>>::from_request(request, state).await?;
+
+        Ok(Some(body))
     }
 }
 

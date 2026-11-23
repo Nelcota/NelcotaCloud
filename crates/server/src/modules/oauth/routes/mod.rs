@@ -1,5 +1,6 @@
 pub mod authorize_oauth;
 pub mod configure_oauth_provider;
+pub mod configure_oauth_redirects;
 pub mod exchange_oauth_code;
 pub mod list_oauth_providers;
 pub mod list_user_identities;

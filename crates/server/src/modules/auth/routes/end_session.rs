@@ -7,7 +7,7 @@ use crate::modules::auth::session::authenticated_user::AuthenticatedUser;
 use crate::modules::auth::session::session_listing::end_session_of_user;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
-/// `DELETE /sessions/{session_id}`: logs one device out; its access token expires on its own.
+/// `DELETE /sessions/{session_id}`: ends one device session in Auth.
 #[utoipa::path(
     delete,
     path = "/auth/v1/sessions/{session_id}",

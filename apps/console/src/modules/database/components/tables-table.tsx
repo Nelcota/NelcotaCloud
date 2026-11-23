@@ -4,7 +4,7 @@ import List from '~icons/solar/list-linear'
 import { Link } from '@tanstack/react-router'
 import type { JSX } from 'react'
 
-import { RlsOffMarker } from '@/modules/database/components/rls-off-marker'
+import { RlsMarker } from '@/modules/database/components/rls-marker'
 import {
   estimatedRowsLabel,
   isPlainTable,
@@ -49,7 +49,7 @@ export function TablesTable({ projectId, tables }: TablesTableProps): JSX.Elemen
                     {table.name}
                   </Link>
                   <KindNote table={table} />
-                  <RlsOffMarker table={table} />
+                  <RlsMarker table={table} />
                 </span>
               </TableCell>
               <TableCell className="text-muted-foreground text-right tabular-nums">

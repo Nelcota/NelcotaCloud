@@ -4,6 +4,7 @@ import { AuthListeners } from './auth-listeners'
 import { notAuthenticated } from './not-authenticated'
 import { sessionChangeEvent } from './session-change'
 import { type RefreshHost, refreshOrAdopt } from './session-refresh'
+import { sharedBrowserStorage } from './session-storage'
 import type { SessionStore } from './session-store'
 import { withTabLock } from './tab-lock'
 
@@ -76,6 +77,7 @@ export class SessionManager {
   /** A valid access token, renewed first when it is about to expire. */
   async accessToken(): Promise<string> {
     const session = this.session
+    const generation = this.sessionGeneration
 
     if (session === null) {
       throw notAuthenticated()
@@ -87,7 +89,7 @@ export class SessionManager {
 
     const refreshed = await this.refresh()
 
-    if (refreshed === null) {
+    if (refreshed === null || this.sessionGeneration !== generation) {
       throw notAuthenticated()
     }
 
@@ -100,11 +102,14 @@ export class SessionManager {
       return this.refreshing
     }
 
-    this.refreshing = this.performRefresh().finally(() => {
-      this.refreshing = null
+    const refreshing = this.performRefresh().finally(() => {
+      if (this.refreshing === refreshing) {
+        this.refreshing = null
+      }
     })
+    this.refreshing = refreshing
 
-    return this.refreshing
+    return refreshing
   }
 
   subscribe(listener: AuthStateListener): () => void {
@@ -119,10 +124,11 @@ export class SessionManager {
   /**
    * Refresh tokens are single use and tabs share one stored session: a second tab refreshing
    * the same token would look like token theft and end the session. So tabs refresh one at a
-   * time (Web Locks), and a tab adopts the session another tab already renewed.
+   * time, and a tab adopts the session another tab already renewed.
    */
   private async performRefresh(): Promise<Session | null> {
     const session = this.session
+    const generation = this.sessionGeneration
 
     if (session === null) {
       return null
@@ -132,12 +138,14 @@ export class SessionManager {
       http: this.http,
       store: this.store,
       now: this.now,
-      current: () => this.session,
+      current: () => this.sessionForGeneration(generation),
       start: (renewed, event) => this.start(renewed, event),
       end: () => this.end(),
     }
 
-    return withTabLock(this.store.lockName(), () => refreshOrAdopt(host, session))
+    return withTabLock(this.store.lockName(), sharedBrowserStorage(this.store.storage), () =>
+      refreshOrAdopt(host, session),
+    )
   }
 
   /** Another tab already wrote the change to storage, so this tab only mirrors it. */
@@ -161,5 +169,14 @@ export class SessionManager {
   /** A new or ended session: work started for the previous one must not touch this one. */
   private bumpGeneration(): void {
     this.sessionGeneration += 1
+    this.refreshing = null
+  }
+
+  private sessionForGeneration(generation: number): Session | null {
+    if (this.sessionGeneration !== generation) {
+      return null
+    }
+
+    return this.session
   }
 }

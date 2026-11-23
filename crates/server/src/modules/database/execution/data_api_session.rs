@@ -68,6 +68,11 @@ impl DataApiSession {
             .bind(statement_timeout.as_millis().to_string())
             .fetch_one(&mut *transaction)
             .await?;
+        let guard = QueryGuard::new(
+            admin_pool,
+            BackendIdentity { pid, started_at },
+            statement_timeout,
+        );
         let schema = sessions
             .schema_cache
             .schema(tenant_id, version, &mut transaction)
@@ -77,18 +82,12 @@ impl DataApiSession {
         Ok(Self {
             transaction,
             schema,
-            guard: QueryGuard {
-                backend: BackendIdentity { pid, started_at },
-                statement_timeout,
-                admin_pool,
-            },
+            guard,
             _slot: slot,
         })
     }
 
     pub async fn commit(self) -> Result<(), ApiError> {
-        self.transaction.commit().await?;
-
-        Ok(())
+        self.guard.run(self.transaction.commit()).await
     }
 }

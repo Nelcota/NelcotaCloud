@@ -1,4 +1,4 @@
-use sqlx::PgPool;
+use sqlx::PgConnection;
 use uuid::Uuid;
 
 use crate::modules::tenants::settings::site_url::SiteUrl;
@@ -18,7 +18,7 @@ pub struct TenantSettingsUpdate<'a> {
 
 /// Validates the sent fields and stores them, returning the settings now in effect.
 pub async fn update_settings(
-    control_plane_pool: &PgPool,
+    connection: &mut PgConnection,
     tenant_id: Uuid,
     update: TenantSettingsUpdate<'_>,
 ) -> Result<TenantSettings, ApiError> {
@@ -31,7 +31,7 @@ pub async fn update_settings(
         require_email_verification: update.require_email_verification,
         mascot_id: update.mascot_id,
     };
-    let settings = update_tenant_settings(control_plane_pool, tenant_id, change).await?;
+    let settings = update_tenant_settings(connection, tenant_id, change).await?;
     let settings =
         settings.ok_or_else(|| ApiError::internal(format!("tenant {tenant_id} not found")))?;
 

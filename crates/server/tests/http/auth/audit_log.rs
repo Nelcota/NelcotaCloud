@@ -57,7 +57,10 @@ async fn records_logins_and_failed_attempts() -> TestResult {
     assert_eq!(field(logged_in, "/actor"), "user");
     assert_eq!(field(logged_in, "/login_method"), "password");
     assert_eq!(field(logged_in, "/user_id"), &json!(session.user.id));
-    assert_eq!(field(logged_in, "/ip_address"), "127.0.0.1");
+    assert_eq!(
+        field(logged_in, "/ip_address"),
+        server.client_ip.to_string().as_str()
+    );
     assert_eq!(
         field(logged_in, "/email"),
         &json!(tenant_user_email(&tenant))
@@ -177,7 +180,10 @@ async fn summarizes_the_period_and_the_most_refused_addresses() -> TestResult {
     assert_eq!(field(&summary, "/failures"), 3);
     assert_eq!(field(&summary, "/changes"), 1);
     let address = field(&summary, "/failing_addresses/0");
-    assert_eq!(field(address, "/ip_address"), "127.0.0.1");
+    assert_eq!(
+        field(address, "/ip_address"),
+        server.client_ip.to_string().as_str()
+    );
     assert_eq!(field(address, "/failures"), 3);
     assert_eq!(field(address, "/accounts"), 2);
     assert_eq!(
@@ -239,7 +245,10 @@ async fn exports_the_filtered_events_as_csv() -> TestResult {
         session.user.id
     );
     assert!(row.contains(&expected_start), "{row}");
-    assert!(row.contains(",127.0.0.1,wrong_password,"), "{row}");
+    assert!(
+        row.contains(&format!(",{},wrong_password,", server.client_ip)),
+        "{row}"
+    );
     server.drop_tenant(&tenant).await
 }
 
@@ -307,7 +316,7 @@ async fn searches_events_by_email_or_ip_address() -> TestResult {
     );
 
     // Admin requests carry their IP too, so the secret key's ban matches the address.
-    let ip_page = audit_page(&server, &tenant, "?search=127.0.0").await?;
+    let ip_page = audit_page(&server, &tenant, &format!("?search={}", server.client_ip)).await?;
     assert_eq!(
         event_actions(&ip_page),
         ["user_banned", "logged_in", "signed_up"]

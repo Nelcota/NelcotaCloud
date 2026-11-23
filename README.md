@@ -34,6 +34,12 @@ CI uses Rust 1.100.0, Node.js 26.13.1, and npm 12.2.3.
 - In `apps/console`, run `npm ci`, `npm run format:check`, `npm run lint`, and `npm run build`.
 - In `packages/sdk`, run `npm ci`, `npm run format:check`, `npm run lint`,
   `npm run typecheck`, `npm test`, and `npm run build`.
+- `packages/mcp` (the MCP server for coding agents) and `packages/cli` (the `nelcota` CLI:
+  migrations, generated types, direct connections, `nelcota dev`) take the same scripts as the
+  SDK.
+- Direct Postgres connections: `docker compose --profile pooler up -d pgbouncer` runs PgBouncer
+  on `127.0.0.1:6544`. Set the same `POOLER_AUTH_PASSWORD` for the API and the pooler, plus
+  `DATABASE_PUBLIC_HOST=localhost` and `DATABASE_PUBLIC_PORT=6544` for the API.
 - After changing the HTTP contract, run `cargo run -p server --bin export-openapi` from the
   root, then run `npm run api:types` in either the console or SDK directory. Both commands
   update the shared generated schema in `packages/sdk/src/generated/api-schema.d.ts`.

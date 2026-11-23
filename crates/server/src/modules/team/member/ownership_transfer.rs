@@ -5,6 +5,7 @@ use crate::modules::team::member::ownership_changes::{
     MembershipTarget, ensure_below_owner_limit, require_member_role, set_role,
 };
 use crate::modules::team::member::ownership_error::OwnershipError;
+use crate::modules::team::member::team_access::TeamAccounts;
 use crate::modules::tenants::platform::membership_repository::lock_project_memberships;
 use crate::modules::tenants::platform::project_role::ProjectRole;
 
@@ -35,6 +36,7 @@ impl OwnershipTransfer {
 /// project is never ownerless, and never ends up with the handover half done.
 pub async fn transfer_ownership(
     pool: &PgPool,
+    accounts: &mut TeamAccounts,
     transfer: OwnershipTransfer,
 ) -> Result<(), OwnershipError> {
     if transfer.from_account_id == transfer.to_account_id {
@@ -49,7 +51,13 @@ pub async fn transfer_ownership(
         return Err(OwnershipError::NotOwner);
     }
 
-    if require_member_role(&memberships, to.account_id)? == ProjectRole::Member {
+    let destination_role = require_member_role(&memberships, to.account_id)?;
+
+    if accounts.has_active(&[to.account_id]).await? == false {
+        return Err(OwnershipError::NotMember);
+    }
+
+    if destination_role != ProjectRole::Owner {
         ensure_below_owner_limit(&mut transaction, to.account_id).await?;
         set_role(&mut transaction, to, ProjectRole::Owner).await?;
     }

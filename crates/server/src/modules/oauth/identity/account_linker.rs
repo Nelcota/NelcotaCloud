@@ -17,6 +17,8 @@ use crate::modules::webhooks::outbox::webhook_recorder::WebhookRecorder;
 pub enum AccountLinkError {
     #[error("the provider account has no verified email")]
     NoVerifiedEmail,
+    #[error("this provider cannot confirm current ownership of the email address")]
+    EmailConfirmationRequired,
     #[error("the account with this email is linked to another account at this provider")]
     ProviderAccountMismatch,
     #[error("another login created the same account or identity concurrently")]
@@ -82,6 +84,10 @@ async fn account_for_email(
     (profile, key): (&ProviderProfile, &IdentityKey<'_>),
     webhooks: &WebhookRecorder,
 ) -> Result<User, AccountLinkError> {
+    if profile.needs_email_confirmation {
+        return Err(AccountLinkError::EmailConfirmationRequired);
+    }
+
     let raw_email = profile
         .verified_email
         .as_ref()

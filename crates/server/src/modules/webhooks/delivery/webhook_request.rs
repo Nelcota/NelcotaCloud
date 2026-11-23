@@ -1,6 +1,6 @@
 use crate::modules::webhooks::signing::webhook_secret::WebhookSecret;
 
-/// Error text kept for the delivery log, never the receiver's response body.
+/// Error text kept for the delivery log; the receiver's own answer is kept apart, cut short.
 const MAX_ERROR_LENGTH: usize = 300;
 
 /// Where and how to sign: the endpoint's URL and every secret currently signing for it.
@@ -14,6 +14,26 @@ pub struct DeliveryTarget {
 pub struct WebhookMessage {
     pub id: String,
     pub body: String,
+}
+
+/// One attempt as the delivery log records it: what happened, how long the receiver took to
+/// answer (`None` when it never answered) and, for a refusal, the start of its answer.
+#[derive(Debug)]
+pub struct AttemptReport {
+    pub outcome: DeliveryOutcome,
+    pub duration_ms: Option<i32>,
+    pub response_excerpt: Option<String>,
+}
+
+impl AttemptReport {
+    /// Refused before any request went out (bad URL, unusable secret, unreachable host).
+    pub fn unanswered(outcome: DeliveryOutcome) -> Self {
+        Self {
+            outcome,
+            duration_ms: None,
+            response_excerpt: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

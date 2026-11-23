@@ -5,6 +5,7 @@ use serde_json::Value;
 use crate::modules::database::access::data_api_caller::DataApiCaller;
 use crate::modules::database::execution::data_api_session::{DataApiSession, TransactionAccess};
 use crate::modules::database::execution::database_sessions::DatabaseSessions;
+use crate::modules::database::query::order_parser::OrderTerm;
 use crate::modules::database::query::preferences::{CountMode, Preferences};
 use crate::modules::database::query::read_query::ReadQuery;
 use crate::modules::database::rejection::database_rejection::DatabaseRejection;
@@ -20,14 +21,14 @@ const PLAN_ROWS_POINTER: &str = "/0/Plan/Plan Rows";
 /// A read of one table: the rows the caller's role and policies allow, shaped by the query.
 pub struct RowRead<'a> {
     pub table_name: &'a str,
-    pub query: &'a ReadQuery,
+    pub query: ReadQuery,
     pub preferences: &'a Preferences,
 }
 
 pub async fn read_rows(
     sessions: &DatabaseSessions<'_>,
     caller: &DataApiCaller,
-    read: RowRead<'_>,
+    mut read: RowRead<'_>,
 ) -> Result<RowsResult, ApiError> {
     let mut session = DataApiSession::open(sessions, caller, TransactionAccess::ReadOnly).await?;
     let schema = Arc::clone(&session.schema);
@@ -35,11 +36,27 @@ pub async fn read_rows(
         .table(read.table_name)
         .ok_or_else(|| DatabaseRejection::TableNotFound(read.table_name.to_owned()))?;
     let preferences = read.preferences;
+    if preferences.orders_by_primary_key && table.primary_key.is_empty() == false {
+        let root = read.query.node_mut(Vec::new());
+
+        if root.order.is_empty() {
+            root.order = table
+                .primary_key
+                .iter()
+                .map(|column| OrderTerm {
+                    column: column.clone(),
+                    is_descending: false,
+                    nulls: None,
+                })
+                .collect();
+        }
+    }
+
     let shape = ReadShape {
         counts_exactly: preferences.count == Some(CountMode::Exact),
         is_single_object: preferences.is_single_object,
     };
-    let mut statement = read_statement(&schema, read.query, table, shape)?;
+    let mut statement = read_statement(&schema, &read.query, table, shape)?;
     let row: StatementRow = session
         .guard
         .run(
@@ -52,7 +69,7 @@ pub async fn read_rows(
     let mut result = RowsResult::from_row(row, offset)?;
 
     if preferences.count == Some(CountMode::Planned) {
-        let mut statement = planned_count_statement(&schema, read.query, table)?;
+        let mut statement = planned_count_statement(&schema, &read.query, table)?;
         let plan: Value = session
             .guard
             .run(

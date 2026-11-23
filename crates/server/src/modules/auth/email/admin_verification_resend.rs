@@ -6,7 +6,7 @@ use crate::modules::auth::email::auth_email_dispatch::{
     AuthEmailKind, AuthEmailRequest, send_auth_email,
 };
 use crate::modules::auth::email::auth_mailer::AuthMailer;
-use crate::modules::auth::rate_limiting::email_limiter::EmailLimiter;
+use crate::modules::auth::rate_limiting::shared_auth_limits::SharedAuthLimits;
 use crate::modules::auth::rejection::auth_rejection::AuthRejection;
 use crate::modules::auth::user::user_lookup::find_user_by_id;
 use crate::modules::tenants::access::tenant_admin_context::TenantAdminContext;
@@ -24,7 +24,7 @@ pub struct VerificationResend {
 /// Unlike the public resend, the admin already knows the account, so refusals are explicit.
 /// The limit is the public one, keyed by the user's address: an admin cannot flood an inbox.
 pub async fn resend_verification_email(
-    (mailer, limiter): (&AuthMailer, &EmailLimiter),
+    (mailer, limiter): (&AuthMailer, &SharedAuthLimits),
     admin: TenantAdminContext,
     resend: &VerificationResend,
 ) -> Result<(), ApiError> {
@@ -48,7 +48,7 @@ pub async fn resend_verification_email(
         email: &user.email,
         client_ip: resend.client_ip,
     };
-    limiter.check(&attempt)?;
+    limiter.check_email(&attempt).await?;
     let request = AuthEmailRequest {
         user: &user,
         kind: AuthEmailKind::Verification,

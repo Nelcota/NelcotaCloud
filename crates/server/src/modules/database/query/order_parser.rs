@@ -31,6 +31,21 @@ pub fn parse_order(text: &str) -> Result<Vec<OrderTerm>, DatabaseRejection> {
     terms.into_iter().map(parse_term).collect()
 }
 
+/// Preserve the order in which columns were sent, including repeated order parameters.
+pub fn append_order(terms: &mut Vec<OrderTerm>, text: &str) -> Result<(), DatabaseRejection> {
+    let added = parse_order(text)?;
+
+    if terms.len().saturating_add(added.len()) > MAX_ORDER_TERMS {
+        return Err(DatabaseRejection::invalid_query(
+            "order takes at most 10 columns",
+        ));
+    }
+
+    terms.extend(added);
+
+    Ok(())
+}
+
 fn parse_term(text: &str) -> Result<OrderTerm, DatabaseRejection> {
     let mut parts = text.split('.');
     let column = parse_name(parts.next().unwrap_or_default())?;

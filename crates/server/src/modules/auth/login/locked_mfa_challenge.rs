@@ -12,8 +12,13 @@ use crate::modules::auth::session::session_grant::{
 use crate::modules::auth::session::session_issuer::SessionTokens;
 use crate::modules::auth::user::user_lookup::find_user_by_id;
 use crate::modules::auth::user::user_record::User;
+use crate::modules::tenants::audit::audit_action::AuditAction;
+use crate::modules::tenants::audit::audit_entry::NewAuditEvent;
+use crate::modules::tenants::audit::audit_recorder::insert_audit_event;
+use crate::modules::tenants::audit::login_method::LoginMethod;
 use crate::shared::crypto::opaque_token::{TokenHash, hash_opaque_token};
 use crate::shared::http::api_error::ApiError;
+use crate::shared::http::request_origin::RequestOrigin;
 
 /// A usable MFA challenge and its user, locked by its transaction until it ends.
 pub struct LockedChallenge<'t> {
@@ -55,7 +60,7 @@ impl LockedChallenge<'_> {
     pub async fn start_session(
         mut self,
         signing: &TokenSigning<'_>,
-        tenant_id: Uuid,
+        (tenant_id, origin): (Uuid, RequestOrigin),
     ) -> Result<SessionTokens, ApiError> {
         consume_mfa_challenge(&mut self.transaction, &self.token_hash).await?;
         let request = SessionRequest {
@@ -67,6 +72,11 @@ impl LockedChallenge<'_> {
             },
         };
         let tokens = issue_session_with(signing, request).await?;
+        let event = NewAuditEvent {
+            login_method: Some(LoginMethod::Totp),
+            ..NewAuditEvent::by_user(AuditAction::LoggedIn, tokens.user.id, origin)
+        };
+        insert_audit_event(&mut *self.transaction, event).await?;
         self.transaction.commit().await?;
 
         Ok(tokens)

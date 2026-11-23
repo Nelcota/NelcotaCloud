@@ -22,7 +22,7 @@ export function SmtpTestSection({ projectId }: { projectId: string }): JSX.Eleme
 
   function submit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault()
-    test.mutate(recipient.trim())
+    test.mutate({ to: recipient.trim() })
   }
 
   return (

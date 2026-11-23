@@ -15,14 +15,17 @@ use crate::modules::tenants::routes::list_api_keys;
 use crate::modules::tenants::routes::list_blocked_addresses;
 use crate::modules::tenants::routes::list_projects;
 use crate::modules::tenants::routes::read_captcha_settings;
+use crate::modules::tenants::routes::read_project_logo;
 use crate::modules::tenants::routes::read_public_captcha;
 use crate::modules::tenants::routes::read_smtp_settings;
 use crate::modules::tenants::routes::read_tenant_settings;
 use crate::modules::tenants::routes::remove_captcha;
+use crate::modules::tenants::routes::remove_project_logo;
 use crate::modules::tenants::routes::reset_smtp;
 use crate::modules::tenants::routes::revoke_api_key;
 use crate::modules::tenants::routes::rotate_signing_key;
 use crate::modules::tenants::routes::unblock_address;
+use crate::modules::tenants::routes::upload_project_logo;
 
 /// Every endpoint of this module; `router.rs` merges it into the API.
 pub fn tenants_routes() -> OpenApiRouter<AppState> {
@@ -43,12 +46,17 @@ fn provisioning_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(delete_project::delete_project))
 }
 
-/// A tenant's own settings, keys, SMTP server, captcha and blocked addresses.
+/// A tenant's own settings, logo, keys, SMTP server, captcha and blocked addresses.
 fn tenant_admin_routes() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
         .routes(routes!(
             read_tenant_settings::read_tenant_settings,
             change_tenant_settings::change_tenant_settings
+        ))
+        .routes(routes!(
+            read_project_logo::read_project_logo,
+            upload_project_logo::upload_project_logo,
+            remove_project_logo::remove_project_logo
         ))
         .routes(routes!(
             list_api_keys::list_api_keys,

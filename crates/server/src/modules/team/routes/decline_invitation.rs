@@ -20,6 +20,7 @@ use crate::shared::http::api_error::{ApiError, ErrorBody};
     params(("invitation_id" = Uuid, Path, description = "Id of the invitation")),
     responses(
         (status = 204, description = "Invitation declined"),
+        (status = 403, description = "Email verification required", body = ErrorBody),
         (status = 404, description = "No pending invitation for this account", body = ErrorBody),
     )
 )]
@@ -28,6 +29,7 @@ pub async fn decline_invitation(
     account: PlatformAccount,
     Path(invitation_id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
+    let (_account_lock, account) = account.lock_active(&state).await?;
     let email = invited_email_of(&account)?;
     let answer = InvitationAnswer {
         invitation_id,

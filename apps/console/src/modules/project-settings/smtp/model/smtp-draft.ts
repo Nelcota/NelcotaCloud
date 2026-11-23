@@ -22,6 +22,8 @@ export type SmtpDraft = {
   password: string
   senderName: string
   senderEmail: string
+  /** Where the test email goes before anything is saved. */
+  testRecipient: string
 }
 
 export const EMPTY_SMTP_DRAFT: SmtpDraft = {
@@ -34,6 +36,7 @@ export const EMPTY_SMTP_DRAFT: SmtpDraft = {
   password: '',
   senderName: '',
   senderEmail: '',
+  testRecipient: '',
 }
 
 export const DEFAULT_PORTS: Record<SmtpSecurity, number> = { tls: 465, starttls: 587 }

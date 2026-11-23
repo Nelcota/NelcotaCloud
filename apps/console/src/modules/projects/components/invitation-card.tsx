@@ -4,6 +4,7 @@ import type { JSX } from 'react'
 import type { components } from '@/shared/api/api-schema'
 import { formatDate } from '@/shared/lib/format-date'
 import { Button } from '@/shared/ui/button'
+import { ConfirmButton } from '@/shared/ui/confirm-button'
 
 type ReceivedInvitation = components['schemas']['ReceivedInvitation']
 
@@ -11,7 +12,8 @@ type InvitationCardProps = {
   invitation: ReceivedInvitation
   isPending: boolean
   onAccept: () => void
-  onDecline: () => void
+  /** Settles when the API answers, so the confirmation waits and shows a failure. */
+  onDecline: () => Promise<void>
 }
 
 export function InvitationCard(props: InvitationCardProps): JSX.Element {
@@ -29,9 +31,16 @@ export function InvitationCard(props: InvitationCardProps): JSX.Element {
         </p>
       </div>
       <div className="flex shrink-0 gap-2">
-        <Button variant="outline" disabled={props.isPending} onClick={props.onDecline}>
+        <ConfirmButton
+          size="default"
+          title={`Recusar o convite para ${invitation.project_name}?`}
+          description="O convite é apagado. Para entrar depois, um dono precisa convidar você de novo."
+          confirmLabel="Recusar convite"
+          isDisabled={props.isPending}
+          onConfirm={props.onDecline}
+        >
           Recusar
-        </Button>
+        </ConfirmButton>
         <Button disabled={props.isPending} aria-busy={props.isPending} onClick={props.onAccept}>
           Aceitar convite
         </Button>

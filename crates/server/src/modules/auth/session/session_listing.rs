@@ -52,6 +52,7 @@ pub async fn end_session_of_user(
     webhooks: &WebhookRecorder,
 ) -> Result<bool, ApiError> {
     let mut transaction = pool.begin().await?;
+    lock_account(&mut transaction, user_id).await?;
     let session: Option<bool> = sqlx::query_scalar(
         "SELECT bool_or(revoked_at IS NULL AND expires_at > now()) FROM refresh_tokens \
          WHERE family_id = $1 AND user_id = $2 HAVING count(*) > 0",
@@ -85,6 +86,7 @@ pub async fn end_other_sessions(
     webhooks: &WebhookRecorder,
 ) -> Result<(), ApiError> {
     let mut transaction = pool.begin().await?;
+    lock_account(&mut transaction, user_id).await?;
     sqlx::query(
         "INSERT INTO revoked_token_families (family_id) \
          SELECT DISTINCT family_id FROM refresh_tokens WHERE user_id = $1 AND family_id <> $2 \
@@ -111,6 +113,18 @@ pub async fn end_other_sessions(
     let revoked = (user_id, RevokedSessions::Others, None);
     record_sessions_revoked(&mut transaction, webhooks, revoked).await?;
     transaction.commit().await?;
+
+    Ok(())
+}
+
+async fn lock_account(
+    connection: &mut sqlx::PgConnection,
+    user_id: Uuid,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("SELECT id FROM users WHERE id = $1 FOR NO KEY UPDATE")
+        .bind(user_id)
+        .execute(connection)
+        .await?;
 
     Ok(())
 }

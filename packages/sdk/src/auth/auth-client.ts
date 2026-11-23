@@ -8,7 +8,7 @@ import type {
   User,
   UserMetadata,
 } from './auth-types'
-import { type AuthorizedContext, authorizedRequest } from './authorized-request'
+import { type AuthorizedContext, authorizedRequest } from '../http/authorized-request'
 import { AvatarApi } from './avatar-api'
 import {
   type Credentials,
@@ -51,7 +51,7 @@ export class AuthClient {
     this.now = context.now
     this.avatar = new AvatarApi(context)
     this.mfa = new MfaApi(context)
-    const verifiers = new PkceVerifierStore(context.store.storage, context.store.key)
+    const verifiers = new PkceVerifierStore(context.store.storage, context.store.key, context.now)
     this.oauth = new OAuthApi({ ...context, store: verifiers })
     this.sessions = new SessionsApi(context)
   }
@@ -85,7 +85,7 @@ export class AuthClient {
     return session
   }
 
-  /** Emails a one-time login link (signing the email up when it has no account). */
+  /** Emails a one-time login link. A new user account is created when the link is opened. */
   async sendMagicLink(target: EmailTarget): Promise<void> {
     await this.post<void>('/auth/v1/magic-link', emailBody(target))
   }

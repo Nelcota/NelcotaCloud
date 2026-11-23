@@ -1,5 +1,7 @@
+pub mod auth_retention;
 pub mod authenticated_user;
 pub mod refresh_token_repository;
+pub(crate) mod session_access;
 pub mod session_family;
 pub mod session_grant;
 pub mod session_issuer;

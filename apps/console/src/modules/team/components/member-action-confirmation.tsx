@@ -6,6 +6,7 @@ import { ACTION_COPY, titleFor } from '@/modules/team/components/team-action-cop
 import { MemberActionIllustration } from '@/modules/team/components/team-illustrations'
 import type { MemberAction } from '@/modules/team/components/team-row-actions'
 import type { ActionTarget } from '@/modules/team/components/action-target'
+import { ReadOnlyContext } from '@/shared/auth/write-access'
 import type { ConfirmChange } from '@/shared/ui/confirm-change'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
 
@@ -30,8 +31,7 @@ export function MemberActionConfirmation(props: MemberActionConfirmationProps): 
   const action = effectiveAction(props.action, isSteppingDown)
   const copy = ACTION_COPY[action]
   const { target } = props
-
-  return (
+  const dialog = (
     <ConfirmDialog
       isOpen
       onClose={props.onClose}
@@ -51,6 +51,13 @@ export function MemberActionConfirmation(props: MemberActionConfirmationProps): 
       />
     </ConfirmDialog>
   )
+
+  if (action !== 'leave') {
+    return dialog
+  }
+
+  // Leaving goes through the account, not the project: viewers may leave too.
+  return <ReadOnlyContext value={false}>{dialog}</ReadOnlyContext>
 }
 
 type StepDownChoiceProps = {
@@ -107,9 +114,11 @@ function changesFor(action: MemberAction, target: ActionTarget): ConfirmChange[]
   return [theirs, { subject: 'você', icon: User, from: 'Dono', to: 'Membro' }]
 }
 
+const ROLE_CHANGES: MemberAction[] = ['promote', 'demote', 'restrict', 'allow-edit']
+
 /** Role changes stay light; the picture is for what takes access away or hands the project over. */
 function illustrationFor(action: MemberAction): JSX.Element | undefined {
-  if (action === 'promote' || action === 'demote') {
+  if (ROLE_CHANGES.includes(action)) {
     return undefined
   }
 

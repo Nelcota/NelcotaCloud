@@ -9,7 +9,10 @@ use url::form_urlencoded;
 use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, MockServer, Request, ResponseTemplate};
 
-use super::{APP_CALLBACK, AuthorizeParams, authorize, call_back, exchange, location, query_value};
+use super::{
+    APP_CALLBACK, AuthorizeParams, authorize, call_back, exchange, location, query_value,
+    register_callbacks,
+};
 use crate::support::{CreatedTenant, TestResult, TestServer, unique_email};
 
 const CLIENT_ID: &str = "test-google-client";
@@ -24,17 +27,15 @@ const APP_CHALLENGE: &str = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM";
 async fn google_login_creates_a_session_after_provider_and_app_pkce() -> TestResult {
     let google = MockServer::start().await;
     let base_url = google.uri();
-    let server = TestServer::start_with_google(Some(ProviderEndpoints {
-        authorize_url: format!("{base_url}/o/oauth2/v2/auth"),
-        token_url: format!("{base_url}/token"),
-        api_base_url: base_url.clone(),
-    }))
-    .await?;
+    let server = google_server(&base_url).await?;
     let tenant = server.create_tenant().await?;
     configure_google(&server, &tenant).await?;
     let (state, challenge) = start_google_authorization(&server, &tenant, &base_url).await?;
     let email = unique_email("google");
-    mock_google_exchange(&google, challenge, &email).await;
+    let (_, hosted_domain) = email
+        .rsplit_once('@')
+        .ok_or("missing fixture email domain")?;
+    mock_google_exchange(&google, challenge, &email, Some(hosted_domain)).await;
 
     let callback = call_back(&server, &state, PROVIDER_CODE).await?;
     let code = query_value(&callback, "code")?;
@@ -42,6 +43,43 @@ async fn google_login_creates_a_session_after_provider_and_app_pkce() -> TestRes
     assert_eq!(session.user.email, email);
 
     server.drop_tenant(&tenant).await
+}
+
+#[tokio::test]
+async fn google_requires_inbox_confirmation_for_an_unlinked_external_address() -> TestResult {
+    let google = MockServer::start().await;
+    let base_url = google.uri();
+    let server = google_server(&base_url).await?;
+    let tenant = server.create_tenant().await?;
+    configure_google(&server, &tenant).await?;
+    let email = unique_email("external-google");
+    server.sign_up(&tenant, &email).await?;
+    let (state, challenge) = start_google_authorization(&server, &tenant, &base_url).await?;
+    mock_google_exchange(&google, challenge, &email, None).await;
+
+    let callback = call_back(&server, &state, PROVIDER_CODE).await?;
+    assert_eq!(
+        query_value(&callback, "error")?,
+        "email_confirmation_required"
+    );
+    let mut database = server.tenant_database(&tenant).await?;
+    let linked: bool =
+        sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM identities WHERE provider = 'google')")
+            .fetch_one(&mut database)
+            .await?;
+    assert!(linked == false);
+    drop(database);
+
+    server.drop_tenant(&tenant).await
+}
+
+async fn google_server(base_url: &str) -> TestResult<TestServer> {
+    TestServer::start_with_google(Some(ProviderEndpoints {
+        authorize_url: format!("{base_url}/o/oauth2/v2/auth"),
+        token_url: format!("{base_url}/token"),
+        api_base_url: base_url.to_owned(),
+    }))
+    .await
 }
 
 async fn configure_google(server: &TestServer, tenant: &CreatedTenant) -> TestResult {
@@ -54,7 +92,7 @@ async fn configure_google(server: &TestServer, tenant: &CreatedTenant) -> TestRe
         .await?;
     assert_eq!(response.status(), StatusCode::NO_CONTENT);
 
-    Ok(())
+    register_callbacks(server, tenant, &[APP_CALLBACK]).await
 }
 
 async fn start_google_authorization(
@@ -95,7 +133,12 @@ async fn start_google_authorization(
     Ok((state.clone(), challenge.clone()))
 }
 
-async fn mock_google_exchange(google: &MockServer, challenge: String, email: &str) {
+async fn mock_google_exchange(
+    google: &MockServer,
+    challenge: String,
+    email: &str,
+    hosted_domain: Option<&str>,
+) {
     Mock::given(method("POST"))
         .and(path("/token"))
         .and(header("accept", "application/json"))
@@ -112,7 +155,7 @@ async fn mock_google_exchange(google: &MockServer, challenge: String, email: &st
         .and(path("/v1/userinfo"))
         .and(header("authorization", format!("Bearer {PROVIDER_TOKEN}")))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-            "sub": "google-123", "email": email, "email_verified": true
+            "sub": "google-123", "email": email, "email_verified": true, "hd": hosted_domain
         })))
         .expect(1)
         .mount(google)

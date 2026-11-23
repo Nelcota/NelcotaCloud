@@ -1,5 +1,6 @@
 import type { components, paths } from '../generated/api-schema'
-import { toNelcotaError, withoutTrailingSlashes } from '../http/http-client'
+import { withoutTrailingSlashes } from '../http/base-url'
+import { toNelcotaError } from '../http/response-error'
 
 const REQUEST_TIMEOUT_MS = 1_500
 const LOCAL_HOSTS = ['localhost', '127.0.0.1', '[::1]']

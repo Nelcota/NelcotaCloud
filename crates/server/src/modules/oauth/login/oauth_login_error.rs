@@ -14,6 +14,8 @@ use crate::shared::crypto::secret_box::SecretBoxError;
 pub enum OAuthLoginError {
     #[error("OAuth provider is not configured for this tenant")]
     ProviderNotConfigured,
+    #[error("OAuth provider settings changed during login")]
+    ProviderChanged,
     #[error("the user denied access or the provider returned no code")]
     ProviderDenied,
     #[error("invalid OAuth endpoint URL: {0}")]
@@ -45,7 +47,11 @@ impl OAuthLoginError {
     pub fn redirect_error_code(&self) -> &'static str {
         match self {
             Self::ProviderDenied => "access_denied",
+            Self::ProviderNotConfigured | Self::ProviderChanged => "oauth_provider_changed",
             Self::AccountLink(AccountLinkError::NoVerifiedEmail) => "email_not_verified",
+            Self::AccountLink(AccountLinkError::EmailConfirmationRequired) => {
+                "email_confirmation_required"
+            }
             Self::AccountLink(AccountLinkError::ProviderAccountMismatch) => "account_conflict",
             _ => "server_error",
         }
@@ -56,8 +62,12 @@ impl OAuthLoginError {
         matches!(
             self,
             Self::ProviderDenied
+                | Self::ProviderNotConfigured
+                | Self::ProviderChanged
                 | Self::AccountLink(
-                    AccountLinkError::NoVerifiedEmail | AccountLinkError::ProviderAccountMismatch
+                    AccountLinkError::NoVerifiedEmail
+                        | AccountLinkError::ProviderAccountMismatch
+                        | AccountLinkError::EmailConfirmationRequired
                 )
         )
     }

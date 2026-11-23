@@ -1,6 +1,6 @@
 import { compactVerify, decodeJwt, decodeProtectedHeader, errors } from 'jose'
 
-import { withoutTrailingSlashes } from '../http/http-client'
+import { withoutTrailingSlashes } from '../http/base-url'
 import { AccessTokenVerificationError } from './access-token-verification-error'
 import { JwksCache } from './jwks-cache'
 

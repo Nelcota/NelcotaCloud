@@ -8,14 +8,17 @@ from posixpath import normpath
 ROOT = Path(__file__).resolve().parents[1]
 SERVER = ROOT / "crates/server/src"
 CONSOLE = ROOT / "apps/console/src"
+# Known exceptions to remove: `auth` -> `team` (account removal) and `tenants` -> `auth`
+# (platform accounts check sessions) close cycles with `team` -> `auth` and `auth` -> `tenants`.
 SERVER_DEPENDENCIES = {
-    "auth": {"tenants", "webhooks"},
+    "auth": {"team", "tenants", "webhooks"},
     "cache": {"tenants"},
-    "database": {"tenants"},
+    "database": {"auth", "tenants"},
+    "notifications": {"auth", "storage", "tenants"},
     "oauth": {"auth", "tenants", "webhooks"},
     "storage": {"auth", "tenants"},
-    "team": {"auth", "tenants"},
-    "tenants": set(),
+    "team": {"auth", "notifications", "tenants", "webhooks"},
+    "tenants": {"auth"},
     "webhooks": {"tenants"},
     "shared": set(),
 }

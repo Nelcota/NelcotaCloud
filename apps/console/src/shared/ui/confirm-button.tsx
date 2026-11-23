@@ -1,6 +1,7 @@
 import type { JSX, ReactNode } from 'react'
 import { useState } from 'react'
 
+import { useReadOnlyReason } from '@/shared/auth/write-access'
 import { Button } from '@/shared/ui/button'
 import type { ConfirmChange } from '@/shared/ui/confirm-change'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
@@ -31,13 +32,16 @@ type ConfirmButtonProps = {
 /** A button whose action runs only after the user confirms it in a dialog. */
 export function ConfirmButton(props: ConfirmButtonProps): JSX.Element {
   const [isOpen, setIsOpen] = useState(false)
+  // Its actions all write, so a viewer's trigger is off instead of opening a dead end.
+  const readOnlyReason = useReadOnlyReason()
 
   return (
     <>
       <Button
         variant={triggerVariant(props.isDestructive)}
         size={props.size ?? 'sm'}
-        disabled={props.isPending || props.isDisabled}
+        disabled={props.isPending || props.isDisabled || readOnlyReason !== null}
+        title={readOnlyReason ?? undefined}
         aria-busy={props.isPending}
         aria-label={props.triggerLabel}
         onClick={() => setIsOpen(true)}

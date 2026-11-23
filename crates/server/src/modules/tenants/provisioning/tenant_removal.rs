@@ -10,7 +10,6 @@ use crate::modules::tenants::provisioning::tenant_deletion::{
     TenantDeletionError, complete_deletion, is_pending, pending_slug, requested_by, stage_deletion,
 };
 use crate::modules::tenants::provisioning::tenant_repository::lock_slug;
-use crate::modules::tenants::signing_keys::signing_key_cache::SigningKeyCache;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProjectRemovalError {
@@ -27,7 +26,6 @@ pub enum ProjectRemovalError {
 pub struct TenantRemoval<'a> {
     pub control_plane_pool: &'a PgPool,
     pub tenant_pools: &'a TenantPoolRegistry,
-    pub signing_keys: &'a SigningKeyCache,
 }
 
 impl TenantRemoval<'_> {
@@ -91,17 +89,12 @@ impl TenantRemoval<'_> {
             return Ok(());
         }
 
-        self.forget_cached(tenant_id).await;
+        self.tenant_pools.forget(tenant_id).await;
         let database_server = self.tenant_pools.database_server();
         database_server.try_drop_database(&slug).await?;
         complete_deletion(&mut transaction, tenant_id).await?;
         transaction.commit().await?;
 
         Ok(())
-    }
-
-    async fn forget_cached(&self, tenant_id: Uuid) {
-        self.signing_keys.forget(tenant_id);
-        self.tenant_pools.forget(tenant_id).await;
     }
 }

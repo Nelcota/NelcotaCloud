@@ -96,15 +96,50 @@ pub async fn record_api_key_use(
     Ok(())
 }
 
-/// Every key of the tenant, newest first, revoked ones included.
+const REVOKED_PAGE_SIZE: usize = 50;
+const REVOKED_PAGE_LOOKAHEAD: i64 = 51;
+
+/// Return the active keys on the first page, followed by bounded pages of revoked keys.
 pub async fn list_api_keys(
     pool: &PgPool,
     tenant_id: Uuid,
-) -> Result<Vec<ApiKeySummary>, sqlx::Error> {
-    sqlx::query_as(
-        "SELECT id, kind, name, COALESCE(key_hint, '') AS hint, publishable_key AS key, created_at, revoked_at, last_used_at FROM tenant_api_keys WHERE tenant_id = $1 ORDER BY created_at DESC",
+    before: Option<Uuid>,
+) -> Result<(Vec<ApiKeySummary>, Option<Uuid>), sqlx::Error> {
+    let mut keys: Vec<ApiKeySummary> = sqlx::query_as(
+        "WITH revoked AS (
+            SELECT * FROM tenant_api_keys
+            WHERE tenant_id = $1 AND revoked_at IS NOT NULL
+              AND ($2::uuid IS NULL OR (created_at, id) < (
+                  SELECT created_at, id FROM tenant_api_keys
+                  WHERE tenant_id = $1 AND id = $2 AND revoked_at IS NOT NULL
+              ))
+            ORDER BY created_at DESC, id DESC LIMIT $3
+         )
+         SELECT id, kind, name, COALESCE(key_hint, '') AS hint, publishable_key AS key, created_at, revoked_at, last_used_at
+         FROM (
+            SELECT * FROM tenant_api_keys WHERE tenant_id = $1 AND revoked_at IS NULL AND $2::uuid IS NULL
+            UNION ALL SELECT * FROM revoked
+         ) AS page
+         ORDER BY created_at DESC, id DESC",
     )
     .bind(tenant_id)
+    .bind(before)
+    .bind(REVOKED_PAGE_LOOKAHEAD)
     .fetch_all(pool)
-    .await
+    .await?;
+    let extra = keys
+        .iter()
+        .enumerate()
+        .filter(|(_, key)| key.revoked_at.is_some())
+        .nth(REVOKED_PAGE_SIZE)
+        .map(|(index, _)| index);
+    let next = extra.and_then(|index| {
+        keys.remove(index);
+        keys.iter()
+            .rev()
+            .find(|key| key.revoked_at.is_some())
+            .map(|key| key.id)
+    });
+
+    Ok((keys, next))
 }

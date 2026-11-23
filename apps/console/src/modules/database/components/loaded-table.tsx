@@ -2,7 +2,7 @@ import type { JSX } from 'react'
 import { useState } from 'react'
 
 import { BackToTables } from '@/modules/database/components/back-to-tables'
-import { RlsOffMarker } from '@/modules/database/components/rls-off-marker'
+import { RlsMarker } from '@/modules/database/components/rls-marker'
 import { TableColumnsSection } from '@/modules/database/components/table-columns-section'
 import { TableDangerZone } from '@/modules/database/components/table-danger-zone'
 import {
@@ -47,7 +47,7 @@ function TableSummary({ table }: { table: TableOverview }): JSX.Element {
       <span>
         {kindLabel(table.kind)} · {estimatedRowsLabel(table)} linhas (estimativa)
       </span>
-      <RlsOffMarker table={table} />
+      <RlsMarker table={table} />
     </span>
   )
 }

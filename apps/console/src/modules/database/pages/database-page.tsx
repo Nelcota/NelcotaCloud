@@ -1,5 +1,6 @@
 import type { JSX } from 'react'
 
+import { ConnectSheet } from '@/modules/database/components/connect-sheet'
 import { CreateTableDialog } from '@/modules/database/components/create-table-dialog'
 import { TablesBrowser } from '@/modules/database/components/tables-browser'
 import { useProjectId } from '@/shared/routing/use-project-id'
@@ -13,7 +14,12 @@ export function DatabasePage(): JSX.Element {
       <PageHeader
         title="Banco de dados"
         description="As tabelas do Postgres do projeto. Os apps leem e gravam pela API, dentro das políticas de cada tabela."
-        actions={<CreateTableDialog projectId={projectId} />}
+        actions={
+          <>
+            <ConnectSheet projectId={projectId} />
+            <CreateTableDialog projectId={projectId} />
+          </>
+        }
       />
       <TablesBrowser projectId={projectId} />
     </div>

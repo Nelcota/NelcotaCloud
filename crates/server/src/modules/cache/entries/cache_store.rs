@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use redis::aio::{ConnectionManager, ConnectionManagerConfig};
-use serde_json::Value;
+use serde_json::value::RawValue;
 
 use crate::modules::cache::rejection::CacheRejection;
 use crate::shared::http::api_error::ApiError;
@@ -42,7 +42,7 @@ impl CacheStore {
         Ok(Self { connection })
     }
 
-    pub async fn get(&self, key: &str) -> Result<Value, ApiError> {
+    pub async fn get(&self, key: &str) -> Result<Box<RawValue>, ApiError> {
         let bytes: Option<Vec<u8>> = self.execute(redis::cmd("GET").arg(key)).await?;
         let bytes = bytes.ok_or(CacheRejection::Miss)?;
 

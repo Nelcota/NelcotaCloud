@@ -49,9 +49,12 @@ export function smtpSteps(step: SmtpStepProps, illustration: ReactNode): DialogS
     },
     {
       label: 'Revisar',
-      description: 'Confira antes de salvar.',
-      missing: null,
-      content: <SmtpReview draft={draft} />,
+      description: 'Confira e diga para onde vai o email de teste.',
+      missing: missingUnless(
+        draft.testRecipient.trim().includes('@'),
+        'Digite o email que recebe o teste',
+      ),
+      content: <SmtpReview {...step} />,
     },
   ]
 

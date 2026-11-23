@@ -36,27 +36,31 @@ pub async fn abandon_orphaned_deliveries(
     Ok(abandoned.rows_affected())
 }
 
-/// What happened to one attempt, as the delivery log shows it.
+/// An accepted attempt: the receiver's status and how long it took to answer.
+pub struct DeliveredAttempt {
+    pub lease: DeliveryLease,
+    pub status: u16,
+    pub duration_ms: Option<i32>,
+}
+
+/// A refused or failed attempt, as the delivery log shows it.
 pub struct AttemptResult<'a> {
     pub lease: DeliveryLease,
     pub status: Option<u16>,
     pub error: Option<&'a str>,
+    pub duration_ms: Option<i32>,
+    /// The start of the receiver's answer, already cut and cleaned.
+    pub response_excerpt: Option<&'a str>,
 }
 
-pub async fn mark_delivered(
-    pool: &PgPool,
-    lease: DeliveryLease,
-    status: u16,
-) -> Result<bool, sqlx::Error> {
+pub async fn mark_delivered(pool: &PgPool, attempt: DeliveredAttempt) -> Result<bool, sqlx::Error> {
     let update = sqlx::query(
-        "UPDATE webhook_deliveries SET attempts = attempts + 1, last_attempt_at = clock_timestamp(), \
-         last_response_status = $3, last_error = NULL, delivered_at = clock_timestamp(), \
-         lease_token = NULL, lease_expires_at = NULL \
-         WHERE id = $1 AND lease_token = $2 AND lease_expires_at > clock_timestamp()",
+        "UPDATE webhook_deliveries SET attempts = attempts + 1, last_attempt_at = clock_timestamp(),          last_response_status = $3, last_error = NULL, last_duration_ms = $4, last_response_body = NULL,          delivered_at = clock_timestamp(), lease_token = NULL, lease_expires_at = NULL          WHERE id = $1 AND lease_token = $2 AND lease_expires_at > clock_timestamp()",
     )
-    .bind(lease.delivery_id)
-    .bind(lease.token)
-    .bind(i32::from(status))
+    .bind(attempt.lease.delivery_id)
+    .bind(attempt.lease.token)
+    .bind(i32::from(attempt.status))
+    .bind(attempt.duration_ms)
     .execute(pool)
     .await?;
 
@@ -71,19 +75,15 @@ pub async fn mark_failed(
 ) -> Result<bool, sqlx::Error> {
     let retry_in_seconds = retry_in.map(|delay| delay.as_secs_f64());
     let update = sqlx::query(
-        "UPDATE webhook_deliveries SET attempts = attempts + 1, last_attempt_at = clock_timestamp(), \
-         last_response_status = $3, last_error = $4, \
-         next_attempt_at = CASE WHEN $5::float8 IS NULL THEN next_attempt_at \
-         ELSE clock_timestamp() + $5::float8 * interval '1 second' END, \
-         failed_at = CASE WHEN $5::float8 IS NULL THEN clock_timestamp() END, \
-         lease_token = NULL, lease_expires_at = NULL \
-         WHERE id = $1 AND lease_token = $2 AND lease_expires_at > clock_timestamp()",
+        "UPDATE webhook_deliveries SET attempts = attempts + 1, last_attempt_at = clock_timestamp(),          last_response_status = $3, last_error = $4, last_duration_ms = $6, last_response_body = $7,          next_attempt_at = CASE WHEN $5::float8 IS NULL THEN next_attempt_at          ELSE clock_timestamp() + $5::float8 * interval '1 second' END,          failed_at = CASE WHEN $5::float8 IS NULL THEN clock_timestamp() END,          lease_token = NULL, lease_expires_at = NULL          WHERE id = $1 AND lease_token = $2 AND lease_expires_at > clock_timestamp()",
     )
     .bind(attempt.lease.delivery_id)
     .bind(attempt.lease.token)
     .bind(attempt.status.map(i32::from))
     .bind(attempt.error)
     .bind(retry_in_seconds)
+    .bind(attempt.duration_ms)
+    .bind(attempt.response_excerpt)
     .execute(pool)
     .await?;
 

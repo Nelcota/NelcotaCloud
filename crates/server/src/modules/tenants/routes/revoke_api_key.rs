@@ -9,7 +9,10 @@ use crate::modules::tenants::api_keys::api_key_revocation::{
     ApiKeyRevocationError, revoke_api_key as revoke,
 };
 use crate::modules::tenants::audit::audit_action::AuditAction;
-use crate::modules::tenants::audit::project_change::{ProjectChange, record_project_change};
+use crate::modules::tenants::audit::project_audit_queue::{
+    begin_project_change, commit_project_change,
+};
+use crate::modules::tenants::audit::project_change::ProjectChange;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
 /// `DELETE /admin/api-keys/{key_id}`: the key stops working at once.
@@ -31,7 +34,8 @@ pub async fn revoke_api_key(
     admin: TenantAdmin,
     Path(key_id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
-    let revocation = revoke(&state.control_plane_pool, admin.tenant_id, key_id).await;
+    let mut transaction = begin_project_change(&state.control_plane_pool, admin.tenant_id).await?;
+    let revocation = revoke(&mut transaction, admin.tenant_id, key_id).await;
     match revocation {
         Ok(()) => {
             let change = ProjectChange {
@@ -40,7 +44,7 @@ pub async fn revoke_api_key(
                 action: AuditAction::ApiKeyRevoked,
                 details: json!({ "key_id": key_id }),
             };
-            record_project_change(&state.tenant_pools, change).await;
+            commit_project_change(&state, transaction, change).await?;
             Ok(StatusCode::NO_CONTENT)
         }
         Err(ApiKeyRevocationError::NotFound) => Err(ApiError::NotFound("API key")),

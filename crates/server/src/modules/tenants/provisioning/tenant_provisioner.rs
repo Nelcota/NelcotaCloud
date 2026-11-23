@@ -8,8 +8,11 @@ use crate::modules::tenants::postgres::tenant_database_server::{
     TenantDatabaseError, TenantDatabaseServer,
 };
 use crate::modules::tenants::provisioning::provisioning_error::ProvisioningError;
+use crate::modules::tenants::provisioning::provisioning_intent::ProvisioningIntent;
 use crate::modules::tenants::provisioning::tenant_registration::register_tenant;
-use crate::modules::tenants::provisioning::tenant_repository::{lock_slug, slug_exists};
+use crate::modules::tenants::provisioning::tenant_repository::{
+    lock_slug, slug_exists, try_lock_slug,
+};
 use crate::modules::tenants::provisioning::tenant_slug::TenantSlug;
 use crate::modules::tenants::settings::site_url::SiteUrl;
 use crate::shared::crypto::secret_box::SecretBox;
@@ -49,88 +52,100 @@ pub struct ProvisionedTenant {
 }
 
 impl TenantProvisioner<'_> {
-    /// Provisions under a per-slug lock held by the registration transaction. A failure (or a
-    /// cancelled request) rolls the registration back; the database left behind is an orphan
-    /// that is dropped right away when possible and recreated by the next attempt otherwise.
+    /// Reserve the slug durably before creating anything that can outlive the request.
     pub async fn provision(
         &self,
         request: NewTenantRequest,
     ) -> Result<ProvisionedTenant, ProvisioningError> {
-        let database_server = &self.database_server;
         let slug = request.slug.clone();
         let _slot = tokio::time::timeout(PROVISIONING_WAIT, self.slots.acquire())
             .await
             .map_err(|_| ProvisioningError::Busy)?
             .map_err(|_| ProvisioningError::Busy)?;
+        let intent = ProvisioningIntent::reserve(self.control_plane_pool, &slug).await?;
         let mut transaction = self.control_plane_pool.begin().await?;
-        claim_slug(&mut transaction, &slug).await?;
+        lock_slug(&mut transaction, &slug).await?;
+
+        if intent.exists(&mut transaction).await? == false {
+            return Err(ProvisioningError::Busy);
+        }
+
+        if slug_exists(&mut *transaction, &slug).await? {
+            intent.complete(&mut transaction).await?;
+            transaction.commit().await?;
+
+            return Err(ProvisioningError::SlugTaken);
+        }
+
         let provisioning = self
-            .create_and_register(database_server, &mut transaction, request)
+            .create_and_register(&mut transaction, intent.tenant_id, request)
             .await;
         let provisioned = match provisioning {
             Ok(provisioned) => provisioned,
             Err(error) => {
-                database_server.drop_database(&slug).await;
+                drop(transaction);
+                self.recover(&intent).await;
                 return Err(error);
             }
         };
-
-        if let Err(error) = transaction.commit().await {
-            self.drop_database_unless_registered(database_server, &slug)
-                .await;
-            return Err(ProvisioningError::Database(error));
-        }
+        intent.complete(&mut transaction).await?;
+        transaction.commit().await?;
 
         Ok(provisioned)
     }
 
     async fn create_and_register(
         &self,
-        database_server: &TenantDatabaseServer<'_>,
         transaction: &mut PgConnection,
+        tenant_id: Uuid,
         request: NewTenantRequest,
     ) -> Result<ProvisionedTenant, ProvisioningError> {
-        create_fresh_database(database_server, &request.slug).await?;
-        database_server.migrate_database(&request.slug).await?;
+        let server = &self.database_server;
+        create_fresh_database(server, &request.slug).await?;
+        server.migrate_database(&request.slug, tenant_id).await?;
 
-        register_tenant(transaction, self.secret_box, request).await
+        register_tenant(transaction, self.secret_box, (tenant_id, request)).await
     }
 
-    /// A failed COMMIT may still have been applied by the server, so a registered tenant's
-    /// database is never dropped. When unsure, it is left: the next attempt recreates it.
-    async fn drop_database_unless_registered(
-        &self,
-        database_server: &TenantDatabaseServer<'_>,
-        slug: &TenantSlug,
-    ) {
-        let cleanup = self.drop_unregistered_database(database_server, slug).await;
+    pub async fn recover_pending(&self) -> Result<(), sqlx::Error> {
+        for intent in ProvisioningIntent::due(self.control_plane_pool).await? {
+            self.recover(&intent).await;
+        }
 
-        if let Err(error) = cleanup {
-            tracing::warn!(
-                slug = slug.as_str(),
-                %error,
-                "left a possibly orphan tenant database for the next attempt"
-            );
+        Ok(())
+    }
+
+    async fn recover(&self, intent: &ProvisioningIntent) {
+        if let Err(error) = self.drop_unregistered_database(intent).await {
+            tracing::warn!(slug = %intent.slug, %error, "could not recover tenant provisioning");
+
+            if let Err(error) = intent.postpone(self.control_plane_pool).await {
+                tracing::warn!(%error, "could not postpone tenant provisioning recovery");
+            }
         }
     }
 
-    /// Checks and drops under the slug lock, so a concurrent provisioning of the same slug that
-    /// already created its database (or registered it) never loses it to this cleanup.
     async fn drop_unregistered_database(
         &self,
-        database_server: &TenantDatabaseServer<'_>,
-        slug: &TenantSlug,
-    ) -> Result<(), sqlx::Error> {
+        intent: &ProvisioningIntent,
+    ) -> Result<(), ProvisioningError> {
+        let slug = TenantSlug::parse(&intent.slug).map_err(TenantDatabaseError::InvalidSlug)?;
         let mut transaction = self.control_plane_pool.begin().await?;
-        lock_slug(&mut transaction, slug).await?;
 
-        if slug_exists(&mut *transaction, slug).await? {
+        if try_lock_slug(&mut transaction, &slug).await? == false
+            || intent.exists(&mut transaction).await? == false
+        {
             return Ok(());
         }
 
-        database_server.drop_database(slug).await;
+        if slug_exists(&mut *transaction, &slug).await? == false {
+            self.database_server.try_drop_database(&slug).await?;
+        }
 
-        transaction.commit().await
+        intent.complete(&mut transaction).await?;
+        transaction.commit().await?;
+
+        Ok(())
     }
 }
 
@@ -149,20 +164,6 @@ async fn create_fresh_database(
     tracing::warn!(slug = slug.as_str(), "replacing orphan tenant database");
     database_server.drop_database(slug).await;
     database_server.create_database(slug).await?;
-
-    Ok(())
-}
-
-/// Holds the slug lock until the transaction ends, refusing a slug already in use.
-async fn claim_slug(
-    transaction: &mut PgConnection,
-    slug: &TenantSlug,
-) -> Result<(), ProvisioningError> {
-    lock_slug(transaction, slug).await?;
-
-    if slug_exists(&mut *transaction, slug).await? {
-        return Err(ProvisioningError::SlugTaken);
-    }
 
     Ok(())
 }

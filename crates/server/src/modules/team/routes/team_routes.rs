@@ -11,6 +11,7 @@ use crate::modules::team::routes::leave_project;
 use crate::modules::team::routes::list_my_invitations;
 use crate::modules::team::routes::read_team;
 use crate::modules::team::routes::remove_member;
+use crate::modules::team::routes::resend_invitation;
 use crate::modules::team::routes::transfer_ownership;
 
 /// Every endpoint of this module; `router.rs` merges it into the API.
@@ -19,6 +20,7 @@ pub fn team_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(read_team::read_team))
         .routes(routes!(invite_member::invite_member))
         .routes(routes!(cancel_invitation::cancel_invitation))
+        .routes(routes!(resend_invitation::resend_invitation))
         .routes(routes!(
             remove_member::remove_member,
             change_member_role::change_role

@@ -25,6 +25,8 @@ pub enum TenantsRejection {
     PlatformNotConfigured,
     #[error("you are not a member of this project")]
     ProjectAccessDenied,
+    #[error("viewers of a project can only read it")]
+    ReadOnlyMember,
     #[error("the SMTP server did not accept the email")]
     SmtpDeliveryFailed,
     #[error("this project requires a captcha token")]
@@ -54,6 +56,7 @@ impl TenantsRejection {
                 (StatusCode::SERVICE_UNAVAILABLE, "platform_not_configured")
             }
             Self::ProjectAccessDenied => (StatusCode::FORBIDDEN, "project_access_denied"),
+            Self::ReadOnlyMember => (StatusCode::FORBIDDEN, "read_only_member"),
             Self::SmtpDeliveryFailed => (StatusCode::BAD_GATEWAY, "smtp_delivery_failed"),
             Self::CaptchaRequired => (StatusCode::BAD_REQUEST, "captcha_required"),
             Self::CaptchaFailed => (StatusCode::BAD_REQUEST, "captcha_failed"),
@@ -135,6 +138,11 @@ mod tests {
                 TenantsRejection::ProjectAccessDenied,
                 StatusCode::FORBIDDEN,
                 "project_access_denied",
+            ),
+            (
+                TenantsRejection::ReadOnlyMember,
+                StatusCode::FORBIDDEN,
+                "read_only_member",
             ),
             (
                 TenantsRejection::SmtpDeliveryFailed,

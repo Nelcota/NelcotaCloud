@@ -9,11 +9,28 @@ pub struct OneTimeTokenRequest<'a> {
     pub purpose: OneTimeTokenPurpose,
     /// PKCE challenge of the app that will redeem the token (OAuth login codes only).
     pub code_challenge: Option<&'a str>,
+    pub oauth_context: Option<(&'a str, Uuid)>,
 }
 
 pub struct ConsumedOneTimeToken {
     pub user_id: Uuid,
     pub code_challenge: Option<String>,
+    pub oauth_context: Option<(String, Uuid)>,
+}
+
+pub async fn usable_token_exists<'e>(
+    executor: impl PgExecutor<'e>,
+    purpose: OneTimeTokenPurpose,
+    plaintext: &str,
+) -> Result<bool, sqlx::Error> {
+    sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM one_time_tokens WHERE token_hash = $1 AND purpose = $2
+                        AND consumed_at IS NULL AND expires_at > clock_timestamp())",
+    )
+    .bind(hash_opaque_token(plaintext.trim()))
+    .bind(purpose.as_str())
+    .fetch_one(executor)
+    .await
 }
 
 /// Creates a token and returns its plaintext; only the hash is stored.
@@ -25,9 +42,10 @@ pub async fn issue_one_time_token<'e>(
 ) -> Result<String, sqlx::Error> {
     let purpose = request.purpose;
     let token = OpaqueToken::generate(purpose.token_prefix());
+    let (provider, revision) = request.oauth_context.unzip();
     sqlx::query(
-        "INSERT INTO one_time_tokens (id, user_id, purpose, token_hash, expires_at, code_challenge) \
-         VALUES ($1, $2, $3, $4, now() + $5::bigint * interval '1 second', $6)",
+        "INSERT INTO one_time_tokens (id, user_id, purpose, token_hash, expires_at, code_challenge, oauth_provider, oauth_provider_revision) \
+         VALUES ($1, $2, $3, $4, now() + $5::bigint * interval '1 second', $6, $7, $8)",
     )
     .bind(Uuid::new_v4())
     .bind(request.user_id)
@@ -35,6 +53,8 @@ pub async fn issue_one_time_token<'e>(
     .bind(token.hash)
     .bind(purpose.lifetime().whole_seconds())
     .bind(request.code_challenge)
+    .bind(provider)
+    .bind(revision)
     .execute(executor)
     .await?;
 
@@ -57,8 +77,8 @@ pub async fn consume_one_time_token(
         None => return Ok(None),
     };
     let consumed = mark_consumed(connection, purpose, token_hash).await?;
-    let (user_id, code_challenge) = match consumed {
-        Some((user_id, code_challenge)) => (user_id, code_challenge),
+    let consumed = match consumed {
+        Some(consumed) => consumed,
         None => return Ok(None),
     };
 
@@ -67,8 +87,11 @@ pub async fn consume_one_time_token(
     }
 
     Ok(Some(ConsumedOneTimeToken {
-        user_id,
-        code_challenge,
+        user_id: consumed.user_id,
+        code_challenge: consumed.code_challenge,
+        oauth_context: consumed
+            .oauth_provider
+            .zip(consumed.oauth_provider_revision),
     }))
 }
 
@@ -106,13 +129,23 @@ pub async fn invalidate_pending_tokens(
 }
 
 /// The token's user and code challenge, if it was still valid; it is consumed either way.
+#[derive(sqlx::FromRow)]
+struct ConsumedRow {
+    user_id: Uuid,
+    code_challenge: Option<String>,
+    oauth_provider: Option<String>,
+    oauth_provider_revision: Option<Uuid>,
+}
+
 async fn mark_consumed(
     connection: &mut PgConnection,
     purpose: OneTimeTokenPurpose,
     token_hash: [u8; 32],
-) -> Result<Option<(Uuid, Option<String>)>, sqlx::Error> {
+) -> Result<Option<ConsumedRow>, sqlx::Error> {
     sqlx::query_as(
-        "UPDATE one_time_tokens SET consumed_at = now() WHERE token_hash = $1 AND purpose = $2 AND consumed_at IS NULL AND expires_at > now() RETURNING user_id, code_challenge",
+        "UPDATE one_time_tokens SET consumed_at = now() WHERE token_hash = $1 AND purpose = $2
+         AND consumed_at IS NULL AND expires_at > clock_timestamp()
+         RETURNING user_id, code_challenge, oauth_provider, oauth_provider_revision",
     )
     .bind(token_hash)
     .bind(purpose.as_str())

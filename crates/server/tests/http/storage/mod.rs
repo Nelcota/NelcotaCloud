@@ -194,7 +194,7 @@ async fn storage_reports_unavailable_without_r2_configuration() -> TestResult {
     server.drop_tenant(&tenant).await
 }
 
-async fn mock_storage() -> MockServer {
+pub(crate) async fn mock_storage() -> MockServer {
     let provider = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path_regex("^/test-files/?$"))

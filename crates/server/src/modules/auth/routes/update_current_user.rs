@@ -8,7 +8,9 @@ use crate::app_state::AppState;
 use crate::modules::auth::session::authenticated_user::AuthenticatedUser;
 use crate::modules::auth::user::user_lookup::find_user_by_id;
 use crate::modules::auth::user::user_metadata::{MetadataObject, check_user_metadata_size};
-use crate::modules::auth::user::user_metadata_update::{MetadataChange, update_user_metadata};
+use crate::modules::auth::user::user_metadata_update::{
+    MetadataChange, MetadataExpectations, update_user_metadata,
+};
 use crate::modules::auth::user::user_response::UserResponse;
 use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
@@ -55,9 +57,9 @@ pub async fn update_current_user(
 
     state
         .rate_limits
-        .profile_update
-        .check(tenant.tenant_id, user_id)
-        .map_err(ApiError::from)?;
+        .auth
+        .check_profile(tenant.tenant_id, user_id)
+        .await?;
 
     let webhooks = state.webhooks.recorder(tenant.tenant_id).await?;
     let change = MetadataChange {
@@ -65,9 +67,13 @@ pub async fn update_current_user(
         user_metadata: Some(body.user_metadata),
         app_metadata: None,
     };
-    let user = update_user_metadata(&tenant.pool, change, &webhooks)
-        .await
-        .map_err(ApiError::internal)?;
+    let user = update_user_metadata(
+        &tenant.pool,
+        change,
+        &webhooks,
+        (MetadataExpectations::default(), None),
+    )
+    .await?;
     let change = user.ok_or(TenantsRejection::InvalidAccessToken)?;
 
     Ok(Json(change.into_user().into()))

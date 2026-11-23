@@ -1,10 +1,14 @@
 use reqwest::{Method, Response};
 use serde::Deserialize;
 use serde_json::{Value, json};
+use tokio::sync::RwLock;
 
 use crate::support::{CreatedTenant, Session, TEST_SITE_URL, TestResult, TestServer, random_slug};
 
 pub const CACHE_KEY: &str = "products:123";
+
+// The timeout test has exclusive access because it temporarily locks the shared credential table.
+pub(super) static CREDENTIAL_QUERY_TESTS: RwLock<()> = RwLock::const_new(());
 
 pub struct CacheProject<'a> {
     pub server: &'a TestServer,

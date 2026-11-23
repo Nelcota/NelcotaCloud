@@ -42,8 +42,9 @@ pub async fn reset_password(
     let client_ip = origin.client_ip;
     state
         .rate_limits
-        .token_redemption
-        .check(tenant.tenant_id, client_ip)?;
+        .auth
+        .check_redemption(tenant.tenant_id, client_ip)
+        .await?;
     check_new_password(&body.password).map_err(ApiError::invalid_request)?;
     let webhooks = state.webhooks.recorder(tenant.tenant_id).await?;
     let reset = PasswordReset {

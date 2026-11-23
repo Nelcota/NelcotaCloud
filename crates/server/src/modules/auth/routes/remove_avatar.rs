@@ -24,8 +24,9 @@ pub async fn remove_avatar(
     let tenant = &authenticated.tenant;
     state
         .rate_limits
-        .avatar_change
-        .check(tenant.tenant_id, authenticated.claims.sub)?;
+        .auth
+        .check_avatar(tenant.tenant_id, authenticated.claims.sub)
+        .await?;
     let user_id = authenticated.claims.sub;
     let webhooks = state.webhooks.recorder(tenant.tenant_id).await?;
     avatar_changes::remove_avatar(&tenant.pool, &webhooks, user_id).await?;

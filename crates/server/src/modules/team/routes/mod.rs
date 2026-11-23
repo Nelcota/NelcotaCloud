@@ -7,5 +7,6 @@ pub mod leave_project;
 pub mod list_my_invitations;
 pub mod read_team;
 pub mod remove_member;
+pub mod resend_invitation;
 pub mod team_routes;
 pub mod transfer_ownership;

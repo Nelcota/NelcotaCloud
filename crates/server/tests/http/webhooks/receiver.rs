@@ -35,6 +35,17 @@ impl WebhookReceiver {
         Self { server }
     }
 
+    /// Answers every request with `status` and a plain-text `body`.
+    pub async fn answering_with_body(status: u16, body: &str) -> Self {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .respond_with(ResponseTemplate::new(status).set_body_string(body))
+            .mount(&server)
+            .await;
+
+        Self { server }
+    }
+
     /// Fails the first request with a 500, then accepts.
     pub async fn failing_once() -> Self {
         let server = MockServer::start().await;

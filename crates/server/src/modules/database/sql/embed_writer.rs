@@ -87,12 +87,12 @@ impl<'a> SelectWriter<'a> {
         sql.push(format!("{join} JOIN LATERAL ("));
         if relationship.is_to_many {
             sql.push(format!(
-                "WITH _encoded_children AS MATERIALIZED (SELECT row_to_json({row_alias}) AS value FROM ("
+                "WITH _encoded_children AS MATERIALIZED (SELECT row_to_json({row_alias}.*) AS value FROM ("
             ));
         }
 
         if relationship.is_to_many == false {
-            sql.push(format!("SELECT row_to_json({row_alias}) AS value FROM ("));
+            sql.push(format!("SELECT row_to_json({row_alias}.*) AS value FROM ("));
         }
 
         self.push_level(sql, &child, LevelMode::Rows)?;

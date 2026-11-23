@@ -24,9 +24,9 @@ use crate::shared::crypto::secret_box::SecretBox;
 pub async fn register_tenant(
     transaction: &mut PgConnection,
     secret_box: &SecretBox,
-    request: NewTenantRequest,
+    request: (Uuid, NewTenantRequest),
 ) -> Result<ProvisionedTenant, ProvisioningError> {
-    let tenant_id = Uuid::new_v4();
+    let (tenant_id, request) = request;
     let signing_key = SigningKey::generate()?;
     let sealed_signing_key = SealedSigningKey::seal(&signing_key, tenant_id, secret_box)?;
     insert_tenant(transaction, NewTenant::of(tenant_id, &request)).await?;

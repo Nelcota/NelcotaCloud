@@ -24,6 +24,10 @@ pub async fn list_my_invitations(
     State(state): State<AppState>,
     account: PlatformAccount,
 ) -> Result<Json<Vec<ReceivedInvitation>>, ApiError> {
+    if account.is_email_verified == false {
+        return Ok(Json(Vec::new()));
+    }
+
     let email = match EmailAddress::parse(&account.email) {
         Ok(email) => email,
         Err(_) => return Ok(Json(Vec::new())),

@@ -1,3 +1,4 @@
+use futures_util::future::try_join_all;
 use oauth_providers::{create_s256_code_challenge, generate_code_verifier};
 use reqwest::header::LOCATION;
 use reqwest::{Response, StatusCode, Url};
@@ -5,6 +6,7 @@ use serde_json::json;
 
 use crate::auth::mfa::user_with_totp;
 use crate::fixtures::fake_github::{FAKE_CLIENT_ID, FAKE_CLIENT_SECRET, FakeAccount};
+use crate::stress::metrics::{Load, exercise};
 use crate::support::{
     CreatedTenant, Session, TEST_PASSWORD, TEST_SITE_URL, TestResult, TestServer, error_code,
     unique_email,
@@ -14,6 +16,29 @@ mod google;
 
 const APP_CALLBACK: &str = "http://app.test/callback";
 const AUTHORIZE_PATH: &str = "/auth/v1/oauth/github/authorize";
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "drives concurrent OAuth flows against disposable test services"]
+async fn stress_oauth_login() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    configure_github(&server, &tenant).await?;
+
+    let count = 20;
+    let trial = exercise("oauth-pkce-login", Load::burst(count, 10), async |index| {
+        let email = unique_email("stress-oauth");
+        let account = github_account(u64::try_from(index)?, &email, true);
+        let session = full_login(&server, &tenant, &account).await?;
+        assert_eq!(session.user.email, email);
+
+        Ok("200".to_owned())
+    })
+    .await;
+
+    server.drop_tenant(&tenant).await?;
+
+    trial?.require(&[("200", count)])
+}
 
 /// What the tenant's app keeps while the user signs in at the provider.
 struct AppLogin {
@@ -83,6 +108,7 @@ async fn planted_codes_in_redirect_to_are_replaced() -> TestResult {
     let tenant = server.create_tenant().await?;
     configure_github(&server, &tenant).await?;
     let email = unique_email("planted");
+    register_callbacks(&server, &tenant, &["http://app.test/callback?tab=2"]).await?;
     let account = github_account(57, &email, true);
     let challenge = create_s256_code_challenge(&generate_code_verifier());
     let params = AuthorizeParams {
@@ -113,23 +139,36 @@ async fn planted_codes_in_redirect_to_are_replaced() -> TestResult {
 }
 
 #[tokio::test]
-async fn login_codes_of_two_devices_are_independent() -> TestResult {
+async fn concurrent_app_code_exchanges_issue_independent_sessions() -> TestResult {
     let server = TestServer::start().await?;
     let tenant = server.create_tenant().await?;
     configure_github(&server, &tenant).await?;
     let email = unique_email("devices");
     let account = github_account(64, &email, true);
 
-    let phone = start_authorization(&server, &tenant).await?;
-    let laptop = start_authorization(&server, &tenant).await?;
-    let phone_callback = call_back(&server, &phone.state, &account.authorization_code()).await?;
-    let laptop_callback = call_back(&server, &laptop.state, &account.authorization_code()).await?;
-    let phone_code = query_value(&phone_callback, "code")?;
-    let laptop_code = query_value(&laptop_callback, "code")?;
+    let mut codes = Vec::new();
 
-    exchange(&server, &tenant, (&phone_code, &phone.code_verifier)).await?;
-    exchange(&server, &tenant, (&laptop_code, &laptop.code_verifier)).await?;
+    for _ in 0..8 {
+        let login = start_authorization(&server, &tenant).await?;
+        let callback = call_back(&server, &login.state, &account.authorization_code()).await?;
+        let code = query_value(&callback, "code")?;
+        codes.push((code, login.code_verifier));
+    }
 
+    let sessions = try_join_all(
+        codes
+            .iter()
+            .map(|(code, verifier)| exchange(&server, &tenant, (code, verifier))),
+    )
+    .await?;
+    let mut refresh_tokens = std::collections::BTreeSet::new();
+
+    for session in sessions {
+        assert_eq!(session.user.email, email);
+        assert!(refresh_tokens.insert(session.refresh_token));
+    }
+
+    assert_eq!(refresh_tokens.len(), 8);
     server.drop_tenant(&tenant).await
 }
 
@@ -220,6 +259,98 @@ async fn blank_callback_code_counts_as_denied_access() -> TestResult {
 }
 
 #[tokio::test]
+async fn a_provider_outage_is_distinct_from_canceling_the_login() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    configure_github(&server, &tenant).await?;
+    let login = start_authorization(&server, &tenant).await?;
+    let response = server
+        .client
+        .get(server.url("/auth/v1/oauth/callback"))
+        .query(&[
+            ("state", login.state.as_str()),
+            ("error", "temporarily_unavailable"),
+        ])
+        .send()
+        .await?;
+    assert_eq!(query_value(&response, "error")?, "temporarily_unavailable");
+    assert_eq!(
+        response
+            .headers()
+            .get("referrer-policy")
+            .and_then(|value| value.to_str().ok()),
+        Some("no-referrer")
+    );
+
+    server.drop_tenant(&tenant).await
+}
+
+#[tokio::test]
+async fn an_issued_code_is_invalid_after_the_provider_is_disabled_and_reconfigured() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    configure_github(&server, &tenant).await?;
+    let login = start_authorization(&server, &tenant).await?;
+    let email = unique_email("provider-rotation");
+    let account = github_account(761, &email, true);
+    let callback = call_back(&server, &login.state, &account.authorization_code()).await?;
+    let code = query_value(&callback, "code")?;
+    server
+        .client
+        .delete(server.url("/auth/v1/admin/oauth/github"))
+        .header("apikey", &tenant.secret_key)
+        .send()
+        .await?
+        .error_for_status()?;
+    configure_github(&server, &tenant).await?;
+
+    let refused = exchange_response(&server, &tenant, (&code, &login.code_verifier)).await?;
+    assert_eq!(refused.status(), StatusCode::UNAUTHORIZED);
+    assert_eq!(error_code(refused).await?, "invalid_oauth_code");
+    let fresh = full_login(&server, &tenant, &account).await?;
+    assert_eq!(fresh.user.email, email);
+
+    server.drop_tenant(&tenant).await
+}
+
+#[tokio::test]
+async fn the_callback_uses_current_redirects_and_ip_policy_before_creating_users() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    configure_github(&server, &tenant).await?;
+    let email = unique_email("callback-policy");
+    let code = github_account(921, &email, true).authorization_code();
+    let first = start_authorization(&server, &tenant).await?;
+    register_callbacks(&server, &tenant, &["http://app.test/different-callback"]).await?;
+    let refused = call_back(&server, &first.state, &code).await?;
+    assert_eq!(refused.status(), StatusCode::BAD_REQUEST);
+    assert!(refused.headers().get(LOCATION).is_none());
+
+    register_callbacks(&server, &tenant, &[APP_CALLBACK]).await?;
+    let second = start_authorization(&server, &tenant).await?;
+    server
+        .post_auth(
+            "/auth/v1/admin/blocked-addresses",
+            &tenant.secret_key,
+            json!({ "address": server.client_ip.to_string() }),
+        )
+        .await?
+        .error_for_status()?;
+    let blocked = call_back(&server, &second.state, &code).await?;
+    assert_eq!(blocked.status(), StatusCode::FORBIDDEN);
+    assert_eq!(error_code(blocked).await?, "address_blocked");
+    let mut database = server.tenant_database(&tenant).await?;
+    let created: bool = sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM users WHERE email = $1)")
+        .bind(email)
+        .fetch_one(&mut database)
+        .await?;
+    assert!(created == false);
+    drop(database);
+
+    server.drop_tenant(&tenant).await
+}
+
+#[tokio::test]
 async fn rejects_blank_provider_credentials() -> TestResult {
     let server = TestServer::start().await?;
     let tenant = server.create_tenant().await?;
@@ -245,6 +376,7 @@ async fn rejects_blank_provider_credentials() -> TestResult {
 async fn rejects_unsafe_or_unconfigured_authorizations() -> TestResult {
     let server = TestServer::start().await?;
     let tenant = server.create_tenant().await?;
+    register_callbacks(&server, &tenant, &[APP_CALLBACK]).await?;
     let challenge = create_s256_code_challenge(&generate_code_verifier());
     let valid = AuthorizeParams {
         api_key: &tenant.publishable_key,
@@ -265,6 +397,13 @@ async fn rejects_unsafe_or_unconfigured_authorizations() -> TestResult {
         ..valid
     };
     let response = authorize(&server, AUTHORIZE_PATH, &open_redirect).await?;
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+    let unregistered = AuthorizeParams {
+        redirect_to: "http://app.test/another-page",
+        ..valid
+    };
+    let response = authorize(&server, AUTHORIZE_PATH, &unregistered).await?;
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
     let weak_challenge = AuthorizeParams {
@@ -294,6 +433,22 @@ fn github_account(github_user_id: u64, email: &str, is_email_verified: bool) -> 
 async fn configure_github(server: &TestServer, tenant: &CreatedTenant) -> TestResult {
     let response = configure_with_key(server, &tenant.secret_key).await?;
     assert_eq!(response.status(), StatusCode::NO_CONTENT);
+    register_callbacks(server, tenant, &[APP_CALLBACK]).await
+}
+
+async fn register_callbacks(
+    server: &TestServer,
+    tenant: &CreatedTenant,
+    urls: &[&str],
+) -> TestResult {
+    let response = server
+        .client
+        .put(server.url("/auth/v1/admin/oauth/redirects"))
+        .header("apikey", &tenant.secret_key)
+        .json(&json!({ "redirect_urls": urls }))
+        .send()
+        .await?;
+    assert_eq!(response.status(), StatusCode::OK);
 
     Ok(())
 }

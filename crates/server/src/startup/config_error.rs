@@ -9,6 +9,8 @@ pub enum ConfigError {
     InvalidMasterKey,
     #[error("DATABASE_RUNTIME_PASSWORD must be {MASTER_KEY_HEX_LENGTH} hex characters")]
     InvalidDatabaseRuntimePassword,
+    #[error("POOLER_AUTH_PASSWORD must be {MASTER_KEY_HEX_LENGTH} hex characters")]
+    InvalidPoolerAuthPassword,
     #[error("ADMIN_TOKEN must be at least {MIN_ADMIN_TOKEN_LENGTH} characters")]
     AdminTokenTooShort,
     #[error("WEBHOOK_WORKER_REPLICAS must be between 1 and 8")]

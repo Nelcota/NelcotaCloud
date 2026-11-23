@@ -2,6 +2,7 @@ import { Outlet } from '@tanstack/react-router'
 import type { JSX, ReactNode } from 'react'
 
 import { NavRail } from '@/app/shell/nav-rail'
+import { ProjectWriteAccess } from '@/app/shell/project-write-access'
 import { SidebarContent } from '@/app/shell/sidebar-content'
 import { TopBar } from '@/app/shell/top-bar'
 import { UnverifiedEmailBanner } from '@/modules/account/components/unverified-email-banner'
@@ -29,7 +30,9 @@ function Page(): JSX.Element {
         {/* Pages read best in a column; a page of wide data (`data-wide-page`) takes the room. */}
         <div className="mx-auto max-w-5xl has-[[data-wide-page]]:max-w-none">
           <UnverifiedEmailBanner />
-          <Outlet />
+          <ProjectWriteAccess>
+            <Outlet />
+          </ProjectWriteAccess>
         </div>
       </main>
     </>

@@ -61,6 +61,14 @@ pub async fn require_captcha(
             ApiError::from(TenantsRejection::CaptchaUnavailable)
         })?;
 
+    if outcome
+        .error_codes
+        .iter()
+        .any(|code| code == "internal-error")
+    {
+        return Err(TenantsRejection::CaptchaUnavailable.into());
+    }
+
     if outcome.success == false {
         return Err(ApiError::from(TenantsRejection::CaptchaFailed));
     }

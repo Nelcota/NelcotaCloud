@@ -4,7 +4,7 @@ use crate::modules::database::query::condition::{Condition, GroupKind};
 use crate::modules::database::query::embed_paths::ensure_known_paths;
 use crate::modules::database::query::filter_parser::parse_filter;
 use crate::modules::database::query::logic_tree_parser::parse_logic_tree;
-use crate::modules::database::query::order_parser::parse_order;
+use crate::modules::database::query::order_parser::append_order;
 use crate::modules::database::query::query_names::parse_name;
 use crate::modules::database::query::read_query::{EmbedPath, ReadQuery};
 use crate::modules::database::query::select_parser::parse_select;
@@ -121,7 +121,7 @@ fn apply_to_node(
     let node = query.node_mut(path);
 
     match name {
-        "order" => node.order = parse_order(value)?,
+        "order" => append_order(&mut node.order, value)?,
         "limit" => node.limit = Some(parse_count(name, value)?),
         "offset" => node.offset = Some(parse_count(name, value)?),
         "or" => node.conditions.push(logic_group(GroupKind::Or, value)?),

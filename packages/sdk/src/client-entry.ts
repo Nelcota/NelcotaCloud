@@ -9,6 +9,23 @@ export { createCacheClient } from './cache/cache-client'
 export type { CacheClient, CacheClientOptions, CacheHit, CacheValue } from './cache/cache-client'
 export { createClient } from './client/create-client'
 export { DatabaseClient } from './database/database-client'
+export type {
+  ArgsOf,
+  ChosenQuery,
+  ChosenResult,
+  FunctionName,
+  GenericDatabase,
+  GenericFunction,
+  GenericSchema,
+  GenericTable,
+  GenericView,
+  InsertOf,
+  RelationName,
+  RelationQuery,
+  ReturnsOf,
+  RowOf,
+  UpdateOf,
+} from './database/database-types'
 export { FilterBuilder } from './database/filter-builder'
 export type { FilterOperator } from './database/filter-builder'
 export type { FilterValue } from './database/filter-values'

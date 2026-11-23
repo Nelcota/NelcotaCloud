@@ -1,8 +1,7 @@
-import { NelcotaError } from './nelcota-error'
+import { withoutTrailingSlashes } from './base-url'
+import { toNelcotaError } from './response-error'
 
 const API_KEY_HEADER = 'apikey'
-const REQUEST_ID_HEADER = 'x-request-id'
-const UNKNOWN_ERROR_CODE = 'unknown_error'
 const FILE_CONTENT_TYPE = 'application/octet-stream'
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
@@ -11,6 +10,8 @@ export type HttpRequest = {
   method: HttpMethod
   path: string
   body?: unknown
+  /** JSON serialized before awaiting authorization, when the sender snapshots a request. */
+  jsonBody?: string
   /** Sent as is (`application/octet-stream`) instead of a JSON `body`. */
   file?: Blob
   accessToken?: string
@@ -79,7 +80,7 @@ export class HttpClient {
       headers['content-type'] = FILE_CONTENT_TYPE
     }
 
-    if (request.body !== undefined) {
+    if (request.body !== undefined || request.jsonBody !== undefined) {
       headers['content-type'] = 'application/json'
     }
 
@@ -91,58 +92,14 @@ export class HttpClient {
   }
 }
 
-/**
- * `https://api.test///` becomes `https://api.test`. A loop instead of `/\/+$/`, whose
- * backtracking grows with the number of slashes in a URL the app passes in.
- */
-export function withoutTrailingSlashes(url: string): string {
-  let end = url.length
-
-  while (end > 0 && url.charAt(end - 1) === '/') {
-    end -= 1
-  }
-
-  return url.slice(0, end)
-}
-
 function bodyOf(request: HttpRequest): Blob | string | undefined {
   if (request.file !== undefined) {
     return request.file
   }
 
   if (request.body === undefined) {
-    return undefined
+    return request.jsonBody
   }
 
   return JSON.stringify(request.body)
-}
-
-export async function toNelcotaError(response: Response): Promise<NelcotaError> {
-  const requestId = response.headers.get(REQUEST_ID_HEADER)
-  const payload: unknown = await response.json().catch(() => null)
-  const fallback = {
-    status: response.status,
-    code: UNKNOWN_ERROR_CODE,
-    message: response.statusText,
-    requestId,
-  }
-
-  if (isErrorPayload(payload) === false) {
-    return new NelcotaError(fallback)
-  }
-
-  return new NelcotaError({ ...fallback, code: payload.error, message: payload.message })
-}
-
-function isErrorPayload(payload: unknown): payload is { error: string; message: string } {
-  if (typeof payload !== 'object' || payload === null) {
-    return false
-  }
-
-  return (
-    'error' in payload &&
-    typeof payload.error === 'string' &&
-    'message' in payload &&
-    typeof payload.message === 'string'
-  )
 }

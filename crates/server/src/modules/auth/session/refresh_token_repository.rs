@@ -1,4 +1,4 @@
-use sqlx::{PgConnection, PgPool};
+use sqlx::PgConnection;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -34,7 +34,7 @@ pub async fn insert_refresh_token(
     let family = token.family;
     sqlx::query(
         "INSERT INTO refresh_tokens (id, user_id, family_id, token_hash, expires_at, family_started_at) \
-         VALUES ($1, $2, $3, $4, now() + $5::bigint * interval '1 second', COALESCE($6, now()))",
+         VALUES ($1, $2, $3, $4, now() + $5::bigint * interval '1 second', COALESCE($6, clock_timestamp()))",
     )
     .bind(Uuid::new_v4())
     .bind(token.user_id)
@@ -50,7 +50,7 @@ pub async fn insert_refresh_token(
 
 const CONSUME_REFRESH_TOKEN: &str = concat!(
     "WITH consumed AS (UPDATE refresh_tokens AS token SET revoked_at = now() FROM users \
-     WHERE token.token_hash = $1 AND token.revoked_at IS NULL AND token.expires_at > now() \
+     WHERE token.token_hash = $1 AND token.revoked_at IS NULL AND token.expires_at > clock_timestamp() \
      AND users.id = token.user_id AND users.banned_at IS NULL \
      AND (users.sessions_invalidated_at IS NULL OR token.family_started_at > users.sessions_invalidated_at) \
      AND NOT EXISTS (SELECT 1 FROM revoked_token_families revoked WHERE revoked.family_id = token.family_id) \
@@ -74,17 +74,17 @@ struct ConsumedToken {
 /// It also refuses tokens whose family was revoked, whose user's sessions were ended or whose
 /// user is banned, which catches successors inserted by a login that raced with the revocation.
 pub async fn consume_refresh_token(
-    pool: &PgPool,
+    connection: &mut PgConnection,
     token_hash: &[u8],
 ) -> Result<RefreshTokenStatus, sqlx::Error> {
     let consumed: Option<ConsumedToken> = sqlx::query_as(CONSUME_REFRESH_TOKEN)
         .bind(token_hash)
-        .fetch_optional(pool)
+        .fetch_optional(&mut *connection)
         .await?;
 
     let consumed = match consumed {
         Some(consumed) => consumed,
-        None => return find_reused_family(pool, token_hash).await,
+        None => return find_reused_family(connection, token_hash).await,
     };
     let family = SessionFamily {
         id: consumed.consumed_family_id,
@@ -98,16 +98,17 @@ pub async fn consume_refresh_token(
 }
 
 async fn find_reused_family(
-    pool: &PgPool,
+    connection: &mut PgConnection,
     token_hash: &[u8],
 ) -> Result<RefreshTokenStatus, sqlx::Error> {
     // Any reuse of a rotated token may be a stolen copy: the caller revokes the whole family.
     // Tabs of the SDK renew one at a time (tab lock) and adopt the stored successor.
     let family_id: Option<Uuid> = sqlx::query_scalar(
-        "SELECT family_id FROM refresh_tokens WHERE token_hash = $1 AND revoked_at IS NOT NULL",
+        "SELECT family_id FROM refresh_tokens WHERE token_hash = $1 AND revoked_at IS NOT NULL
+         AND expires_at > clock_timestamp()",
     )
     .bind(token_hash)
-    .fetch_optional(pool)
+    .fetch_optional(connection)
     .await?;
     let family_id = match family_id {
         Some(family_id) => family_id,
@@ -117,25 +118,21 @@ async fn find_reused_family(
     Ok(RefreshTokenStatus::Reused { family_id })
 }
 
-/// The marker keeps the family revoked even for tokens inserted after this call.
-/// The user a session family belongs to; `None` once its tokens are gone.
-pub async fn find_family_owner(
-    pool: &PgPool,
-    family_id: Uuid,
+/// Serializes rotations and revocations with other mutations of the account.
+pub async fn lock_refresh_owner(
+    connection: &mut PgConnection,
+    token_hash: &[u8],
 ) -> Result<Option<Uuid>, sqlx::Error> {
-    sqlx::query_scalar("SELECT user_id FROM refresh_tokens WHERE family_id = $1 LIMIT 1")
-        .bind(family_id)
-        .fetch_optional(pool)
-        .await
+    sqlx::query_scalar(
+        "SELECT id FROM users WHERE id = (SELECT user_id FROM refresh_tokens WHERE token_hash = $1)
+         FOR NO KEY UPDATE",
+    )
+    .bind(token_hash)
+    .fetch_optional(connection)
+    .await
 }
 
-pub async fn revoke_token_family(pool: &PgPool, family_id: Uuid) -> Result<(), sqlx::Error> {
-    let mut connection = pool.acquire().await?;
-
-    revoke_token_family_with(&mut connection, family_id).await
-}
-
-/// Same as [`revoke_token_family`], inside the caller's transaction.
+/// The marker permanently closes this session family while its tokens are retained.
 pub async fn revoke_token_family_with(
     connection: &mut PgConnection,
     family_id: Uuid,
@@ -159,19 +156,29 @@ pub async fn revoke_token_family_with(
 /// Logout ends the whole session (every rotated token of the family), not just the one presented.
 /// Ends the session the token belongs to; returns its user, or `None` for an unknown token.
 pub async fn revoke_family_of_token(
-    pool: &PgPool,
+    connection: &mut PgConnection,
     token_hash: &[u8],
 ) -> Result<Option<Uuid>, sqlx::Error> {
+    if lock_refresh_owner(connection, token_hash).await?.is_none() {
+        return Ok(None);
+    }
+
     let family: Option<(Uuid, Uuid)> =
-        sqlx::query_as("SELECT family_id, user_id FROM refresh_tokens WHERE token_hash = $1")
+        sqlx::query_as(
+            "SELECT token.family_id, token.user_id FROM refresh_tokens AS token
+             WHERE token.token_hash = $1 AND token.expires_at > clock_timestamp()
+             AND EXISTS (SELECT 1 FROM refresh_tokens AS active WHERE active.family_id = token.family_id
+                 AND active.revoked_at IS NULL AND active.expires_at > clock_timestamp())
+             AND NOT EXISTS (SELECT 1 FROM revoked_token_families WHERE family_id = token.family_id)",
+        )
             .bind(token_hash)
-            .fetch_optional(pool)
+            .fetch_optional(&mut *connection)
             .await?;
     let (family_id, user_id) = match family {
         Some(family) => family,
         None => return Ok(None),
     };
-    revoke_token_family(pool, family_id).await?;
+    revoke_token_family_with(connection, family_id).await?;
 
     Ok(Some(user_id))
 }
@@ -182,7 +189,7 @@ pub async fn end_all_user_sessions(
     connection: &mut PgConnection,
     user_id: Uuid,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query("UPDATE users SET sessions_invalidated_at = now() WHERE id = $1")
+    sqlx::query("UPDATE users SET sessions_invalidated_at = clock_timestamp() WHERE id = $1")
         .bind(user_id)
         .execute(&mut *connection)
         .await?;

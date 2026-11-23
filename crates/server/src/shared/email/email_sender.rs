@@ -61,9 +61,13 @@ impl EmailSender {
 }
 
 /// For background deliveries, where nobody waits for the result: failures are only logged.
-pub async fn deliver_and_log(sender: &EmailSender, email: OutgoingEmail) {
-    if let Err(error) = sender.send(email).await {
-        log_failed_delivery(&error);
+pub async fn deliver_and_log(sender: &EmailSender, email: OutgoingEmail) -> bool {
+    match sender.send(email).await {
+        Ok(()) => true,
+        Err(error) => {
+            log_failed_delivery(&error);
+            false
+        }
     }
 }
 

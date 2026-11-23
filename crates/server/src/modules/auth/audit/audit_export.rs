@@ -1,12 +1,11 @@
+use axum::body::Body;
 use sqlx::PgPool;
 
+use crate::modules::auth::audit::audit_csv::{HEADER, write_event};
 use crate::modules::auth::audit::audit_query::{
-    AuditQuery, AuditSelection, audit_selection, audit_statement,
+    AuditQuery, AuditSelection, audit_selection, bind_audit_statement,
 };
-
-/// The most rows one export holds, newest first. Ninety days of a busy project stay well under
-/// it; it bounds the memory a single request can take.
-pub const MAX_EXPORT_ROWS: i64 = 100_000;
+use crate::modules::auth::csv_stream::{csv_body, send_csv};
 
 /// One event as the spreadsheet shows it: every value already text, as stored.
 #[derive(Debug, sqlx::FromRow)]
@@ -39,12 +38,11 @@ const AUDIT_EXPORT_QUERY: AuditSelection = audit_selection!(
     " user_agent, request_id, details::text AS details",
 );
 
-/// Every event the filters match, newest first, up to [`MAX_EXPORT_ROWS`].
-pub async fn export_audit_events(
-    pool: &PgPool,
-    query: &AuditQuery<'_>,
-) -> Result<Vec<AuditExportRow>, sqlx::Error> {
-    audit_statement(&AUDIT_EXPORT_QUERY, query, MAX_EXPORT_ROWS)
-        .fetch_all(pool)
-        .await
+/// Streams every event the filters match, newest first.
+pub fn export_audit_events(pool: PgPool, query: &AuditQuery<'_>) -> Body {
+    let statement = bind_audit_statement(&AUDIT_EXPORT_QUERY, query, None);
+
+    csv_body(move |sender| async move {
+        send_csv(sender, statement.fetch(&pool), &HEADER, write_event).await
+    })
 }

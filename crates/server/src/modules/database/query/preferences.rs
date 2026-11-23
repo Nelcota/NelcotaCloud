@@ -14,6 +14,8 @@ pub struct Preferences {
     pub count: Option<CountMode>,
     pub resolution: Option<Resolution>,
     pub is_single_object: bool,
+    /// Use the table's primary key in catalog order when no root order was supplied.
+    pub orders_by_primary_key: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -57,6 +59,7 @@ impl Preferences {
             "return=minimal" => self.returns_rows = false,
             "count=exact" => self.count = Some(CountMode::Exact),
             "count=planned" | "count=estimated" => self.count = Some(CountMode::Planned),
+            "order=primary-key" => self.orders_by_primary_key = true,
             "resolution=merge-duplicates" => self.resolution = Some(Resolution::MergeDuplicates),
             "resolution=ignore-duplicates" => {
                 self.resolution = Some(Resolution::IgnoreDuplicates);
@@ -85,7 +88,9 @@ mod tests {
         let mut headers = HeaderMap::new();
         headers.insert(
             PREFER_HEADER,
-            HeaderValue::from_static("return=representation, count=exact, handling=strict"),
+            HeaderValue::from_static(
+                "return=representation, count=exact, order=primary-key, handling=strict",
+            ),
         );
         headers.append(
             PREFER_HEADER,
@@ -102,6 +107,7 @@ mod tests {
                 count: Some(CountMode::Exact),
                 resolution: Some(Resolution::MergeDuplicates),
                 is_single_object: true,
+                orders_by_primary_key: true,
             }
         );
     }

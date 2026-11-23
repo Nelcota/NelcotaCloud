@@ -1,14 +1,62 @@
+use std::time::Duration;
+
 use reqwest::{StatusCode, Url};
 use serde_json::{Value, json};
+use sqlx::Connection;
 use tokio::io::copy_bidirectional;
 use tokio::net::{TcpListener, TcpStream};
+use tokio::time::timeout;
 
-use super::support::{CACHE_KEY, CacheProject, cache_request};
+use super::support::{CACHE_KEY, CREDENTIAL_QUERY_TESTS, CacheProject, cache_request};
 use crate::support::{TestResult, TestServer, error_code, unique_email};
+
+#[tokio::test]
+async fn a_slow_credential_query_returns_unavailable_within_the_sdk_deadline() -> TestResult {
+    let _guard = CREDENTIAL_QUERY_TESTS.write().await;
+    let server = TestServer::start().await?;
+    let (platform, owner) = server
+        .create_platform_account(&unique_email("cache-query-timeout"))
+        .await?;
+    let project = CacheProject::create(&server, &owner).await?;
+    project.set_enabled(true).await?;
+    let credential = project.issue().await?;
+    let entry = json!({ "key": CACHE_KEY, "value": "cached value" });
+    cache_request(&server, &credential.token, ("set", entry))
+        .await?
+        .error_for_status()?;
+
+    let mut database = server.control_plane().await?;
+    let mut transaction = database.begin().await?;
+    sqlx::query("LOCK TABLE project_cache_credentials IN ACCESS EXCLUSIVE MODE")
+        .execute(&mut *transaction)
+        .await?;
+    let request = ("get", json!({ "key": CACHE_KEY }));
+    let response = timeout(
+        Duration::from_millis(1_500),
+        cache_request(&server, &credential.token, request.clone()),
+    )
+    .await;
+    transaction.rollback().await?;
+
+    let response = response??;
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(error_code(response).await?, "cache_unavailable");
+    let recovered = cache_request(&server, &credential.token, request)
+        .await?
+        .error_for_status()?;
+    assert_eq!(
+        recovered.json::<Value>().await?,
+        json!({ "value": "cached value" })
+    );
+
+    project.drop().await?;
+    server.drop_tenant(&platform).await
+}
 
 #[tokio::test]
 async fn losing_valkey_returns_unavailable_and_leaves_auth_and_data_api_operational() -> TestResult
 {
+    let _guard = CREDENTIAL_QUERY_TESTS.read().await;
     let mut proxy_url = Url::parse(&dotenvy::var("CACHE_VALKEY_URL")?)?;
     let host = proxy_url
         .host_str()

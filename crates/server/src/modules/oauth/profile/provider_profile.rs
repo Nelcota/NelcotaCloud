@@ -24,6 +24,7 @@ pub enum ProfileError {
 pub struct ProviderProfile {
     pub provider_user_id: String,
     pub verified_email: Option<String>,
+    pub needs_email_confirmation: bool,
 }
 
 pub struct ProfileRequest<'a> {

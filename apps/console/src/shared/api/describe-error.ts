@@ -4,6 +4,7 @@ import {
   MESSAGES_BY_CODE,
   MESSAGES_BY_TEXT,
 } from '@/shared/api/api-error-messages'
+import { describeNamedRefusal } from '@/shared/api/data-error-messages'
 
 const FALLBACK_MESSAGE = 'Algo deu errado. Tente de novo.'
 const OFFLINE_MESSAGE = 'Não foi possível falar com a API. Confira sua conexão e tente de novo.'
@@ -54,6 +55,12 @@ function describeCoded(error: CodedError): string {
 
   if (error.message.startsWith(SMTP_PORT_PREFIX)) {
     return SMTP_PORT_MESSAGE
+  }
+
+  const named = describeNamedRefusal(error.code, error.message)
+
+  if (named !== null) {
+    return named
   }
 
   const lead = LEAD_BY_CODE[error.code]

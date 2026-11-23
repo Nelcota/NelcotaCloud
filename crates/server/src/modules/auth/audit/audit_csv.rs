@@ -1,12 +1,11 @@
 use std::borrow::Cow;
 
-use csv::{Terminator, WriterBuilder};
+use csv::Writer;
 
 use crate::modules::auth::audit::audit_export::AuditExportRow;
+use crate::shared::http::api_error::ApiError;
 
-/// Excel opens a UTF-8 file as Latin-1 without it, garbling accented emails.
-const BYTE_ORDER_MARK: &str = "\u{feff}";
-const HEADER: [&str; 12] = [
+pub(super) const HEADER: [&str; 12] = [
     "occurred_at",
     "action",
     "email",
@@ -23,20 +22,14 @@ const HEADER: [&str; 12] = [
 /// Spreadsheets run a cell that starts with one of these as a formula.
 const FORMULA_STARTS: [char; 6] = ['=', '+', '-', '@', '\t', '\r'];
 
-/// The rows as a CSV document (RFC 4180, CRLF line ends), ready to open in a spreadsheet.
-pub fn audit_csv(rows: &[AuditExportRow]) -> Result<Vec<u8>, csv::Error> {
-    let mut writer = WriterBuilder::new()
-        .terminator(Terminator::CRLF)
-        .from_writer(BYTE_ORDER_MARK.as_bytes().to_vec());
-    writer.write_record(HEADER)?;
-    for row in rows {
-        let fields = row_fields(row).map(|field| spreadsheet_text(field.unwrap_or_default()));
-        writer.write_record(fields.iter().map(|field| field.as_bytes()))?;
-    }
-
+pub(super) fn write_event(
+    writer: &mut Writer<Vec<u8>>,
+    row: &AuditExportRow,
+) -> Result<(), ApiError> {
+    let fields = row_fields(row).map(|field| spreadsheet_text(field.unwrap_or_default()));
     writer
-        .into_inner()
-        .map_err(|error| error.into_error().into())
+        .write_record(fields.iter().map(|field| field.as_bytes()))
+        .map_err(ApiError::internal)
 }
 
 fn row_fields(row: &AuditExportRow) -> [Option<&str>; 12] {
@@ -69,6 +62,21 @@ fn spreadsheet_text(text: &str) -> Cow<'_, str> {
 mod tests {
     use super::*;
 
+    use crate::modules::auth::csv_stream::csv_chunk;
+
+    const BYTE_ORDER_MARK: &str = "\u{feff}";
+
+    fn audit_csv(rows: &[AuditExportRow]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        let mut writer = csv_chunk(true);
+        writer.write_record(HEADER)?;
+
+        for row in rows {
+            write_event(&mut writer, row)?;
+        }
+
+        Ok(writer.into_inner()?)
+    }
+
     fn row(email: Option<&str>) -> AuditExportRow {
         AuditExportRow {
             occurred_at: "2026-11-18T14:30:00Z".to_owned(),
@@ -87,7 +95,7 @@ mod tests {
     }
 
     #[test]
-    fn writes_a_header_and_one_line_per_row() -> Result<(), csv::Error> {
+    fn writes_a_header_and_one_line_per_row() -> Result<(), Box<dyn std::error::Error>> {
         let csv = audit_csv(&[row(Some("ana@acme.com"))])?;
         let header = HEADER.join(",");
 
@@ -101,7 +109,7 @@ mod tests {
     }
 
     #[test]
-    fn writes_only_the_header_without_rows() -> Result<(), csv::Error> {
+    fn writes_only_the_header_without_rows() -> Result<(), Box<dyn std::error::Error>> {
         let header = HEADER.join(",");
 
         assert_eq!(
@@ -112,7 +120,8 @@ mod tests {
     }
 
     #[test]
-    fn preserves_fields_with_delimiters_quotes_and_line_breaks() -> Result<(), csv::Error> {
+    fn preserves_fields_with_delimiters_quotes_and_line_breaks()
+    -> Result<(), Box<dyn std::error::Error>> {
         let fields = ["a,b", "say \"hi\"", "a\nb", "plain"];
         let rows = fields.map(|text| row(Some(text)));
         let csv = audit_csv(&rows)?;

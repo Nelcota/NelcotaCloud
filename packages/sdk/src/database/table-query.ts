@@ -22,8 +22,15 @@ function resolutionOf(options: UpsertOptions): string {
   return 'resolution=merge-duplicates'
 }
 
-/** A table (or view) of the project's database: `client.from('posts')`. */
-export class TableQuery<Row extends Record<string, unknown>> {
+/**
+ * A table (or view) of the project's database: `client.from('posts')`. With generated types,
+ * `Insert` and `Update` are the table's own; without them they accept any columns.
+ */
+export class TableQuery<
+  Row extends Record<string, unknown>,
+  Insert extends Record<string, unknown> = Partial<Row>,
+  Update extends Record<string, unknown> = Partial<Row>,
+> {
   private readonly sender: QuerySender
   private readonly path: string
 
@@ -32,8 +39,14 @@ export class TableQuery<Row extends Record<string, unknown>> {
     this.path = `/${encodeURIComponent(table)}`
   }
 
-  /** `select('id, title, author:authors(name), comments(body)')`. */
-  select(columns = '*', options: CountOption = {}): QueryBuilder<Row, Row[]> {
+  /**
+   * `select('id, title, author:authors(name), comments(body)')`. Rows are typed as the whole
+   * row; name the shape of a narrower select with `select<{ id: number }>('id')`.
+   */
+  select<Shape extends Record<string, unknown> = Row>(
+    columns = '*',
+    options: CountOption = {},
+  ): QueryBuilder<Shape, Shape[]> {
     const request = newRequest('GET', this.path)
     request.params.push(['select', compact(columns)])
 
@@ -41,11 +54,11 @@ export class TableQuery<Row extends Record<string, unknown>> {
       request.prefer.push(`count=${options.count}`)
     }
 
-    return new QueryBuilder<Row, Row[]>(this.sender, request)
+    return new QueryBuilder<Shape, Shape[]>(this.sender, request)
   }
 
   /** One row or up to 1000; a column a row leaves out takes its default. */
-  insert(rows: Partial<Row> | Partial<Row>[]): QueryBuilder<Row, null> {
+  insert(rows: Insert | Insert[]): QueryBuilder<Row, null> {
     const request = newRequest('POST', this.path)
     request.body = rows
 
@@ -53,10 +66,7 @@ export class TableQuery<Row extends Record<string, unknown>> {
   }
 
   /** Inserts, or updates the rows that already exist (matched on `onConflict`). */
-  upsert(
-    rows: Partial<Row> | Partial<Row>[],
-    options: UpsertOptions = {},
-  ): QueryBuilder<Row, null> {
+  upsert(rows: Insert | Insert[], options: UpsertOptions = {}): QueryBuilder<Row, null> {
     const request = newRequest('POST', this.path)
     request.body = rows
     request.prefer.push(resolutionOf(options))
@@ -69,7 +79,7 @@ export class TableQuery<Row extends Record<string, unknown>> {
   }
 
   /** Sets `values` on every row matching the filters; at least one filter is required. */
-  update(values: Partial<Row>): QueryBuilder<Row, null> {
+  update(values: Update): QueryBuilder<Row, null> {
     const request = newRequest('PATCH', this.path)
     request.body = values
 

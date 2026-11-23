@@ -34,11 +34,7 @@ export function queryString(params: [string, string][]): string {
     return ''
   }
 
-  const encoded = params.map(
-    ([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`,
-  )
-
-  return `?${encoded.join('&')}`
+  return `?${new URLSearchParams(params)}`
 }
 
 // `0-24/3573`, or a star then `/0` for no rows: a range or a star, then the total in digits.

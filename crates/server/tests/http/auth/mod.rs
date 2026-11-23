@@ -14,6 +14,7 @@ mod flow;
 mod input_edges;
 pub(super) mod magic_link;
 pub(super) mod mfa;
+mod retention;
 mod sessions;
 mod usage;
 mod user_admin;

@@ -9,11 +9,10 @@ use validator::Validate;
 
 use crate::app_state::AppState;
 use crate::modules::auth::integration::team_notifications::EmailAddress;
-use crate::modules::team::invitation::invitation_email::{InvitationNotice, send_invitation_email};
+use crate::modules::team::invitation::invitation_delivery::{check_delivery_quota, deliver};
 use crate::modules::team::invitation::invitation_repository::{
     InvitationError, NewInvitation, PendingInvitation, insert_invitation,
 };
-use crate::modules::team::member::team_member_repository::is_member_email;
 use crate::modules::team::rejection::team_rejection::TeamRejection;
 use crate::modules::tenants::access::admin_actor::AdminActor;
 use crate::modules::tenants::audit::audit_action::AuditAction;
@@ -42,7 +41,7 @@ pub struct InvitationBody {
     params(("project_id" = Uuid, Path, description = "Id of the project")),
     request_body = InvitationBody,
     responses(
-        (status = 201, description = "Invitation created and emailed", body = PendingInvitation),
+        (status = 201, description = "Invitation created with the result of the email attempt", body = PendingInvitation),
         (status = 400, description = "Invalid email", body = ErrorBody),
         (status = 403, description = "Not an owner of this project", body = ErrorBody),
         (status = 409, description = "Already a member, or already invited", body = ErrorBody),
@@ -65,18 +64,9 @@ pub async fn invite_member(
         email: email.as_str(),
         client_ip,
     };
-    state.rate_limits.email.check(&attempt)?;
-    state
-        .rate_limits
-        .invitations
-        .check(Uuid::nil(), account.account_id)?;
-    let invitation = store_invitation(&state, &account, project_id, &email).await?;
-    let notice = InvitationNotice {
-        project_id,
-        recipient: email.as_str(),
-        inviter_email: &account.email,
-    };
-    send_invitation_email(&state, notice).await?;
+    check_delivery_quota(&state, account.account_id, &attempt).await?;
+    let attempt_id = Uuid::new_v4();
+    let invitation = store_invitation(&state, &account, (project_id, attempt_id), &email).await?;
     let change = ProjectChange {
         tenant_id: project_id,
         author: (AdminActor::ConsoleAccount(account.account_id), &origin),
@@ -84,6 +74,7 @@ pub async fn invite_member(
         details: json!({ "email": email.as_str() }),
     };
     record_project_change(&state.tenant_pools, change).await;
+    let invitation = deliver(&state, invitation, (project_id, attempt_id), &account.email).await?;
 
     Ok((StatusCode::CREATED, Json(invitation)))
 }
@@ -91,26 +82,21 @@ pub async fn invite_member(
 async fn store_invitation(
     state: &AppState,
     account: &PlatformAccount,
-    project_id: Uuid,
+    (project_id, delivery_attempt): (Uuid, Uuid),
     email: &EmailAddress,
 ) -> Result<PendingInvitation, ApiError> {
-    let pool = &state.control_plane_pool;
-    let is_member = is_member_email(pool, project_id, email.as_str()).await?;
-
-    if is_member {
-        return Err(ApiError::from(TeamRejection::AlreadyMember));
-    }
-
     let invitation = NewInvitation {
         tenant_id: project_id,
         email: email.as_str(),
         invited_by: account.account_id,
+        delivery_attempt,
     };
 
-    insert_invitation(pool, invitation)
+    insert_invitation(&state.control_plane_pool, invitation)
         .await
         .map_err(|error| match error {
             InvitationError::AlreadyInvited => ApiError::from(TeamRejection::AlreadyInvited),
+            InvitationError::AlreadyMember => ApiError::from(TeamRejection::AlreadyMember),
             InvitationError::NotOwner => ApiError::from(TenantsRejection::ProjectAccessDenied),
             InvitationError::Database(_) => ApiError::internal(error),
         })

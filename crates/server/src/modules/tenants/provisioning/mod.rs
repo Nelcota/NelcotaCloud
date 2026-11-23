@@ -1,6 +1,8 @@
 pub mod provisioning_error;
+mod provisioning_intent;
 pub mod rate_limit_quotas;
 pub mod tenant_deletion;
+pub(crate) mod tenant_deletion_recovery;
 pub mod tenant_provisioner;
 pub mod tenant_registration;
 pub mod tenant_removal;

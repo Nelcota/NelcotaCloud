@@ -114,12 +114,18 @@ async fn read_user_rows(pool: &PgPool, query: &UserQuery<'_>) -> Result<Vec<User
     statement.build_query_as().fetch_all(pool).await
 }
 
-pub(crate) fn user_rows(filters: &UserFilters<'_>) -> QueryBuilder<Postgres> {
-    let mut statement = QueryBuilder::new(concat!(
-        "SELECT ",
-        user_columns!(),
-        " FROM users WHERE true"
-    ));
+fn user_rows(filters: &UserFilters<'_>) -> QueryBuilder<Postgres> {
+    filtered_user_rows(
+        filters,
+        concat!("SELECT ", user_columns!(), " FROM users WHERE true"),
+    )
+}
+
+pub(super) fn filtered_user_rows(
+    filters: &UserFilters<'_>,
+    select: &'static str,
+) -> QueryBuilder<Postgres> {
+    let mut statement = QueryBuilder::new(select);
     push_filters(&mut statement, filters);
 
     statement

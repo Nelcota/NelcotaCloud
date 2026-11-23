@@ -44,6 +44,7 @@ pub async fn create_project(
         .rate_limits
         .project_creation_per_account
         .check(Uuid::nil(), account.account_id)?;
+    let (_account_lock, account) = account.lock_active(&state).await?;
     let owner = ProjectOwner {
         account_id: account.account_id,
         email: account.email.clone(),

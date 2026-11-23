@@ -1,24 +1,7 @@
-use std::sync::Arc;
-use std::time::Duration;
-
-use moka::future::Cache;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::modules::webhooks::endpoint::webhook_endpoint_repository::list_endpoints;
 use crate::modules::webhooks::event::webhook_event_type::{WebhookEventType, known_event_types};
-use crate::shared::cache::cache_generation::CacheGeneration;
-
-/// Changes made through this instance invalidate at once; the time bound only matters when
-/// another instance changed them.
-const SUBSCRIPTIONS_TIME_TO_LIVE: Duration = Duration::from_secs(5 * 60);
-const MAX_CACHED_TENANTS: u64 = 10_000;
-
-#[derive(Debug, thiserror::Error)]
-pub enum SubscriptionsError {
-    #[error("database error while loading webhook endpoints: {0}")]
-    Database(#[from] sqlx::Error),
-}
 
 /// An enabled endpoint and the events it receives.
 #[derive(Debug, Clone)]
@@ -27,61 +10,32 @@ pub struct SubscribedEndpoint {
     pub event_types: Vec<WebhookEventType>,
 }
 
-/// Which endpoints of a tenant want which events, cached so requests that change users do not
-/// read the control plane: most tenants have no endpoint, and then nothing is recorded.
+/// Reads committed subscriptions from the control plane when recording an event, regardless
+/// of which API instance last changed the endpoints.
 pub struct WebhookSubscriptions {
     control_plane_pool: PgPool,
-    cache: Cache<(Uuid, u64), Arc<Vec<SubscribedEndpoint>>>,
-    generation: CacheGeneration,
 }
 
 impl WebhookSubscriptions {
     pub fn new(control_plane_pool: PgPool) -> Self {
-        let cache = Cache::builder()
-            .max_capacity(MAX_CACHED_TENANTS)
-            .time_to_live(SUBSCRIPTIONS_TIME_TO_LIVE)
-            .build();
-
-        Self {
-            control_plane_pool,
-            cache,
-            generation: CacheGeneration::new(),
-        }
+        Self { control_plane_pool }
     }
 
-    /// Concurrent misses for one tenant share a single load.
-    pub async fn of_tenant(
-        &self,
-        tenant_id: Uuid,
-    ) -> Result<Arc<Vec<SubscribedEndpoint>>, Arc<SubscriptionsError>> {
-        let cache_key = (tenant_id, self.generation.of(tenant_id));
+    pub async fn of_tenant(&self, tenant_id: Uuid) -> Result<Vec<SubscribedEndpoint>, sqlx::Error> {
+        let stored: Vec<(Uuid, Vec<String>)> = sqlx::query_as(
+            "SELECT id, event_types FROM webhook_endpoints WHERE tenant_id = $1 AND is_enabled",
+        )
+        .bind(tenant_id)
+        .fetch_all(&self.control_plane_pool)
+        .await?;
 
-        self.cache
-            .try_get_with(cache_key, self.load(tenant_id))
-            .await
-    }
-
-    /// Forgets the tenant's cached subscriptions after an endpoint change committed.
-    pub fn forget(&self, tenant_id: Uuid) {
-        self.generation.advance(tenant_id);
-    }
-
-    async fn load(
-        &self,
-        tenant_id: Uuid,
-    ) -> Result<Arc<Vec<SubscribedEndpoint>>, SubscriptionsError> {
-        let stored = list_endpoints(&self.control_plane_pool, tenant_id).await?;
-        let mut subscribed = Vec::with_capacity(stored.len());
-
-        for endpoint in stored.into_iter().filter(|endpoint| endpoint.is_enabled) {
-            let event_types = known_event_types(&endpoint.event_types);
-            subscribed.push(SubscribedEndpoint {
-                endpoint_id: endpoint.id,
-                event_types,
-            });
-        }
-
-        Ok(Arc::new(subscribed))
+        Ok(stored
+            .into_iter()
+            .map(|(endpoint_id, names)| SubscribedEndpoint {
+                endpoint_id,
+                event_types: known_event_types(&names),
+            })
+            .collect())
     }
 }
 

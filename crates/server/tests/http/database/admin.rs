@@ -181,6 +181,11 @@ async fn manages_tables_columns_and_policies() -> TestResult {
         field(&todos, "/policies/0/using"),
         "(owner_id = auth.uid())"
     );
+    assert_eq!(field(&todos, "/indexes/0/is_primary"), true);
+    assert_eq!(field(&todos, "/indexes/0/columns"), &json!(["id"]));
+    assert_eq!(field(&todos, "/indexes/0/method"), "btree");
+    assert!(field(&todos, "/indexes/0/scans").is_i64());
+    assert!(field(&todos, "/size_bytes").as_i64() > Some(0));
 
     let user = server.sign_up(&tenant, &unique_email("todo")).await?;
     let as_user = Credentials::user(&tenant, &user.access_token);
@@ -396,20 +401,45 @@ async fn sql_falling_back_to_the_login_role_stays_in_the_project() -> TestResult
     let refused = run_sql(&server, &tenant, &others).await?;
     assert_eq!(refused.status(), StatusCode::BAD_REQUEST);
 
-    let after_commit: Value = run_sql(
+    server.drop_tenant(&neighbour).await?;
+    server.drop_tenant(&tenant).await
+}
+
+#[tokio::test]
+async fn sql_editor_preserves_transaction_boundaries_and_counts_returned_writes() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    run_sql(&server, &tenant, "CREATE TABLE counts (n int NOT NULL)")
+        .await?
+        .error_for_status()?;
+
+    let refused = run_sql(
         &server,
         &tenant,
-        "COMMIT; SELECT count(*) AS visible FROM pg_stat_activity \
-         WHERE usename <> current_user AND query <> '<insufficient privilege>' \
-         AND usename LIKE 'nelcota_t_%'",
+        "INSERT INTO counts VALUES (10); COMMIT; SELECT n FROM absent_table",
+    )
+    .await?;
+    assert_eq!(refused.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(error_code(refused).await?, "sql_error");
+    assert_eq!(
+        rest_json(&server, Credentials::service(&tenant), "/counts").await?,
+        json!([])
+    );
+
+    let updated: Value = run_sql(
+        &server,
+        &tenant,
+        "SAVEPOINT draft; INSERT INTO counts VALUES (20); ROLLBACK TO draft; RELEASE draft;
+         INSERT INTO counts VALUES (30), (40); UPDATE counts SET n = n + 1 RETURNING n; SELECT n FROM counts ORDER BY n",
     )
     .await?
     .error_for_status()?
     .json()
     .await?;
-    assert_eq!(field(&after_commit, "/rows/0/0"), "0");
+    assert_eq!(field(&updated, "/rows"), &json!([["31"], ["41"]]));
+    assert_eq!(field(&updated, "/row_count"), 2);
+    assert_eq!(field(&updated, "/rows_affected"), 5);
 
-    server.drop_tenant(&neighbour).await?;
     server.drop_tenant(&tenant).await
 }
 

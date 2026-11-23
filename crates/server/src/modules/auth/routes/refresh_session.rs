@@ -35,8 +35,9 @@ pub async fn refresh_session(
     let client_ip = origin.client_ip;
     state
         .rate_limits
-        .token_redemption
-        .check(tenant.tenant_id, client_ip)?;
+        .auth
+        .check_redemption(tenant.tenant_id, client_ip)
+        .await?;
     let signing = state.token_signing();
     let services = (&state.control_plane_pool, &signing);
     let renewal = Renewal {

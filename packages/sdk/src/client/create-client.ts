@@ -4,7 +4,14 @@ import { defaultStorage } from '../auth/session/session-storage'
 import type { SessionStorageAdapter } from '../auth/session/session-storage'
 import { SessionStore } from '../auth/session/session-store'
 import { DatabaseClient } from '../database/database-client'
-import type { TableQuery } from '../database/table-query'
+import type {
+  ArgsOf,
+  ChosenQuery,
+  ChosenResult,
+  FunctionName,
+  GenericDatabase,
+  RelationName,
+} from '../database/database-types'
 import type { QueryResult } from '../database/query-request'
 import { HttpClient } from '../http/http-client'
 import { StorageClient } from '../storage/storage-client'
@@ -26,23 +33,35 @@ export type ClientOptions = {
   now?: () => number
 }
 
-export type NelcotaClient = {
+export type NelcotaClient<Database extends GenericDatabase = GenericDatabase> = {
   auth: AuthClient
   /** The project's database: `from('posts').select('id, title').eq('published', true)`. */
-  database: DatabaseClient
+  database: DatabaseClient<Database>
   /** Private file storage for the project. */
   storage: StorageClient
   /** Shortcut for `database.from`. */
-  from<Row extends Record<string, unknown> = Record<string, unknown>>(
-    table: string,
-  ): TableQuery<Row>
+  from<
+    Row extends Record<string, unknown> = never,
+    Name extends RelationName<Database> = RelationName<Database>,
+  >(
+    table: Name,
+  ): ChosenQuery<Database, Name, Row>
   /** Shortcut for `database.rpc`. */
-  rpc<T = unknown>(name: string, args?: Record<string, unknown>): Promise<QueryResult<T>>
+  rpc<Result = never, Name extends FunctionName<Database> = FunctionName<Database>>(
+    name: Name,
+    args?: ArgsOf<Database, Name>,
+  ): Promise<QueryResult<ChosenResult<Database, Name, Result>>>
   /** Releases browser event listeners and auth callbacks owned by this client. */
   dispose(): void
 }
 
-export function createClient(options: ClientOptions): NelcotaClient {
+/**
+ * The client of one project. `createClient<Database>(...)` with the generated `Database` type
+ * (`nelcota gen types`) types table names, rows, inserts, updates and functions.
+ */
+export function createClient<Database extends GenericDatabase = GenericDatabase>(
+  options: ClientOptions,
+): NelcotaClient<Database> {
   if (options.publishableKey.startsWith('nc_sk_')) {
     throw new Error(
       'Never use the secret key in the SDK; it ships to every user. Use the publishable key.',
@@ -61,7 +80,7 @@ export function createClient(options: ClientOptions): NelcotaClient {
   )
   const now = options.now ?? Date.now
   const manager = new SessionManager(http, store, now)
-  const database = new DatabaseClient(http, manager)
+  const database = new DatabaseClient<Database>(http, manager)
 
   return {
     auth: new AuthClient({ http, manager, store, now }),

@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod cache;
 pub mod database;
+pub mod notifications;
 pub mod oauth;
 pub mod storage;
 pub mod team;

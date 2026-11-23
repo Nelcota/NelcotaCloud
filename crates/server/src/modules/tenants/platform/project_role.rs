@@ -1,12 +1,14 @@
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-/// What a platform account may do in a project: owners can also delete it.
+/// What a platform account may do in a project: owners can also delete it and manage the
+/// team; viewers only read (`TenantAdmin` refuses their changes).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum ProjectRole {
     Owner,
     Member,
+    Viewer,
 }
 
 impl ProjectRole {
@@ -14,6 +16,7 @@ impl ProjectRole {
         match self {
             Self::Owner => "owner",
             Self::Member => "member",
+            Self::Viewer => "viewer",
         }
     }
 
@@ -21,6 +24,7 @@ impl ProjectRole {
         match raw {
             "owner" => Some(Self::Owner),
             "member" => Some(Self::Member),
+            "viewer" => Some(Self::Viewer),
             _ => None,
         }
     }
@@ -32,7 +36,7 @@ mod tests {
 
     #[test]
     fn round_trips_through_text() {
-        for role in [ProjectRole::Owner, ProjectRole::Member] {
+        for role in [ProjectRole::Owner, ProjectRole::Member, ProjectRole::Viewer] {
             assert_eq!(ProjectRole::parse(role.as_str()), Some(role));
         }
 

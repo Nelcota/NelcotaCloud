@@ -11,8 +11,7 @@ use crate::modules::tenants::audit::audit_action::AuditAction;
 use crate::modules::tenants::audit::audit_entry::NewAuditEvent;
 use crate::modules::tenants::audit::audit_recorder::record_audit_event;
 use crate::modules::tenants::ip_blocks::blocked_address_repository::{
-    BlockedAddress, MAX_BLOCKED_ADDRESSES, NewBlock, count_blocked_addresses,
-    insert_blocked_address,
+    BlockedAddress, MAX_BLOCKED_ADDRESSES, NewBlock, insert_blocked_address,
 };
 use crate::modules::tenants::ip_blocks::blocked_network::BlockedNetwork;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
@@ -56,18 +55,18 @@ pub async fn block_address(
 ) -> Result<(StatusCode, Json<BlockedAddress>), ApiError> {
     let network = BlockedNetwork::parse(&body.address).map_err(ApiError::invalid_request)?;
 
-    if count_blocked_addresses(&admin.pool).await? >= MAX_BLOCKED_ADDRESSES {
-        return Err(ApiError::Conflict(format!(
-            "a project blocks at most {MAX_BLOCKED_ADDRESSES} addresses: remove one first"
-        )));
-    }
-
     let block = NewBlock {
         network,
         note: body.note.as_deref(),
         expires_at: expiry(body.expires_in_hours),
     };
-    let blocked = insert_blocked_address(&admin.pool, block).await?;
+    let blocked = insert_blocked_address(&admin.pool, block)
+        .await?
+        .ok_or_else(|| {
+            ApiError::Conflict(format!(
+                "a project blocks at most {MAX_BLOCKED_ADDRESSES} addresses: remove one first"
+            ))
+        })?;
     let details = json!({ "network": blocked.network, "note": blocked.note });
     let event = NewAuditEvent::on_project(AuditAction::AddressBlocked, admin.author())
         .with_details(details);

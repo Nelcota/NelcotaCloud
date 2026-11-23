@@ -1,9 +1,10 @@
 import type { components } from '@/shared/api/api-schema'
 
 type TeamView = components['schemas']['TeamView']
+type ProjectRole = components['schemas']['ProjectRole']
 
 /** Someone with access to the project. */
-export type MemberRow = { id: string; email: string; role: 'owner' | 'member'; joinedAt: string }
+export type MemberRow = { id: string; email: string; role: ProjectRole; joinedAt: string }
 
 /** Someone invited who has not answered yet. */
 export type InvitationRow = { id: string; email: string; sentAt: string }
@@ -12,7 +13,7 @@ export type InvitationRow = { id: string; email: string; sentAt: string }
 export const SEARCH_THRESHOLD = 8
 
 const LOCALE = 'pt-BR'
-const ROLE_ORDER = { owner: 0, member: 1 }
+const ROLE_ORDER: Record<ProjectRole, number> = { owner: 0, member: 1, viewer: 2 }
 
 /** Owners first, then by arrival. */
 export function memberRows(team: TeamView): MemberRow[] {

@@ -13,7 +13,7 @@ import { UserAvatar } from '@/shared/ui/user-avatar'
 
 const HEAD = 'h-11 px-4'
 const CELL = 'px-4 py-4'
-const ROLE_NAMES = { owner: 'Dono', member: 'Membro' }
+const ROLE_NAMES = { owner: 'Dono', member: 'Membro', viewer: 'Leitura' }
 
 type TeamTableProps = {
   rows: MemberRow[]

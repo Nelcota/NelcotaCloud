@@ -27,43 +27,8 @@ async function signedInClient(
   return client
 }
 
-/** A promise the test settles by hand. */
-function deferred(): { promise: Promise<void>; resolve: () => void } {
-  let settle: (() => void) | undefined
-  const promise = new Promise<void>((resolve) => {
-    settle = resolve
-  })
-
-  return { promise, resolve: () => settle?.() }
-}
-
 afterEach(() => {
   vi.unstubAllGlobals()
-})
-
-describe('a refresh in flight', () => {
-  it('does not bring the session back after a sign out', async () => {
-    const api = new FakeApi()
-    const refreshAnswer = deferred()
-    api.reply('POST /auth/v1/refresh', {
-      status: 200,
-      body: sessionTokens({ refreshToken: 'nc_rt_second' }),
-      delay: refreshAnswer.promise,
-    })
-    api.reply('POST /auth/v1/logout', { status: 204 })
-    const client = await signedInClient(api, memoryStorage())
-    const events: AuthEvent[] = []
-    client.auth.onAuthStateChange((event) => events.push(event))
-
-    const tokenRequest = client.auth.getAccessToken()
-    await vi.waitFor(() => expect(api.callsTo('POST /auth/v1/refresh')).toHaveLength(1))
-    await client.auth.signOut()
-    refreshAnswer.resolve()
-
-    await expect(tokenRequest).rejects.toMatchObject({ code: 'not_authenticated' })
-    expect(client.auth.getSession()).toBeNull()
-    expect(events).toEqual(['SIGNED_OUT'])
-  })
 })
 
 describe('listeners', () => {

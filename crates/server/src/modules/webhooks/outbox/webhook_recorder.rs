@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use sqlx::PgConnection;
@@ -29,17 +28,13 @@ pub enum RecordError {
 /// worker for this tenant.
 pub struct WebhookRecorder {
     tenant_id: Uuid,
-    endpoints: Arc<Vec<SubscribedEndpoint>>,
+    endpoints: Vec<SubscribedEndpoint>,
     hints: WebhookHints,
     has_recorded: AtomicBool,
 }
 
 impl WebhookRecorder {
-    pub fn new(
-        tenant_id: Uuid,
-        endpoints: Arc<Vec<SubscribedEndpoint>>,
-        hints: WebhookHints,
-    ) -> Self {
+    pub fn new(tenant_id: Uuid, endpoints: Vec<SubscribedEndpoint>, hints: WebhookHints) -> Self {
         Self {
             tenant_id,
             endpoints,
@@ -70,11 +65,11 @@ impl WebhookRecorder {
         let outbox_event = OutboxEvent {
             id: Uuid::new_v4(),
             payload: event.into_payload(occurred_at)?,
+            endpoint_ids,
         };
         let batch = OutboxBatch {
             events: std::slice::from_ref(&outbox_event),
             event_type,
-            endpoint_ids: &endpoint_ids,
         };
         insert_outbox_batch(connection, batch).await?;
         self.has_recorded.store(true, Ordering::Relaxed);

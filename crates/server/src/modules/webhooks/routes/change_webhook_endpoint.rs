@@ -11,7 +11,8 @@ use crate::modules::webhooks::routes::webhook_endpoint_body::WebhookEndpointChan
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::validated_json::ValidatedJson;
 
-/// `PATCH /admin/webhooks/{endpoint_id}`: changes the URL, the events or whether it is enabled.
+/// `PATCH /admin/webhooks/{endpoint_id}`: changes the URL, the name, the events or whether it
+/// is enabled. Enabling it starts its delivery health afresh.
 #[utoipa::path(
     patch,
     path = "/auth/v1/admin/webhooks/{endpoint_id}",
@@ -34,6 +35,7 @@ pub async fn change_webhook_endpoint(
 ) -> Result<Json<WebhookEndpointView>, ApiError> {
     let update = EndpointUpdate {
         url: body.url.as_deref(),
+        description: body.description.as_deref(),
         event_types: body.event_types.as_deref(),
         is_enabled: body.is_enabled,
     };

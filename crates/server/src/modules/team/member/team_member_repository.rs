@@ -1,5 +1,5 @@
 use serde::Serialize;
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -51,7 +51,7 @@ pub async fn list_team_members(
 
 /// Whether an account with this email already belongs to the project.
 pub async fn is_member_email(
-    pool: &PgPool,
+    connection: &mut PgConnection,
     tenant_id: Uuid,
     email: &str,
 ) -> Result<bool, sqlx::Error> {
@@ -60,7 +60,7 @@ pub async fn is_member_email(
     )
     .bind(tenant_id)
     .bind(email)
-    .fetch_one(pool)
+    .fetch_one(connection)
     .await
 }
 

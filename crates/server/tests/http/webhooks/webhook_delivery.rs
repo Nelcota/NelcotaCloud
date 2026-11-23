@@ -116,6 +116,47 @@ async fn sends_only_the_events_an_endpoint_subscribed_to() -> TestResult {
 }
 
 #[tokio::test]
+async fn endpoint_updates_apply_to_events_written_by_another_api_instance() -> TestResult {
+    let management = TestServer::start().await?;
+    let writer = TestServer::start().await?;
+    let tenant = management.create_tenant().await?;
+    let receiver = WebhookReceiver::answering(204).await;
+    writer
+        .sign_up(&tenant, &unique_email("before-webhook"))
+        .await?;
+    let (id, _) =
+        create_endpoint(&management, &tenant, (&receiver.url(), &["user.created"])).await?;
+
+    writer
+        .sign_up(&tenant, &unique_email("with-webhook"))
+        .await?;
+    let before = delivery_log(&management, &tenant, &id).await?;
+    assert_eq!(before.as_array().map(Vec::len), Some(1));
+
+    webhooks_request(&management, &tenant, (Method::PATCH, &format!("/{id}")))
+        .json(&json!({ "event_types": ["user.deleted"] }))
+        .send()
+        .await?
+        .error_for_status()?;
+    writer
+        .sign_up(&tenant, &unique_email("after-webhook-change"))
+        .await?;
+    // A worker in another test may already have attempted the existing delivery.
+    let after = delivery_log(&management, &tenant, &id).await?;
+    assert_eq!(after.as_array().map(Vec::len), Some(1));
+    assert_eq!(
+        text(field(&after, "/0/id"))?,
+        text(field(&before, "/0/id"))?
+    );
+    assert_eq!(
+        text(field(&after, "/0/event_id"))?,
+        text(field(&before, "/0/event_id"))?
+    );
+
+    management.drop_tenant(&tenant).await
+}
+
+#[tokio::test]
 async fn retries_a_failed_delivery_with_the_same_id() -> TestResult {
     let server = TestServer::start_with_worker().await?;
     let tenant = server.create_tenant().await?;

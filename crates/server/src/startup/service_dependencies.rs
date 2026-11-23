@@ -75,7 +75,8 @@ pub(super) fn cache_authentication_pool(control_plane: &PgPool) -> PgPool {
         .connect_options()
         .as_ref()
         .clone()
-        .application_name("nelcota-cache-auth");
+        .application_name("nelcota-cache-auth")
+        .options([("statement_timeout", "400ms")]);
 
     PgPoolOptions::new()
         .max_connections(CACHE_AUTHENTICATION_CONNECTIONS)

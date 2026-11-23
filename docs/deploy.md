@@ -30,6 +30,40 @@ Keep `MASTER_KEY_HEX` and `BACKUP_ENCRYPTION_PASSWORD` in a password manager out
 without the first, tenant secrets cannot be decrypted; without the second, backups cannot be
 restored.
 
+### Direct Postgres connections
+
+Projects can connect to their own database directly (Prisma, Drizzle, `psql`) through PgBouncer,
+in transaction mode with TLS. Each project gets the role `nelcota_c_<slug>`, which logs in only to
+its own database and acts as its developer (like the console's SQL editor). Its password is
+generated in the console (Banco de dados › Conectar) or with `nelcota db reset-password`, and is
+shown once.
+
+1. Create a DNS record for the database host, for example `db.example.com`, pointing at the
+   VPS. Behind Cloudflare it must be **DNS only** (grey cloud): Cloudflare does not proxy this
+   port.
+2. In `.env.production`, set `DATABASE_PUBLIC_HOST`, `DATABASE_PUBLIC_PORT` (6543 by default) and
+   `POOLER_AUTH_PASSWORD` (`openssl rand -hex 32`). The API creates the `nelcota_pgbouncer` role
+   and the `pgbouncer.user_lookup` function with that password; the function only answers for
+   `nelcota_c_*` roles.
+3. Start the stack with the profile, and open the port in the firewall:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.production --profile direct-connections up -d --build
+```
+
+Without a certificate, PgBouncer creates a self-signed one: traffic is encrypted, but clients
+cannot verify the server (`sslmode=require`, the default the console shows). To let clients use
+`sslmode=verify-full`, mount a certificate for `DATABASE_PUBLIC_HOST` into the `pgbouncer`
+service (a compose override), set `PGBOUNCER_TLS_CERT_FILE` and `PGBOUNCER_TLS_KEY_FILE` to the
+paths inside the container, and `DATABASE_PUBLIC_SSL_MODE=verify-full`. PgBouncer reloads every 12
+hours, so a renewed certificate is picked up.
+
+Each project may hold 10 server connections (the role's `CONNECTION LIMIT` and PgBouncer's
+`max_db_connections`), and statements stop after 60 seconds by default. Prisma needs
+`&pgbouncer=true` in the URL. A direct connection role can open the server's `postgres`
+maintenance database, where it has no privilege; every project database and the control plane
+refuse it.
+
 ## 3. Create the platform tenant (console accounts)
 
 Console users are users of a regular tenant, named by `PLATFORM_TENANT_SLUG` (default `console`).

@@ -154,10 +154,18 @@ async fn publishable_keys_cannot_manage_keys() -> TestResult {
 #[tokio::test]
 async fn tokens_of_a_rotated_signing_key_keep_verifying() -> TestResult {
     let server = TestServer::start().await?;
+    let second = TestServer::start().await?;
     let tenant = server.create_tenant().await?;
     let before = server
         .sign_up(&tenant, &unique_email("before-rotation"))
         .await?;
+    assert_eq!(
+        second
+            .current_user(&tenant.publishable_key, &before.access_token)
+            .await?
+            .status(),
+        StatusCode::OK
+    );
 
     let rotation = server
         .post_auth(
@@ -178,11 +186,70 @@ async fn tokens_of_a_rotated_signing_key_keep_verifying() -> TestResult {
         .await?;
     let header = jsonwebtoken::decode_header(&after.access_token)?;
     assert_eq!(header.kid.as_deref(), field(&rotated, "/key_id").as_str());
-    let jwks: Value = admin_get(&server, &tenant, "/auth/v1/jwks")
+    assert_eq!(
+        second
+            .current_user(&tenant.publishable_key, &after.access_token)
+            .await?
+            .status(),
+        StatusCode::OK
+    );
+    let jwks: Value = admin_get(&second, &tenant, "/auth/v1/jwks")
         .await?
         .json()
         .await?;
     assert_eq!(field(&jwks, "/keys").as_array().map(Vec::len), Some(2));
+
+    server.drop_tenant(&tenant).await
+}
+
+#[tokio::test]
+async fn keeps_active_api_keys_visible_and_pages_the_revoked_history() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    let mut control = server.control_plane().await?;
+    sqlx::query(
+        "INSERT INTO tenant_api_keys (id, tenant_id, kind, key_hash, created_at, revoked_at)
+         SELECT gen_random_uuid(), $1, 'publishable',
+                convert_to(gen_random_uuid()::text, 'UTF8'), now(), now()
+         FROM generate_series(1, 53)",
+    )
+    .bind(tenant.tenant_id)
+    .execute(&mut control)
+    .await?;
+
+    let first = admin_get(&server, &tenant, "/auth/v1/admin/api-keys")
+        .await?
+        .error_for_status()?;
+    let cursor = first
+        .headers()
+        .get("x-nelcota-next-cursor")
+        .ok_or("missing cursor")?
+        .to_str()?
+        .to_owned();
+    let first: Vec<Value> = first.json().await?;
+    assert_eq!(first.len(), 52);
+    assert_eq!(
+        first
+            .iter()
+            .filter(|key| field(key, "/revoked_at").is_null())
+            .count(),
+        2
+    );
+    let next = admin_get(
+        &server,
+        &tenant,
+        &format!("/auth/v1/admin/api-keys?before={cursor}"),
+    )
+    .await?
+    .error_for_status()?;
+    assert!(next.headers().get("x-nelcota-next-cursor").is_none());
+    let next: Vec<Value> = next.json().await?;
+    assert_eq!(next.len(), 3);
+    assert!(next.iter().all(|next_key| {
+        first
+            .iter()
+            .all(|key| field(key, "/id") != field(next_key, "/id"))
+    }));
 
     server.drop_tenant(&tenant).await
 }

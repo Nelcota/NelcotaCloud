@@ -8,7 +8,10 @@ use validator::Validate;
 use crate::app_state::AppState;
 use crate::modules::tenants::access::tenant_admin::TenantAdmin;
 use crate::modules::tenants::audit::audit_action::AuditAction;
-use crate::modules::tenants::audit::project_change::{ProjectChange, record_project_change};
+use crate::modules::tenants::audit::project_audit_queue::{
+    begin_project_change, commit_project_change,
+};
+use crate::modules::tenants::audit::project_change::ProjectChange;
 use crate::modules::tenants::smtp::smtp_settings_change::{
     SmtpSettingsChange, SmtpSettingsChangeError,
 };
@@ -52,9 +55,14 @@ pub async fn configure_smtp(
         smtp_url: body.smtp_url.trim(),
         email_from: body.email_from.trim(),
     };
-    let saved = state
+    let prepared = state
         .smtp_settings_store()
-        .save(change)
+        .prepare(change)
+        .await
+        .map_err(map_change_error)?;
+    let mut transaction = begin_project_change(&state.control_plane_pool, admin.tenant_id).await?;
+    let saved = prepared
+        .save(&mut transaction)
         .await
         .map_err(map_change_error)?;
     let change = ProjectChange {
@@ -63,7 +71,7 @@ pub async fn configure_smtp(
         action: AuditAction::SettingsChanged,
         details: json!({ "section": "smtp" }),
     };
-    record_project_change(&state.tenant_pools, change).await;
+    commit_project_change(&state, transaction, change).await?;
 
     Ok(Json(saved))
 }

@@ -5,9 +5,15 @@ use serde_json::json;
 use crate::app_state::AppState;
 use crate::modules::tenants::access::tenant_admin::TenantAdmin;
 use crate::modules::tenants::audit::audit_action::AuditAction;
-use crate::modules::tenants::audit::project_change::{ProjectChange, record_project_change};
+use crate::modules::tenants::audit::project_audit_queue::{
+    begin_project_change, commit_project_change,
+};
+use crate::modules::tenants::audit::project_change::ProjectChange;
 use crate::modules::tenants::captcha::captcha_settings_change::{
-    CaptchaSettingsBody, save_captcha,
+    CaptchaSettingsBody, prepare_captcha_secret,
+};
+use crate::modules::tenants::captcha::captcha_settings_repository::{
+    NewCaptchaSettings, save_captcha_settings,
 };
 use crate::modules::tenants::captcha::captcha_settings_view::CaptchaSettingsView;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
@@ -33,14 +39,23 @@ pub async fn configure_captcha(
     admin: TenantAdmin,
     ValidatedJson(body): ValidatedJson<CaptchaSettingsBody>,
 ) -> Result<Json<CaptchaSettingsView>, ApiError> {
-    let saved = save_captcha(&state, admin.tenant_id, &body).await?;
+    let ciphertext = prepare_captcha_secret(&state, admin.tenant_id, &body).await?;
+    let mut transaction = begin_project_change(&state.control_plane_pool, admin.tenant_id).await?;
+    let settings = NewCaptchaSettings {
+        tenant_id: admin.tenant_id,
+        site_key: &body.site_key,
+        secret_key_ciphertext: &ciphertext,
+    };
+    save_captcha_settings(&mut transaction, settings).await?;
     let change = ProjectChange {
         tenant_id: admin.tenant_id,
         author: admin.author(),
         action: AuditAction::SettingsChanged,
         details: json!({ "section": "captcha" }),
     };
-    record_project_change(&state.tenant_pools, change).await;
+    commit_project_change(&state, transaction, change).await?;
 
-    Ok(Json(saved))
+    Ok(Json(CaptchaSettingsView {
+        site_key: Some(body.site_key),
+    }))
 }

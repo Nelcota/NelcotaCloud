@@ -2,7 +2,6 @@ use axum::http::header::InvalidHeaderName;
 
 use crate::modules::auth::password::password_hashing::PasswordHashingError;
 use crate::modules::cache::entries::cache_store::InvalidCacheUrl;
-use crate::modules::tenants::postgres::tenant_database_server::TenantDatabaseError;
 use crate::modules::tenants::provisioning::tenant_slug::InvalidTenantSlug;
 use crate::modules::webhooks::delivery::manual_send_limiter::InvalidSendQuota;
 use crate::shared::crypto::hex_encoding::HexDecodeError;
@@ -13,8 +12,14 @@ use crate::startup::config_error::ConfigError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum StartupError {
-    #[error("usage: server [--webhook-worker]")]
+    #[error("usage: server [--webhook-worker | --check-ready]")]
     InvalidArguments,
+    #[error("BIND_ADDRESS must be an IP address and port for the readiness probe")]
+    ReadinessAddress,
+    #[error("API readiness probe failed: {0}")]
+    ReadinessProbe(reqwest::Error),
+    #[error("API readiness probe returned {0}")]
+    ReadinessStatus(reqwest::StatusCode),
     #[error("failed to load .env file: {0}")]
     EnvironmentFile(#[from] dotenvy::Error),
     #[error(transparent)]
@@ -31,11 +36,6 @@ pub enum StartupError {
     DatabaseRoles(sqlx::Error),
     #[error("failed to migrate the control plane database: {0}")]
     Migration(#[from] sqlx::migrate::MigrateError),
-    #[error("failed to prepare tenant database {slug}: {source}")]
-    TenantMigration {
-        slug: String,
-        source: TenantDatabaseError,
-    },
     #[error(transparent)]
     PasswordHashing(#[from] PasswordHashingError),
     #[error(transparent)]

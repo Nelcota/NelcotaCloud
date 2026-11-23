@@ -9,9 +9,9 @@ use validator::Validate;
 
 use crate::app_state::AppState;
 use crate::modules::auth::avatar::avatar_repository::find_avatar;
-use crate::modules::auth::avatar::image_file::ImageFile;
 use crate::modules::tenants::access::api_key_tenant::ApiKeyTenant;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
+use crate::shared::image::image_file::ImageFile;
 
 const AVATAR_CONTENT_TYPE: &str = "image/jpeg";
 /// Clients add the photo's `version` to the URL, so a changed photo is a new URL; the hour only

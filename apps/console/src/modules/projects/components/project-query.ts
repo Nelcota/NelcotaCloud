@@ -17,7 +17,7 @@ export const DEFAULT_QUERY: ProjectQuery = {
 }
 
 const LOCALE = 'pt-BR'
-const ROLE_ORDER: Record<ProjectRole, number> = { owner: 0, member: 1 }
+const ROLE_ORDER: Record<ProjectRole, number> = { owner: 0, member: 1, viewer: 2 }
 const COMPARATORS: Record<SortKey, (a: ProjectSummary, b: ProjectSummary) => number> = {
   name: (a, b) => a.name.localeCompare(b.name, LOCALE, { sensitivity: 'base' }),
   role: (a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role],
