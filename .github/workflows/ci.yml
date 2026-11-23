@@ -78,15 +78,6 @@ jobs:
       - run: docker compose up -d --wait valkey
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
-      - name: Start authenticated Valkey
-        run: |
-          docker run --detach --rm --name nelcota-test-valkey --publish 127.0.0.1:6380:6379 \
-            valkey/valkey:9.1.4 valkey-server --requirepass nelcota-ci
-          timeout 30s bash -c '
-            until docker exec --env VALKEYCLI_AUTH=nelcota-ci nelcota-test-valkey valkey-cli ping | grep -qx PONG; do
-              sleep 1
-            done
-          '
       # Includes the check that crates/server/openapi.json matches the annotated routes.
       - run: cargo test --workspace --locked
 
@@ -181,7 +172,8 @@ jobs:
   images:
     name: Docker images build
     runs-on: ubuntu-latest
-    # Pushes need packages: write; pull requests only build (and fork PRs get a read-only token).
+    if: github.event_name == 'push'
+    # Pushes to main publish the API image, so the job needs packages: write.
     permissions:
       contents: read
       packages: write
@@ -195,7 +187,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      # The API image is published for `nelcota dev start`; pull requests build it only.
+      # The API image is published for `nelcota dev start`.
       - uses: docker/build-push-action@v7.4.0
         with:
           context: .
