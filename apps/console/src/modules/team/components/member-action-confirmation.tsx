@@ -5,6 +5,7 @@ import { useState } from 'react'
 import type { ActionTarget } from '@/modules/team/components/action-target'
 import { ACTION_COPY, titleFor } from '@/modules/team/components/team-action-copy'
 import type { MemberAction } from '@/modules/team/components/team-row-actions'
+import { useLastPresent } from '@/shared/lib/use-last-present'
 import type { ConfirmChange } from '@/shared/ui/confirm-change'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
 import { CheckboxField } from '@/shared/ui/switch-field'
@@ -23,18 +24,26 @@ type MemberActionConfirmationProps = {
  */
 export function MemberActionConfirmation(props: MemberActionConfirmationProps): JSX.Element | null {
   const [isSteppingDown, setIsSteppingDown] = useState(false)
+  const [openedAction, setOpenedAction] = useState(props.action)
+  const shown = useLastPresent(props.action)
 
-  if (props.action === null) {
+  // Each opening starts unticked; closing keeps the choice while the dialog animates out.
+  if (props.action !== openedAction) {
+    setOpenedAction(props.action)
+    setIsSteppingDown(isSteppingDown && props.action === null)
+  }
+
+  if (shown === null) {
     return null
   }
 
-  const action = effectiveAction(props.action, isSteppingDown)
+  const action = effectiveAction(shown, isSteppingDown)
   const copy = ACTION_COPY[action]
   const { target } = props
 
   return (
     <ConfirmDialog
-      isOpen
+      isOpen={props.action !== null}
       onClose={props.onClose}
       title={titleFor(action, target.name, target.isOwnRow)}
       description={copy.description(target.name)}
@@ -45,7 +54,7 @@ export function MemberActionConfirmation(props: MemberActionConfirmationProps): 
       onConfirm={() => props.onConfirm(target, action)}
     >
       <StepDownChoice
-        isShown={props.action === 'promote'}
+        isShown={shown === 'promote'}
         isChecked={isSteppingDown}
         onChange={setIsSteppingDown}
       />

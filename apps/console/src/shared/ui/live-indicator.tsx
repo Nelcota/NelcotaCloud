@@ -17,7 +17,7 @@ export function LiveIndicator({
 }: LiveIndicatorProps): JSX.Element {
   return (
     <span
-      className={cn('inline-flex items-center gap-1.5 font-mono text-2xs', className)}
+      className={cn('inline-flex items-center gap-1.5 font-mono text-xs', className)}
       aria-live="polite"
     >
       <span

@@ -7,7 +7,14 @@ import type { AuditRowContext } from '@/modules/activity/components/audit-row-co
 import type { components } from '@/shared/api/api-schema'
 import { formatDateTime } from '@/shared/lib/format-date'
 import { CodeBlock } from '@/shared/ui/code-block'
-import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/shared/ui/primitives/sheet'
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/shared/ui/primitives/sheet'
 
 type AuditEvent = components['schemas']['AuditEvent']
 
@@ -35,7 +42,7 @@ export function AuditEventSheet({ event, context, actions }: AuditEventSheetProp
         }
       }}
     >
-      <SheetContent className="w-full gap-0 overflow-y-auto p-0 data-[side=right]:sm:max-w-xl">
+      <SheetContent className="sm:max-w-xl">
         <OpenEvent event={event} context={context} actions={actions} />
       </SheetContent>
     </Sheet>
@@ -49,13 +56,13 @@ function OpenEvent({ event, context, actions }: AuditEventSheetProps): JSX.Eleme
 
   return (
     <>
-      <div className="grid gap-1 border-b px-5 py-4 pe-12">
-        <SheetTitle className="text-base font-medium">{actionText(event)}</SheetTitle>
+      <SheetHeader>
+        <SheetTitle>{actionText(event)}</SheetTitle>
         <SheetDescription className="tabular-nums">
           {formatDateTime(event.occurred_at)}
         </SheetDescription>
-      </div>
-      <div className="flex flex-col gap-5 px-5 pb-5">
+      </SheetHeader>
+      <SheetBody>
         <AuditEventFacts event={event} context={context} actions={actions} />
         <EventDetails event={event} />
         <CodeBlock
@@ -65,7 +72,7 @@ function OpenEvent({ event, context, actions }: AuditEventSheetProps): JSX.Eleme
           copyLabel="evento em JSON"
           maxHeight={320}
         />
-      </div>
+      </SheetBody>
     </>
   )
 }

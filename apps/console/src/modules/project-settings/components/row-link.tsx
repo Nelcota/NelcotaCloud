@@ -17,7 +17,7 @@ export function RowLink({ href, label, ariaLabel }: RowLinkProps): JSX.Element {
     <Button asChild variant="outline" size="sm">
       <RouterLink href={href} aria-label={ariaLabel}>
         {label}
-        <ArrowUpRight aria-hidden data-icon="inline-end" className="size-4" />
+        <ArrowUpRight aria-hidden data-icon="inline-end" className="size-4.5" />
       </RouterLink>
     </Button>
   )

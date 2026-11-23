@@ -1,3 +1,4 @@
+import { KeyRound } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { useRecoverPasswordMutation } from '@/modules/account/queries/use-recover-password-mutation'
@@ -28,6 +29,7 @@ export function PasswordSection({ email }: { email: string }): JSX.Element {
           isPending={recover.isPending}
           onClick={() => recover.mutate(email)}
         >
+          <KeyRound aria-hidden data-icon="inline-start" />
           Trocar senha
         </PendingButton>
       }

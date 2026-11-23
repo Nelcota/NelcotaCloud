@@ -40,10 +40,10 @@ function NextStepRow({ step, href }: { step: NextStep; href: string }): JSX.Elem
       href={href}
       className="group flex h-10 items-center gap-2.5 px-3 text-xs hover:bg-surface focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-inset"
     >
-      <Glyph aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+      <Glyph aria-hidden className="size-4.5 shrink-0 text-muted-foreground" />
       <span className="font-medium text-heading">{step.label}</span>
       <span className="ms-auto truncate text-2xs text-muted-foreground">{step.hint}</span>
-      <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+      <ChevronRight aria-hidden className="size-4.5 shrink-0 text-muted-foreground" />
     </RouterLink>
   )
 }

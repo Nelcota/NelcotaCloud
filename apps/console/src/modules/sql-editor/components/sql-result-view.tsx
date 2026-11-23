@@ -1,3 +1,4 @@
+import { List as Rows } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { DataGrid } from '@/modules/database/components/data-grid'
@@ -9,7 +10,9 @@ type SqlResult = components['schemas']['SqlResult']
 /** The last result set as a grid; a statement without one says so. */
 export function SqlResultView({ result }: { result: SqlResult }): JSX.Element {
   if (result.columns.length === 0) {
-    return <EmptyState isCompact title="O comando não retornou linhas" />
+    return (
+      <EmptyState icon={<Rows aria-hidden />} isCompact title="O comando não retornou linhas" />
+    )
   }
 
   return (

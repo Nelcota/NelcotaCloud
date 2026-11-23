@@ -45,7 +45,7 @@ function GuideStep({ number, children }: { number: number; children: ReactNode }
     <li className="flex items-start gap-2.5 text-xs text-pretty">
       <span
         aria-hidden
-        className="grid h-4 min-w-4 shrink-0 place-items-center rounded-sm bg-surface-hover px-1 font-mono text-2xs text-muted-foreground tabular-nums"
+        className="grid h-5 min-w-5 shrink-0 place-items-center rounded-sm bg-surface-hover px-1 font-mono text-2xs text-muted-foreground tabular-nums"
       >
         {number}
       </span>

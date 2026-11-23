@@ -1,4 +1,4 @@
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, ArrowLeft } from 'lucide-react'
 import type { JSX } from 'react'
 
 import type { DraftErrors } from '@/modules/projects/components/draft-errors'
@@ -94,6 +94,7 @@ function ConfigFooter({ onBack }: { onBack: () => void }): JSX.Element {
         <ArrowRight aria-hidden data-icon="inline-end" />
       </Button>
       <Button type="button" variant="ghost" onClick={onBack}>
+        <ArrowLeft aria-hidden data-icon="inline-start" />
         Voltar
       </Button>
     </>

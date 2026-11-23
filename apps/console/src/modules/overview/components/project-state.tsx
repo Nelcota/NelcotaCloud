@@ -20,7 +20,7 @@ function SlugPill({ slug }: { slug: string | undefined }): JSX.Element | null {
   }
 
   return (
-    <span className="inline-flex h-6 items-center rounded-sm bg-surface-hover px-2 font-mono text-2xs text-foreground">
+    <span className="inline-flex h-6 items-center rounded-sm bg-surface-hover px-2 font-mono text-xs text-foreground">
       {slug}
     </span>
   )

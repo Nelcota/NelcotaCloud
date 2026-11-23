@@ -14,7 +14,7 @@ const SAMPLE = [
 export function ShowcaseCodeCard(): JSX.Element {
   return (
     <figure className="min-w-0 overflow-hidden rounded-xl border border-border/60 bg-background">
-      <figcaption className="border-b border-border/60 px-3.5 py-2 font-mono text-2xs text-muted-foreground">
+      <figcaption className="border-b border-border/60 px-3.5 py-2 font-mono text-xs text-muted-foreground">
         app.ts
       </figcaption>
       <pre className="p-3.5 font-mono text-xs leading-relaxed whitespace-pre-wrap">

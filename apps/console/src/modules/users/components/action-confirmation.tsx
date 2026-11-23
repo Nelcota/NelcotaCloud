@@ -5,6 +5,7 @@ import {
   type ConfirmedAction,
 } from '@/modules/users/components/user-action-confirmations'
 import type { UserAction } from '@/modules/users/queries/use-users'
+import { useLastPresent } from '@/shared/lib/use-last-present'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
 
 type ActionConfirmationProps = {
@@ -21,22 +22,24 @@ export function ActionConfirmation({
   onClose,
   onConfirm,
 }: ActionConfirmationProps): JSX.Element | null {
-  if (action === null) {
+  const shown = useLastPresent(action)
+
+  if (shown === null) {
     return null
   }
 
-  const confirmation = CONFIRMATIONS[action]
+  const confirmation = CONFIRMATIONS[shown]
 
   return (
     <ConfirmDialog
-      isOpen
+      isOpen={action !== null}
       onClose={onClose}
       title={confirmation.title(email)}
       description={confirmation.description}
       confirmLabel={confirmation.confirmLabel}
       isDestructive={confirmation.isDestructive}
       change={confirmation.change(email)}
-      onConfirm={() => onConfirm(action)}
+      onConfirm={() => onConfirm(shown)}
     />
   )
 }

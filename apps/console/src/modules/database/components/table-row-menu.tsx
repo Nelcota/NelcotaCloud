@@ -1,4 +1,4 @@
-import { Ellipsis as MenuDots } from 'lucide-react'
+import { Ellipsis as MenuDots, Copy, Link2 } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { restUrl } from '@/modules/database/components/snippet-syntax'
@@ -29,8 +29,12 @@ export function TableRowMenu({ table }: TableRowMenuProps): JSX.Element {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={() => void copy(table)}>Copiar nome</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => void copy(table)}>
+            <Copy aria-hidden />
+            Copiar nome
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => void copy(restUrl(encodeURIComponent(table)))}>
+            <Link2 aria-hidden />
             Copiar endpoint
           </DropdownMenuItem>
         </DropdownMenuContent>

@@ -1,3 +1,4 @@
+import { File } from 'lucide-react'
 import type { JSX } from 'react'
 
 import type { StorageObject } from '@/modules/storage/api/storage-types'
@@ -19,7 +20,7 @@ type StorageFileTableProps = { objects: StorageObject[]; projectId: string }
 /** One row per file: name, type, the id the API addresses it by, size, then download and delete. */
 export function StorageFileTable({ objects, projectId }: StorageFileTableProps): JSX.Element {
   if (objects.length === 0) {
-    return <EmptyState isCompact title="Nenhum arquivo neste bucket" />
+    return <EmptyState icon={<File aria-hidden />} isCompact title="Nenhum arquivo neste bucket" />
   }
 
   return (

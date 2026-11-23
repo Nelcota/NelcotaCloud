@@ -11,8 +11,8 @@ export function SetupStepTile({ step, number }: SetupStepTileProps): JSX.Element
   if (step.isDone) {
     return (
       <div className="flex w-full items-start gap-2.5 rounded-lg bg-surface p-3 text-muted-foreground">
-        <span className="grid size-5 shrink-0 place-items-center rounded-full bg-success/15">
-          <Check aria-label="Feito" className="size-3.5 text-success" />
+        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-success/15">
+          <Check aria-label="Feito" className="size-4 text-success" />
         </span>
         <span className="text-sm text-pretty line-through decoration-muted-foreground/50">
           {step.label}
@@ -27,7 +27,7 @@ export function SetupStepTile({ step, number }: SetupStepTileProps): JSX.Element
       className="group flex w-full flex-col gap-2 rounded-lg border border-border/60 p-3 transition-colors hover:border-muted-foreground/30 hover:bg-surface"
     >
       <span className="flex items-start gap-2.5">
-        <span className="grid size-5 shrink-0 place-items-center rounded-full bg-surface-hover font-mono text-2xs text-heading tabular-nums">
+        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-surface-hover font-mono text-2xs text-heading tabular-nums">
           {number}
         </span>
         <span className="text-sm font-medium text-pretty text-heading">{step.label}</span>
@@ -37,7 +37,7 @@ export function SetupStepTile({ step, number }: SetupStepTileProps): JSX.Element
       </span>
       <span className="mt-auto inline-flex items-center gap-1 text-xs font-medium text-muted-foreground group-hover:text-foreground">
         {step.actionLabel}
-        <ArrowRight aria-hidden className="size-4" />
+        <ArrowRight aria-hidden className="size-4.5" />
       </span>
     </RouterLink>
   )

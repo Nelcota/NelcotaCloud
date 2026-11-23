@@ -40,6 +40,8 @@ type ForwardButtonProps = {
   isLast: boolean
   isWorking: boolean
   isDisabled: boolean
+  /** The note that says why the button waits, if any. */
+  describedBy?: string
   finishLabel: string
 }
 
@@ -47,14 +49,19 @@ type ForwardButtonProps = {
 export function ForwardButton(props: ForwardButtonProps): JSX.Element {
   if (props.isLast) {
     return (
-      <PendingButton type="submit" isPending={props.isWorking} disabled={props.isDisabled}>
+      <PendingButton
+        type="submit"
+        isPending={props.isWorking}
+        disabled={props.isDisabled}
+        aria-describedby={props.describedBy}
+      >
         {props.finishLabel}
       </PendingButton>
     )
   }
 
   return (
-    <Button type="submit" disabled={props.isDisabled}>
+    <Button type="submit" disabled={props.isDisabled} aria-describedby={props.describedBy}>
       Continuar
       <ArrowRight aria-hidden data-icon="inline-end" />
     </Button>

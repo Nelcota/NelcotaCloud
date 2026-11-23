@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useDebouncedValue } from '@/shared/lib/use-debounced-value'
+import { useLastPresent } from '@/shared/lib/use-last-present'
 import { usePickedImage } from '@/shared/lib/use-picked-image'
 
 describe('useDebouncedValue', () => {
@@ -48,5 +49,21 @@ describe('usePickedImage', () => {
     unmount()
     expect(revoke).toHaveBeenLastCalledWith('blob:b.png')
     vi.unstubAllGlobals()
+  })
+})
+
+describe('useLastPresent', () => {
+  it('keeps the last value while the dialog it describes closes', () => {
+    const { result, rerender } = renderHook(({ value }) => useLastPresent(value), {
+      initialProps: { value: null as string | null },
+    })
+
+    expect(result.current).toBeNull()
+    rerender({ value: 'ban' })
+    expect(result.current).toBe('ban')
+    rerender({ value: null })
+    expect(result.current).toBe('ban')
+    rerender({ value: 'delete' })
+    expect(result.current).toBe('delete')
   })
 })

@@ -1,3 +1,4 @@
+import { Settings2 } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
@@ -7,7 +8,7 @@ import { PROVIDER_NAMES } from '@/modules/project-settings/components/provider-n
 import { useConfigureProviderMutation } from '@/modules/project-settings/queries/use-oauth-providers'
 import { DataList, DataListItem } from '@/shared/ui/data-list'
 import { Button } from '@/shared/ui/primitives/button'
-import { missingUnless } from '@/shared/ui/step-dialog/missing-unless'
+import { missingUnless } from '@/shared/lib/missing-unless'
 import { StepDialog } from '@/shared/ui/step-dialog/step-dialog'
 import { CheckboxField } from '@/shared/ui/switch-field'
 import { TextField } from '@/shared/ui/text-field'
@@ -50,6 +51,7 @@ export function ConfigureProviderDialog(props: ConfigureProviderDialogProps): JS
   return (
     <>
       <Button type="button" variant="outline" size="sm" onClick={open}>
+        <Settings2 aria-hidden data-icon="inline-start" />
         {props.triggerLabel}
       </Button>
       <StepDialog

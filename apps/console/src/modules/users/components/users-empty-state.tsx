@@ -1,4 +1,4 @@
-import { SearchX, Users } from 'lucide-react'
+import { SearchX, Users, FunnelX, KeyRound } from 'lucide-react'
 import type { JSX } from 'react'
 
 import type { UserStatusFilter } from '@/modules/users/api/list-users'
@@ -33,6 +33,7 @@ export function UsersEmptyState(props: UsersEmptyStateProps): JSX.Element {
   const { filter, onClearFilter } = props
   const clearAction = (
     <Button type="button" variant="outline" size="sm" onClick={onClearFilter}>
+      <FunnelX aria-hidden data-icon="inline-start" />
       Limpar filtros
     </Button>
   )
@@ -67,10 +68,13 @@ export function UsersEmptyState(props: UsersEmptyStateProps): JSX.Element {
     <EmptyState
       icon={<Users aria-hidden />}
       title="Nenhum usuário ainda"
-      description="Os usuários aparecem aqui quando alguém se cadastra pelo seu app, com a chave publicável."
+      description="Aparecem quando alguém se cadastra pelo seu app."
       actions={
         <Button asChild size="sm">
-          <RouterLink href={`/projects/${props.projectId}/keys`}>Ver chaves de API</RouterLink>
+          <RouterLink href={`/projects/${props.projectId}/keys`}>
+            <KeyRound aria-hidden data-icon="inline-start" />
+            Ver chaves de API
+          </RouterLink>
         </Button>
       }
     />

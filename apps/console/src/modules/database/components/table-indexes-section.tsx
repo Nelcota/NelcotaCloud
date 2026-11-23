@@ -1,4 +1,4 @@
-import { KeyRound } from 'lucide-react'
+import { KeyRound, ListTree } from 'lucide-react'
 import type { JSX } from 'react'
 
 import type { components } from '@/shared/api/api-schema'
@@ -35,6 +35,7 @@ function IndexesBody({ indexes }: { indexes: readonly IndexOverview[] }): JSX.El
   if (indexes.length === 0) {
     return (
       <EmptyState
+        icon={<ListTree aria-hidden />}
         isCompact
         title="Nenhum índice"
         description="Consultas filtradas leem a tabela inteira. Crie índices no Editor SQL."
@@ -65,13 +66,13 @@ function IndexesBody({ indexes }: { indexes: readonly IndexOverview[] }): JSX.El
 function IndexRow({ index }: { index: IndexOverview }): JSX.Element {
   return (
     <TableRow title={index.definition}>
-      <TableCell className="max-w-64">
+      <TableCell className="max-w-64 whitespace-normal">
         <span className="flex items-center gap-1.5 font-mono font-medium text-heading">
           <PrimaryMark index={index} />
-          <span className="truncate">{index.name}</span>
+          <span className="break-all">{index.name}</span>
         </span>
       </TableCell>
-      <TableCell className="max-w-56 truncate font-mono text-muted-foreground">
+      <TableCell className="max-w-56 font-mono break-all whitespace-normal text-muted-foreground">
         {index.columns.join(', ')}
       </TableCell>
       <TableCell className="text-muted-foreground">{kindOf(index)}</TableCell>
@@ -86,7 +87,7 @@ function PrimaryMark({ index }: { index: IndexOverview }): JSX.Element | null {
     return null
   }
 
-  return <KeyRound aria-label="Chave primária" className="size-4 shrink-0 text-primary" />
+  return <KeyRound aria-label="Chave primária" className="size-4.5 shrink-0 text-primary" />
 }
 
 /** `primária`, `única` or the access method (`btree`, `gin`). */

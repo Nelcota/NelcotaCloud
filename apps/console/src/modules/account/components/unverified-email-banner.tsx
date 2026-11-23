@@ -1,3 +1,4 @@
+import { Send, Check } from 'lucide-react'
 import type { JSX } from 'react'
 
 import {
@@ -42,6 +43,7 @@ export function UnverifiedEmailBanner(): JSX.Element | null {
               isPending={resend.isPending}
               onClick={() => resend.mutate(email)}
             >
+              <Send aria-hidden data-icon="inline-start" />
               Reenviar email
             </PendingButton>
             <PendingButton
@@ -51,6 +53,7 @@ export function UnverifiedEmailBanner(): JSX.Element | null {
               isPending={reload.isPending}
               onClick={() => reload.mutate()}
             >
+              <Check aria-hidden data-icon="inline-start" />
               Já confirmei
             </PendingButton>
           </div>

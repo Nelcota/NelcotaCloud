@@ -57,7 +57,7 @@ function EventItem({ label, eventType }: { label: string; eventType: string }): 
   return (
     <span className="flex min-w-0 flex-1 items-baseline justify-between gap-3">
       <span>{label}</span>
-      <code className="font-mono text-2xs text-muted-foreground">{eventType}</code>
+      <code className="font-mono text-xs text-muted-foreground">{eventType}</code>
     </span>
   )
 }

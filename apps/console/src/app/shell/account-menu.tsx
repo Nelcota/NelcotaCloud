@@ -63,13 +63,13 @@ export function AccountMenu(): JSX.Element | null {
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Conta: ${name}${mfaSuffix(isMfaOff)}`}
-        className="relative inline-flex h-9 max-w-60 min-w-0 items-center gap-1.5 rounded-md px-1.5 text-sm text-foreground hover:bg-surface aria-expanded:bg-surface sm:pe-2"
+        className="relative inline-flex h-10 max-w-64 min-w-0 items-center gap-2 rounded-md px-2 text-sm text-foreground hover:bg-surface aria-expanded:bg-surface sm:pe-2"
       >
         <Avatar src={nelcota.auth.avatar.url(user) ?? undefined} name={name} size="xs" isSquare />
         <span className="hidden truncate sm:inline">{name}</span>
         <ChevronsUpDown
           aria-hidden
-          className="hidden size-4 shrink-0 text-muted-foreground sm:block"
+          className="hidden size-4.5 shrink-0 text-muted-foreground sm:block"
         />
         <MfaDot isMfaOff={isMfaOff} />
       </DropdownMenuTrigger>

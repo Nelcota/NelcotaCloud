@@ -1,3 +1,4 @@
+import { Inbox } from 'lucide-react'
 import { useState, type JSX, type ReactNode } from 'react'
 
 import { DELIVERY_COLUMN_VISIBILITY as COLUMNS } from '@/modules/webhooks/components/delivery-columns'
@@ -31,7 +32,14 @@ export function DeliveryTable(props: DeliveryTableProps): JSX.Element {
   const [openId, setOpenId] = useState<string | null>(null)
 
   if (deliveries.length === 0) {
-    return <EmptyState title={EMPTY_FILTER_TITLES[filter]} isCompact isFramed />
+    return (
+      <EmptyState
+        icon={<Inbox aria-hidden />}
+        title={EMPTY_FILTER_TITLES[filter]}
+        isCompact
+        isFramed
+      />
+    )
   }
 
   return (

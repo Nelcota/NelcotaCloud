@@ -84,7 +84,6 @@ export function EmailTemplateForm({
         <TextAreaField
           label="Nota"
           isOptional
-          hint="Aparece menor, abaixo do botão."
           maxLength={NOTE_MAX_LENGTH}
           rows={2}
           {...bind('note')}

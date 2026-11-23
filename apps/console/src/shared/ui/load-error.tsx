@@ -1,3 +1,4 @@
+import { RotateCw, ArrowLeft } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { ApiError } from '@/shared/api/api-error'
@@ -29,13 +30,17 @@ function NextStep({ error, onRetry }: { error: Error; onRetry: () => void }): JS
   if (error instanceof ApiError && error.code === ACCESS_LOST) {
     return (
       <Button asChild variant="outline" size="sm">
-        <RouterLink href="/">Ir para os projetos</RouterLink>
+        <RouterLink href="/">
+          <ArrowLeft aria-hidden data-icon="inline-start" />
+          Ir para os projetos
+        </RouterLink>
       </Button>
     )
   }
 
   return (
     <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+      <RotateCw aria-hidden data-icon="inline-start" />
       Tentar de novo
     </Button>
   )

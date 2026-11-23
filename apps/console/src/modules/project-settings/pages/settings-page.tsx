@@ -29,7 +29,6 @@ export function SettingsPage(): JSX.Element {
     <Tabs value={tab} onValueChange={select} className="mx-auto w-full max-w-4xl gap-5">
       <PageHeader
         title="Configurações"
-        description="Identidade, endpoints, acesso e segurança do projeto."
         actions={
           <ApiSheet
             title="Conectar pela API"

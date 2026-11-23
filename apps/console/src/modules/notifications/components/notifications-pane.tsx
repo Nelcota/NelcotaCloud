@@ -44,7 +44,7 @@ function ChannelsBody({ projectId, channels }: ChannelsBodyProps): JSX.Element {
         isCompact
         icon={<BellRing aria-hidden />}
         title="Nenhum canal"
-        description="Sem canais, só os donos recebem por e-mail os avisos de webhook."
+        description="Sem canais, só os donos recebem por email os avisos de webhook."
       />
     )
   }

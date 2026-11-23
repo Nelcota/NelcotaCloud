@@ -1,3 +1,4 @@
+import { Settings2 } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
@@ -41,6 +42,7 @@ export function SmtpSetupDialog(props: SmtpSetupDialogProps): JSX.Element {
   return (
     <>
       <Button type="button" variant={props.triggerVariant} onClick={open}>
+        <Settings2 aria-hidden data-icon="inline-start" />
         {props.triggerLabel}
       </Button>
       <StepDialog

@@ -30,7 +30,7 @@ export function RolesPanel(): JSX.Element {
       <table className="w-full text-xs">
         <thead className="text-2xs text-muted-foreground">
           <tr className="border-b border-border/60">
-            <th scope="col" className="h-9 ps-4 text-start font-normal">
+            <th scope="col" className="h-10 ps-4 text-start font-normal">
               <span className="sr-only">Permissão</span>
             </th>
             {ROLES.map((role) => (
@@ -61,7 +61,7 @@ export function RolesPanel(): JSX.Element {
 
 function Allowed({ isAllowed }: { isAllowed: boolean }): JSX.Element {
   if (isAllowed) {
-    return <Check aria-label="Pode" className="mx-auto size-4 text-success" />
+    return <Check aria-label="Pode" className="mx-auto size-4.5 text-success" />
   }
 
   return (

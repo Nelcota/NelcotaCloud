@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { SecretLeaveGuard } from '@/modules/api-keys/components/secret-leave-guard'
@@ -30,6 +31,7 @@ export function NewKeyNotice({ apiKey, onDismiss }: NewKeyNoticeProps): JSX.Elem
         <SecretValue label="Chave secreta" value={apiKey.key} />
         <div className="flex justify-end">
           <Button type="button" size="sm" variant="outline" onClick={onDismiss}>
+            <Check aria-hidden data-icon="inline-start" />
             Já guardei a chave
           </Button>
         </div>

@@ -58,7 +58,6 @@ export function TeamRowMenu({ row, viewer, onAction }: TeamRowMenuProps): JSX.El
         </DropdownMenuContent>
       </DropdownMenu>
       <MemberActionConfirmation
-        key={confirming}
         action={confirming}
         target={{ row, name, isOwnRow: viewer.isOwnRow }}
         onClose={() => setConfirming(null)}

@@ -1,3 +1,4 @@
+import { ShieldCheck } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { isRlsOff } from '@/modules/database/components/table-kinds'
@@ -31,6 +32,7 @@ export function RlsOffNotice({ projectId, table }: RlsOffNoticeProps): JSX.Eleme
             isPending={change.isPending}
             onClick={() => change.mutate({ table: table.name, isEnabled: true })}
           >
+            <ShieldCheck aria-hidden data-icon="inline-start" />
             Ativar RLS
           </PendingButton>
         }

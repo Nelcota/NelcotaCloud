@@ -10,11 +10,8 @@ import type { RowEditorSheet as RowEditorSheetComponent } from '@/modules/databa
 
 import { SimulatedApi } from '../support/simulated-api'
 import { renderWithQueries } from '../support/render-with-queries'
-import type { components } from '@/shared/api/api-schema'
+import { PROJECT, table } from './clientes-table'
 
-type Table = components['schemas']['TableOverview']
-
-const PROJECT = 'c443cc92-73b4-4c9d-92de-fcb0eace0524'
 const api = new SimulatedApi()
 let RowEditorSheet: typeof RowEditorSheetComponent
 let draftFromRow: typeof draftFromRowFunction
@@ -27,36 +24,6 @@ beforeAll(async () => {
   draftFromRow = drafts.draftFromRow
   blankDraft = drafts.blankDraft
 })
-
-const table: Table = {
-  name: 'clientes',
-  kind: 'table',
-  rls_enabled: true,
-  size_bytes: 8192,
-  foreign_keys: [],
-  indexes: [],
-  policies: [],
-  columns: [
-    {
-      name: 'id',
-      type: 'bigint',
-      nullable: false,
-      default: null,
-      is_identity: true,
-      is_primary_key: true,
-      is_unique: false,
-    },
-    {
-      name: 'nome',
-      type: 'text',
-      nullable: false,
-      default: null,
-      is_identity: false,
-      is_primary_key: false,
-      is_unique: false,
-    },
-  ],
-}
 
 describe('RowEditorSheet', () => {
   it('saves only the changed column, naming the row by its primary key', async () => {

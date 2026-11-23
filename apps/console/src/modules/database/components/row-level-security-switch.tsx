@@ -46,7 +46,7 @@ export function RowLevelSecuritySwitch({
         isOpen={isConfirming}
         onOpenChange={setIsConfirming}
         title={`Desativar row level security de ${table.name}?`}
-        description="As políticas deixam de valer: toda requisição pela API, de visitantes (anon) ou de usuários logados, alcança todas as linhas."
+        description="As políticas deixam de valer: qualquer requisição pela API alcança todas as linhas."
         confirmLabel="Desativar RLS"
         change={{
           subject: table.name,

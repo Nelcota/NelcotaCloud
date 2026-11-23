@@ -1,3 +1,4 @@
+import { Pencil } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
@@ -37,6 +38,7 @@ export function OAuthRedirectsPanel({ projectId, urls }: OAuthRedirectsPanelProp
       isFramed
       action={
         <Button type="button" variant="outline" size="sm" onClick={open}>
+          <Pencil aria-hidden data-icon="inline-start" />
           Editar
         </Button>
       }
@@ -46,14 +48,14 @@ export function OAuthRedirectsPanel({ projectId, urls }: OAuthRedirectsPanelProp
         isOpen={isOpen}
         onOpenChange={setIsOpen}
         title="Editar callbacks do app"
-        description="Cadastre as URLs exatas para onde o usuário pode voltar depois do login."
+        description="Só estas URLs exatas recebem o usuário de volta."
         confirmLabel="Salvar callbacks"
         size="lg"
         onConfirm={confirm}
       >
         <TextAreaField
           label="URLs de callback"
-          hint="Uma URL por linha. Uma lista vazia permite apenas a URL do site do projeto."
+          hint="Uma por linha. Vazia, só o site do projeto é aceito."
           isCode
           rows={4}
           value={value}

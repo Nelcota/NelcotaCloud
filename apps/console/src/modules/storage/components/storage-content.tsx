@@ -41,7 +41,6 @@ export function StorageContent(props: StorageContentProps): JSX.Element {
         isFramed
         icon={<Folder aria-hidden />}
         title="Nenhum bucket ainda"
-        description="Os arquivos do projeto ficam em buckets privados."
         actions={
           <Button type="button" size="sm" onClick={props.onCreateBucket}>
             <Plus aria-hidden data-icon="inline-start" />

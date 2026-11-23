@@ -27,7 +27,7 @@ export function TablesMenu({ projectId, onPick }: TablesMenuProps): JSX.Element 
         <Button type="button" variant="ghost" size="sm">
           <Table aria-hidden data-icon="inline-start" />
           Tabelas
-          <ChevronDown aria-hidden data-icon="inline-end" className="size-4" />
+          <ChevronDown aria-hidden data-icon="inline-end" className="size-4.5" />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 p-2">

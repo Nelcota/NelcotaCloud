@@ -1,3 +1,4 @@
+import { Send } from 'lucide-react'
 import type { FormEvent, JSX } from 'react'
 import { useState } from 'react'
 
@@ -28,12 +29,12 @@ export function SmtpTestSection({ projectId }: { projectId: string }): JSX.Eleme
   return (
     <SettingsSection
       title="Testar o envio"
-      description="Um email de teste pelo seu servidor confirma a entrega."
       onSubmit={submit}
       footer={
         <>
           <SavedNote isSaved={test.isSuccess} message="Seu servidor aceitou o email" />
           <PendingButton type="submit" variant="outline" size="sm" isPending={test.isPending}>
+            <Send aria-hidden data-icon="inline-start" />
             Enviar email de teste
           </PendingButton>
         </>

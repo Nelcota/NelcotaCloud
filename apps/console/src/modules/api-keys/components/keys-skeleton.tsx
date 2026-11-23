@@ -14,7 +14,7 @@ export function KeysSkeleton(): JSX.Element {
         <Skeleton className="h-3 w-80 max-w-full" />
       </div>
       <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
-        <div className="h-9 border-b border-border/60" />
+        <div className="h-11 border-b border-border/60" />
         {ROWS.map((row) => (
           <div
             key={row}

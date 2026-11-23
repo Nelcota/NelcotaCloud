@@ -24,7 +24,7 @@ export function AuthShowcase(): JSX.Element {
           {PARTS.map((part) => (
             <li
               key={part}
-              className="rounded-sm bg-surface-hover px-2 py-0.5 font-mono text-2xs text-foreground"
+              className="rounded-sm bg-surface-hover px-2 py-0.5 font-mono text-xs text-foreground"
             >
               {part}
             </li>

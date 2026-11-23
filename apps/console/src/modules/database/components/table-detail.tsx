@@ -1,4 +1,4 @@
-import { SearchX } from 'lucide-react'
+import { SearchX, ArrowLeft } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { LoadedTable } from '@/modules/database/components/loaded-table'
@@ -47,7 +47,10 @@ function TableNotFound({ projectId }: { projectId: string }): JSX.Element {
         description="Ela foi excluída ou o link está errado."
         actions={
           <Button asChild variant="outline" size="sm">
-            <RouterLink href={`/projects/${projectId}/database`}>Ver tabelas</RouterLink>
+            <RouterLink href={`/projects/${projectId}/database`}>
+              <ArrowLeft aria-hidden data-icon="inline-start" />
+              Ver tabelas
+            </RouterLink>
           </Button>
         }
       />

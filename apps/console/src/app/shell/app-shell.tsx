@@ -68,7 +68,7 @@ function ProjectNavigation({ location }: { location: ProjectLocation | null }): 
   return (
     <aside
       aria-label="Navegação do projeto"
-      className="scrollbar-thin hidden w-60 shrink-0 overflow-y-auto overscroll-contain border-e-2 border-border lg:block"
+      className="scrollbar-thin hidden w-64 shrink-0 overflow-y-auto overscroll-contain border-e-2 border-border lg:block"
     >
       <ProjectSidebar location={location} />
     </aside>

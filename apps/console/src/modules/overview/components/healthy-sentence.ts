@@ -1,4 +1,5 @@
 import type { components } from '@/shared/api/api-schema'
+import { CONCENTRATED_FAILURES } from '@/modules/overview/components/insight-data-rules'
 import { formatCount } from '@/shared/lib/format-number'
 
 type AuditSummary = components['schemas']['AuditSummary']
@@ -16,7 +17,7 @@ export function healthySentenceOf(summary: AuditSummary, days: number): string {
     return `Nenhum login recusado em ${loginsText(attempts)} ${period}.`
   }
 
-  return `${refusedText(summary.failures)} em ${loginsText(attempts)} ${period}, abaixo do que merece atenção.`
+  return `${refusedText(summary.failures)} em ${loginsText(attempts)} ${period}. O alerta começa em ${CONCENTRATED_FAILURES} recusas.`
 }
 
 function loginsText(count: number): string {

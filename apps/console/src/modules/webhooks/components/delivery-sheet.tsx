@@ -1,3 +1,4 @@
+import { RotateCcw } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { DeliveryFields } from '@/modules/webhooks/components/delivery-fields'
@@ -8,6 +9,7 @@ import { CodeBlock } from '@/shared/ui/code-block'
 import { PendingButton } from '@/shared/ui/pending-button'
 import {
   Sheet,
+  SheetBody,
   SheetContent,
   SheetDescription,
   SheetFooter,
@@ -36,11 +38,7 @@ export function DeliverySheet({ delivery, retry, onClose }: DeliverySheetProps):
         }
       }}
     >
-      <SheetContent
-        side="right"
-        className="gap-0 p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-xl"
-        onOpenAutoFocus={focusSheet}
-      >
+      <SheetContent side="right" className="sm:max-w-xl" onOpenAutoFocus={focusSheet}>
         <DeliveryContent delivery={delivery} retry={retry} />
       </SheetContent>
     </Sheet>
@@ -56,7 +54,7 @@ function DeliveryContent({ delivery, retry }: DeliveryContentProps): JSX.Element
 
   return (
     <>
-      <SheetHeader className="gap-1.5 border-b pe-12">
+      <SheetHeader className="gap-1.5">
         <SheetTitle className="font-mono wrap-anywhere">{delivery.event_type}</SheetTitle>
         <SheetDescription asChild>
           <div className="flex flex-wrap items-center gap-2">
@@ -67,7 +65,7 @@ function DeliveryContent({ delivery, retry }: DeliveryContentProps): JSX.Element
           </div>
         </SheetDescription>
       </SheetHeader>
-      <div className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 *:shrink-0">
+      <SheetBody>
         <DeliveryFields delivery={delivery} />
         <ReceiverAnswer body={delivery.last_response_body ?? null} />
         <div className="grid gap-1.5">
@@ -88,8 +86,8 @@ function DeliveryContent({ delivery, retry }: DeliveryContentProps): JSX.Element
           language="json"
           copyLabel="Entrega"
         />
-      </div>
-      <SheetFooter className="flex-row justify-end border-t">
+      </SheetBody>
+      <SheetFooter>
         <PendingButton
           type="button"
           variant="outline"
@@ -97,6 +95,7 @@ function DeliveryContent({ delivery, retry }: DeliveryContentProps): JSX.Element
           disabled={retry.retryingId !== null}
           onClick={() => retry.onRetry(delivery.id)}
         >
+          <RotateCcw aria-hidden data-icon="inline-start" />
           Reenviar
         </PendingButton>
       </SheetFooter>

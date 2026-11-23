@@ -27,7 +27,7 @@ export function HeaderBreadcrumbs({ location, pageTitle }: HeaderBreadcrumbsProp
         <BreadcrumbItem className="hidden shrink-0 lg:inline-flex">
           <BreadcrumbLink asChild>
             <RouterLink href="/" className="inline-flex items-center gap-1.5">
-              <Folder aria-hidden className="size-4.5" />
+              <Folder aria-hidden className="size-5" />
               Projetos
             </RouterLink>
           </BreadcrumbLink>

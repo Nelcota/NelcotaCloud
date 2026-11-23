@@ -28,7 +28,7 @@ export function UserSessionsSection({
   return (
     <Section
       title="Sessões ativas"
-      description="Logins que ainda renovam o token, do uso mais recente ao mais antigo."
+      description="Logins que ainda renovam o token."
       meta={list?.length}
       action={<EndSessionsButton user={user} runner={runner} sessions={list} />}
       isFramed

@@ -1,18 +1,22 @@
 import type { FormEvent, JSX, ReactNode } from 'react'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 
-import { ConfirmChangePreview, type ConfirmChange } from '@/shared/ui/confirm-change'
+import type { ConfirmChange } from '@/shared/ui/confirm-change'
+import { ConfirmChangeList } from '@/shared/ui/confirm-change-list'
 import {
-  changesOf,
   confirmVariant,
   dialogPurpose,
   isBlocked,
+  missingOf,
 } from '@/shared/ui/confirm-dialog-rules'
 import { ErrorAlert } from '@/shared/ui/error-alert'
+import { missingNoteReference } from '@/shared/lib/missing-unless'
+import { MissingNote } from '@/shared/ui/missing-note'
 import { PendingButton } from '@/shared/ui/pending-button'
 import { Button } from '@/shared/ui/primitives/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -43,8 +47,11 @@ export type ConfirmDialogProps = {
   confirmationText?: string
   /** What the action changes, each shown going from its current state to the new one. */
   change?: ConfirmChange | ConfirmChange[]
-  /** False while something the action needs is missing (a code to type): the button waits. */
-  canConfirm?: boolean
+  /**
+   * What the action still needs ("Digite o código"), shown beside the waiting button; `null`
+   * or absent once it can run.
+   */
+  missing?: string | null
   /** Extra choices that shape the action, shown under the change. */
   children?: ReactNode
   /** Wider for dialogs that hold a form; `md` by default. */
@@ -61,6 +68,8 @@ export function ConfirmDialog(props: ConfirmDialogProps): JSX.Element {
   const [typedText, setTypedText] = useState('')
   const [isWorking, setIsWorking] = useState(false)
   const [error, setError] = useState<unknown>(null)
+  const missingId = useId()
+  const missing = missingOf(props)
 
   function changeOpen(isOpen: boolean): void {
     if (isWorking) {
@@ -74,6 +83,8 @@ export function ConfirmDialog(props: ConfirmDialogProps): JSX.Element {
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
+    // The dialog is portaled, but React still bubbles its submit to a form around the trigger.
+    event.stopPropagation()
 
     if (isBlocked(props, typedText) || isWorking) {
       return
@@ -114,20 +125,23 @@ export function ConfirmDialog(props: ConfirmDialogProps): JSX.Element {
           }
         }}
       >
-        <form onSubmit={submit} className="flex flex-col gap-5">
-          <DialogHeader className="pe-8">
+        <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col">
+          <DialogHeader>
             <DialogTitle>{props.title}</DialogTitle>
             <DialogDescription>{props.description}</DialogDescription>
           </DialogHeader>
-          <ChangeList props={props} />
-          {props.children}
-          <TypedConfirmation
-            expected={props.confirmationText}
-            value={typedText}
-            onChange={setTypedText}
-          />
-          <ErrorAlert error={error} />
+          <DialogBody>
+            <ConfirmChangeList change={props.change} />
+            {props.children}
+            <TypedConfirmation
+              expected={props.confirmationText}
+              value={typedText}
+              onChange={setTypedText}
+            />
+            <ErrorAlert error={error} />
+          </DialogBody>
           <DialogFooter>
+            <MissingNote id={missingId} missing={missing} />
             <Button
               type="button"
               variant="outline"
@@ -141,6 +155,7 @@ export function ConfirmDialog(props: ConfirmDialogProps): JSX.Element {
               variant={confirmVariant(props)}
               isPending={isWorking}
               disabled={isBlocked(props, typedText)}
+              aria-describedby={missingNoteReference(missingId, missing)}
             >
               {props.confirmLabel}
             </PendingButton>
@@ -148,22 +163,6 @@ export function ConfirmDialog(props: ConfirmDialogProps): JSX.Element {
         </form>
       </DialogContent>
     </Dialog>
-  )
-}
-
-function ChangeList({ props }: { props: ConfirmDialogProps }): JSX.Element | null {
-  const changes = changesOf(props.change)
-
-  if (changes.length === 0) {
-    return null
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      {changes.map((change) => (
-        <ConfirmChangePreview key={change.subject} change={change} />
-      ))}
-    </div>
   )
 }
 

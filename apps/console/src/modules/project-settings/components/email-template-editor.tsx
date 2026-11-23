@@ -1,3 +1,4 @@
+import { RotateCw, MailX } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { EmailTemplateForm } from '@/modules/project-settings/components/email-template-form'
@@ -32,11 +33,13 @@ export function EmailTemplateEditor(props: EmailTemplateEditorProps): JSX.Elemen
   if (template === undefined) {
     return (
       <EmptyState
+        icon={<MailX aria-hidden />}
         isFramed
         isCompact
         title="Este modelo não está disponível."
         actions={
           <Button type="button" variant="outline" size="sm" onClick={state.onRetry}>
+            <RotateCw aria-hidden data-icon="inline-start" />
             Recarregar modelos
           </Button>
         }

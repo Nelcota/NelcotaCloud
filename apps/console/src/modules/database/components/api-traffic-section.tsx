@@ -28,7 +28,6 @@ export function ApiTrafficSection({ projectId }: { projectId: string }): JSX.Ele
   return (
     <Section
       title="Tráfego da API"
-      description="Requisições à Data API, de apps, servidores e do console."
       action={
         <SegmentedControl
           label="Período do tráfego"

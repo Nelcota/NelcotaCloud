@@ -1,3 +1,4 @@
+import { ArrowLeft } from 'lucide-react'
 import { useLocation } from '@tanstack/react-router'
 import type { JSX } from 'react'
 
@@ -22,7 +23,10 @@ export function NotFoundPage(): JSX.Element {
       }
       actions={
         <Button asChild>
-          <RouterLink href="/">Ir para os projetos</RouterLink>
+          <RouterLink href="/">
+            <ArrowLeft aria-hidden data-icon="inline-start" />
+            Ir para os projetos
+          </RouterLink>
         </Button>
       }
     />

@@ -31,9 +31,9 @@ export function RowField({ column, field, isNewRow, onChange }: RowFieldProps): 
   return (
     <div className="grid min-w-0 gap-1.5" data-invalid={error !== null || undefined}>
       <div className="flex min-h-7 items-center justify-between gap-3">
-        <label htmlFor={id} className="flex min-w-0 flex-1 items-baseline gap-2">
-          <span className="truncate font-mono text-sm font-medium">{column.name}</span>
-          <span className="truncate font-mono text-xs text-muted-foreground">{column.type}</span>
+        <label htmlFor={id} className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2">
+          <span className="font-mono text-sm font-medium break-all">{column.name}</span>
+          <span className="font-mono text-xs text-muted-foreground">{column.type}</span>
           <KeyMark column={column} />
         </label>
         <ModePicker

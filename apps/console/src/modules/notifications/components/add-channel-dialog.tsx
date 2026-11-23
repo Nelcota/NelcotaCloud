@@ -11,6 +11,7 @@ import {
   TARGET_FIELDS,
 } from '@/modules/notifications/components/notification-events'
 import { useCreateChannelMutation } from '@/modules/notifications/queries/use-notification-channels'
+import { missingUnless } from '@/shared/lib/missing-unless'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
 import { Button } from '@/shared/ui/primitives/button'
 import { SegmentedControl } from '@/shared/ui/segmented-control'
@@ -54,7 +55,7 @@ export function AddChannelDialog({ projectId, isDisabled }: AddChannelDialogProp
         title="Novo canal de notificação"
         description="Os avisos do projeto chegam aqui, no máximo um por evento a cada 6 horas."
         confirmLabel="Adicionar canal"
-        canConfirm={draft.target.trim() !== '' && draft.events.length > 0}
+        missing={draftMissing(draft)}
         size="lg"
         onConfirm={add}
       >
@@ -85,4 +86,12 @@ export function AddChannelDialog({ projectId, isDisabled }: AddChannelDialogProp
 
 function kindOf(value: string): ChannelKind {
   return KINDS.find((kind) => kind === value) ?? 'email'
+}
+
+function draftMissing(draft: Draft): string | null {
+  if (draft.target.trim() === '') {
+    return `Preencha ${TARGET_FIELDS[draft.kind].label.toLowerCase()}`
+  }
+
+  return missingUnless(draft.events.length > 0, 'Escolha pelo menos um aviso')
 }

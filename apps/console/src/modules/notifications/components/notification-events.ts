@@ -29,7 +29,7 @@ export const NOTIFICATION_EVENTS: readonly EventInfo[] = [
 ]
 
 export const KIND_LABELS: Record<ChannelKind, string> = {
-  email: 'E-mail',
+  email: 'Email',
   discord: 'Discord',
   slack: 'Slack',
 }

@@ -1,4 +1,4 @@
-import { ListFilter, X } from 'lucide-react'
+import { ListFilter, X, FunnelX } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
@@ -53,8 +53,8 @@ function FilterChip({ filter, onRemove }: FilterChipProps): JSX.Element {
   const text = chipText(filter, info.symbol)
 
   return (
-    <span className="inline-flex h-7 max-w-64 items-center gap-1 rounded-md bg-surface-hover ps-2 font-mono text-xs">
-      <span className="truncate">{text}</span>
+    <span className="inline-flex min-h-8 max-w-72 items-center gap-1 rounded-md bg-surface-hover ps-2 font-mono text-xs">
+      <span className="py-1 break-all">{text}</span>
       <Button
         type="button"
         variant="ghost"
@@ -90,6 +90,7 @@ function ClearFilters({
 
   return (
     <Button type="button" variant="ghost" size="xs" onClick={onClear}>
+      <FunnelX aria-hidden data-icon="inline-start" />
       Limpar
     </Button>
   )

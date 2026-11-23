@@ -10,7 +10,7 @@ export function TablesEmptyState(): JSX.Element {
       isFramed
       icon={<Database aria-hidden />}
       title="Nenhuma tabela em public"
-      description="Crie a primeira em Nova tabela ou pelo Editor SQL; ela já nasce com RLS ligado."
+      description="Toda tabela nova nasce com RLS ligado."
     />
   )
 }

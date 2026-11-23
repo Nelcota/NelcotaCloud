@@ -8,7 +8,7 @@ import { urlProblem } from '@/modules/webhooks/components/endpoint-url-rules'
 import { EventTypePicker } from '@/modules/webhooks/components/event-type-picker'
 import type { WebhookEventType } from '@/modules/webhooks/components/event-types'
 import { withHttps, withoutHttps } from '@/shared/lib/web-address'
-import { missingUnless } from '@/shared/ui/step-dialog/missing-unless'
+import { missingUnless } from '@/shared/lib/missing-unless'
 import { StepDialog } from '@/shared/ui/step-dialog/step-dialog'
 
 /** `description` is the optional name; a blank one removes it. */
@@ -60,7 +60,6 @@ function EndpointForm(props: EndpointFormDialogProps): JSX.Element {
       steps={[
         {
           label: 'Endereço',
-          description: 'Para onde a NelcotaCloud envia os eventos.',
           missing: urlProblem(url),
           content: (
             <div className="flex flex-col gap-4">
@@ -71,7 +70,6 @@ function EndpointForm(props: EndpointFormDialogProps): JSX.Element {
         },
         {
           label: 'Eventos',
-          description: 'Escolha o que o seu servidor quer saber.',
           missing: missingUnless(eventTypes.length > 0, 'Escolha pelo menos um evento'),
           content: <EventTypePicker selected={eventTypes} onChange={setEventTypes} />,
         },

@@ -1,3 +1,4 @@
+import { KeyRound } from 'lucide-react'
 import type { JSX } from 'react'
 
 import {
@@ -56,7 +57,7 @@ function KeyRows({ keys, revocation }: Omit<KeyTableProps, 'footer'>): JSX.Eleme
   const rows = KIND_ORDER.flatMap((kind) => active.filter((key) => key.kind === kind))
 
   if (rows.length === 0) {
-    return <EmptyState title="Nenhuma chave ativa." isCompact />
+    return <EmptyState icon={<KeyRound aria-hidden />} title="Nenhuma chave ativa." isCompact />
   }
 
   return (

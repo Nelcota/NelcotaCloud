@@ -1,4 +1,4 @@
-import { Mail, MessageSquare, Trash2 as Trash } from 'lucide-react'
+import { Mail, MessageSquare, Trash2 as Trash, Pencil } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
@@ -27,29 +27,30 @@ export function ChannelRow({ projectId, channel }: ChannelRowProps): JSX.Element
 
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
-      <Glyph aria-hidden className="size-4.5 shrink-0 text-muted-foreground" />
+      <Glyph aria-hidden className="size-5 shrink-0 text-muted-foreground" />
       <div className="grid min-w-0 flex-1 gap-0.5">
-        <span className="flex min-w-0 items-baseline gap-2">
-          <span className="truncate font-mono text-sm text-heading">{channel.target_hint}</span>
+        <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+          <span className="font-mono text-sm break-all text-heading">{channel.target_hint}</span>
           <span className="shrink-0 text-xs text-muted-foreground">
             {KIND_LABELS[channel.kind]}
           </span>
         </span>
-        <span className="truncate text-xs text-muted-foreground">
+        <span className="text-xs text-pretty text-muted-foreground">
           {channel.events.map(eventLabel).join(' · ')}
         </span>
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <TestChannelButton projectId={projectId} channelId={channel.id} />
         <Button type="button" variant="ghost" size="sm" onClick={() => setIsEditing(true)}>
-          Avisos
+          <Pencil aria-hidden data-icon="inline-start" />
+          Editar avisos
         </Button>
         <ConfirmButton
           label="Remover canal"
           icon={Trash}
           isIconOnly
           isDestructive
-          title="Remover este canal?"
+          title={`Remover o canal ${channel.target_hint}?`}
           description={`${channel.target_hint} deixa de receber os avisos do projeto.`}
           confirmLabel="Remover canal"
           onConfirm={() => deletion.mutateAsync(channel.id)}

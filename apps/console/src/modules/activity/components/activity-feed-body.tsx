@@ -1,3 +1,4 @@
+import { FunnelX, SearchX, History } from 'lucide-react'
 import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query'
 import type { JSX } from 'react'
 
@@ -64,10 +65,12 @@ function NoEvents({ filters, onClear }: NoEventsProps): JSX.Element {
   if (isNarrowed(filters)) {
     return (
       <EmptyState
+        icon={<SearchX aria-hidden />}
         isCompact
         title="Nenhum evento com esses filtros"
         actions={
           <Button type="button" variant="outline" size="sm" onClick={onClear}>
+            <FunnelX aria-hidden data-icon="inline-start" />
             Limpar filtros
           </Button>
         }
@@ -75,5 +78,5 @@ function NoEvents({ filters, onClear }: NoEventsProps): JSX.Element {
     )
   }
 
-  return <EmptyState isCompact title="Nenhum evento no período" />
+  return <EmptyState icon={<History aria-hidden />} isCompact title="Nenhum evento no período" />
 }

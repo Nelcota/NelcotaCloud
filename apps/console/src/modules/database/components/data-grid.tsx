@@ -1,3 +1,4 @@
+import { List as Rows } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
@@ -47,7 +48,7 @@ export function DataGrid(props: DataGridProps): JSX.Element {
   }
 
   if (data.length === 0) {
-    return <EmptyState isCompact title="Nenhuma linha no resultado" />
+    return <EmptyState icon={<Rows aria-hidden />} isCompact title="Nenhuma linha no resultado" />
   }
 
   return (
@@ -61,13 +62,13 @@ export function DataGrid(props: DataGridProps): JSX.Element {
           <TableBody>
             {data.map((row) => (
               <TableRow key={row.number} className="[&>td]:border-b [&>td]:border-border/60">
-                <TableCell className="sticky start-0 z-[1] h-8 w-12 bg-card px-1 py-0 ps-1">
+                <TableCell className="sticky start-0 z-[1] h-9 w-12 bg-card px-1 py-0 ps-1">
                   <RowButton row={row} onShow={showRow} />
                 </TableCell>
                 {row.cells.map((value, index) => (
                   <TableCell
                     key={index}
-                    className={cn('h-8 max-w-72 py-0', isNumeric[index] === true && 'text-end')}
+                    className={cn('h-9 max-w-72 py-0', isNumeric[index] === true && 'text-end')}
                   >
                     <CellValue value={value} />
                   </TableCell>

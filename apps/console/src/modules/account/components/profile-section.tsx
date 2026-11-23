@@ -15,7 +15,7 @@ import { StatusBadge } from '@/shared/ui/status-badge'
 
 const PHOTO_COPY = {
   title: 'Foto de perfil',
-  description: 'Arraste para enquadrar a foto no círculo; o zoom aproxima.',
+  description: 'Arraste para enquadrar a foto.',
   saveLabel: 'Salvar foto',
 }
 

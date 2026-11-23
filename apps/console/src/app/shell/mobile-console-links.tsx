@@ -22,11 +22,11 @@ export function MobileConsoleLinks({ current }: MobileConsoleLinksProps): JSX.El
             href={section.path}
             aria-current={ariaCurrentPage(isCurrent)}
             className={cn(
-              'flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm text-muted-foreground hover:bg-surface hover:text-foreground',
+              'flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm text-muted-foreground hover:bg-surface hover:text-foreground',
               isCurrent && 'bg-surface-hover font-medium text-foreground',
             )}
           >
-            <Glyph aria-hidden className={cn('size-4.5 shrink-0', isCurrent && 'text-brand')} />
+            <Glyph aria-hidden className={cn('size-5 shrink-0', isCurrent && 'text-brand')} />
             {section.label}
           </RouterLink>
         )

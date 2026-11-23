@@ -49,7 +49,7 @@ export function ActivityItem({
 
 function ActivityMeta({ meta }: { meta: readonly ReactNode[] }): JSX.Element {
   return (
-    <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-2xs text-muted-foreground">
+    <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
       {meta.map((fact, index) => (
         <span key={index} className="inline-flex min-w-0 items-center gap-1.5">
           {index > 0 && <span aria-hidden>·</span>}

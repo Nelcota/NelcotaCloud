@@ -1,3 +1,4 @@
+import { Ban, ListFilter } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
@@ -45,9 +46,11 @@ export function FailingAddressNotice({
               size="sm"
               onClick={() => setBlockTarget(ip)}
             >
+              <Ban aria-hidden data-icon="inline-start" />
               Bloquear
             </Button>
             <Button type="button" variant="outline" size="sm" onClick={() => onShowEvents(ip)}>
+              <ListFilter aria-hidden data-icon="inline-start" />
               Ver eventos
             </Button>
           </div>

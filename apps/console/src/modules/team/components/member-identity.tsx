@@ -15,7 +15,7 @@ export function MemberIdentity({ row, isOwnRow, myPhotoUrl }: MemberIdentityProp
           <KnownEmail email={row.email} />
           {isOwnRow && <span className="shrink-0 text-muted-foreground">(você)</span>}
         </span>
-        <code title={row.id} className="truncate font-mono text-2xs text-muted-foreground">
+        <code title={row.id} className="truncate font-mono text-xs text-muted-foreground">
           <span className="sr-only">ID da conta </span>
           {row.id}
         </code>

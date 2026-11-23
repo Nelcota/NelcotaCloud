@@ -23,7 +23,7 @@ export function ActivityHeader({ projectId, control }: ActivityHeaderProps): JSX
   return (
     <PageHeader
       title="Atividade"
-      description="Logins, falhas e alterações do projeto, com IP e ID de cada requisição."
+      description="Logins, falhas e alterações do projeto."
       actions={
         <>
           <SegmentedControl

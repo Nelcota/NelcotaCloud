@@ -25,7 +25,6 @@ export function EmailVerificationForm({
   return (
     <SettingsGroup
       title="Acesso"
-      description="Vale para o login com senha e a renovação da sessão."
       onSubmit={submit}
       footer={
         <SaveFooter
@@ -37,7 +36,7 @@ export function EmailVerificationForm({
     >
       <SettingsRow
         title="Exigir email confirmado"
-        description="Login com senha só depois de confirmar o email."
+        description="Login com senha e renovação da sessão só depois de confirmar o email."
         controlId={switchId}
       >
         <Switch

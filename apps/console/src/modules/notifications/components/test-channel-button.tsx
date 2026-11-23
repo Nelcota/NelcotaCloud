@@ -30,21 +30,22 @@ export function TestChannelButton({ projectId, channelId }: TestChannelButtonPro
 
 type TestResultProps = { isSuccess: boolean; error: Error | null }
 
-function TestResult({ isSuccess, error }: TestResultProps): JSX.Element | null {
+/** Always mounted, so screen readers hear the result when its text arrives. */
+function TestResult({ isSuccess, error }: TestResultProps): JSX.Element {
+  return (
+    <span role="status" className="text-xs empty:hidden">
+      <TestResultText isSuccess={isSuccess} error={error} />
+    </span>
+  )
+}
+
+function TestResultText({ isSuccess, error }: TestResultProps): JSX.Element | null {
   if (error !== null) {
-    return (
-      <span role="status" className="text-xs text-destructive">
-        {describeError(error)}
-      </span>
-    )
+    return <span className="text-destructive">{describeError(error)}</span>
   }
 
   if (isSuccess) {
-    return (
-      <span role="status" className="text-xs text-success">
-        Enviado.
-      </span>
-    )
+    return <span className="text-success">Enviado.</span>
   }
 
   return null

@@ -1,3 +1,4 @@
+import { Undo2 } from 'lucide-react'
 import type { FormEvent, JSX } from 'react'
 import { useState } from 'react'
 
@@ -79,6 +80,7 @@ export function MetadataPanel({ projectId, user, document }: MetadataPanelProps)
       <SavedNote isSaved={update.isSuccess} message="Salvo" />
       {hasConflict && (
         <Button type="button" variant="outline" size="sm" onClick={reloadSaved}>
+          <Undo2 aria-hidden data-icon="inline-start" />
           Descartar rascunho
         </Button>
       )}

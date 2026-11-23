@@ -10,7 +10,7 @@ export function EndpointEventsCell({ eventTypes }: { eventTypes: readonly string
 
   return (
     <span title={subscribed.join(', ')} className="inline-flex items-center gap-1.5">
-      <code className="rounded-sm bg-surface px-1.5 py-0.5 font-mono text-2xs text-foreground">
+      <code className="rounded-sm bg-surface px-1.5 py-0.5 font-mono text-xs text-foreground">
         {first}
       </code>
       <MoreEvents count={others} />

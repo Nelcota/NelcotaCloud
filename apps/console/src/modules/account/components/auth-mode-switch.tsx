@@ -29,7 +29,7 @@ export function AuthModeSwitch({ mode, onModeChange }: AuthModeSwitchProps): JSX
             aria-pressed={isCurrent}
             onClick={() => onModeChange(option.value)}
             className={cn(
-              'h-8 rounded-md text-sm text-muted-foreground hover:text-foreground',
+              'h-9 rounded-md text-sm text-muted-foreground hover:text-foreground',
               isCurrent && 'bg-background font-medium text-foreground shadow-popover',
             )}
           >

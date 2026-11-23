@@ -17,10 +17,7 @@ export function ProjectIdentifiers({ projectId }: { projectId: string }): JSX.El
   }
 
   return (
-    <SettingsGroup
-      title="Identificadores"
-      description="Os valores que identificam o projeto no código."
-    >
+    <SettingsGroup title="Identificadores">
       <EndpointRow
         label="ID do projeto"
         meaning="O projectId do createAccessTokenVerifier no seu servidor."

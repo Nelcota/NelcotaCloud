@@ -38,13 +38,16 @@ function RankedRows({ items, top, empty }: RankedRowsProps): JSX.Element {
   return (
     <ol className="flex flex-col gap-1">
       {items.map((item) => (
-        <li key={item.key} className="relative flex h-7 items-center justify-between gap-3 px-2">
+        <li
+          key={item.key}
+          className="relative flex min-h-8 items-center justify-between gap-3 px-2 py-1"
+        >
           <span
             aria-hidden
             className="absolute inset-y-0 start-0 rounded-md bg-surface-hover"
             style={{ width: `${(item.value / top) * 100}%` }}
           />
-          <span className="relative min-w-0 truncate font-mono text-xs">{item.label}</span>
+          <span className="relative min-w-0 font-mono text-xs break-all">{item.label}</span>
           <span className="relative font-mono text-xs text-heading tabular-nums">
             {formatCount(item.value)}
           </span>

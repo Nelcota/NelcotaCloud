@@ -1,4 +1,4 @@
-import { SearchX } from 'lucide-react'
+import { SearchX, FunnelX } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
@@ -83,6 +83,7 @@ function VisibleTables({ projectId, tables, onClear }: VisibleTablesProps): JSX.
         title="Nenhuma tabela encontrada"
         actions={
           <Button type="button" variant="outline" size="sm" onClick={onClear}>
+            <FunnelX aria-hidden data-icon="inline-start" />
             Limpar filtros
           </Button>
         }

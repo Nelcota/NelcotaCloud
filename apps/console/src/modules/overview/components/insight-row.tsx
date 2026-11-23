@@ -22,11 +22,11 @@ export function InsightRow({ insight }: { insight: Insight }): JSX.Element {
       title={insight.text}
       className="group flex min-w-0 items-center gap-3 rounded-md px-2 py-2 transition-colors hover:bg-surface"
     >
-      <Glyph role="img" aria-label={mark.label} className={`size-4.5 shrink-0 ${mark.color}`} />
+      <Glyph role="img" aria-label={mark.label} className={`size-5 shrink-0 ${mark.color}`} />
       <span className="min-w-0 flex-1 text-sm text-pretty text-foreground">{insight.title}</span>
       <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-medium text-muted-foreground group-hover:text-foreground">
         {insight.action.label}
-        <ChevronRight aria-hidden className="size-4" />
+        <ChevronRight aria-hidden className="size-4.5" />
       </span>
     </RouterLink>
   )

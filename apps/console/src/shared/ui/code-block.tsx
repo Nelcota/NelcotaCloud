@@ -31,8 +31,8 @@ export function CodeBlock({
 }: CodeBlockProps): JSX.Element {
   return (
     <div className={cn('min-w-0 overflow-hidden rounded-xl bg-surface', className)}>
-      <div className="flex h-8 items-center justify-between gap-2 border-b border-border/60 ps-3 pe-1">
-        <span className="truncate font-mono text-2xs text-muted-foreground">{title}</span>
+      <div className="flex h-9 items-center justify-between gap-2 border-b border-border/60 ps-3 pe-1">
+        <span className="truncate font-mono text-xs text-muted-foreground">{title}</span>
         <CopyButton
           value={code}
           description={copyLabel ?? title ?? 'trecho de código'}

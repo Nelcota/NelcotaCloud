@@ -22,7 +22,7 @@ export function AccountPage(): JSX.Element {
 
   return (
     <Tabs defaultValue="profile" className="mx-auto w-full max-w-4xl gap-5">
-      <PageHeader title="Minha conta" description="A conta com que você entra no console.">
+      <PageHeader title="Minha conta">
         <TabsList variant="line" aria-label="Seções da conta" className="w-full">
           {TABS.map((tab) => (
             <TabsTrigger key={tab.value} value={tab.value}>

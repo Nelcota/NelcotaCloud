@@ -21,13 +21,15 @@ export type RowEditor = {
 export function useRowEditor(table: TableOverview, page: RowsPage | undefined): RowEditor {
   const [target, setTarget] = useState<RowTarget | null>(null)
   const [isOpen, setIsOpen] = useState(false)
+  const [openings, setOpenings] = useState(0)
 
   if (canEditRows(table) === false) {
     return { target, isOpen, setIsOpen }
   }
 
   function show(next: RowTarget): void {
-    setTarget(next)
+    setTarget({ ...next, opening: openings + 1 })
+    setOpenings(openings + 1)
     setIsOpen(true)
   }
 

@@ -12,7 +12,7 @@ export function RoleLabel({ role }: { role: ProjectRole }): JSX.Element {
   if (role === 'owner') {
     return (
       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-        <Crown aria-hidden className="size-4.5" />
+        <Crown aria-hidden className="size-5" />
         Dono
       </span>
     )
@@ -21,7 +21,7 @@ export function RoleLabel({ role }: { role: ProjectRole }): JSX.Element {
   if (role === 'viewer') {
     return (
       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-        <Eye aria-hidden className="size-4.5" />
+        <Eye aria-hidden className="size-5" />
         Leitura
       </span>
     )

@@ -16,12 +16,7 @@ export function ProvidersTable({ projectId, configured }: ProvidersTableProps): 
   const activeCount = configured.providers.length
 
   return (
-    <Section
-      title="Provedores"
-      description="Cada provedor usa o app OAuth do próprio projeto."
-      meta={`${activeCount} de ${PROVIDERS.length} ativos`}
-      isFramed
-    >
+    <Section title="Provedores" meta={`${activeCount} de ${PROVIDERS.length} ativos`} isFramed>
       <ul className="divide-y divide-border/60">
         {PROVIDERS.map((provider) => (
           <ProviderRow

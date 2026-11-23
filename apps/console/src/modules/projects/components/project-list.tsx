@@ -16,7 +16,7 @@ export function ProjectList({ projects }: { projects: ProjectSummary[] }): JSX.E
         isFramed
         icon={<Server aria-hidden />}
         title="Crie seu primeiro projeto"
-        description="Auth, banco Postgres com API REST e chaves de API, prontos em um minuto."
+        description="Fica pronto em um minuto."
         actions={<NewProjectButton />}
       />
     )

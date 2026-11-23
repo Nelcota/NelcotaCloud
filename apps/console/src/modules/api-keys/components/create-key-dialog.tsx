@@ -10,8 +10,8 @@ import { TextField } from '@/shared/ui/text-field'
 
 type ApiKeyKind = components['schemas']['ApiKeyKind']
 
+/** The API's limit; the field stops there, so the name is never refused. */
 const MAX_NAME_LENGTH = 64
-const NAME_TOO_LONG = `Use até ${MAX_NAME_LENGTH} caracteres.`
 
 const KIND_CHOICES: Choice<ApiKeyKind>[] = [
   {
@@ -65,7 +65,6 @@ export function CreateKeyDialog(props: CreateKeyDialogProps): JSX.Element {
         description="Uma chave secreta nunca vai para o app."
         confirmLabel="Criar chave"
         size="lg"
-        canConfirm={name.trim().length <= MAX_NAME_LENGTH}
         onConfirm={() => props.onCreate({ kind, name: name.trim() })}
       >
         <ChoiceCards
@@ -81,19 +80,11 @@ export function CreateKeyDialog(props: CreateKeyDialogProps): JSX.Element {
           placeholder="App iOS, Servidor de produção…"
           autoComplete="off"
           autoFocus
+          maxLength={MAX_NAME_LENGTH}
           value={name}
           onChange={(event) => setName(event.target.value)}
-          error={nameError(name)}
         />
       </ConfirmDialog>
     </>
   )
-}
-
-function nameError(name: string): string | undefined {
-  if (name.trim().length <= MAX_NAME_LENGTH) {
-    return undefined
-  }
-
-  return NAME_TOO_LONG
 }

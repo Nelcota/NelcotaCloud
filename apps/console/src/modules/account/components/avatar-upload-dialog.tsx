@@ -1,17 +1,20 @@
 import type { UseMutationResult } from '@tanstack/react-query'
-import { Camera } from 'lucide-react'
+import { Camera, ImageUp } from 'lucide-react'
 import type { JSX } from 'react'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 
 import { AvatarCropEditor, type CropShape } from '@/modules/account/components/avatar-crop-editor'
 import { AvatarFilePicker } from '@/modules/account/components/avatar-file-picker'
 import type { ImageSelection, PixelArea } from '@/shared/lib/crop-image'
 import { usePickedImage } from '@/shared/lib/use-picked-image'
+import { missingNoteReference, missingUnless } from '@/shared/lib/missing-unless'
 import { ErrorAlert } from '@/shared/ui/error-alert'
+import { MissingNote } from '@/shared/ui/missing-note'
 import { PendingButton } from '@/shared/ui/pending-button'
 import { Button } from '@/shared/ui/primitives/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -41,6 +44,8 @@ export function AvatarUploadDialog({
   const [isOpen, setIsOpen] = useState(false)
   const { picked, pick } = usePickedImage()
   const [area, setArea] = useState<PixelArea | null>(null)
+  const missingId = useId()
+  const missing = missingUnless(picked !== null, 'Escolha uma imagem')
 
   /** Cleared on opening rather than closing, so the closing dialog does not flash the picker. */
   function open(): void {
@@ -79,29 +84,38 @@ export function AvatarUploadDialog({
       </Button>
       <Dialog open={isOpen} onOpenChange={changeOpen}>
         <DialogContent
-          className="gap-4 sm:max-w-lg"
+          className="sm:max-w-lg"
           onPointerDownOutside={(event) => event.preventDefault()}
         >
-          <DialogHeader className="pe-8">
+          <DialogHeader>
             <DialogTitle>{copy.title}</DialogTitle>
             <DialogDescription>{copy.description}</DialogDescription>
           </DialogHeader>
-          <DialogBody
-            imageUrl={picked?.url ?? null}
-            cropShape={cropShape}
-            onPick={pick}
-            onAreaChange={setArea}
-          />
-          <ErrorAlert error={upload.error} />
+          <DialogBody>
+            <ImageStep
+              imageUrl={picked?.url ?? null}
+              cropShape={cropShape}
+              onPick={pick}
+              onAreaChange={setArea}
+            />
+            <ErrorAlert error={upload.error} />
+          </DialogBody>
           <DialogFooter>
+            <MissingNote id={missingId} missing={missing} />
             <ChooseAnotherButton isVisible={picked !== null} onClick={chooseAnother} />
-            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={upload.isPending}
+              onClick={() => setIsOpen(false)}
+            >
               Cancelar
             </Button>
             <PendingButton
               type="button"
               isPending={upload.isPending}
               disabled={area === null}
+              aria-describedby={missingNoteReference(missingId, missing)}
               onClick={save}
             >
               {copy.saveLabel}
@@ -113,14 +127,15 @@ export function AvatarUploadDialog({
   )
 }
 
-type DialogBodyProps = {
+type ImageStepProps = {
   imageUrl: string | null
   cropShape: CropShape
   onPick: (file: File) => void
   onAreaChange: (area: PixelArea) => void
 }
 
-function DialogBody({ imageUrl, cropShape, onPick, onAreaChange }: DialogBodyProps): JSX.Element {
+/** Choose a file first, then frame it. */
+function ImageStep({ imageUrl, cropShape, onPick, onAreaChange }: ImageStepProps): JSX.Element {
   if (imageUrl === null) {
     return <AvatarFilePicker onPick={onPick} />
   }
@@ -137,6 +152,7 @@ function ChooseAnotherButton({ isVisible, onClick }: ChooseAnotherButtonProps): 
 
   return (
     <Button type="button" variant="ghost" className="sm:me-auto" onClick={onClick}>
+      <ImageUp aria-hidden data-icon="inline-start" />
       Trocar imagem
     </Button>
   )

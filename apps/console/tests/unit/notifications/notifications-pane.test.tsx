@@ -54,9 +54,12 @@ describe('NotificationsPane', () => {
       .on('POST', `${LIST}/${CHANNEL}/test`, { status: 204 })
     renderWithQueries(<NotificationsPane projectId={PROJECT} />)
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Testar' }))
+    const testButton = await screen.findByRole('button', { name: 'Testar' })
+    const result = screen.getByRole('status')
+    expect(result).toBeEmptyDOMElement()
+    await userEvent.click(testButton)
 
-    expect(await screen.findByText('Enviado.')).toBeInTheDocument()
+    await waitFor(() => expect(result).toHaveTextContent('Enviado.'))
     expect(api.callsTo('POST', `${LIST}/${CHANNEL}/test`)).toHaveLength(1)
   })
 

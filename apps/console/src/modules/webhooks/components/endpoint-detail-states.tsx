@@ -1,4 +1,4 @@
-import { SearchX } from 'lucide-react'
+import { SearchX, ArrowLeft } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { RouterLink } from '@/shared/routing/router-link'
@@ -19,7 +19,10 @@ export function EndpointNotFound({ projectId }: { projectId: string }): JSX.Elem
         description="Ele foi excluído ou o link está errado."
         actions={
           <Button asChild size="sm">
-            <RouterLink href={`/projects/${projectId}/webhooks`}>Ver webhooks</RouterLink>
+            <RouterLink href={`/projects/${projectId}/webhooks`}>
+              <ArrowLeft aria-hidden data-icon="inline-start" />
+              Ver webhooks
+            </RouterLink>
           </Button>
         }
       />
@@ -44,7 +47,7 @@ export function EndpointLoading({ error, onRetry }: EndpointLoadingProps): JSX.E
         <Skeleton className="h-5 w-96 max-w-4/5" />
       </div>
       <Skeleton className="h-12 rounded-xl" />
-      <Skeleton className="h-9 w-full rounded-none" />
+      <Skeleton className="h-11 w-full rounded-none" />
       <Skeleton className="h-64 rounded-xl" />
     </div>
   )

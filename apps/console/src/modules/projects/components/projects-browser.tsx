@@ -1,4 +1,4 @@
-import { SearchX } from 'lucide-react'
+import { SearchX, FunnelX } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
@@ -56,6 +56,7 @@ function Results({ projects, query, view, onClear }: ResultsProps): JSX.Element 
         title="Nenhum projeto encontrado"
         actions={
           <Button type="button" variant="outline" size="sm" onClick={onClear}>
+            <FunnelX aria-hidden data-icon="inline-start" />
             Limpar filtros
           </Button>
         }

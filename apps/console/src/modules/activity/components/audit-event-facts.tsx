@@ -1,3 +1,4 @@
+import { ListFilter, Ban } from 'lucide-react'
 import type { JSX, ReactNode } from 'react'
 
 import type { AddressActions } from '@/modules/activity/components/audit-event-sheet'
@@ -79,10 +80,12 @@ function AddressFact({
       <span className="font-mono text-sm tabular-nums">{address}</span>
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" size="sm" onClick={() => actions.onFilter(address)}>
+          <ListFilter aria-hidden data-icon="inline-start" />
           Filtrar por este IP
         </Button>
         {onBlock !== undefined && (
           <Button type="button" variant="destructive" size="sm" onClick={() => onBlock(address)}>
+            <Ban aria-hidden data-icon="inline-start" />
             Bloquear IP
           </Button>
         )}

@@ -47,7 +47,7 @@ export function CreatePolicyDialog({ projectId, table }: CreatePolicyDialogProps
         size="lg"
         description="Libera um comando nas linhas que a condição aceita. Várias políticas se somam."
         confirmLabel="Criar política"
-        canConfirm={isObjectName(draft.name) && draft.roles.length > 0}
+        missing={policyMissing(draft)}
         onConfirm={create}
       >
         <TemplatePicker templates={templatesFor(table)} onPick={setDraft} />
@@ -79,4 +79,16 @@ function TemplatePicker({ templates, onPick }: TemplatePickerProps): JSX.Element
       ))}
     </div>
   )
+}
+
+function policyMissing(draft: PolicyDraft): string | null {
+  if (isObjectName(draft.name) === false) {
+    return 'Dê um nome válido à política'
+  }
+
+  if (draft.roles.length === 0) {
+    return 'Escolha para quem vale'
+  }
+
+  return null
 }

@@ -30,11 +30,11 @@ export function BlockedAddressesTable({ projectId }: { projectId: string }): JSX
     <Table>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
-          <TableHead className="h-9">Endereço</TableHead>
-          <TableHead className="h-9">Expira</TableHead>
-          <TableHead className="hidden h-9 md:table-cell">Nota</TableHead>
-          <TableHead className="hidden h-9 sm:table-cell">Bloqueado em</TableHead>
-          <TableHead className="h-9">
+          <TableHead className="h-10">Endereço</TableHead>
+          <TableHead className="h-10">Expira</TableHead>
+          <TableHead className="hidden h-10 md:table-cell">Nota</TableHead>
+          <TableHead className="hidden h-10 sm:table-cell">Bloqueado em</TableHead>
+          <TableHead className="h-10">
             <span className="sr-only">Ações</span>
           </TableHead>
         </TableRow>

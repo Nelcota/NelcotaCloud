@@ -22,7 +22,7 @@ function RoleMark({ role }: ProjectStatusRowProps): JSX.Element {
   if (role === 'viewer') {
     return (
       <span className="inline-flex items-center gap-1 text-muted-foreground">
-        <Eye aria-hidden className="size-3.5" />
+        <Eye aria-hidden className="size-4" />
         Leitura
       </span>
     )
@@ -31,7 +31,7 @@ function RoleMark({ role }: ProjectStatusRowProps): JSX.Element {
   if (role === 'owner') {
     return (
       <span className="inline-flex items-center gap-1 text-muted-foreground">
-        <Crown aria-hidden className="size-3.5" />
+        <Crown aria-hidden className="size-4" />
         Dono
       </span>
     )
@@ -39,7 +39,7 @@ function RoleMark({ role }: ProjectStatusRowProps): JSX.Element {
 
   return (
     <span className="inline-flex items-center gap-1 text-muted-foreground">
-      <Users aria-hidden className="size-3.5" />
+      <Users aria-hidden className="size-4" />
       Membro
     </span>
   )

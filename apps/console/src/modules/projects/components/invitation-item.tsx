@@ -1,4 +1,4 @@
-import { Mail as Letter } from 'lucide-react'
+import { Mail as Letter, X, Check } from 'lucide-react'
 import type { JSX } from 'react'
 
 import type { components } from '@/shared/api/api-schema'
@@ -22,7 +22,7 @@ export function InvitationItem(props: InvitationItemProps): JSX.Element {
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3">
       <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-surface-hover text-muted-foreground">
-        <Letter aria-hidden className="size-4.5" />
+        <Letter aria-hidden className="size-5" />
       </span>
       <div className="grid min-w-0 flex-1 basis-56 gap-0.5">
         <p className="truncate text-sm font-medium text-heading">{invitation.project_name}</p>
@@ -38,9 +38,11 @@ export function InvitationItem(props: InvitationItemProps): JSX.Element {
           disabled={isPending}
           onClick={props.onDecline}
         >
+          <X aria-hidden data-icon="inline-start" />
           Recusar
         </Button>
         <PendingButton type="button" size="sm" isPending={isPending} onClick={props.onAccept}>
+          <Check aria-hidden data-icon="inline-start" />
           Aceitar
         </PendingButton>
       </div>

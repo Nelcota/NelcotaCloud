@@ -12,10 +12,7 @@ export function LoginMethodsGroup({ projectId }: { projectId: string }): JSX.Ele
   const base = `/projects/${projectId}`
 
   return (
-    <SettingsGroup
-      title="Métodos de login"
-      description="Cada jeito de entrar e onde ele é configurado."
-    >
+    <SettingsGroup title="Métodos de login">
       <SettingsRow title="Senha" description="Email e senha, com Argon2 e limite de tentativas.">
         <StatusBadge tone="success">Ativo</StatusBadge>
       </SettingsRow>

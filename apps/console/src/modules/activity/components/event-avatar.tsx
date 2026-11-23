@@ -19,7 +19,7 @@ export function EventAvatar({ event, context }: EventAvatarProps): JSX.Element {
   if (level === 'error') {
     return (
       <span aria-hidden className={cn(TILE, 'bg-destructive/12 text-destructive')}>
-        <ShieldAlert className="size-4" />
+        <ShieldAlert className="size-4.5" />
       </span>
     )
   }
@@ -27,7 +27,7 @@ export function EventAvatar({ event, context }: EventAvatarProps): JSX.Element {
   if (level === 'warn') {
     return (
       <span aria-hidden className={cn(TILE, 'bg-warning/12 text-warning')}>
-        <TriangleAlert className="size-4" />
+        <TriangleAlert className="size-4.5" />
       </span>
     )
   }
@@ -39,7 +39,7 @@ function ActorAvatar({ event, context }: EventAvatarProps): JSX.Element {
   if (event.actor === 'secret_key') {
     return (
       <span aria-hidden className={cn(TILE, 'bg-surface text-muted-foreground')}>
-        <KeyRound className="size-4" />
+        <KeyRound className="size-4.5" />
       </span>
     )
   }
@@ -49,7 +49,7 @@ function ActorAvatar({ event, context }: EventAvatarProps): JSX.Element {
   if (initial === '') {
     return (
       <span aria-hidden className={cn(TILE, 'bg-surface text-muted-foreground')}>
-        <User className="size-4" />
+        <User className="size-4.5" />
       </span>
     )
   }

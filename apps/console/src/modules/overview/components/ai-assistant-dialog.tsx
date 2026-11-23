@@ -17,6 +17,7 @@ import { LoadError } from '@/shared/ui/load-error'
 import { Button } from '@/shared/ui/primitives/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -71,31 +72,37 @@ function AssistantBody({ projectId }: { projectId: string }): JSX.Element {
   }
 
   if (agent === undefined) {
-    return <LoadError error={error} onRetry={retry} />
+    return (
+      <DialogBody>
+        <LoadError error={error} onRetry={retry} />
+      </DialogBody>
+    )
   }
 
   const prompt = promptOf(agent.id, context)
 
   return (
-    <div className="grid min-w-0 gap-4">
-      <AgentPicker value={agent.id} onValueChange={choose} />
-      <p className="text-xs text-muted-foreground">{agent.placement}</p>
-      <CodeBlock
-        code={prompt ?? 'Carregando o contexto do projeto…'}
-        title={agent.fileName}
-        copyLabel={`prompt para ${agent.label}`}
-        maxHeight={PROMPT_HEIGHT}
-        isWrapped
-      />
-      <div className="empty:hidden">
-        <LoadError error={error} onRetry={retry} />
-      </div>
-      <McpSetupNote />
+    <>
+      <DialogBody className="gap-4">
+        <AgentPicker value={agent.id} onValueChange={choose} />
+        <p className="text-xs text-muted-foreground">{agent.placement}</p>
+        <CodeBlock
+          code={prompt ?? 'Carregando o contexto do projeto…'}
+          title={agent.fileName}
+          copyLabel={`prompt para ${agent.label}`}
+          maxHeight={PROMPT_HEIGHT}
+          isWrapped
+        />
+        <div className="empty:hidden">
+          <LoadError error={error} onRetry={retry} />
+        </div>
+        <McpSetupNote />
+      </DialogBody>
       <DialogFooter>
         <CopyContextButton context={context} />
         <CopyPromptButton prompt={prompt} />
       </DialogFooter>
-    </div>
+    </>
   )
 }
 

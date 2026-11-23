@@ -30,7 +30,6 @@ export function EndpointEventsTab({ projectId, endpoint }: EndpointEventsTabProp
   return (
     <SettingsSection
       title="Eventos"
-      description="O que este endpoint recebe."
       onSubmit={save}
       footerNote={emptyNote(selected.length)}
       footer={

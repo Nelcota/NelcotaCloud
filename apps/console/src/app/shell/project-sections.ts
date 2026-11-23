@@ -42,6 +42,8 @@ export type ProjectSection = {
   group: ProjectGroupId
   icon: IconComponent
   activeIcon: IconComponent
+  /** Drawn at the sidebar's foot, apart from its group's list. */
+  isPinned?: boolean
 }
 
 /** The sidebar, in order: running the app first, managing the project last. */
@@ -94,6 +96,7 @@ export const PROJECT_SECTIONS: readonly ProjectSection[] = [
     group: 'project',
     icon: Settings,
     activeIcon: SettingsActive,
+    isPinned: true,
   },
 ]
 
@@ -130,9 +133,16 @@ export function projectLocation(pathname: string): ProjectLocation | null {
   return { projectId, section, group }
 }
 
-/** The pages of one group, in sidebar order. */
+/** The pages of one group, in sidebar order, without the pinned ones. */
 export function sectionsOf(groupId: ProjectGroupId): readonly ProjectSection[] {
-  return PROJECT_SECTIONS.filter((section) => section.group === groupId)
+  return PROJECT_SECTIONS.filter(
+    (section) => section.group === groupId && section.isPinned !== true,
+  )
+}
+
+/** The pages at the sidebar's foot. */
+export function pinnedSections(): readonly ProjectSection[] {
+  return PROJECT_SECTIONS.filter((section) => section.isPinned === true)
 }
 
 export function sectionTitle(section: ProjectSection): string {

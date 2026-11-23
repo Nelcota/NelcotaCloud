@@ -11,6 +11,7 @@ import {
 } from '@/modules/database/components/column-draft'
 import { ColumnDraftFields } from '@/modules/database/components/column-draft-fields'
 import { useAddColumnMutation } from '@/modules/database/queries/use-column-mutations'
+import { missingUnless } from '@/shared/lib/missing-unless'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
 import { Button } from '@/shared/ui/primitives/button'
 
@@ -47,7 +48,7 @@ export function AddColumnDialog({ projectId, table, targets }: AddColumnDialogPr
         title={`Nova coluna em ${table}`}
         description="As linhas que já existem recebem o valor padrão, ou nulo."
         confirmLabel="Adicionar coluna"
-        canConfirm={isDraftComplete(draft)}
+        missing={missingUnless(isDraftComplete(draft), 'Dê um nome válido à coluna')}
         size="lg"
         onConfirm={add}
       >

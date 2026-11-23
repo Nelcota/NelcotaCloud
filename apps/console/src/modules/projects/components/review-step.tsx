@@ -1,3 +1,4 @@
+import { ArrowLeft } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { draftSlug, type ProjectDraft } from '@/modules/projects/components/project-draft'
@@ -39,6 +40,7 @@ export function ReviewStep(props: ReviewStepProps): JSX.Element {
         <>
           <PendingButton type="submit">Criar projeto</PendingButton>
           <Button type="button" variant="ghost" onClick={props.onBack}>
+            <ArrowLeft aria-hidden data-icon="inline-start" />
             Voltar
           </Button>
         </>

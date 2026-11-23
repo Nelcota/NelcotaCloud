@@ -1,3 +1,4 @@
+import { Smartphone } from 'lucide-react'
 import type { TotpEnrollment } from '@nelcota/sdk'
 import type { JSX } from 'react'
 
@@ -21,7 +22,10 @@ export function TotpScanStep({ enrollment }: { enrollment: TotpEnrollment }): JS
           <CopyableValue label="Sem câmera? Digite esta chave no app" value={enrollment.secret} />
         </div>
         <Button asChild variant="outline" size="sm">
-          <a href={enrollment.otpauth_uri}>Abrir no app autenticador</a>
+          <a href={enrollment.otpauth_uri}>
+            <Smartphone aria-hidden data-icon="inline-start" />
+            Abrir no app autenticador
+          </a>
         </Button>
       </div>
     </div>

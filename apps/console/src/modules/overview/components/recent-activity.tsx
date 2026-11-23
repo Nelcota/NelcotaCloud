@@ -1,4 +1,4 @@
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, History } from 'lucide-react'
 import type { JSX, ReactNode } from 'react'
 
 import { RecentEventRow } from '@/modules/overview/components/recent-event-row'
@@ -29,6 +29,7 @@ export function RecentActivity({ projectId }: { projectId: string }): JSX.Elemen
     return (
       <ActivityFrame projectId={projectId}>
         <EmptyState
+          icon={<History aria-hidden />}
           title="Nenhum evento ainda"
           description="Logins, cadastros e mudanças aparecem aqui."
           isCompact

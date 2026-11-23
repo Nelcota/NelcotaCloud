@@ -16,12 +16,14 @@ color or a size in a screen.
 
 - Cal Sans (official variable font, self-hosted in `public/fonts` and preloaded) for the interface, JetBrains Mono (`font-mono`)
   for ids, slugs, hashes, URLs, timestamps in logs, keys, shortcuts, CLI and SQL.
-- Scale, one step above the Veloz mockup (the site shows it scaled down, too small to work in
-  all day): `text-2xs` 12px (meta, kbd, uppercase group labels), `text-xs` 14px (labels,
-  meta, table headers), `text-sm` 15px (body, inputs, tables, sidebar), `text-base` 16px
-  `font-medium` (section and card titles), `text-xl` 24px `font-medium` (page titles),
-  `text-2xl` 28px `font-semibold` (stat figures). Icons are 18px (`size-4.5`) beside text,
-  16px in compact controls, 22px in the icon rail; nothing smaller than 12px.
+- Scale, set well above the Veloz mockup so it reads comfortably all day: `text-2xs` 13px
+  (kbd, uppercase group labels, chart axes), `text-xs` 15px (labels, meta, table headers,
+  buttons, badges, and every mono id, address or key), `text-sm` 16px (body, inputs, tables),
+  `text-base` 17px (sidebar items; `font-medium` for section and card titles), `text-xl` 26px
+  `font-medium` (page titles), `text-2xl` 30px `font-semibold` (stat figures). Body text has
+  0.01em tracking (Cal Sans is drawn tight); headings and mono keep their own. Icons are 20px
+  (`size-5`) beside text, 22px in the project sidebar, 18px in compact controls, 24px in the icon rail; nothing smaller
+  than 13px.
 - Every number uses `tabular-nums`. Numbers are formatted the Brazilian way with
   `shared/lib/format-number` (`15,2 mil`, `86,6%`, `33,1 GB`) and times with
   `shared/lib/format-relative` (`há 14h`, `há 2d`).
@@ -45,26 +47,27 @@ color or a size in a screen.
 
 - Radius: 4 (log badges), 6 (pills, kbd), 8 (`rounded-md`: buttons, inputs, menu items),
   10 (rail items), 12 (`rounded-xl`: cards, sections, dialogs), 16 (the panel).
-- Buttons: `h-9` default, `h-8` sm, `h-10` lg, 14px medium text, 18px icons. Primary = orange fill;
+- Buttons: `h-10` default, `h-9` sm, `h-8` xs, `h-11` lg, 15px medium text, 20px icons. Primary = orange fill;
   `outline`/`secondary` = `surface` fill; `ghost` = text only; `destructive` = surface with a
   red 30% border and red text; `destructive-ghost` = red text only, for icon buttons in rows
   (trash cans); `destructive-solid` = red fill with white text, for deleting the
   project and for the confirm button of every destructive dialog. Every control that deletes,
   revokes, blocks, ends sessions, removes MFA or discards custom settings is red, both the
-  trigger and its confirmation; rotations with a grace period and role changes stay neutral. Inputs: `h-9`, 15px (16px on phones), `surface` fill, 3:1 border, orange focus.
-- Tables: header 14px muted on no fill, rows 48px with hover `surface`, numeric columns
+  trigger and its confirmation; rotations with a grace period and role changes stay neutral. Inputs and selects: `h-10`, 16px, `surface` fill, 3:1 border, orange focus.
+- Tables: header 15px muted on no fill, rows 52px with hover `surface`, numeric columns
   right-aligned.
 
 ## Layout
 
 - Shell: an icon rail on the frame; a rounded panel with a 56px top bar over a 2px `border`
-  line, all its controls 36px tall (account chip with its initial on a square, ←/→, breadcrumb `Projetos › Projeto › Grupo › Página`, "Buscar… ⌘K"
-  and the "IA" button inside a project) and, inside a project, a 240px sidebar split from the
+  line, all its controls 40px tall (account chip with its initial on a square, ←/→, breadcrumb `Projetos › Projeto › Grupo › Página`, "Buscar… ⌘K"
+  and the "IA" button inside a project) and, inside a project, a 256px sidebar split from the
   page by a 2px `border` line: the pages in labeled groups separated by space only, no
   dividers (active item: `surface-hover` with the icon in `brand`). Below `lg` the sidebar opens in a sheet.
 - Shell edge lines (set 2026-11-22 in an alignment pass with the owner):
-  - Sidebar (and the mobile sheet): boxes 8px in from its edge, icons from 18px (centred at
-    26px), labels at 44px; group labels start on the icons' leading edge (18px), and the
+  - Sidebar (and the mobile sheet): 44px items 2px apart, starting 20px below the top bar,
+    Configurações pinned at the foot, 8px above the panel's bottom edge,
+    boxes 8px in from its edge, 22px icons from 18px (centred at 29px), labels at 48px; group labels start on the icons' leading edge (18px), and the
     sheet's footer buttons centre on the icon column. The top bar's account chip continues
     them: box on the sidebar's box line, avatar on the icon column, name on the label line.
   - Below `lg` the top bar's menu icon sits on the page's text line, and the sheet keeps a
@@ -116,6 +119,20 @@ jargon the user does not need. Never rewrite text that comes from the backend.
    Revisar e criar) and the step on the right, with a live preview of what will be created.
 2. Creating shows each part being prepared as a checked step list, then the project is ready:
    the one-time secret key, the publishable key, the SDK snippet and the next steps.
+
+## Dialogs and sheets
+
+- Three parts: header (title, one-line description), a body that scrolls on its own and a
+  footer bar (`divider` line, `surface` fill) holding the buttons, so the title and the
+  buttons never scroll away (`DialogHeader`/`DialogBody`/`DialogFooter`, and the `Sheet*`
+  equivalents). On phones the footer stacks with the main button on top.
+- Forms are `ConfirmDialog` (one step) or `StepDialog` (a guided task). A button that waits
+  says why beside it (`missing`: "Digite o email da pessoa"), never a silent disabled button.
+- A click outside never closes a dialog with fields or a destructive one; Esc and the close
+  button do. A sheet with unsaved edits asks "Descartar as alterações?" first.
+- Dialogs opened from a menu stay mounted while they close (`useLastPresent`), so they fade
+  out like the rest, and each opening starts from a clean form.
+- Side sheets are full width on phones, 576px (`sm:max-w-xl`) on larger screens, 672px for code.
 
 ## Interaction
 

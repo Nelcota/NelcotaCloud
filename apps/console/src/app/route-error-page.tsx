@@ -1,3 +1,4 @@
+import { RotateCw, ArrowLeft } from 'lucide-react'
 import { useRouter, type ErrorComponentProps } from '@tanstack/react-router'
 import type { JSX } from 'react'
 
@@ -26,10 +27,14 @@ export function RouteErrorPage({ error, reset }: ErrorComponentProps): JSX.Eleme
       actions={
         <>
           <Button type="button" onClick={() => void retry()}>
+            <RotateCw aria-hidden data-icon="inline-start" />
             Tentar de novo
           </Button>
           <Button asChild variant="outline">
-            <a href="/">Ir para os projetos</a>
+            <a href="/">
+              <ArrowLeft aria-hidden data-icon="inline-start" />
+              Ir para os projetos
+            </a>
           </Button>
         </>
       }

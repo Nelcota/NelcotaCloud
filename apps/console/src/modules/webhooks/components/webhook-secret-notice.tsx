@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { SecretLeaveGuard } from '@/modules/api-keys/components/secret-leave-guard'
@@ -40,6 +41,7 @@ export function WebhookSecretNotice({
         </div>
         <div className="flex justify-end">
           <Button type="button" size="sm" variant="outline" onClick={onDismiss}>
+            <Check aria-hidden data-icon="inline-start" />
             Já guardei o segredo
           </Button>
         </div>

@@ -24,7 +24,7 @@ export function CreationProgress({ slug }: { slug: string }): JSX.Element {
         <span className="font-mono text-sm font-normal text-muted-foreground">· {slug}</span>
       </h2>
       <div className="overflow-hidden rounded-xl bg-card">
-        <div className="flex items-center justify-between gap-3 bg-surface px-4 py-2.5 font-mono text-2xs text-muted-foreground">
+        <div className="flex items-center justify-between gap-3 bg-surface px-4 py-2.5 font-mono text-xs text-muted-foreground">
           <span className="truncate">
             <span className="text-foreground">Provisionando</span> · tenant_{slug}
           </span>
@@ -44,7 +44,7 @@ export function CreationProgress({ slug }: { slug: string }): JSX.Element {
             ))}
           </ol>
         </div>
-        <p className="bg-surface px-4 py-2.5 font-mono text-2xs text-muted-foreground">
+        <p className="bg-surface px-4 py-2.5 font-mono text-xs text-muted-foreground">
           Fique nesta página: a chave secreta aparece uma vez só.
         </p>
       </div>

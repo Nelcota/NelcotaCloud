@@ -87,7 +87,7 @@ function Placeholder({ id, text }: { id: string; text: string }): JSX.Element {
   return (
     <output
       id={id}
-      className="flex h-8 items-center truncate rounded-lg bg-surface px-3 font-mono text-xs text-muted-foreground"
+      className="flex h-10 items-center truncate rounded-md bg-surface px-3 font-mono text-xs text-muted-foreground"
     >
       {text}
     </output>

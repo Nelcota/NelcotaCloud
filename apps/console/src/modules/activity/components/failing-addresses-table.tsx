@@ -34,11 +34,11 @@ export function FailingAddressesTable(props: FailingAddressesTableProps): JSX.El
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            <TableHead className="h-9">IP</TableHead>
-            <TableHead className="h-9 text-end">Recusas</TableHead>
-            <TableHead className="h-9 text-end">Contas</TableHead>
-            <TableHead className="hidden h-9 sm:table-cell">Última vez</TableHead>
-            <TableHead className="h-9">
+            <TableHead className="h-10">IP</TableHead>
+            <TableHead className="h-10 text-end">Recusas</TableHead>
+            <TableHead className="h-10 text-end">Contas</TableHead>
+            <TableHead className="hidden h-10 sm:table-cell">Última vez</TableHead>
+            <TableHead className="h-10">
               <span className="sr-only">Ações</span>
             </TableHead>
           </TableRow>

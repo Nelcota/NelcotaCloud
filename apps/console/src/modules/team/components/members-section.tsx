@@ -42,14 +42,7 @@ export function MembersSection(props: MembersSectionProps): JSX.Element {
 
 function MembersBody({ team, rows, me, onAction }: MembersSectionProps): JSX.Element {
   if (rows.length === 0) {
-    return (
-      <EmptyState
-        isCompact
-        icon={<SearchX aria-hidden />}
-        title="Ninguém encontrado"
-        description="Ninguém com acesso tem um email que combine com a busca."
-      />
-    )
+    return <EmptyState isCompact icon={<SearchX aria-hidden />} title="Ninguém encontrado" />
   }
 
   return (

@@ -1,4 +1,4 @@
-import { CloudOff as CloudCross } from 'lucide-react'
+import { CloudOff as CloudCross, RotateCw } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { ApiError } from '@/shared/api/api-error'
@@ -38,6 +38,7 @@ export function StorageLoadFailure({
           description="O serviço de arquivos não respondeu. Costuma voltar em instantes."
           actions={
             <PendingButton type="button" variant="outline" isPending={isRetrying} onClick={onRetry}>
+              <RotateCw aria-hidden data-icon="inline-start" />
               Tentar de novo
             </PendingButton>
           }

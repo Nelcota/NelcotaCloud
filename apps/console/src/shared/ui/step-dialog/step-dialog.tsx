@@ -1,8 +1,9 @@
 import type { FormEvent, JSX, ReactNode } from 'react'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -10,6 +11,8 @@ import {
   DialogTitle,
 } from '@/shared/ui/primitives/dialog'
 import { cn } from '@/shared/lib/utils'
+import { missingNoteReference } from '@/shared/lib/missing-unless'
+import { MissingNote } from '@/shared/ui/missing-note'
 import { FocusedError } from '@/shared/ui/step-dialog/focused-error'
 import { BackButton, ForwardButton } from '@/shared/ui/step-dialog/step-dialog-buttons'
 import { StepTrack } from '@/shared/ui/step-dialog/step-track'
@@ -46,6 +49,8 @@ export function StepDialog(props: StepDialogProps): JSX.Element {
   const [error, setError] = useState<unknown>(null)
   const step = props.steps[index]
   const lastIndex = props.steps.length - 1
+  const missingId = useId()
+  const missing = step?.missing ?? null
 
   function changeOpen(isOpen: boolean): void {
     if (isWorking) {
@@ -68,6 +73,8 @@ export function StepDialog(props: StepDialogProps): JSX.Element {
 
   async function advance(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
+    // The dialog is portaled, but React still bubbles its submit to a form around the trigger.
+    event.stopPropagation()
 
     if (step === undefined || step.missing !== null || isWorking) {
       return
@@ -94,17 +101,17 @@ export function StepDialog(props: StepDialogProps): JSX.Element {
   return (
     <Dialog open={props.isOpen} onOpenChange={changeOpen}>
       <DialogContent
-        className="gap-0 overflow-hidden p-0 sm:max-w-2xl"
+        className="sm:max-w-2xl"
         onPointerDownOutside={(event) => event.preventDefault()}
       >
-        <form onSubmit={advance} className="flex min-h-0 min-w-0 flex-col">
-          <DialogHeader className="gap-1 border-b border-border/60 px-5 pt-5 pb-4 pe-12">
+        <form onSubmit={advance} className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <DialogHeader>
             <DialogTitle>{props.title}</DialogTitle>
             <DialogDescription className={cn(props.description === undefined && 'sr-only')}>
               {props.description ?? props.title}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex min-h-0 min-w-0 flex-col gap-5 overflow-y-auto overscroll-contain p-5">
+          <DialogBody>
             <StepTrack
               labels={props.steps.map((candidate) => candidate.label)}
               activeIndex={index}
@@ -113,9 +120,9 @@ export function StepDialog(props: StepDialogProps): JSX.Element {
             <StepDescription description={step?.description} />
             {step?.content}
             <FocusedError error={error} />
-          </div>
-          <DialogFooter className="items-center border-t border-border/60 bg-surface px-5 py-3">
-            <MissingNote missing={step?.missing ?? null} />
+          </DialogBody>
+          <DialogFooter>
+            <MissingNote id={missingId} missing={missing} />
             <BackButton
               index={index}
               isDisabled={isWorking}
@@ -125,7 +132,8 @@ export function StepDialog(props: StepDialogProps): JSX.Element {
             <ForwardButton
               isLast={index === lastIndex}
               isWorking={isWorking}
-              isDisabled={step?.missing !== null}
+              isDisabled={missing !== null}
+              describedBy={missingNoteReference(missingId, missing)}
               finishLabel={props.finishLabel}
             />
           </DialogFooter>
@@ -141,12 +149,4 @@ function StepDescription({ description }: { description?: string }): JSX.Element
   }
 
   return <p className="text-xs text-muted-foreground">{description}</p>
-}
-
-function MissingNote({ missing }: { missing: string | null }): JSX.Element | null {
-  if (missing === null) {
-    return null
-  }
-
-  return <span className="me-auto text-xs text-muted-foreground">{missing}</span>
 }

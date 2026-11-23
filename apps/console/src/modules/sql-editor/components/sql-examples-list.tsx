@@ -1,3 +1,4 @@
+import { SquareCode } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { SQL_EXAMPLES } from '@/modules/sql-editor/components/sql-examples'
@@ -13,6 +14,7 @@ type SqlExamplesListProps = {
 export function SqlExamplesList({ onPick }: SqlExamplesListProps): JSX.Element {
   return (
     <EmptyState
+      icon={<SquareCode aria-hidden />}
       isCompact
       title="Escreva uma consulta ou comece por um exemplo"
       actions={SQL_EXAMPLES.map((example) => (

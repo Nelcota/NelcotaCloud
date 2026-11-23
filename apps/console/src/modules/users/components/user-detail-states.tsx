@@ -1,4 +1,4 @@
-import { SearchX } from 'lucide-react'
+import { SearchX, ArrowLeft } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { RouterLink } from '@/shared/routing/router-link'
@@ -19,7 +19,10 @@ export function UserNotFound({ projectId }: { projectId: string }): JSX.Element 
         description="A conta foi excluída ou o link está errado."
         actions={
           <Button asChild size="sm">
-            <RouterLink href={`/projects/${projectId}/users`}>Ver usuários</RouterLink>
+            <RouterLink href={`/projects/${projectId}/users`}>
+              <ArrowLeft aria-hidden data-icon="inline-start" />
+              Ver usuários
+            </RouterLink>
           </Button>
         }
       />
@@ -49,7 +52,7 @@ export function UserLoading({ error, onRetry }: UserLoadingProps): JSX.Element {
           </div>
         </div>
       </div>
-      <Skeleton className="h-9 w-full rounded-none" />
+      <Skeleton className="h-11 w-full rounded-none" />
       <div className="grid gap-4 lg:grid-cols-3">
         <Skeleton className="h-80 rounded-xl lg:col-span-2" />
         <Skeleton className="h-48 rounded-xl" />

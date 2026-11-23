@@ -5,6 +5,7 @@ import { CodeBlock } from '@/shared/ui/code-block'
 import { Button } from '@/shared/ui/primitives/button'
 import {
   Sheet,
+  SheetBody,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -45,27 +46,29 @@ export function ApiSheet({ title, description, snippets }: ApiSheetProps): JSX.E
           API
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-full gap-0 overflow-y-auto p-0 sm:max-w-2xl">
-        <SheetHeader className="gap-1 border-b border-border/60 px-5 py-4">
-          <SheetTitle className="text-base font-medium text-heading">{title}</SheetTitle>
+      <SheetContent side="right" className="sm:max-w-2xl">
+        <SheetHeader>
+          <SheetTitle>{title}</SheetTitle>
           <SheetDescription>
             {description ?? 'O mesmo que esta tela faz, pelo código.'}
           </SheetDescription>
         </SheetHeader>
-        <Tabs defaultValue={first.label} className="gap-4 p-5">
-          <TabsList variant="line">
+        <SheetBody>
+          <Tabs defaultValue={first.label} className="gap-4">
+            <TabsList variant="line">
+              {snippets.map((snippet) => (
+                <TabsTrigger key={snippet.label} value={snippet.label}>
+                  {snippet.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
             {snippets.map((snippet) => (
-              <TabsTrigger key={snippet.label} value={snippet.label}>
-                {snippet.label}
-              </TabsTrigger>
+              <TabsContent key={snippet.label} value={snippet.label}>
+                <CodeBlock code={snippet.code} title={snippet.title} copyLabel={snippet.title} />
+              </TabsContent>
             ))}
-          </TabsList>
-          {snippets.map((snippet) => (
-            <TabsContent key={snippet.label} value={snippet.label}>
-              <CodeBlock code={snippet.code} title={snippet.title} copyLabel={snippet.title} />
-            </TabsContent>
-          ))}
-        </Tabs>
+          </Tabs>
+        </SheetBody>
       </SheetContent>
     </Sheet>
   )

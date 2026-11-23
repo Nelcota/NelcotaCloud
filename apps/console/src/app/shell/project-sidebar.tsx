@@ -4,6 +4,7 @@ import {
   PROJECT_GROUPS,
   type ProjectLocation,
   type ProjectSection,
+  pinnedSections,
   sectionPath,
   sectionsOf,
 } from '@/app/shell/project-sections'
@@ -11,29 +12,40 @@ import { ariaCurrentPage } from '@/shared/lib/aria-current'
 import { cn } from '@/shared/lib/utils'
 import { RouterLink } from '@/shared/routing/router-link'
 
-/** The open project's pages in labeled groups, like a resource's tabs. */
+/** The open project's pages in labeled groups, with the pinned ones at the foot. */
 export function ProjectSidebar({ location }: { location: ProjectLocation }): JSX.Element {
   return (
-    <div className="flex flex-col px-2 pt-2 pb-4">
-      <nav aria-label="Páginas do projeto" className="flex flex-col">
+    <div className="flex min-h-full flex-col px-2 pt-5 pb-2">
+      <nav aria-label="Páginas do projeto" className="flex flex-1 flex-col">
         {PROJECT_GROUPS.map((group) => (
-          <div key={group.id} className="grid gap-px py-3 first:pt-0 last:pb-0">
+          <div key={group.id} className="grid gap-0.5 py-4 first:pt-0">
             <GroupLabel label={group.label} />
-            <ul className="grid gap-px">
-              {sectionsOf(group.id).map((section) => (
-                <li key={section.segment}>
-                  <SectionLink
-                    projectId={location.projectId}
-                    section={section}
-                    isCurrent={section === location.section}
-                  />
-                </li>
-              ))}
-            </ul>
+            <SectionList sections={sectionsOf(group.id)} location={location} />
           </div>
         ))}
+        <div className="mt-auto pt-4">
+          <SectionList sections={pinnedSections()} location={location} />
+        </div>
       </nav>
     </div>
+  )
+}
+
+type SectionListProps = { sections: readonly ProjectSection[]; location: ProjectLocation }
+
+function SectionList({ sections, location }: SectionListProps): JSX.Element {
+  return (
+    <ul className="grid gap-0.5">
+      {sections.map((section) => (
+        <li key={section.segment}>
+          <SectionLink
+            projectId={location.projectId}
+            section={section}
+            isCurrent={section === location.section}
+          />
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -56,13 +68,13 @@ function SectionLink({ projectId, section, isCurrent }: SectionLinkProps): JSX.E
       href={sectionPath(projectId, section)}
       aria-current={ariaCurrentPage(isCurrent)}
       className={cn(
-        'flex h-9 min-w-0 items-center gap-2.5 rounded-md px-2.5 text-sm text-muted-foreground hover:bg-surface hover:text-foreground',
+        'flex h-11 min-w-0 items-center gap-2 rounded-md px-2.5 text-base text-muted-foreground hover:bg-surface hover:text-foreground',
         isCurrent && 'bg-surface-hover font-medium text-foreground hover:bg-surface-hover',
       )}
     >
       <Glyph
         aria-hidden
-        className={cn('size-4.5 shrink-0 transition-colors', isCurrent && 'text-brand')}
+        className={cn('size-5.5 shrink-0 transition-colors', isCurrent && 'text-brand')}
       />
       <span className="truncate">{section.label}</span>
     </RouterLink>

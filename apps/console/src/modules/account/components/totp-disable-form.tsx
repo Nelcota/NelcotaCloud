@@ -1,8 +1,10 @@
+import { ShieldOff } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
 import { TotpCodeField } from '@/modules/account/components/totp-code-field'
 import { useDisableTotpMutation } from '@/modules/account/queries/use-mfa'
+import { missingUnless } from '@/shared/lib/missing-unless'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
 import { Button } from '@/shared/ui/primitives/button'
 
@@ -26,6 +28,7 @@ export function TotpDisableForm(): JSX.Element {
   return (
     <>
       <Button type="button" variant="destructive" size="sm" onClick={open}>
+        <ShieldOff aria-hidden data-icon="inline-start" />
         Desativar MFA
       </Button>
       <ConfirmDialog
@@ -35,7 +38,10 @@ export function TotpDisableForm(): JSX.Element {
         description="Sem MFA, quem descobrir sua senha entra no console e em todos os seus projetos."
         confirmLabel="Desativar MFA"
         isDestructive
-        canConfirm={digitsOf(code).length === TOTP_CODE_DIGITS}
+        missing={missingUnless(
+          digitsOf(code).length === TOTP_CODE_DIGITS,
+          'Digite o código de 6 dígitos',
+        )}
         onConfirm={disable}
       >
         <TotpCodeField value={code} onChange={setCode} hasAutoFocus />

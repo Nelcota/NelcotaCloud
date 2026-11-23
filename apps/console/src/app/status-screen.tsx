@@ -37,7 +37,7 @@ function StatusMessage(props: StatusScreenProps): JSX.Element {
   return (
     <div className="flex flex-col gap-5 p-6">
       <div className="grid gap-1.5">
-        <p className="font-mono text-2xs text-muted-foreground">{props.code}</p>
+        <p className="font-mono text-xs text-muted-foreground">{props.code}</p>
         <h1 className="text-xl font-medium text-balance text-heading">{props.title}</h1>
         <div className="text-xs text-pretty text-muted-foreground">{props.description}</div>
       </div>

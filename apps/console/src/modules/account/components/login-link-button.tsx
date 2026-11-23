@@ -1,3 +1,4 @@
+import { LogIn } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { RouterLink } from '@/shared/routing/router-link'
@@ -7,7 +8,10 @@ import { Button } from '@/shared/ui/primitives/button'
 export function LoginLinkButton({ label }: { label: string }): JSX.Element {
   return (
     <Button asChild size="lg" className="w-full">
-      <RouterLink href="/login">{label}</RouterLink>
+      <RouterLink href="/login">
+        <LogIn aria-hidden data-icon="inline-start" />
+        {label}
+      </RouterLink>
     </Button>
   )
 }

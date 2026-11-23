@@ -5,6 +5,7 @@ import type { NotificationChannel } from '@/modules/notifications/api/list-chann
 import { EventsField } from '@/modules/notifications/components/events-field'
 import type { NotificationEvent } from '@/modules/notifications/components/notification-events'
 import { useChangeChannelMutation } from '@/modules/notifications/queries/use-notification-channels'
+import { missingUnless } from '@/shared/lib/missing-unless'
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
 
 type EditEventsDialogProps = {
@@ -20,9 +21,13 @@ export function EditEventsDialog(props: EditEventsDialogProps): JSX.Element {
   const [events, setEvents] = useState<NotificationEvent[]>(channel.events)
   const [wasOpen, setWasOpen] = useState(props.isOpen)
 
-  // Each opening starts from the saved events: a choice cancelled last time never comes back.
   if (props.isOpen !== wasOpen) {
     setWasOpen(props.isOpen)
+  }
+
+  // Each opening starts from the saved events: a choice cancelled last time never comes back.
+  // Closing keeps them, so the boxes do not flip while the dialog fades out.
+  if (props.isOpen && wasOpen === false) {
     setEvents(channel.events)
   }
 
@@ -39,7 +44,7 @@ export function EditEventsDialog(props: EditEventsDialogProps): JSX.Element {
       title="Avisos do canal"
       description={channel.target_hint}
       confirmLabel="Salvar"
-      canConfirm={events.length > 0}
+      missing={missingUnless(events.length > 0, 'Escolha pelo menos um aviso')}
       onConfirm={save}
     >
       <EventsField selected={events} onChange={setEvents} />

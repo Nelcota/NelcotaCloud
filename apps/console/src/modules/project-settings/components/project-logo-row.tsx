@@ -17,7 +17,7 @@ type ProjectLogoRowProps = {
 
 const LOGO_COPY = {
   title: 'Logo do projeto',
-  description: 'Arraste para enquadrar a imagem no quadrado; o zoom aproxima.',
+  description: 'Arraste para enquadrar a imagem.',
   saveLabel: 'Salvar logo',
 }
 

@@ -29,7 +29,7 @@ function ErrorCode({ error }: { error: Error }): JSX.Element | null {
   }
 
   return (
-    <span className="font-mono text-2xs text-muted-foreground">
+    <span className="font-mono text-xs text-muted-foreground">
       {error.code} · HTTP {error.status}
     </span>
   )

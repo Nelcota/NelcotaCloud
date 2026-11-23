@@ -1,3 +1,4 @@
+import { Ban, ListFilter } from 'lucide-react'
 import type { JSX } from 'react'
 
 import type { components } from '@/shared/api/api-schema'
@@ -34,6 +35,7 @@ export function FailingAddressRow({
       <TableCell className="py-1.5">
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" size="sm" onClick={() => actions.onShowEvents(ip)}>
+            <ListFilter aria-hidden data-icon="inline-start" />
             Ver eventos
           </Button>
           <BlockAction ip={ip} isBlocked={isBlocked} onBlock={actions.onBlock} />
@@ -52,6 +54,7 @@ function BlockAction({ ip, isBlocked, onBlock }: BlockActionProps): JSX.Element 
 
   return (
     <Button type="button" variant="destructive" size="sm" onClick={() => onBlock(ip)}>
+      <Ban aria-hidden data-icon="inline-start" />
       Bloquear
     </Button>
   )

@@ -48,7 +48,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          'fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 max-h-[calc(100dvh-2rem)] gap-5 overflow-y-auto overscroll-contain rounded-xl border border-transparent bg-popover p-5 text-sm text-popover-foreground shadow-popover duration-200 outline-none sm:max-w-lg data-open:animate-in data-open:fade-in-0 data-open:zoom-in-98 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-99 data-closed:duration-150',
+          'fixed top-1/2 left-1/2 z-50 flex w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-xl border border-transparent bg-popover text-sm text-popover-foreground shadow-popover duration-200 outline-none sm:max-w-lg data-open:animate-in data-open:fade-in-0 data-open:zoom-in-98 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-99 data-closed:duration-150',
           className,
         )}
         {...props}
@@ -69,9 +69,31 @@ function DialogContent({
   )
 }
 
+/** Title and description; the end padding keeps the text clear of the close button. */
 function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
   return (
-    <div data-slot="dialog-header" className={cn('flex flex-col gap-2', className)} {...props} />
+    <div
+      data-slot="dialog-header"
+      className={cn('flex shrink-0 flex-col gap-1.5 px-5 pt-5 pb-5 pe-12', className)}
+      {...props}
+    />
+  )
+}
+
+/**
+ * The part that scrolls when the dialog is taller than the screen, so the title and the
+ * footer's buttons stay in view. Hidden when it has nothing to show.
+ */
+function DialogBody({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot="dialog-body"
+      className={cn(
+        'scrollbar-thin flex min-h-0 min-w-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-5 pb-5 empty:hidden',
+        className,
+      )}
+      {...props}
+    />
   )
 }
 
@@ -105,13 +127,17 @@ function DialogFooter({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="dialog-footer"
-      className={cn('flex flex-col gap-2 sm:flex-row sm:justify-end', className)}
+      className={cn(
+        'flex shrink-0 flex-col-reverse gap-2 border-t border-divider bg-surface px-5 py-3 sm:flex-row sm:items-center sm:justify-end',
+        className,
+      )}
       {...props}
     />
   )
 }
 
 export {
+  DialogBody,
   DialogFooter,
   Dialog,
   DialogContent,

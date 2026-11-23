@@ -1,3 +1,4 @@
+import { Inbox } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { type DeliveryFilter, statusOf } from '@/modules/webhooks/components/delivery-filter'
@@ -40,7 +41,12 @@ export function DeliveryLog({ projectId, endpointId, filter }: DeliveryLogProps)
 
   if (newest.data.length === 0) {
     return (
-      <EmptyState title="As entregas aparecem aqui quando um evento acontece." isCompact isFramed />
+      <EmptyState
+        icon={<Inbox aria-hidden />}
+        title="As entregas aparecem aqui quando um evento acontece."
+        isCompact
+        isFramed
+      />
     )
   }
 

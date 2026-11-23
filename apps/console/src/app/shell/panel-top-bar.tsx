@@ -48,12 +48,12 @@ export function PanelTopBar({ location, pageTitle }: PanelTopBarProps): JSX.Elem
 type SidebarColumnProps = { isInProject: boolean; children: ReactNode }
 
 /**
- * Inside a project, as wide as the sidebar below (its 240px minus the bar's 8px start padding),
+ * Inside a project, as wide as the sidebar below (its 256px minus the bar's 8px start padding),
  * so the account sits over the sidebar and the path over the page.
  */
 function SidebarColumn({ isInProject, children }: SidebarColumnProps): JSX.Element {
   return (
-    <div className={cn('flex min-w-0 shrink-0 items-center gap-2', isInProject && 'lg:w-58')}>
+    <div className={cn('flex min-w-0 shrink-0 items-center gap-2', isInProject && 'lg:w-62')}>
       {children}
     </div>
   )

@@ -2,7 +2,14 @@ import type { JSX } from 'react'
 
 import { cellText } from '@/modules/database/components/cell-text'
 import { CodeBlock } from '@/shared/ui/code-block'
-import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/shared/ui/primitives/sheet'
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/shared/ui/primitives/sheet'
 
 export type GridColumn = { name: string; type?: string; is_primary_key?: boolean }
 export type GridRow = { number: number; cells: readonly unknown[] }
@@ -26,12 +33,12 @@ export function GridRowDetails(props: GridRowDetailsProps): JSX.Element | null {
 
   return (
     <Sheet open={props.isOpen} onOpenChange={props.onOpenChange}>
-      <SheetContent className="w-full gap-0 sm:max-w-xl">
-        <div className="grid gap-0.5 border-b px-5 py-4 pe-12">
+      <SheetContent className="sm:max-w-xl">
+        <SheetHeader>
           <SheetTitle>Linha {row.number.toLocaleString('pt-BR')}</SheetTitle>
           <SheetDescription>{label}</SheetDescription>
-        </div>
-        <div className="scrollbar-thin flex flex-1 flex-col gap-6 overflow-y-auto p-5">
+        </SheetHeader>
+        <SheetBody className="gap-6">
           <dl className="flex flex-col gap-4">
             {columns.map((column, index) => (
               <div key={index} className="grid min-w-0 gap-1.5">
@@ -51,7 +58,7 @@ export function GridRowDetails(props: GridRowDetailsProps): JSX.Element | null {
             copyLabel={`linha ${row.number} em JSON`}
             maxHeight={360}
           />
-        </div>
+        </SheetBody>
       </SheetContent>
     </Sheet>
   )

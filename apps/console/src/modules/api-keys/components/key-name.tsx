@@ -15,7 +15,7 @@ export function KeyName({ apiKey }: { apiKey: ApiKeySummary }): JSX.Element {
   return (
     <span className="grid min-w-0 gap-0.5">
       <NameText apiKey={apiKey} />
-      <code title={apiKey.id} className="truncate font-mono text-2xs text-muted-foreground">
+      <code title={apiKey.id} className="truncate font-mono text-xs text-muted-foreground">
         <span className="sr-only">ID </span>
         {apiKey.id}
       </code>

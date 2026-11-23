@@ -80,7 +80,7 @@ function EventMeta({ event, view }: ActivityRowProps): JSX.Element {
       {ipAddress !== '' && (
         <>
           <span aria-hidden>·</span>
-          <code className="font-mono text-2xs">{ipAddress}</code>
+          <code className="font-mono text-xs">{ipAddress}</code>
         </>
       )}
       <span aria-hidden>·</span>

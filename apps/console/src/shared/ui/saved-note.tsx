@@ -15,7 +15,7 @@ export function SavedNote({
 
   return (
     <span role="status" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-      <CircleCheck aria-hidden className="size-4 text-success" />
+      <CircleCheck aria-hidden className="size-4.5 text-success" />
       {message}
     </span>
   )

@@ -30,9 +30,10 @@ function ServiceCard({ service }: { service: Service }): JSX.Element {
       name={service.name}
       href={service.to}
       kind={service.kind}
+      headingLevel={3}
       leading={
         <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-surface-hover">
-          <Glyph aria-hidden className="size-4.5 text-muted-foreground" />
+          <Glyph aria-hidden className="size-5 text-muted-foreground" />
         </span>
       }
       address={service.path}

@@ -48,7 +48,7 @@ export function InviteDialog({ projectId, onInvited }: InviteDialogProps): JSX.E
         title="Convidar pessoa"
         description="Ela entra como membro: gerencia o projeto, mas não convida nem remove pessoas."
         confirmLabel="Enviar convite"
-        canConfirm={EMAIL_SHAPE.test(email.trim())}
+        missing={emailMissing(email)}
         onConfirm={invite}
       >
         <TextField
@@ -65,4 +65,18 @@ export function InviteDialog({ projectId, onInvited }: InviteDialogProps): JSX.E
       </ConfirmDialog>
     </>
   )
+}
+
+function emailMissing(email: string): string | null {
+  const address = email.trim()
+
+  if (address === '') {
+    return 'Digite o email da pessoa'
+  }
+
+  if (EMAIL_SHAPE.test(address) === false) {
+    return 'Confira o email'
+  }
+
+  return null
 }

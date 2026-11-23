@@ -29,7 +29,7 @@ export function DeleteProjectButton({
     <ConfirmButton
       label="Excluir projeto"
       title={`Excluir ${projectName} para sempre?`}
-      description="O banco de dados do projeto, seus usuários e suas chaves são apagados e não há como recuperar. Apps que usam este projeto param de funcionar na hora."
+      description="Apaga o banco, os usuários e as chaves, sem volta. Apps que usam o projeto param na hora."
       confirmLabel="Excluir projeto"
       change={{ subject: projectName, icon: Database, from: 'Ativo', to: 'Excluído' }}
       confirmationText={slug}

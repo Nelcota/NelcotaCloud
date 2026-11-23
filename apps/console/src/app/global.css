@@ -26,26 +26,27 @@
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
 /*
- * Type, radius and motion follow the panel measured in design-reference/TOKENS.md, two steps
- * larger than the mockup for legibility: 14–15px body text, 12px small print, 24px titles.
+ * Type, radius and motion follow the panel measured in design-reference/TOKENS.md, set larger
+ * than the mockup so it reads comfortably all day: 16px body, 15px labels, 13px small print,
+ * 26px titles.
  */
 @theme {
-  --text-2xs: 0.75rem;
-  --text-2xs--line-height: calc(1 / 0.75);
-  --text-xs: 0.875rem;
-  --text-xs--line-height: calc(1.375 / 0.875);
-  --text-sm: 0.9375rem;
-  --text-sm--line-height: calc(1.5 / 0.9375);
-  --text-base: 1rem;
-  --text-base--line-height: calc(1.5 / 1);
-  --text-lg: 1.125rem;
-  --text-lg--line-height: calc(1.75 / 1.125);
-  --text-xl: 1.5rem;
-  --text-xl--line-height: calc(2 / 1.5);
-  --text-2xl: 1.75rem;
-  --text-2xl--line-height: calc(2.25 / 1.75);
-  --text-3xl: 2rem;
-  --text-3xl--line-height: calc(2.5 / 2);
+  --text-2xs: 0.8125rem;
+  --text-2xs--line-height: calc(1.125 / 0.8125);
+  --text-xs: 0.9375rem;
+  --text-xs--line-height: calc(1.375 / 0.9375);
+  --text-sm: 1rem;
+  --text-sm--line-height: calc(1.5 / 1);
+  --text-base: 1.0625rem;
+  --text-base--line-height: calc(1.625 / 1.0625);
+  --text-lg: 1.1875rem;
+  --text-lg--line-height: calc(1.75 / 1.1875);
+  --text-xl: 1.625rem;
+  --text-xl--line-height: calc(2.125 / 1.625);
+  --text-2xl: 1.875rem;
+  --text-2xl--line-height: calc(2.375 / 1.875);
+  --text-3xl: 2.125rem;
+  --text-3xl--line-height: calc(2.625 / 2.125);
 
   --radius-xs: 4px;
   --radius-sm: 6px;
@@ -226,6 +227,8 @@
     font-family: var(--font-sans);
     font-size: var(--text-sm);
     line-height: var(--text-sm--line-height);
+    /* Cal Sans is drawn tight for headlines; a little tracking opens it up at text sizes. */
+    letter-spacing: 0.01em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -252,7 +255,17 @@
   h2,
   h3 {
     color: var(--heading);
+    letter-spacing: 0;
     text-wrap: balance;
+  }
+
+  /* Mono keeps its own spacing: ids and keys are read character by character. */
+  code,
+  kbd,
+  pre,
+  samp,
+  .font-mono {
+    letter-spacing: 0;
   }
 
   .lucide {

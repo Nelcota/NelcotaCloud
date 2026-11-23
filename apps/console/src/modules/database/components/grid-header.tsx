@@ -6,7 +6,7 @@ import { cn } from '@/shared/lib/utils'
 import { TableHead, TableHeader, TableRow } from '@/shared/ui/primitives/table'
 
 /** Solid so rows never show through while they scroll under it. */
-const STICKY_HEAD = 'sticky top-0 z-[2] h-8 border-b border-border/60 bg-card font-mono'
+const STICKY_HEAD = 'sticky top-0 z-[2] h-9 border-b border-border/60 bg-card font-mono'
 
 type GridHeaderProps = {
   columns: readonly GridColumn[]
@@ -42,7 +42,7 @@ function KeyMark({ isKey }: { isKey: boolean }): JSX.Element | null {
     return null
   }
 
-  return <KeyRound aria-label="Chave primária" className="size-3.5 shrink-0 text-primary" />
+  return <KeyRound aria-label="Chave primária" className="size-4 shrink-0 text-primary" />
 }
 
 function ColumnType({ type }: { type?: string }): JSX.Element | null {

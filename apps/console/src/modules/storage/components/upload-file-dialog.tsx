@@ -47,7 +47,7 @@ export function UploadFileDialog({ projectId, bucket }: UploadFileDialogProps): 
         className="sm:max-w-md"
         onPointerDownOutside={(event) => event.preventDefault()}
       >
-        <DialogHeader className="pe-8">
+        <DialogHeader>
           <DialogTitle>Enviar arquivo</DialogTitle>
           <DialogDescription>
             Para o bucket <span className="font-mono text-foreground">{bucket.name}</span>.

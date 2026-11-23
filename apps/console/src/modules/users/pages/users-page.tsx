@@ -16,7 +16,7 @@ export function UsersPage(): JSX.Element {
     <div className="flex flex-col gap-5">
       <PageHeader
         title="Usuários"
-        description="Os usuários do seu app: como entram, situação e último login."
+        description="Quem se cadastrou no seu app."
         actions={
           <ApiSheet
             title="Usuários pela API"

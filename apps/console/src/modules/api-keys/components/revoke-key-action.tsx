@@ -1,4 +1,4 @@
-import { Ellipsis, Trash2, KeyRound as Key } from 'lucide-react'
+import { Ellipsis, Trash2, KeyRound as Key, Ban } from 'lucide-react'
 import type { JSX } from 'react'
 import { useState } from 'react'
 
@@ -59,6 +59,7 @@ export function RevokeKeyAction(props: RevokeKeyActionProps): JSX.Element {
             onSelect={() => setIsConfirming(true)}
           >
             <Trash2 aria-hidden />
+            <Ban aria-hidden data-icon="inline-start" />
             Revogar
           </DropdownMenuItem>
         </DropdownMenuContent>

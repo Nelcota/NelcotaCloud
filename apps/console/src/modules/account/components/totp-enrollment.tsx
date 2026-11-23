@@ -1,3 +1,4 @@
+import { ShieldCheck } from 'lucide-react'
 import type { JSX } from 'react'
 
 import { TotpEnrollmentSteps } from '@/modules/account/components/totp-enrollment-steps'
@@ -19,6 +20,7 @@ export function TotpEnrollment(): JSX.Element {
           isPending={enrollment.isPending}
           onClick={() => enrollment.mutate()}
         >
+          <ShieldCheck aria-hidden data-icon="inline-start" />
           Ativar MFA
         </PendingButton>
       </div>

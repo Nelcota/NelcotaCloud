@@ -54,7 +54,7 @@ export function CreateTableDialog({ projectId }: { projectId: string }): JSX.Ele
         size="xl"
         description="Ela começa com row level security ligado: os apps só alcançam as linhas que uma política liberar."
         confirmLabel="Criar tabela"
-        canConfirm={isReady(name, columns)}
+        missing={tableMissing(name, columns)}
         onConfirm={create}
       >
         <TextField
@@ -78,10 +78,18 @@ export function CreateTableDialog({ projectId }: { projectId: string }): JSX.Ele
   )
 }
 
-function isReady(name: string, columns: readonly ColumnDraft[]): boolean {
-  if (isObjectName(name) === false || columns.length === 0) {
-    return false
+function tableMissing(name: string, columns: readonly ColumnDraft[]): string | null {
+  if (isObjectName(name) === false) {
+    return 'Dê um nome válido à tabela'
   }
 
-  return columns.every(isDraftComplete) && haveDistinctNames(columns)
+  if (columns.every(isDraftComplete) === false) {
+    return 'Dê um nome válido a cada coluna'
+  }
+
+  if (haveDistinctNames(columns) === false) {
+    return 'Cada coluna precisa de um nome diferente'
+  }
+
+  return null
 }

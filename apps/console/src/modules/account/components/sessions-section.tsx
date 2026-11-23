@@ -14,11 +14,7 @@ export function SessionsSection(): JSX.Element {
   const revocation = useRevokeSessionMutation()
 
   return (
-    <SettingsSection
-      title="Sessões ativas"
-      description="Onde sua conta está aberta."
-      footer={othersFooter(sessions.data)}
-    >
+    <SettingsSection title="Sessões ativas" footer={othersFooter(sessions.data)}>
       <LoadError error={sessions.error} onRetry={() => sessions.refetch()} />
       <SessionRows
         sessions={sessionsToShow(sessions.isError, sessions.data)}

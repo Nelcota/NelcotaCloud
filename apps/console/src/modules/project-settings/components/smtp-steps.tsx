@@ -11,7 +11,7 @@ import { SmtpReview } from '@/modules/project-settings/components/smtp-review'
 import { SmtpSenderStep } from '@/modules/project-settings/components/smtp-sender-step'
 import { SmtpServerStep } from '@/modules/project-settings/components/smtp-server-step'
 import type { DialogStep } from '@/shared/ui/step-dialog/step-dialog'
-import { missingUnless } from '@/shared/ui/step-dialog/missing-unless'
+import { missingUnless } from '@/shared/lib/missing-unless'
 
 /**
  * The SMTP steps. The server step only appears for "Outro": every other provider already fills
@@ -21,26 +21,23 @@ export function smtpSteps(step: SmtpStepProps): DialogStep[] {
   const draft = step.draft
   const providerStep: DialogStep = {
     label: 'Provedor',
-    description: 'Escolha quem envia os seus emails. Preenchemos o servidor para você.',
+    description: 'Preenchemos o servidor para você.',
     missing: missingUnless(isProviderComplete(draft), providerMissing(draft)),
     content: <SmtpProviderStep {...step} />,
   }
   const serverStep: DialogStep = {
     label: 'Servidor',
-    description: 'O endereço do servidor e o tipo de conexão que ele usa.',
     missing: missingUnless(isServerComplete(draft), 'Preencha o servidor e a porta'),
     content: <SmtpServerStep {...step} />,
   }
   const remainingSteps: DialogStep[] = [
     {
       label: 'Login',
-      description: 'O usuário e a senha que o seu provedor de email deu.',
       missing: missingUnless(isLoginComplete(draft), 'Preencha o usuário e a senha'),
       content: <SmtpLoginStep {...step} />,
     },
     {
       label: 'Remetente',
-      description: 'O nome e o email que aparecem na caixa de entrada.',
       missing: missingUnless(draft.senderEmail.trim().includes('@'), 'Digite o email do remetente'),
       content: <SmtpSenderStep {...step} />,
     },

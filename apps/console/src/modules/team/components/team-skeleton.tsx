@@ -16,7 +16,7 @@ export function TeamSkeleton(): JSX.Element {
       <div className="flex flex-col gap-3">
         <Skeleton className="h-4 w-24" />
         <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
-          <div className="h-9 border-b border-border/60" />
+          <div className="h-11 border-b border-border/60" />
           {SKELETON_ROWS.map((row) => (
             <div
               key={row}

@@ -27,7 +27,7 @@ export function CreationProgressStep({ step }: { step: CreationStep }): JSX.Elem
         <StateText state={step.state} />
       </span>
       {step.details.map((detail) => (
-        <code key={detail} className="truncate ps-6.5 font-mono text-2xs text-muted-foreground">
+        <code key={detail} className="truncate ps-6.5 font-mono text-xs text-muted-foreground">
           {detail}
         </code>
       ))}

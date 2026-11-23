@@ -29,10 +29,10 @@ export function ProjectPreview({ draft }: { draft: ProjectDraft }): JSX.Element 
           <ProjectAvatar name={name} size="sm" />
           <div className="grid min-w-0">
             <p className="truncate text-sm font-medium text-heading">{name}</p>
-            <p className="truncate font-mono text-2xs text-muted-foreground">{slug}</p>
+            <p className="truncate font-mono text-xs text-muted-foreground">{slug}</p>
           </div>
         </div>
-        <p className="truncate font-mono text-2xs text-muted-foreground" title={site}>
+        <p className="truncate font-mono text-xs text-muted-foreground" title={site}>
           {site}
         </p>
         <div className="flex min-w-0 items-center justify-between gap-2 text-2xs">

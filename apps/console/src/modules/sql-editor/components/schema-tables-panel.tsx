@@ -11,7 +11,7 @@ import { SearchField } from '@/shared/ui/search-field'
 type TableOverview = components['schemas']['TableOverview']
 
 const TABLE_ITEM =
-  'flex h-8 w-full items-center gap-2 rounded-md px-2 text-start text-sm text-muted-foreground transition-colors duration-200 ease-standard hover:bg-surface-hover hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring'
+  'flex h-9 w-full items-center gap-2 rounded-md px-2.5 text-start text-sm text-muted-foreground transition-colors duration-200 ease-standard hover:bg-surface-hover hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring'
 
 type SchemaTablesPanelProps = {
   projectId: string
@@ -36,7 +36,7 @@ export function SchemaTablesPanel({ projectId, onPick }: SchemaTablesPanelProps)
         label="Buscar tabela"
         value={search}
         onValueChange={setSearch}
-        className="h-8 sm:max-w-none"
+        className="h-9 sm:max-w-none"
       />
       <LoadError error={schema.error} onRetry={() => schema.refetch()} />
       <TablesContent tables={tables} isPending={schema.isPending} search={search} onPick={onPick} />
@@ -82,7 +82,7 @@ function TablesContent({
             className={TABLE_ITEM}
             onClick={() => onPick(table.name)}
           >
-            <Table aria-hidden className="size-4 shrink-0" />
+            <Table aria-hidden className="size-4.5 shrink-0" />
             <span className="min-w-0 flex-1 truncate">{table.name}</span>
             <RowCount rows={table.estimated_rows} />
           </button>
@@ -107,7 +107,7 @@ function RowCount({ rows }: { rows: number | null | undefined }): JSX.Element | 
   }
 
   return (
-    <span className="shrink-0 font-mono text-2xs text-muted-foreground tabular-nums">
+    <span className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
       {formatCount(rows)}
     </span>
   )
