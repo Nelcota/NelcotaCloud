@@ -90,6 +90,20 @@ describe('signInWithPassword', () => {
     expect(failure).toBeInstanceOf(NelcotaError)
     expect(failure).toMatchObject({ status: 401, code: 'invalid_credentials', requestId: 'req-1' })
   })
+
+  it('exposes the server backoff period on a rate-limited request', async () => {
+    const api = new FakeApi()
+    api.reply('POST /auth/v1/login', {
+      status: 429,
+      body: { error: 'too_many_requests', message: 'try again later' },
+      headers: { 'Retry-After': '17' },
+    })
+
+    await expect(clientFor(api).auth.signInWithPassword(CREDENTIALS)).rejects.toMatchObject({
+      status: 429,
+      retryAfterSeconds: 17,
+    })
+  })
 })
 
 describe('session renewal', () => {

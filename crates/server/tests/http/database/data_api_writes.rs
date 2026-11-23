@@ -18,6 +18,31 @@ CREATE TABLE orders (
 ";
 
 #[tokio::test]
+async fn maps_deferred_constraint_errors_at_commit_and_rolls_back() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    developer_sql(
+        &server,
+        &tenant,
+        "CREATE TABLE parents (id int PRIMARY KEY);
+         CREATE TABLE children (parent_id int REFERENCES parents (id) DEFERRABLE INITIALLY DEFERRED);",
+    )
+    .await?;
+    let service = Credentials::service(&tenant);
+    let refused = rest(
+        &server,
+        service,
+        RestRequest::with_body(Method::POST, "/children", json!({ "parent_id": 1 })),
+    )
+    .await?;
+    assert_eq!(refused.status(), StatusCode::CONFLICT);
+    assert_eq!(error_code(refused).await?, "foreign_key_violation");
+    assert_eq!(rest_json(&server, service, "/children").await?, json!([]));
+
+    server.drop_tenant(&tenant).await
+}
+
+#[tokio::test]
 async fn inserts_upserts_updates_and_deletes_rows() -> TestResult {
     let server = TestServer::start().await?;
     let tenant = server.create_tenant().await?;

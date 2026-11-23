@@ -1,11 +1,12 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use reqwest::header::CONTENT_TYPE;
 use time::OffsetDateTime;
 
 use crate::modules::webhooks::delivery::public_resolver::PublicResolver;
+use crate::modules::webhooks::delivery::response_excerpt::read_excerpt;
 use crate::modules::webhooks::delivery::webhook_request::{
-    DeliveryOutcome, DeliveryTarget, WebhookMessage, failed, outcome_of,
+    AttemptReport, DeliveryOutcome, DeliveryTarget, WebhookMessage, failed, outcome_of,
 };
 use crate::modules::webhooks::endpoint::webhook_url::{WebhookHostPolicy, WebhookUrl};
 use crate::modules::webhooks::signing::webhook_signature::{SignedContent, signature_header};
@@ -47,10 +48,10 @@ impl WebhookTransport {
     }
 
     /// Sends one signed request. Any 2xx answer counts as delivered.
-    pub async fn send(&self, target: &DeliveryTarget, message: &WebhookMessage) -> DeliveryOutcome {
+    pub async fn send(&self, target: &DeliveryTarget, message: &WebhookMessage) -> AttemptReport {
         // Checked again on every attempt: the policy may be stricter than when it was saved.
         if let Err(error) = WebhookUrl::parse(&target.url, self.policy) {
-            return failed(None, &error);
+            return AttemptReport::unanswered(failed(None, &error));
         }
 
         let timestamp = OffsetDateTime::now_utc().unix_timestamp();
@@ -61,7 +62,7 @@ impl WebhookTransport {
         };
         let signature = match signature_header(&target.secrets, &content) {
             Ok(signature) => signature,
-            Err(error) => return failed(None, &error),
+            Err(error) => return AttemptReport::unanswered(failed(None, &error)),
         };
         let request = self
             .client
@@ -72,11 +73,29 @@ impl WebhookTransport {
             .header(SIGNATURE_HEADER, signature)
             .body(message.body.clone());
 
-        match request.send().await {
-            Ok(response) => outcome_of(response.status()),
-            Err(error) => failed(None, &error.without_url()),
+        let started = Instant::now();
+        let response = match request.send().await {
+            Ok(response) => response,
+            Err(error) => return AttemptReport::unanswered(failed(None, &error.without_url())),
+        };
+        let duration_ms = i32::try_from(started.elapsed().as_millis()).ok();
+        let outcome = outcome_of(response.status());
+
+        AttemptReport {
+            response_excerpt: refusal_excerpt(&outcome, response).await,
+            outcome,
+            duration_ms,
         }
     }
+}
+
+/// Only a refusal's answer is kept: an accepted delivery needs no debugging.
+async fn refusal_excerpt(outcome: &DeliveryOutcome, response: reqwest::Response) -> Option<String> {
+    if matches!(outcome, DeliveryOutcome::Delivered { .. }) {
+        return None;
+    }
+
+    read_excerpt(response).await
 }
 
 #[cfg(test)]
@@ -95,10 +114,10 @@ mod tests {
             id: "evt".to_owned(),
             body: "{}".to_owned(),
         };
-        let outcome = transport.send(&target, &message).await;
+        let report = transport.send(&target, &message).await;
 
         assert!(matches!(
-            outcome,
+            report.outcome,
             DeliveryOutcome::Failed { status: None, .. }
         ));
         Ok(())

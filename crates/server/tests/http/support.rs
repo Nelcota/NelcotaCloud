@@ -1,7 +1,8 @@
 use std::error::Error;
 use std::future::IntoFuture;
-use std::net::SocketAddr;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
@@ -9,6 +10,7 @@ use reqwest::{Client, Response};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use server::app_config::AppConfig;
+use server::app_state::AppState;
 use server::modules::oauth::provider::provider_endpoints::{OAuthEndpoints, ProviderEndpoints};
 use server::router::build_router;
 use server::shared::crypto::hex_encoding::encode_hex;
@@ -31,6 +33,9 @@ pub type TestResult<T = ()> = Result<T, Box<dyn Error>>;
 const SECRET_BYTES: usize = 32;
 // All fixture APIs and workers share the same control plane and encryption key.
 static MASTER_KEY: LazyLock<String> = LazyLock::new(|| encode_hex(&random_bytes::<SECRET_BYTES>()));
+// Fixture clients share the control plane but should model independent client addresses.
+static NEXT_CLIENT_IP: LazyLock<AtomicU32> =
+    LazyLock::new(|| AtomicU32::new(u32::from_be_bytes(random_bytes::<4>())));
 // Include server-side causes of generic HTTP errors in the failing test's output.
 static TEST_TRACING: LazyLock<()> = LazyLock::new(|| {
     tracing_subscriber::fmt()
@@ -89,11 +94,14 @@ pub struct TestServer {
     _background: server::startup::background_tasks::BackgroundTasks,
     workers: JoinSet<()>,
     pub client: Client,
+    pub client_ip: Ipv4Addr,
     pub fake_github: FakeGitHub,
     /// Kept alive for the whole test: the server checks captcha tokens against it.
     _fake_turnstile: FakeTurnstile,
     /// Slug the server treats as the platform tenant; created on demand by tests.
     pub platform_slug: String,
+    /// The running server's state, for tests that drive a background job by hand.
+    pub state: AppState,
     base_url: String,
     admin_token: String,
     mailpit_api_url: String,
@@ -211,6 +219,10 @@ impl TestServer {
             storage_r2_endpoint: storage_endpoint,
             platform_tenant_slug: Some(platform_slug.clone()),
             captcha_verify_url: Some(fake_turnstile.verify_url.clone()),
+            database_public_host: Some("db.nelcota.test".to_owned()),
+            database_public_port: None,
+            database_public_ssl_mode: None,
+            pooler_auth_password: None,
         };
         let fake_github = FakeGitHub::start().await;
         let endpoints = fake_endpoints(&fake_github, google);
@@ -221,13 +233,16 @@ impl TestServer {
         let _server_task = tokio::spawn(
             axum::serve(
                 listener,
-                build_router(state).into_make_service_with_connect_info::<SocketAddr>(),
+                build_router(state.clone()).into_make_service_with_connect_info::<SocketAddr>(),
             )
             .into_future(),
         );
 
+        let [_, high, middle, low] = NEXT_CLIENT_IP.fetch_add(1, Ordering::Relaxed).to_be_bytes();
+        let client_ip = Ipv4Addr::new(127, high, middle, low);
         let client = Client::builder()
             .redirect(reqwest::redirect::Policy::none())
+            .local_address(IpAddr::V4(client_ip))
             .build()?;
 
         Ok(Self {
@@ -235,9 +250,11 @@ impl TestServer {
             _background: background,
             workers: JoinSet::new(),
             client,
+            client_ip,
             fake_github,
             _fake_turnstile: fake_turnstile,
             platform_slug,
+            state,
             base_url,
             admin_token,
             mailpit_api_url: std::env::var("MAILPIT_API_URL")?,
@@ -251,6 +268,10 @@ impl TestServer {
 
     pub fn tenant_database_base_url(&self) -> &str {
         self.config.tenant_database_base_url.trim_end_matches('/')
+    }
+
+    pub fn config(&self) -> AppConfig {
+        self.config.clone()
     }
 
     pub fn url(&self, path: &str) -> String {

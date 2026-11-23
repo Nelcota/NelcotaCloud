@@ -2,6 +2,9 @@ import ArrowDown from '~icons/solar/alt-arrow-down-linear'
 import type { JSX } from 'react'
 
 import { RoleBadge } from '@/modules/projects/components/role-badge'
+import type { components } from '@/shared/api/api-schema'
+
+type ProjectRole = components['schemas']['ProjectRole']
 
 /**
  * What each role can do, stated once and in full; folded by default, since it matters when
@@ -17,7 +20,11 @@ export function RoleSummary(): JSX.Element {
           className="text-muted-foreground size-5 transition-transform group-open:rotate-180 motion-reduce:transition-none"
         />
       </summary>
-      <div className="grid gap-4 border-t px-5 py-4 sm:grid-cols-2 sm:gap-8">
+      <div className="grid gap-4 border-t px-5 py-4 md:grid-cols-3 md:gap-8">
+        <RoleLine role="viewer">
+          Vê tudo o que um membro vê, sem mudar nada: dados, configurações, chaves e webhooks ficam
+          só para leitura.
+        </RoleLine>
         <RoleLine role="member">
           Gerencia o projeto inteiro: usuários do app, chaves de API (inclusive secret keys), chave
           de assinatura, login social, email e configurações.
@@ -31,7 +38,7 @@ export function RoleSummary(): JSX.Element {
   )
 }
 
-type RoleLineProps = { role: 'owner' | 'member'; children: string }
+type RoleLineProps = { role: ProjectRole; children: string }
 
 function RoleLine({ role, children }: RoleLineProps): JSX.Element {
   return (

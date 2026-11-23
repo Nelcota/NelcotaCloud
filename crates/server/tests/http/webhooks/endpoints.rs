@@ -1,10 +1,11 @@
 use reqwest::{Method, StatusCode};
 use serde_json::{Value, json};
+use uuid::Uuid;
 
 use super::receiver::{
     WebhookReceiver, create_endpoint, has_valid_signature, send, text, webhooks_request,
 };
-use crate::support::{TestResult, TestServer, error_code, field};
+use crate::support::{TestResult, TestServer, error_code, field, unique_email};
 
 #[tokio::test]
 async fn manages_endpoints_and_shows_the_secret_only_once() -> TestResult {
@@ -176,6 +177,51 @@ async fn test_event_reports_the_answer_and_rotation_signs_with_both_secrets() ->
     .await?;
     assert_eq!(field(&failed, "/delivered"), &json!(false));
     assert_eq!(field(&failed, "/response_status"), &json!(503));
+
+    server.drop_tenant(&tenant).await
+}
+
+#[tokio::test]
+async fn rotation_restores_delivery_when_the_previous_secret_is_unreadable() -> TestResult {
+    let mut server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    let receiver = WebhookReceiver::answering(204).await;
+    let (id, _) = create_endpoint(&server, &tenant, (&receiver.url(), &["user.created"])).await?;
+
+    let mut database = server.control_plane().await?;
+    sqlx::query("UPDATE webhook_endpoints SET secret_ciphertext = $2 WHERE id = $1")
+        .bind(Uuid::parse_str(&id)?)
+        .bind([0_u8; 32].as_slice())
+        .execute(&mut database)
+        .await?;
+    drop(database);
+
+    let rotated: Value =
+        webhooks_request(&server, &tenant, (Method::POST, &format!("/{id}/secret")))
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+    let secret = text(field(&rotated, "/secret"))?;
+    let result: Value = webhooks_request(&server, &tenant, (Method::POST, &format!("/{id}/test")))
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+    assert_eq!(field(&result, "/delivered"), &json!(true));
+
+    server.start_worker().await?;
+    server
+        .sign_up(&tenant, &unique_email("rotated-webhook"))
+        .await?;
+    let requests = receiver.wait_for(2).await?;
+    assert_eq!(requests.len(), 2);
+
+    for request in &requests {
+        assert!(has_valid_signature(request, &secret)?);
+    }
 
     server.drop_tenant(&tenant).await
 }

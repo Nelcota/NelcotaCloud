@@ -32,6 +32,7 @@ pub async fn create_webhook_endpoint(
 ) -> Result<(StatusCode, Json<WebhookEndpointWithSecret>), ApiError> {
     let request = EndpointRequest {
         url: &body.url,
+        description: body.description.as_deref(),
         event_types: &body.event_types,
     };
     let created = state

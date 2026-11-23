@@ -1,15 +1,14 @@
 import type { JSX } from 'react'
-import { useId, useState } from 'react'
+import { useState } from 'react'
 
 import { DeliveryLog } from '@/modules/webhooks/components/delivery-log'
 import { EndpointActions } from '@/modules/webhooks/components/endpoint-actions'
+import { EndpointEnabledSwitch } from '@/modules/webhooks/components/endpoint-enabled-switch'
 import { EVENT_TYPE_LABELS } from '@/modules/webhooks/components/event-types'
 import { TestWebhookButton } from '@/modules/webhooks/components/test-webhook-button'
-import { useUpdateWebhookEndpointMutation } from '@/modules/webhooks/queries/use-webhook-endpoints'
 import type { components } from '@/shared/api/api-schema'
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
-import { Switch } from '@/shared/ui/switch'
 
 type WebhookEndpointView = components['schemas']['WebhookEndpointView']
 
@@ -24,13 +23,7 @@ type EndpointCardProps = {
 /** One endpoint: where it points, what it receives, whether it is on, and its deliveries. */
 export function EndpointCard(props: EndpointCardProps): JSX.Element {
   const { endpoint, projectId } = props
-  const toggle = useUpdateWebhookEndpointMutation(projectId)
-  const switchId = useId()
   const [isLogOpen, setIsLogOpen] = useState(false)
-
-  function setEnabled(isEnabled: boolean): void {
-    toggle.mutate({ endpointId: endpoint.id, body: { is_enabled: isEnabled } })
-  }
 
   return (
     <section className="surface grid gap-4 p-5" aria-label={endpoint.url}>
@@ -43,15 +36,7 @@ export function EndpointCard(props: EndpointCardProps): JSX.Element {
             ))}
           </div>
         </div>
-        <label htmlFor={switchId} className="flex cursor-pointer items-center gap-2 text-sm">
-          <Switch
-            id={switchId}
-            checked={endpoint.is_enabled}
-            disabled={toggle.isPending}
-            onCheckedChange={setEnabled}
-          />
-          Ativo
-        </label>
+        <EndpointEnabledSwitch projectId={projectId} endpoint={endpoint} />
       </div>
       <EndpointActions
         projectId={projectId}

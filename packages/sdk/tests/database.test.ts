@@ -35,6 +35,8 @@ describe('database queries', () => {
       .or('title.ilike.*rust*,views.gt.1000')
       .order('created_at', { ascending: false, nullsFirst: false })
       .order('id', { referencedTable: 'comments' })
+      .order('title')
+      .order('created_at', { referencedTable: 'comments', ascending: false })
       .range(20, 29)
       .execute()
 
@@ -48,8 +50,8 @@ describe('database queries', () => {
       ['id', 'not.in.(1,2)'],
       ['deleted_at', 'is.null'],
       ['or', '(title.ilike.*rust*,views.gt.1000)'],
-      ['order', 'created_at.desc.nullslast'],
-      ['comments.order', 'id.asc'],
+      ['order', 'created_at.desc.nullslast,title.asc'],
+      ['comments.order', 'id.asc,created_at.desc'],
       ['offset', '20'],
       ['limit', '10'],
     ])

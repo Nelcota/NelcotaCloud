@@ -22,15 +22,11 @@ pub async fn load_user_sessions(
     pool: &PgPool,
     user_id: Uuid,
 ) -> Result<Option<UserSessions>, sqlx::Error> {
-    // Every login starts a refresh token family, and families are never deleted with the user
-    // still there, so the newest family start is the last login.
-    let last_sign_in: Option<Option<OffsetDateTime>> = sqlx::query_scalar(
-        "SELECT (SELECT max(family_started_at) FROM refresh_tokens WHERE user_id = users.id) \
-         FROM users WHERE id = $1",
-    )
-    .bind(user_id)
-    .fetch_optional(pool)
-    .await?;
+    let last_sign_in: Option<Option<OffsetDateTime>> =
+        sqlx::query_scalar("SELECT last_sign_in_at FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_optional(pool)
+            .await?;
     let last_sign_in_at = match last_sign_in {
         Some(last_sign_in_at) => last_sign_in_at,
         None => return Ok(None),

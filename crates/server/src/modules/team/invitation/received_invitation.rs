@@ -4,6 +4,8 @@ use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+use crate::modules::tenants::platform::membership_repository::lock_team_project;
+
 /// An invitation as the invited console account sees it.
 #[derive(Debug, Serialize, ToSchema, sqlx::FromRow)]
 pub struct ReceivedInvitation {
@@ -45,16 +47,25 @@ pub async fn accept_invitation(
     answer: InvitationAnswer<'_>,
 ) -> Result<Option<Uuid>, sqlx::Error> {
     let mut transaction = pool.begin().await?;
-    let invitation: Option<(Uuid, String)> = sqlx::query_as(
-        "DELETE FROM tenant_invitations WHERE id = $1 AND email = $2 RETURNING tenant_id, role",
+    let tenant_id: Option<Uuid> =
+        sqlx::query_scalar("SELECT tenant_id FROM tenant_invitations WHERE id = $1 AND email = $2")
+            .bind(answer.invitation_id)
+            .bind(answer.email)
+            .fetch_optional(&mut *transaction)
+            .await?;
+    let Some(tenant_id) = tenant_id else {
+        return Ok(None);
+    };
+    lock_team_project(&mut transaction, tenant_id).await?;
+    let role: Option<String> = sqlx::query_scalar(
+        "DELETE FROM tenant_invitations WHERE id = $1 AND email = $2 RETURNING role",
     )
     .bind(answer.invitation_id)
     .bind(answer.email)
     .fetch_optional(&mut *transaction)
     .await?;
-    let (tenant_id, role) = match invitation {
-        Some((tenant_id, role)) => (tenant_id, role),
-        None => return Ok(None),
+    let Some(role) = role else {
+        return Ok(None);
     };
     let membership = InvitedMembership {
         tenant_id,

@@ -2,12 +2,10 @@ use axum::Json;
 use axum::extract::State;
 
 use crate::app_state::AppState;
-use crate::modules::auth::audit::login_audit::record_login;
 use crate::modules::auth::login::login_completion::LoginResponse;
 use crate::modules::auth::login::magic_link_redemption::redeem_magic_link;
 use crate::modules::auth::routes::one_time_token_body::OneTimeTokenBody;
 use crate::modules::tenants::access::tenant_context::TenantContext;
-use crate::modules::tenants::audit::login_method::LoginMethod;
 use crate::modules::tenants::ip_blocks::address_guard::ensure_address_allowed;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::request_origin::RequestOrigin;
@@ -39,14 +37,12 @@ pub async fn verify_magic_link(
     let client_ip = origin.client_ip;
     state
         .rate_limits
-        .token_redemption
-        .check(tenant.tenant_id, client_ip)?;
+        .auth
+        .check_redemption(tenant.tenant_id, client_ip)
+        .await?;
     let webhooks = state.webhooks.recorder(tenant.tenant_id).await?;
     let signing = state.token_signing();
-    let response = redeem_magic_link((&signing, &webhooks), &tenant, &body.token).await?;
-    drop(webhooks);
-    let login = (LoginMethod::MagicLink, origin);
-    record_login(&tenant.pool, &response, login).await;
+    let response = redeem_magic_link((&signing, &webhooks), &tenant, (&body.token, origin)).await?;
 
     Ok(Json(response))
 }

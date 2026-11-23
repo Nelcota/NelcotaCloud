@@ -10,10 +10,6 @@ use crate::modules::auth::login::mfa_challenge_redemption::{
 };
 use crate::modules::auth::session::session_issuer::SessionTokens;
 use crate::modules::tenants::access::tenant_context::TenantContext;
-use crate::modules::tenants::audit::audit_action::AuditAction;
-use crate::modules::tenants::audit::audit_entry::NewAuditEvent;
-use crate::modules::tenants::audit::audit_recorder::record_audit_event;
-use crate::modules::tenants::audit::login_method::LoginMethod;
 use crate::modules::tenants::ip_blocks::address_guard::ensure_address_allowed;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::request_origin::RequestOrigin;
@@ -53,17 +49,12 @@ pub async fn complete_mfa_challenge(
     let answer = ChallengeAnswer {
         mfa_token: &body.mfa_token,
         code: &body.code,
-        origin: origin.clone(),
+        origin,
     };
 
     let access = state.factor_code_access();
     let signing = state.token_signing();
     let tokens = redeem_mfa_challenge((&access, &signing), &tenant, answer).await?;
-    let event = NewAuditEvent {
-        login_method: Some(LoginMethod::Totp),
-        ..NewAuditEvent::by_user(AuditAction::LoggedIn, tokens.user.id, origin)
-    };
-    record_audit_event(&tenant.pool, event).await;
 
     Ok(Json(tokens))
 }

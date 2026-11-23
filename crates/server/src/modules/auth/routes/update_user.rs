@@ -10,12 +10,13 @@ use crate::modules::auth::user::status_change::StatusChange;
 use crate::modules::auth::user::user_metadata::{
     MetadataObject, check_app_metadata_size, check_user_metadata_size,
 };
-use crate::modules::auth::user::user_metadata_update::{MetadataChange, update_user_metadata};
+use crate::modules::auth::user::user_metadata_update::{
+    MetadataChange, MetadataExpectations, update_user_metadata,
+};
 use crate::modules::auth::user::user_response::UserResponse;
 use crate::modules::tenants::access::tenant_admin_context::TenantAdminContext;
 use crate::modules::tenants::audit::audit_action::AuditAction;
 use crate::modules::tenants::audit::audit_entry::NewAuditEvent;
-use crate::modules::tenants::audit::audit_recorder::record_audit_event;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 use crate::shared::http::validated_json::ValidatedJson;
 
@@ -32,6 +33,14 @@ pub struct UpdateUserBody {
     #[validate(custom(function = check_app_metadata_size))]
     #[schema(value_type = Option<std::collections::HashMap<String, serde_json::Value>>)]
     pub app_metadata: Option<MetadataObject>,
+    /// Optional previous contents. Returns 409 if the stored profile has changed.
+    #[validate(custom(function = check_user_metadata_size))]
+    #[schema(value_type = Option<std::collections::HashMap<String, serde_json::Value>>)]
+    pub expected_user_metadata: Option<MetadataObject>,
+    /// Optional previous contents. Returns 409 if the stored app metadata has changed.
+    #[validate(custom(function = check_app_metadata_size))]
+    #[schema(value_type = Option<std::collections::HashMap<String, serde_json::Value>>)]
+    pub expected_app_metadata: Option<MetadataObject>,
 }
 
 fn require_a_document(body: &UpdateUserBody) -> Result<(), ValidationError> {
@@ -56,6 +65,7 @@ fn require_a_document(body: &UpdateUserBody) -> Result<(), ValidationError> {
         (status = 400, description = "Nothing to update, not a JSON object, or too large", body = ErrorBody),
         (status = 403, description = "Requires the secret API key, or membership in the project", body = ErrorBody),
         (status = 404, description = "No such user", body = ErrorBody),
+        (status = 409, description = "The metadata changed since it was opened", body = ErrorBody),
     )
 )]
 pub async fn update_user(
@@ -70,17 +80,18 @@ pub async fn update_user(
         user_metadata: body.user_metadata,
         app_metadata: body.app_metadata,
     };
-    let updated = update_user_metadata(&admin.pool, change, &webhooks)
-        .await
-        .map_err(ApiError::internal)?;
+    let expected = MetadataExpectations {
+        user: body.expected_user_metadata,
+        app: body.expected_app_metadata,
+    };
+    let event = NewAuditEvent::by_admin(AuditAction::UserUpdated, user_id, admin.author());
+    let updated =
+        update_user_metadata(&admin.pool, change, &webhooks, (expected, Some(event))).await?;
     let user = match updated {
         None => return Err(ApiError::NotFound("user")),
         Some(StatusChange::Unchanged(user)) => return Ok(Json(user.into())),
         Some(StatusChange::Changed(user)) => user,
     };
-
-    let event = NewAuditEvent::by_admin(AuditAction::UserUpdated, user_id, admin.author());
-    record_audit_event(&admin.pool, event).await;
 
     Ok(Json(user.into()))
 }

@@ -29,6 +29,7 @@ pub const OPENAPI_FILE: &str = "openapi.json";
         (name = "cache", description = "Optional project cache for application backends"),
         (name = "storage", description = "Private project buckets and signed file transfers"),
         (name = "webhooks", description = "Signed HTTP calls to the tenant's servers when its users change (Standard Webhooks)"),
+        (name = "notifications", description = "Where a project's alerts go: email, Discord and Slack"),
         (name = "platform", description = "Projects of a console account (platform access token)"),
         (name = "platform-admin", description = "Operations of the platform operator (admin token)"),
         (name = "system", description = "Health of the API")

@@ -1,6 +1,7 @@
 import type { JSX, ReactNode, SubmitEvent } from 'react'
 import { useState } from 'react'
 
+import { useReadOnlyReason } from '@/shared/auth/write-access'
 import { Button } from '@/shared/ui/button'
 import { type ConfirmChange, ConfirmChangePreview } from '@/shared/ui/confirm-change'
 import {
@@ -69,6 +70,8 @@ export function ConfirmDialog(props: ConfirmDialogProps): JSX.Element {
 
   async function submit(event: SubmitEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
+    // The dialog is portaled, but React still bubbles its submit to a form around the trigger.
+    event.stopPropagation()
 
     if (isBlocked(props, typedText) || isWorking) {
       return
@@ -124,6 +127,7 @@ export function ConfirmDialog(props: ConfirmDialogProps): JSX.Element {
           />
           <ErrorAlert error={error} />
           <DialogFooter>
+            <ReadOnlyNote />
             <Button
               type="button"
               variant="outline"
@@ -146,6 +150,17 @@ export function ConfirmDialog(props: ConfirmDialogProps): JSX.Element {
       </DialogContent>
     </Dialog>
   )
+}
+
+/** Why the confirm button waits on a project the account may only read. */
+function ReadOnlyNote(): JSX.Element | null {
+  const readOnlyReason = useReadOnlyReason()
+
+  if (readOnlyReason === null) {
+    return null
+  }
+
+  return <p className="text-muted-foreground text-sm sm:mr-auto sm:self-center">{readOnlyReason}</p>
 }
 
 function notifyOpen(props: ConfirmDialogProps, isOpen: boolean): void {

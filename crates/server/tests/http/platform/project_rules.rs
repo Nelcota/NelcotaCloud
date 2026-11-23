@@ -138,10 +138,40 @@ async fn unverified_accounts_cannot_accept_invitations() -> TestResult {
         .await?;
     let project_id = create_project(&server, &owner).await?;
 
-    let accepted = invite_and_accept(&server, (&owner, &unverified), &project_id).await?;
+    let path = format!("/platform/v1/projects/{project_id}/invitations");
+    let body = json!({ "email": unverified.user.email });
+    let invitation: Value = as_account(&server, &owner, (Method::POST, &path, Some(body)))
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+    let received: Vec<Value> = as_account(
+        &server,
+        &unverified,
+        (Method::GET, "/platform/v1/invitations", None),
+    )
+    .await?
+    .error_for_status()?
+    .json()
+    .await?;
+    assert!(received.is_empty());
+
+    let answer = format!("/platform/v1/invitations/{}", text_at(&invitation, "/id"));
+    let declined = as_account(&server, &unverified, (Method::DELETE, &answer, None)).await?;
+    assert_eq!(declined.status(), StatusCode::FORBIDDEN);
+    assert_eq!(error_code(declined).await?, "email_not_verified");
+    let accept = format!("{answer}/accept");
+    let accepted = as_account(&server, &unverified, (Method::POST, &accept, None)).await?;
 
     assert_eq!(accepted.status(), StatusCode::FORBIDDEN);
     assert_eq!(error_code(accepted).await?, "email_not_verified");
+    let cancel = format!("{path}/{}", text_at(&invitation, "/id"));
+    assert_eq!(
+        as_account(&server, &owner, (Method::DELETE, &cancel, None))
+            .await?
+            .status(),
+        StatusCode::NO_CONTENT
+    );
     delete_project(&server, &owner, &project_id)
         .await?
         .error_for_status()?;

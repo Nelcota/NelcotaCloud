@@ -86,6 +86,7 @@ async fn deliver_batch(
     abandon_orphaned_deliveries(pool, &loaded.enabled_endpoint_ids, targets_loaded_at).await?;
     let batch = DeliveryBatch {
         pool,
+        control_plane_pool: &context.control_plane_pool,
         transport: &context.transport,
         targets: &loaded.targets,
         progress: &context.progress,

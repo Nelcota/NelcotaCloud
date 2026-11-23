@@ -23,6 +23,11 @@ async fn lists_configured_providers_without_secrets() -> TestResult {
     let body = response.text().await?;
     assert!(body.contains(FAKE_CLIENT_SECRET) == false);
     let after: ConfiguredProviders = serde_json::from_str(&body)?;
+    assert_eq!(
+        after.callback_url,
+        "http://auth.test/auth/v1/oauth/callback"
+    );
+    assert_eq!(after.redirect_urls, ["http://app.test/"]);
     let github = match after.providers.as_slice() {
         [github] => github,
         _ => return Err("expected exactly one provider".into()),
@@ -84,6 +89,8 @@ async fn configure_github(server: &TestServer, tenant: &CreatedTenant) -> TestRe
 #[derive(Deserialize)]
 struct ConfiguredProviders {
     providers: Vec<ConfiguredProvider>,
+    callback_url: String,
+    redirect_urls: Vec<String>,
 }
 
 #[derive(Deserialize)]

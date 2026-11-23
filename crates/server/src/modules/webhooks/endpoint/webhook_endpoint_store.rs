@@ -1,6 +1,7 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::modules::webhooks::endpoint::endpoint_description::parse_description;
 use crate::modules::webhooks::endpoint::webhook_endpoint_error::WebhookEndpointError;
 use crate::modules::webhooks::endpoint::webhook_endpoint_repository::{
     NewWebhookEndpoint, StoredWebhookEndpoint, WebhookEndpointChanges, delete_endpoint,
@@ -11,7 +12,6 @@ use crate::modules::webhooks::endpoint::webhook_endpoint_view::{
 };
 use crate::modules::webhooks::endpoint::webhook_url::{WebhookHostPolicy, WebhookUrl};
 use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
-use crate::modules::webhooks::outbox::webhook_subscriptions::WebhookSubscriptions;
 use crate::modules::webhooks::scheduling::webhook_schedule_repository::mark_due_now;
 use crate::modules::webhooks::signing::webhook_secret::WebhookSecret;
 use crate::shared::crypto::secret_box::SecretBox;
@@ -19,22 +19,23 @@ use crate::shared::crypto::secret_box::SecretBox;
 /// A new endpoint as its owner typed it.
 pub struct EndpointRequest<'a> {
     pub url: &'a str,
+    pub description: Option<&'a str>,
     pub event_types: &'a [WebhookEventType],
 }
 
 /// Changes to an endpoint; `None` keeps the current value.
 pub struct EndpointUpdate<'a> {
     pub url: Option<&'a str>,
+    /// A blank name removes it.
+    pub description: Option<&'a str>,
     pub event_types: Option<&'a [WebhookEventType]>,
     pub is_enabled: Option<bool>,
 }
 
-/// Saves a tenant's webhook endpoints. Every change drops the cached subscriptions, so the
-/// next request records events for exactly what was saved.
+/// Saves a tenant's webhook endpoints and schedules cleanup for inactive endpoints.
 pub struct WebhookEndpointStore<'a> {
     pub control_plane_pool: &'a PgPool,
     pub secret_box: &'a SecretBox,
-    pub subscriptions: &'a WebhookSubscriptions,
     pub policy: WebhookHostPolicy,
 }
 
@@ -53,6 +54,11 @@ impl WebhookEndpointStore<'_> {
         request: EndpointRequest<'_>,
     ) -> Result<WebhookEndpointWithSecret, WebhookEndpointError> {
         let url = WebhookUrl::parse(request.url, self.policy)?;
+        let description = request
+            .description
+            .map(parse_description)
+            .transpose()?
+            .flatten();
         let event_types = event_type_names(request.event_types)?;
         let endpoint_id = Uuid::new_v4();
         let secret = WebhookSecret::generate();
@@ -62,6 +68,7 @@ impl WebhookEndpointStore<'_> {
             id: endpoint_id,
             tenant_id,
             url: url.as_str(),
+            description: description.as_deref(),
             event_types: &event_types,
             secret_ciphertext: &secret_ciphertext,
         };
@@ -70,7 +77,7 @@ impl WebhookEndpointStore<'_> {
             .await?
             .ok_or(WebhookEndpointError::LimitReached)?;
 
-        Ok(self.reveal_secret(stored, &secret))
+        Ok(reveal_secret(stored, &secret))
     }
 
     pub async fn update(
@@ -83,8 +90,10 @@ impl WebhookEndpointStore<'_> {
             .map(|raw| WebhookUrl::parse(raw, self.policy))
             .transpose()?;
         let event_types = update.event_types.map(event_type_names).transpose()?;
+        let description = update.description.map(parse_description).transpose()?;
         let changes = WebhookEndpointChanges {
             url: url.as_ref().map(WebhookUrl::as_str),
+            description: description.as_ref().map(Option::as_deref),
             event_types: event_types.as_deref(),
             is_enabled: update.is_enabled,
         };
@@ -99,7 +108,7 @@ impl WebhookEndpointStore<'_> {
         }
 
         transaction.commit().await?;
-        self.subscriptions.forget(tenant_id);
+
         Ok(WebhookEndpointView::from(stored))
     }
 
@@ -117,7 +126,6 @@ impl WebhookEndpointStore<'_> {
         // The worker gives up the endpoint's pending deliveries on its next look.
         mark_due_now(&mut *transaction, &[tenant_id]).await?;
         transaction.commit().await?;
-        self.subscriptions.forget(tenant_id);
 
         Ok(())
     }
@@ -137,20 +145,17 @@ impl WebhookEndpointStore<'_> {
             .await?
             .ok_or(WebhookEndpointError::NotFound)?;
 
-        Ok(self.reveal_secret(stored, &secret))
+        Ok(reveal_secret(stored, &secret))
     }
+}
 
-    fn reveal_secret(
-        &self,
-        stored: StoredWebhookEndpoint,
-        secret: &WebhookSecret,
-    ) -> WebhookEndpointWithSecret {
-        self.subscriptions.forget(stored.tenant_id);
-
-        WebhookEndpointWithSecret {
-            endpoint: WebhookEndpointView::from(stored),
-            secret: secret.encode(),
-        }
+fn reveal_secret(
+    stored: StoredWebhookEndpoint,
+    secret: &WebhookSecret,
+) -> WebhookEndpointWithSecret {
+    WebhookEndpointWithSecret {
+        endpoint: WebhookEndpointView::from(stored),
+        secret: secret.encode(),
     }
 }
 

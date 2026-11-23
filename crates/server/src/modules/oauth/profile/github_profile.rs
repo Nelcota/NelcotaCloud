@@ -35,5 +35,6 @@ pub(super) async fn fetch_github_profile(
     Ok(ProviderProfile {
         provider_user_id: user.id.to_string(),
         verified_email,
+        needs_email_confirmation: false,
     })
 }

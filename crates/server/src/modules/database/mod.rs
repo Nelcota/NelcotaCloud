@@ -1,5 +1,6 @@
 pub mod access;
 pub mod admin;
+pub mod direct_connection;
 pub mod execution;
 pub mod query;
 pub mod rejection;
@@ -7,3 +8,5 @@ pub mod routes;
 pub mod rows;
 pub mod schema;
 pub mod sql;
+pub mod types;
+pub mod usage;

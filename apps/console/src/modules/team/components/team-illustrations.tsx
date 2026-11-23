@@ -1,5 +1,6 @@
 import Cloud from '~icons/solar/cloud-linear'
 import Crown from '~icons/solar/crown-minimalistic-linear'
+import Eye from '~icons/solar/eye-linear'
 import User from '~icons/solar/user-linear'
 import UsersGroup from '~icons/solar/users-group-rounded-linear'
 import type { JSX } from 'react'
@@ -59,6 +60,22 @@ const MEMBER_STORIES: Record<MemberAction, MemberStory> = {
     description: 'Deixa de ser dono e continua no projeto como membro.',
     nodes: [
       { icon: Crown, label: 'Dono', tone: 'gone' },
+      { icon: User, label: 'Membro', tone: 'focus' },
+    ],
+    links: [{ label: 'novo papel', state: 'flowing' }],
+  },
+  restrict: {
+    description: 'Continua vendo o projeto, sem poder mudar nada.',
+    nodes: [
+      { icon: User, label: 'Membro' },
+      { icon: Eye, label: 'Leitura', tone: 'focus' },
+    ],
+    links: [{ label: 'novo papel', state: 'flowing' }],
+  },
+  'allow-edit': {
+    description: 'Volta a gerenciar o projeto como membro.',
+    nodes: [
+      { icon: Eye, label: 'Leitura', tone: 'gone' },
       { icon: User, label: 'Membro', tone: 'focus' },
     ],
     links: [{ label: 'novo papel', state: 'flowing' }],

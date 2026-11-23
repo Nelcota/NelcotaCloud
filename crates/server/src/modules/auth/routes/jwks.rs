@@ -32,6 +32,6 @@ pub async fn jwks(
 
     Ok((
         [(CONTENT_TYPE, JSON_CONTENT_TYPE)],
-        signing_keys.jwks_json(),
+        signing_keys.jwks_json().map_err(ApiError::internal)?,
     ))
 }

@@ -12,9 +12,14 @@ use crate::modules::auth::user::user_lookup::{
     PasswordLock, find_credentials_by_email, lock_if_password_unchanged,
 };
 use crate::modules::tenants::access::tenant_context::TenantContext;
+use crate::modules::tenants::audit::audit_action::AuditAction;
+use crate::modules::tenants::audit::audit_entry::NewAuditEvent;
+use crate::modules::tenants::audit::audit_recorder::insert_audit_event;
+use crate::modules::tenants::audit::login_method::LoginMethod;
 use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::modules::tenants::settings::email_verification_policy::ensure_email_verified;
 use crate::shared::http::api_error::ApiError;
+use crate::shared::http::request_origin::RequestOrigin;
 
 /// An email and password typed at login, not validated yet.
 pub struct PasswordLogin<'a> {
@@ -31,7 +36,7 @@ pub struct PasswordLoginServices<'a> {
 pub async fn log_in_with_password(
     services: &PasswordLoginServices<'_>,
     tenant: &TenantContext,
-    login: PasswordLogin<'_>,
+    (login, origin): (PasswordLogin<'_>, RequestOrigin),
 ) -> Result<LoginResponse, ApiError> {
     let verified = authenticate(&tenant.pool, services.dummy_password_hash, login).await?;
     // Only after the password matched, so it never reveals anything to a wrong password.
@@ -39,7 +44,7 @@ pub async fn log_in_with_password(
     let pool = services.control_plane_pool;
     ensure_email_verified(pool, tenant.tenant_id, email_verified_at).await?;
 
-    open_session(&services.signing, tenant, verified).await
+    open_session(&services.signing, tenant, (verified, origin)).await
 }
 
 /// Creates the session while holding the user's row with the password just verified, so a
@@ -47,11 +52,12 @@ pub async fn log_in_with_password(
 async fn open_session(
     signing: &TokenSigning<'_>,
     tenant: &TenantContext,
-    verified: VerifiedCredentials,
+    (verified, origin): (VerifiedCredentials, RequestOrigin),
 ) -> Result<LoginResponse, ApiError> {
     let mut transaction = tenant.pool.begin().await?;
     lock_verified_password(&mut transaction, &verified).await?;
     let user = verified.user;
+    let user_id = user.id;
     let request = SessionRequest {
         tenant_id: tenant.tenant_id,
         connection: &mut transaction,
@@ -61,6 +67,14 @@ async fn open_session(
         },
     };
     let response = complete_login(signing, request).await?;
+    if matches!(response, LoginResponse::Session(_)) {
+        let event = NewAuditEvent {
+            login_method: Some(LoginMethod::Password),
+            ..NewAuditEvent::by_user(AuditAction::LoggedIn, user_id, origin)
+        };
+        insert_audit_event(&mut *transaction, event).await?;
+    }
+
     transaction.commit().await?;
 
     Ok(response)

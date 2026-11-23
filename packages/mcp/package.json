@@ -1,0 +1,36 @@
+{
+  "name": "@nelcota/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MCP server that lets AI agents work on a NelcotaCloud project: tables, rows, SQL, users, activity and traffic.",
+  "license": "UNLICENSED",
+  "bin": {
+    "nelcota-mcp": "./dist/index.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "scripts": {
+    "build": "tsdown",
+    "start": "node dist/index.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "oxlint",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "oxfmt": "^0.79.0",
+    "oxlint": "^1.94.0",
+    "tsdown": "^0.23.7",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.1"
+  },
+  "packageManager": "npm@12.2.3"
+}

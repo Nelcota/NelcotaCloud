@@ -16,12 +16,12 @@ pub async fn database_now(connection: &mut PgConnection) -> Result<OffsetDateTim
 pub struct OutboxEvent {
     pub id: Uuid,
     pub payload: Value,
+    pub endpoint_ids: Vec<Uuid>,
 }
 
 pub struct OutboxBatch<'a> {
     pub events: &'a [OutboxEvent],
     pub event_type: WebhookEventType,
-    pub endpoint_ids: &'a [Uuid],
 }
 
 /// Writes events and their pending deliveries inside the caller's transaction.
@@ -47,13 +47,24 @@ pub async fn insert_outbox_batch(
     .bind(&payloads)
     .execute(&mut *connection)
     .await?;
+
+    let (delivery_event_ids, endpoint_ids): (Vec<_>, Vec<_>) = batch
+        .events
+        .iter()
+        .flat_map(|event| {
+            event
+                .endpoint_ids
+                .iter()
+                .map(|endpoint_id| (event.id, *endpoint_id))
+        })
+        .unzip();
     sqlx::query(
         "INSERT INTO webhook_deliveries (id, event_id, endpoint_id) \
          SELECT gen_random_uuid(), event_id, endpoint_id \
-         FROM unnest($1::uuid[]) AS event_id CROSS JOIN unnest($2::uuid[]) AS endpoint_id",
+         FROM unnest($1::uuid[], $2::uuid[]) AS delivery(event_id, endpoint_id)",
     )
-    .bind(&event_ids)
-    .bind(batch.endpoint_ids)
+    .bind(&delivery_event_ids)
+    .bind(&endpoint_ids)
     .execute(connection)
     .await?;
 

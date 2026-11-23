@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::value::RawValue;
 use utoipa::ToSchema;
 use validator::{Validate, ValidationError};
 
@@ -25,17 +25,17 @@ pub struct CacheWriteRequest {
     /// Nonblank key of up to 256 UTF-8 bytes.
     #[validate(custom(function = "validate_key"))]
     pub key: String,
-    #[schema(value_type = Value)]
+    #[schema(value_type = serde_json::Value)]
     /// JSON value. Its serialized representation can be up to 64 KiB.
-    pub value: Value,
+    value: Box<RawValue>,
     #[validate(range(min = 1, max = "MAX_TTL_SECONDS"))]
     #[schema(minimum = 1, maximum = 3600, default = 300)]
     pub ttl_seconds: Option<u64>,
 }
 
 impl CacheWriteRequest {
-    pub fn encode_value(&self) -> Result<Vec<u8>, ApiError> {
-        let bytes = serde_json::to_vec(&self.value).map_err(ApiError::internal)?;
+    pub fn encoded_value(&self) -> Result<&[u8], ApiError> {
+        let bytes = self.value.get().as_bytes();
 
         if bytes.len() > MAX_VALUE_BYTES {
             return Err(ApiError::PayloadTooLarge);
@@ -51,8 +51,8 @@ impl CacheWriteRequest {
 
 #[derive(Serialize, ToSchema)]
 pub struct CacheEntry {
-    #[schema(value_type = Value, required = true)]
-    pub value: Value,
+    #[schema(value_type = serde_json::Value, required = true)]
+    pub value: Box<RawValue>,
 }
 
 fn validate_key(key: &str) -> Result<(), ValidationError> {
@@ -70,7 +70,7 @@ fn validate_key(key: &str) -> Result<(), ValidationError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
+    use serde_json::value::to_raw_value;
 
     #[test]
     fn validates_key_length_and_contents() {
@@ -82,17 +82,17 @@ mod tests {
     }
 
     #[test]
-    fn enforces_value_size_and_ttl() -> Result<(), ApiError> {
+    fn enforces_value_size_and_ttl() -> Result<(), Box<dyn std::error::Error>> {
         let mut request = CacheWriteRequest {
             key: "key".to_owned(),
-            value: json!("x".repeat(MAX_VALUE_BYTES - 2)),
+            value: to_raw_value(&"x".repeat(MAX_VALUE_BYTES - 2))?,
             ttl_seconds: None,
         };
         assert_eq!(request.ttl_seconds(), DEFAULT_TTL_SECONDS);
-        assert_eq!(request.encode_value()?.len(), MAX_VALUE_BYTES);
-        request.value = json!("x".repeat(MAX_VALUE_BYTES - 1));
+        assert_eq!(request.encoded_value()?.len(), MAX_VALUE_BYTES);
+        request.value = to_raw_value(&"x".repeat(MAX_VALUE_BYTES - 1))?;
         assert!(matches!(
-            request.encode_value(),
+            request.encoded_value(),
             Err(ApiError::PayloadTooLarge)
         ));
 

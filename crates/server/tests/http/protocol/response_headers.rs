@@ -75,6 +75,30 @@ async fn preflight_answers_are_cacheable() -> TestResult {
     Ok(())
 }
 
+#[tokio::test]
+async fn browser_requests_can_read_the_backoff_header() -> TestResult {
+    let server = TestServer::start().await?;
+    let response = server
+        .client
+        .get(server.url("/health"))
+        .header("origin", "https://app.example.com")
+        .send()
+        .await?;
+
+    let exposed = response
+        .headers()
+        .get("access-control-expose-headers")
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or_default();
+    assert!(
+        exposed
+            .split(',')
+            .any(|name| name.trim().eq_ignore_ascii_case("retry-after"))
+    );
+
+    Ok(())
+}
+
 /// Browser apps delete keys, users and sessions, so DELETE must pass the CORS preflight.
 #[tokio::test]
 async fn preflight_allows_delete() -> TestResult {

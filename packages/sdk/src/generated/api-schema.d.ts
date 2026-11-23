@@ -44,7 +44,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** `GET /admin/api-keys`: every key of the tenant, newest first, without the keys themselves. */
+        /**
+         * `GET /admin/api-keys`: active keys and the first page of revoked keys, newest first.
+         *     Pass the response cursor as `before` for the next page of revoked keys.
+         */
         get: operations["list_api_keys"];
         put?: never;
         /**
@@ -103,8 +106,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * `GET /admin/audit-events/export`: the matching events as a CSV file, newest first, up to
-         *     100,000 rows.
+         * `GET /admin/audit-events/export`: streams the matching events as a CSV file, newest first.
          * @description Takes the same filters as the activity log, so the file holds what the console shows.
          */
         get: operations["export_audit_events"];
@@ -234,6 +236,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/v1/admin/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /admin/logo`: the project's logo, for the people who manage it. */
+        get: operations["read_project_logo"];
+        /**
+         * `PUT /admin/logo`: the body is the image itself (PNG, JPEG or WebP, up to 1 MiB). The server
+         *     crops it to a centered square, resizes it and stores it as JPEG.
+         */
+        put: operations["upload_project_logo"];
+        post?: never;
+        /**
+         * `DELETE /admin/logo`: the project goes back to its mascot or initials; succeeds when there
+         *     was no logo.
+         */
+        delete: operations["remove_project_logo"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /admin/notifications`: where the project sends its alerts. */
+        get: operations["list_notification_channels"];
+        put?: never;
+        /** `POST /admin/notifications`: adds an email address or a Discord or Slack webhook. */
+        post: operations["create_notification_channel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/notifications/{channel_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** `DELETE /admin/notifications/{channel_id}`: stops sending alerts there. */
+        delete: operations["delete_notification_channel"];
+        options?: never;
+        head?: never;
+        /** `PATCH /admin/notifications/{channel_id}`: which events the channel receives. */
+        patch: operations["change_notification_channel"];
+        trace?: never;
+    };
+    "/auth/v1/admin/notifications/{channel_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** `POST /admin/notifications/{channel_id}/test`: sends a test alert to the channel now. */
+        post: operations["test_notification_channel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/v1/admin/oauth": {
         parameters: {
             query?: never;
@@ -244,6 +324,23 @@ export interface paths {
         /** `GET /admin/oauth`: the providers the tenant has its own OAuth app for, without secrets. */
         get: operations["list_oauth_providers"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/oauth/redirects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace the project's registered app callback URLs. */
+        put: operations["configure_oauth_redirects"];
         post?: never;
         delete?: never;
         options?: never;
@@ -342,7 +439,9 @@ export interface paths {
         /**
          * `POST /admin/smtp/test`: sends a test email through the tenant's own SMTP server.
          * @description Waits for the server to accept the message, so the owner sees a delivery problem right
-         *     away. Only for a configured server: the platform's server is not offered as a free relay.
+         *     away. Either the saved server or, with `server`, settings about to be saved (checked by the
+         *     same host policy), so a wrong password is caught before auth emails depend on it. Never the
+         *     platform's server: it is not offered as a free relay.
          */
         post: operations["send_smtp_test"];
         delete?: never;
@@ -413,7 +512,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * `GET /admin/users/export`: the matching users as a CSV file, up to 100,000 rows.
+         * `GET /admin/users/export`: streams the matching users as a CSV file.
          * @description Takes the same filters and order as the user list, so the file holds what the console shows.
          */
         get: operations["export_users"];
@@ -504,7 +603,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** `POST /admin/users/{user_id}/logout`: ends every session; access tokens expire on their own. */
+        /** `POST /admin/users/{user_id}/logout`: ends every session in Auth. */
         post: operations["end_user_sessions"];
         delete?: never;
         options?: never;
@@ -634,7 +733,10 @@ export interface paths {
         delete: operations["delete_webhook_endpoint"];
         options?: never;
         head?: never;
-        /** `PATCH /admin/webhooks/{endpoint_id}`: changes the URL, the events or whether it is enabled. */
+        /**
+         * `PATCH /admin/webhooks/{endpoint_id}`: changes the URL, the name, the events or whether it
+         *     is enabled. Enabling it starts its delivery health afresh.
+         */
         patch: operations["change_webhook_endpoint"];
         trace?: never;
     };
@@ -645,10 +747,33 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** `GET /admin/webhooks/{endpoint_id}/deliveries`: the endpoint's 50 newest deliveries. */
+        /**
+         * `GET /admin/webhooks/{endpoint_id}/deliveries`: the endpoint's deliveries, newest first, 50
+         *     at a time; deliveries are kept for 7 days.
+         */
         get: operations["list_webhook_deliveries"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/v1/admin/webhooks/{endpoint_id}/deliveries/retry-failed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `POST /admin/webhooks/{endpoint_id}/deliveries/retry-failed`: sends every delivery that
+         *     gave up again, right away.
+         */
+        post: operations["retry_failed_webhook_deliveries"];
         delete?: never;
         options?: never;
         head?: never;
@@ -705,8 +830,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * `POST /admin/webhooks/{endpoint_id}/test`: sends a signed `webhook.test` event now and
-         *     answers with what the endpoint replied.
+         * `POST /admin/webhooks/{endpoint_id}/test`: sends a signed test event now and answers with
+         *     what the endpoint replied.
          */
         post: operations["send_test_webhook"];
         delete?: never;
@@ -796,8 +921,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * `POST /magic-link`: emails a one-time login link. An unknown email gets a passwordless
-         *     account, so the same call signs people up; the answer never reveals which case it was.
+         * `POST /magic-link`: emails a one-time login link. A new user account is created when
+         *     the recipient opens the link; the answer is the same for every address.
          */
         post: operations["request_magic_link"];
         delete?: never;
@@ -1046,7 +1171,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** `DELETE /sessions/{session_id}`: logs one device out; its access token expires on its own. */
+        /** `DELETE /sessions/{session_id}`: ends one device session in Auth. */
         delete: operations["end_session"];
         options?: never;
         head?: never;
@@ -1211,6 +1336,46 @@ export interface paths {
         put?: never;
         /** Writes a JSON value with mandatory expiration. */
         post: operations["set_cache_entry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/database/v1/connection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * `GET /database/v1/connection`: host, port, database and user for connecting to the
+         *     project's Postgres directly (ORMs, `psql`), without the password.
+         */
+        get: operations["read_connection"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/database/v1/connection/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `POST /database/v1/connection/password`: a new password for direct connections, shown only
+         *     in this response. The previous one stops working for new connections.
+         */
+        post: operations["reset_connection_password"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1388,6 +1553,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/database/v1/types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * `GET /database/v1/types`: TypeScript types of the project's tables, views, functions and
+         *     enums, generated from the schema as it is now.
+         */
+        get: operations["read_types"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/database/v1/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /database/v1/usage`: the project's Data API traffic, for the console's metrics. */
+        get: operations["read_usage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -1452,7 +1654,7 @@ export interface paths {
         put?: never;
         /**
          * `POST /platform/v1/invitations/{invitation_id}/accept`: joins the project. The invitation
-         *     must have been sent to the email of the account's verified token.
+         *     must have been sent to the account's verified email.
          */
         post: operations["accept_invitation"];
         delete?: never;
@@ -1611,6 +1813,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/platform/v1/projects/{project_id}/invitations/{invitation_id}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retries email delivery for the same pending invitation. Owners only. */
+        post: operations["resend_invitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/platform/v1/projects/{project_id}/members/{account_id}": {
         parameters: {
             query?: never;
@@ -1629,8 +1848,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * `PATCH /platform/v1/projects/{project_id}/members/{account_id}`: makes a member an owner,
-         *     or an owner a member. Owners only; the project always keeps at least one owner.
+         * `PATCH /platform/v1/projects/{project_id}/members/{account_id}`: sets a member's role
+         *     (owner, member or viewer). Owners only; the project always keeps at least one owner.
          */
         patch: operations["change_role"];
         trace?: never;
@@ -1724,7 +1943,8 @@ export interface paths {
          * @description Query: `select=id,title,author(name)`, filters (`age=gte.18`, `or=(a.eq.1,b.eq.2)`),
          *     `order=created_at.desc`, `limit` (at most 1000) and `offset`; embeds take the same with
          *     their name as prefix (`comments.order=id.desc`). `Prefer: count=exact|planned` adds the
-         *     total to `Content-Range`.
+         *     total to `Content-Range`. `Prefer: order=primary-key` uses the complete primary key when
+         *     no root order is specified, leaving relations without a primary key unordered.
          */
         get: operations["read_rows"];
         put?: never;
@@ -2053,6 +2273,15 @@ export interface components {
         ChangeTableRequest: {
             rls_enabled: boolean;
         };
+        /** @description The events a channel receives, replacing the previous ones. */
+        ChannelEventsBody: {
+            events: components["schemas"]["NotificationEvent"][];
+        };
+        /**
+         * @description How a channel delivers.
+         * @enum {string}
+         */
+        ChannelKind: "email" | "discord" | "slack";
         /** @description A column of a table created (or added) from the console. */
         ColumnDefinition: {
             /**
@@ -2101,7 +2330,11 @@ export interface components {
             updated_at: string;
         };
         ConfiguredProviders: {
+            /** @description The server callback to register at Google or GitHub. */
+            callback_url: string;
             providers: components["schemas"]["ConfiguredProvider"][];
+            /** @description The exact callbacks registered for the project's app. */
+            redirect_urls: string[];
         };
         CreateApiKeyBody: {
             kind: components["schemas"]["ApiKeyKind"];
@@ -2168,6 +2401,39 @@ export interface components {
             days: components["schemas"]["DailyActivity"][];
         };
         /**
+         * @description The project's Data API traffic over a period: totals, a point per hour or day, and the
+         *     busiest tables, statuses and methods.
+         */
+        DataApiUsageReport: {
+            /**
+             * Format: int64
+             * @description Responses 400 to 499: bad queries, refused credentials, rate limits.
+             */
+            client_errors: number;
+            /**
+             * Format: int64
+             * @description Time spent answering, summed over every request (divide by `requests` for the mean).
+             */
+            duration_milliseconds: number;
+            methods: components["schemas"]["MethodUsage"][];
+            /** Format: int64 */
+            requests: number;
+            /** @description The ten busiest tables and functions; an empty name gathers names that matched nothing. */
+            resources: components["schemas"]["ResourceUsage"][];
+            /** @description Oldest first, every hour or day present even when empty. */
+            series: components["schemas"]["UsagePoint"][];
+            /**
+             * Format: int64
+             * @description Responses 500 and above.
+             */
+            server_errors: number;
+            statuses: components["schemas"]["StatusUsage"][];
+        };
+        DatabaseTypes: {
+            /** @description The `Database` type of the `public` schema, for `createClient<Database>()` of the SDK. */
+            typescript: string;
+        };
+        /**
          * @description One delivery as the delivery log shows it. The payload is not included: it has personal
          *     data and is already in the receiver's hands.
          */
@@ -2183,7 +2449,14 @@ export interface components {
             id: string;
             /** Format: date-time */
             last_attempt_at?: string | null;
+            /**
+             * Format: int32
+             * @description How long the receiver took to answer the last attempt; `null` when it never answered.
+             */
+            last_duration_ms?: number | null;
             last_error?: string | null;
+            /** @description The start (512 bytes at most) of the receiver's answer when it refused the last attempt. */
+            last_response_body?: string | null;
             /** Format: int32 */
             last_response_status?: number | null;
             /**
@@ -2195,6 +2468,20 @@ export interface components {
         };
         /** @enum {string} */
         DeliveryStatus: "pending" | "delivered" | "failed";
+        /** @description How to reach the project's Postgres directly, without the password. */
+        DirectConnectionView: {
+            database: string;
+            /** @description `false` when this server does not offer direct connections. */
+            enabled: boolean;
+            /** @description A password was set at least once; it is never shown again. */
+            has_password: boolean;
+            host?: string | null;
+            /** Format: int32 */
+            port?: number | null;
+            /** @description `require`, `verify-full` or `disable` (local development). */
+            ssl_mode: string;
+            user: string;
+        };
         /** @description Body of the endpoints that email a link to an address. */
         EmailBody: {
             /** @description Cloudflare Turnstile token; required when the project turned the captcha on. */
@@ -2265,9 +2552,29 @@ export interface components {
          *     clients send and receive a file instead of a list of numbers.
          */
         ImageFile: string;
+        IndexOverview: {
+            /** @description Key columns, or expressions (`lower(email)`), in order. */
+            columns: string[];
+            /** @description The `CREATE INDEX` statement that rebuilds it. */
+            definition: string;
+            is_primary: boolean;
+            is_unique: boolean;
+            /** @description `btree`, `gin`, `gist`, `hash`, `brin`... */
+            method: string;
+            name: string;
+            /**
+             * Format: int64
+             * @description Times the planner used it since the statistics were last reset.
+             */
+            scans: number;
+            /** Format: int64 */
+            size_bytes: number;
+        };
         InvitationBody: {
             email: string;
         };
+        /** @enum {string} */
+        InvitationDeliveryStatus: "unknown" | "sending" | "sent" | "failed";
         /** @description A new key. A secret key's plaintext is shown only here; afterwards only its hash exists. */
         IssuedApiKey: {
             hint: string;
@@ -2303,6 +2610,11 @@ export interface components {
         LoginResponse: components["schemas"]["SessionTokens"] | components["schemas"]["MfaRequired"];
         MemberRoleBody: {
             role: components["schemas"]["ProjectRole"];
+        };
+        MethodUsage: {
+            method: string;
+            /** Format: int64 */
+            requests: number;
         };
         MfaChallengeBody: {
             code: string;
@@ -2356,9 +2668,48 @@ export interface components {
              */
             version: number;
         };
+        /** @description A new channel: where to send, and which events. */
+        NewChannelBody: {
+            events: components["schemas"]["NotificationEvent"][];
+            kind: components["schemas"]["ChannelKind"];
+            /** @description An email address, or the Discord or Slack incoming webhook URL. */
+            target: string;
+        };
+        /** @description A new password for direct connections, shown only in this response. */
+        NewConnectionPassword: {
+            /** @description The full `postgresql://` URL with the new password, for an ORM's `DATABASE_URL`. */
+            connection_string: string;
+            password: string;
+        };
+        /** @description A channel as the console shows it: never the sealed destination, only its hint. */
+        NotificationChannel: {
+            /** Format: date-time */
+            created_at: string;
+            events: components["schemas"]["NotificationEvent"][];
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["ChannelKind"];
+            /** @description The email address, or `hooks.slack.com/…KEY9` for a chat webhook. */
+            target_hint: string;
+        };
+        NotificationChannelList: {
+            channels: components["schemas"]["NotificationChannel"][];
+        };
+        /**
+         * @description Something a project can be alerted about.
+         * @enum {string}
+         */
+        NotificationEvent: "webhook_failing" | "login_failures" | "data_api_errors" | "storage_near_limit";
         OAuthCodeBody: {
             code: string;
             code_verifier: string;
+        };
+        OAuthRedirects: {
+            redirect_urls: string[];
+        };
+        OAuthRedirectsBody: {
+            /** @description Exact app callback URLs. An empty list restores the project's site URL. */
+            redirect_urls: string[];
         };
         ObjectPage: {
             items: components["schemas"]["StorageObject"][];
@@ -2378,6 +2729,7 @@ export interface components {
         PendingInvitation: {
             /** Format: date-time */
             created_at: string;
+            delivery_status: components["schemas"]["InvitationDeliveryStatus"];
             email: string;
             /** Format: uuid */
             id: string;
@@ -2398,17 +2750,28 @@ export interface components {
             credentials: components["schemas"]["CacheCredential"][];
             enabled: boolean;
         };
+        /** @description The logo just stored; `updated_at` is its version, the same as `logo_updated_at` elsewhere. */
+        ProjectLogoView: {
+            /** Format: date-time */
+            updated_at: string;
+        };
         /**
-         * @description What a platform account may do in a project: owners can also delete it.
+         * @description What a platform account may do in a project: owners can also delete it and manage the
+         *     team; viewers only read (`TenantAdmin` refuses their changes).
          * @enum {string}
          */
-        ProjectRole: "owner" | "member";
+        ProjectRole: "owner" | "member" | "viewer";
         /** @description A project (tenant) as one of its members sees it in the console. */
         ProjectSummary: {
             /** Format: date-time */
             created_at: string;
             /** Format: uuid */
             id: string;
+            /**
+             * Format: date-time
+             * @description When the logo last changed; `null` while the project has none. Also the logo's version.
+             */
+            logo_updated_at?: string | null;
             /**
              * Format: int32
              * @description Zero selects the automatic mascot. Values 1 through 32 select a catalog entry.
@@ -2470,9 +2833,26 @@ export interface components {
         RefreshTokenBody: {
             refresh_token: string;
         };
+        /** @description How many given-up deliveries went back to the queue. */
+        RequeuedDeliveries: {
+            /** Format: int64 */
+            queued: number;
+        };
         ResetPasswordBody: {
             password: string;
             token: string;
+        };
+        ResourceUsage: {
+            /** Format: int64 */
+            client_errors: number;
+            /** Format: int64 */
+            duration_milliseconds: number;
+            /** @description `todos`, or `rpc/search` for a function. */
+            name: string;
+            /** Format: int64 */
+            requests: number;
+            /** Format: int64 */
+            server_errors: number;
         };
         RotatedSigningKey: {
             /**
@@ -2482,7 +2862,7 @@ export interface components {
             key_id: string;
         };
         RunSqlRequest: {
-            /** @description One or more statements, run in one transaction. */
+            /** @description One or more statements in an editor-managed transaction. Savepoints are supported. */
             query: string;
         };
         /**
@@ -2556,6 +2936,7 @@ export interface components {
             smtp_port?: number | null;
         };
         SmtpTestBody: {
+            server?: components["schemas"]["SmtpSettingsBody"] | null;
             /** @description Where the test email goes. */
             to: string;
         };
@@ -2574,6 +2955,12 @@ export interface components {
             rows: (string | null)[][];
             /** Format: int64 */
             rows_affected: number;
+        };
+        StatusUsage: {
+            /** Format: int64 */
+            requests: number;
+            /** Format: int32 */
+            status: number;
         };
         StorageObject: {
             /** Format: uuid */
@@ -2595,11 +2982,17 @@ export interface components {
              */
             estimated_rows?: number | null;
             foreign_keys: components["schemas"]["ForeignKeyOverview"][];
+            indexes: components["schemas"]["IndexOverview"][];
             /** @description `table`, `view`, `materialized_view` or `foreign_table`. */
             kind: string;
             name: string;
             policies: components["schemas"]["PolicyOverview"][];
             rls_enabled: boolean;
+            /**
+             * Format: int64
+             * @description Disk taken by the table with its indexes and TOAST data; `0` for views.
+             */
+            size_bytes: number;
         };
         /** @description A console account with access to the project. */
         TeamMember: {
@@ -2619,6 +3012,11 @@ export interface components {
         };
         /** @description Settings a tenant manages itself with its secret key. */
         TenantSettings: {
+            /**
+             * Format: date-time
+             * @description When the logo last changed; `null` while the project has none. Also the logo's version.
+             */
+            logo_updated_at?: string | null;
             /**
              * Format: int32
              * @description Zero selects the automatic mascot. Values 1 through 32 select a catalog entry.
@@ -2641,12 +3039,23 @@ export interface components {
         /** @description What the receiver answered to the test event. */
         TestDeliveryResult: {
             delivered: boolean;
+            /**
+             * Format: int32
+             * @description How long the endpoint took to answer; `null` when it never answered.
+             */
+            duration_ms?: number | null;
             error?: string | null;
+            /** @description The start of the endpoint's answer when it refused the event. */
+            response_excerpt?: string | null;
             /**
              * Format: int32
              * @description HTTP status the endpoint answered; `null` when it could not be reached.
              */
             response_status?: number | null;
+        };
+        /** @description What to send; with no body (or no type), a `webhook.test` event. */
+        TestWebhookBody: {
+            event_type?: components["schemas"]["WebhookEventType"] | null;
         };
         /** @description The authenticator to add to an app; it becomes active after its first code is verified. */
         TotpEnrollmentResponse: {
@@ -2671,10 +3080,31 @@ export interface components {
             app_metadata?: {
                 [key: string]: unknown;
             } | null;
+            /** @description Optional previous contents. Returns 409 if the stored app metadata has changed. */
+            expected_app_metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** @description Optional previous contents. Returns 409 if the stored profile has changed. */
+            expected_user_metadata?: {
+                [key: string]: unknown;
+            } | null;
             /** @description Replaces the user's profile data (up to 16 KiB as JSON); left as it is when absent. */
             user_metadata?: {
                 [key: string]: unknown;
             } | null;
+        };
+        UsagePoint: {
+            /** Format: int64 */
+            client_errors: number;
+            /** Format: int64 */
+            requests: number;
+            /** Format: int64 */
+            server_errors: number;
+            /**
+             * Format: date-time
+             * @description The first instant of the hour or UTC day.
+             */
+            start: string;
         };
         User: {
             /**
@@ -2744,6 +3174,8 @@ export interface components {
             sessions: components["schemas"]["SessionSummary"][];
         };
         WebhookEndpointBody: {
+            /** @description A name for the endpoint ("Sincronizar CRM"), up to 80 characters on one line. */
+            description?: string | null;
             /** @description The events this endpoint receives. */
             event_types: components["schemas"]["WebhookEventType"][];
             /** @description `https://…` on a public host; it receives signed `POST` requests. */
@@ -2751,6 +3183,8 @@ export interface components {
         };
         /** @description Only the fields sent are changed. */
         WebhookEndpointChangesBody: {
+            /** @description A new name; an empty one removes it. */
+            description?: string | null;
             event_types?: components["schemas"]["WebhookEventType"][] | null;
             /** @description Disabled endpoints receive no new events. */
             is_enabled?: boolean | null;
@@ -2758,9 +3192,21 @@ export interface components {
         };
         /** @description An endpoint as its owner sees it; the secret is never shown again after creation. */
         WebhookEndpointView: {
+            /**
+             * Format: date-time
+             * @description When the platform paused it after failing for 5 days; `null` unless it did.
+             */
+            auto_paused_at?: string | null;
             /** Format: date-time */
             created_at: string;
+            /** @description The name its owner gave it ("Sincronizar CRM"), if any. */
+            description?: string | null;
             event_types: components["schemas"]["WebhookEventType"][];
+            /**
+             * Format: date-time
+             * @description When its current run of refused attempts started; `null` while it delivers.
+             */
+            failing_since?: string | null;
             /** Format: uuid */
             id: string;
             /** @description Disabled endpoints receive no new events. */
@@ -2879,7 +3325,10 @@ export interface operations {
     };
     list_api_keys: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Cursor for the next page of revoked keys */
+                before?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2889,6 +3338,8 @@ export interface operations {
             /** @description The tenant's API keys */
             200: {
                 headers: {
+                    /** @description Cursor when more revoked keys exist */
+                    "X-Nelcota-Next-Cursor"?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -3481,6 +3932,371 @@ export interface operations {
             };
         };
     };
+    read_project_logo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The logo, a square JPEG */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": components["schemas"]["ImageFile"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The project has no logo */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    upload_project_logo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The image file: PNG, JPEG or WebP, up to 1 MiB */
+        requestBody: {
+            content: {
+                "application/octet-stream": components["schemas"]["ImageFile"];
+            };
+        };
+        responses: {
+            /** @description The new logo's version */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectLogoView"];
+                };
+            };
+            /** @description Empty, unreadable or unsupported image */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The image is larger than 1 MiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many logo changes */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    remove_project_logo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Logo removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many logo changes */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_notification_channels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The project's channels, oldest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationChannelList"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_notification_channel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewChannelBody"];
+            };
+        };
+        responses: {
+            /** @description Channel added */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationChannel"];
+                };
+            };
+            /** @description Invalid address, or a URL outside Discord and Slack */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The project already has 5 channels */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_notification_channel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the channel */
+                channel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Channel removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such channel in this project */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    change_notification_channel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the channel */
+                channel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChannelEventsBody"];
+            };
+        };
+        responses: {
+            /** @description Channel changed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationChannel"];
+                };
+            };
+            /** @description No events, or an unknown one */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such channel in this project */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    test_notification_channel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the channel */
+                channel_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The channel accepted the test alert */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such channel in this project */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many test alerts for this project */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The email server or chat service refused it */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     list_oauth_providers: {
         parameters: {
             query?: never;
@@ -3500,6 +4316,48 @@ export interface operations {
                 };
             };
             /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    configure_oauth_redirects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OAuthRedirectsBody"];
+            };
+        };
+        responses: {
+            /** @description Effective app callback URLs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthRedirects"];
+                };
+            };
+            /** @description Invalid callback URL */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Project access denied */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3819,7 +4677,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Invalid recipient */
+            /** @description Invalid recipient, or invalid unsaved settings */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -4156,6 +5014,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
+            /** @description The account is the last active owner of a project */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
         };
     };
     update_user: {
@@ -4203,6 +5070,15 @@ export interface operations {
             };
             /** @description No such user */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The metadata changed since it was opened */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4742,7 +5618,13 @@ export interface operations {
     };
     list_webhook_deliveries: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Only deliveries in this state. */
+                status?: "pending" | "delivered" | "failed";
+                /** @description Only deliveries older than this one (the last delivery of the previous page). */
+                before?: string;
+                limit?: number;
+            };
             header?: never;
             path: {
                 /** @description Id of the endpoint */
@@ -4761,6 +5643,15 @@ export interface operations {
                     "application/json": components["schemas"]["DeliveryLogEntry"][];
                 };
             };
+            /** @description Invalid state, cursor or limit */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             /** @description Requires the secret API key, or membership in the project */
             403: {
                 headers: {
@@ -4772,6 +5663,65 @@ export interface operations {
             };
             /** @description No such endpoint in this project */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    retry_failed_webhook_deliveries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the endpoint */
+                endpoint_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Queued; they are sent within seconds */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequeuedDeliveries"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such endpoint in this project */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The endpoint is disabled */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many test events and resends for this project */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4891,7 +5841,12 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        /** @description Optional: the event type to imitate */
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TestWebhookBody"] | null;
+            };
+        };
         responses: {
             /** @description The endpoint's answer (also when it failed) */
             200: {
@@ -4900,6 +5855,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TestDeliveryResult"];
+                };
+            };
+            /** @description Unknown event type */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
                 };
             };
             /** @description Requires the secret API key, or membership in the project */
@@ -5066,7 +6030,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description A login link is on its way */
+            /** @description Login link request accepted */
             202: {
                 headers: {
                     [name: string]: unknown;
@@ -5347,6 +6311,7 @@ export interface operations {
             query?: {
                 state?: string;
                 code?: string;
+                error?: string;
             };
             header?: never;
             path?: never;
@@ -5775,6 +6740,15 @@ export interface operations {
             };
             /** @description Missing or invalid access token */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The account is the last active owner of a project */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6281,6 +7255,73 @@ export interface operations {
             };
             /** @description Cache is unavailable */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    read_connection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The connection details */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DirectConnectionView"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    reset_connection_password: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The new password and connection string */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewConnectionPassword"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description This server does not offer direct connections */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6815,6 +7856,76 @@ export interface operations {
             };
         };
     };
+    read_types: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The generated types */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatabaseTypes"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    read_usage: {
+        parameters: {
+            query?: {
+                /** @description `24h` (one point per hour), `7d` or `30d` (one per UTC day). `24h` by default. */
+                period?: "24h" | "7d" | "30d";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Totals, a point per hour or day, and the busiest tables */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataApiUsageReport"];
+                };
+            };
+            /** @description Unknown period */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Requires the secret API key, or membership in the project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     health: {
         parameters: {
             query?: never;
@@ -6883,6 +7994,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Email verification required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             /** @description No pending invitation for this account */
             404: {
                 headers: {
@@ -6913,6 +8033,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AcceptedInvitation"];
+                };
+            };
+            /** @description Email verification required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
                 };
             };
             /** @description No pending invitation for this account */
@@ -7351,7 +8480,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Invitation created and emailed */
+            /** @description Invitation created with the result of the email attempt */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -7430,6 +8559,67 @@ export interface operations {
             };
             /** @description No such pending invitation */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    resend_invitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the project */
+                project_id: string;
+                /** @description Id of the pending invitation */
+                invitation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Result of the email attempt */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendingInvitation"];
+                };
+            };
+            /** @description Not an owner of this project */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No such pending invitation */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Delivery already in progress */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too many invitations */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7741,7 +8931,10 @@ export interface operations {
                 /** @description Rows to skip */
                 offset?: number;
             };
-            header?: never;
+            header?: {
+                /** @description count=exact|planned, order=primary-key */
+                Prefer?: string | null;
+            };
             path: {
                 /** @description Table or view of the public schema */
                 table: string;

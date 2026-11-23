@@ -1,18 +1,15 @@
-use std::sync::Arc;
-
 use serde::Deserialize;
 use tracing::{Instrument, Span};
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::modules::auth::email::auth_email_dispatch::{
-    AuthEmailKind, AuthEmailRequest, send_auth_email,
-};
+use crate::modules::auth::email::auth_email_dispatch::{AuthEmailKind, deliver_auth_link};
 use crate::modules::auth::email::auth_mailer::AuthMailer;
-use crate::modules::auth::rate_limiting::email_limiter::EmailLimiter;
+use crate::modules::auth::one_time_token::one_time_token_repository::issue_one_time_token;
+use crate::modules::auth::one_time_token::pending_magic_link::issue_pending_magic_link;
+use crate::modules::auth::rate_limiting::shared_auth_limits::SharedAuthLimits;
 use crate::modules::auth::user::email_address::EmailAddress;
-use crate::modules::auth::user::passwordless_signup::find_or_create_passwordless_user;
 use crate::modules::auth::user::user_lookup::find_user_by_email;
 use crate::modules::auth::user::user_record::User;
 use crate::modules::tenants::access::tenant_context::TenantContext;
@@ -22,7 +19,6 @@ use crate::modules::tenants::audit::audit_recorder::record_audit_event;
 use crate::modules::tenants::captcha::captcha_requirement::{
     CaptchaAnswer, CaptchaRequirement, require_captcha,
 };
-use crate::modules::webhooks::runtime::webhook_runtime::WebhookRuntime;
 use crate::shared::http::api_error::ApiError;
 use crate::shared::http::request_origin::RequestOrigin;
 use crate::shared::rate_limiting::attempt_limiter::Attempt;
@@ -47,8 +43,7 @@ pub struct EmailLinkRequest<'a> {
 
 pub struct EmailLinkDelivery<'a> {
     pub mailer: AuthMailer,
-    pub webhooks: Arc<WebhookRuntime>,
-    pub limiter: &'a EmailLimiter,
+    pub limiter: &'a SharedAuthLimits,
     pub captcha: CaptchaRequirement<'a>,
 }
 
@@ -64,7 +59,7 @@ pub async fn request_email_link(
         client_ip: request.origin.client_ip,
     };
     // Applies to unknown emails too, so the limit itself reveals nothing about accounts.
-    delivery.limiter.check(&attempt)?;
+    delivery.limiter.check_email(&attempt).await?;
     let captcha = CaptchaAnswer {
         token: request.captcha_token,
         client_ip: request.origin.client_ip,
@@ -72,7 +67,6 @@ pub async fn request_email_link(
     require_captcha(&delivery.captcha, tenant.tenant_id, captcha).await?;
     let job = EmailLinkJob {
         mailer: delivery.mailer,
-        webhooks: delivery.webhooks,
         tenant,
         raw_email: request.raw_email.to_owned(),
         kind: request.kind,
@@ -86,7 +80,6 @@ pub async fn request_email_link(
 
 struct EmailLinkJob {
     mailer: AuthMailer,
-    webhooks: Arc<WebhookRuntime>,
     tenant: TenantContext,
     raw_email: String,
     kind: AuthEmailKind,
@@ -99,49 +92,46 @@ impl EmailLinkJob {
             Ok(email) => email,
             Err(_) => return Ok(()),
         };
-        let user = match self.recipient(&email).await? {
-            Some(user) => user,
-            None => return Ok(()),
+        let pool = &self.tenant.pool;
+        let user = find_user_by_email(pool, &email).await?;
+        let user_id = user.as_ref().map(|user| user.id);
+        let token = match (&user, self.kind) {
+            (Some(user), kind) if is_skipped(kind, user) => return Ok(()),
+            (_, AuthEmailKind::MagicLink) => {
+                issue_pending_magic_link(pool, &email, user_id).await?
+            }
+            (Some(user), kind) => issue_one_time_token(pool, kind.token_request(user.id)).await?,
+            (None, _) => return Ok(()),
         };
 
-        if is_skipped(self.kind, &user) {
-            return Ok(());
+        if deliver_auth_link(
+            &self.mailer,
+            self.tenant.tenant_id,
+            email.as_str(),
+            (self.kind, &token),
+        )
+        .await?
+        {
+            self.record_sent(user_id, email).await;
         }
-
-        let request = AuthEmailRequest {
-            user: &user,
-            kind: self.kind,
-        };
-        send_auth_email(&self.mailer, &self.tenant, request).await?;
-        self.record_sent(user.id).await;
 
         Ok(())
     }
 
     /// Only for an email that went out: the client's answer is the same either way.
-    async fn record_sent(&self, user_id: Uuid) {
+    async fn record_sent(&self, user_id: Option<Uuid>, email: EmailAddress) {
         let action = match self.kind {
             AuthEmailKind::MagicLink => AuditAction::MagicLinkSent,
             AuthEmailKind::PasswordReset => AuditAction::PasswordResetRequested,
             AuthEmailKind::Verification => return,
         };
-        let event = NewAuditEvent::by_user(action, user_id, self.origin.clone());
+        let event = NewAuditEvent {
+            user_id,
+            email: Some(email.as_str().to_owned()),
+            ..NewAuditEvent::by_user(action, Uuid::nil(), self.origin.clone())
+        };
 
         record_audit_event(&self.tenant.pool, event).await;
-    }
-
-    /// Magic links also sign people up: an unknown email gets a passwordless account.
-    async fn recipient(&self, email: &EmailAddress) -> Result<Option<User>, ApiError> {
-        let pool = &self.tenant.pool;
-
-        if self.kind == AuthEmailKind::MagicLink {
-            let webhooks = self.webhooks.recorder(self.tenant.tenant_id).await?;
-            return find_or_create_passwordless_user(pool, email, &webhooks).await;
-        }
-
-        find_user_by_email(pool, email)
-            .await
-            .map_err(ApiError::internal)
     }
 }
 

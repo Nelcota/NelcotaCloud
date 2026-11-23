@@ -5,8 +5,10 @@ use crate::modules::storage::access::storage_caller::StorageCaller;
 use crate::modules::storage::storage_error::StorageError;
 use crate::shared::http::api_error::ApiError;
 
-const PROJECT_BYTES: i64 = 1024 * 1024 * 1024;
-const MAX_PROJECT_OBJECTS: i64 = 10_000;
+/// The most a project stores; the storage alerts measure against it too.
+pub const PROJECT_BYTES: i64 = 1024 * 1024 * 1024;
+/// The most files a project keeps.
+pub const MAX_PROJECT_OBJECTS: i64 = 10_000;
 const PROJECT_PENDING_BYTES: i64 = 256 * 1024 * 1024;
 const MAX_PROJECT_PENDING: i64 = 64;
 const USER_PENDING_BYTES: i64 = 64 * 1024 * 1024;

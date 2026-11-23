@@ -18,6 +18,7 @@ pub enum LoadOAuthCredentialsError {
 pub struct ProviderCredentials {
     pub client_id: String,
     pub client_secret: String,
+    pub revision: Uuid,
 }
 
 pub struct ProviderRegistration<'a> {
@@ -33,7 +34,8 @@ pub async fn upsert_provider_credentials(
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
         "INSERT INTO tenant_oauth_providers (tenant_id, provider, client_id, client_secret_ciphertext) VALUES ($1, $2, $3, $4) \
-         ON CONFLICT (tenant_id, provider) DO UPDATE SET client_id = EXCLUDED.client_id, client_secret_ciphertext = EXCLUDED.client_secret_ciphertext, updated_at = now()",
+         ON CONFLICT (tenant_id, provider) DO UPDATE SET client_id = EXCLUDED.client_id,
+            client_secret_ciphertext = EXCLUDED.client_secret_ciphertext, revision = EXCLUDED.revision, updated_at = now()",
     )
     .bind(registration.tenant_id)
     .bind(registration.provider.as_str())
@@ -70,15 +72,15 @@ pub async fn find_provider_credentials(
     key: ProviderKey,
     secret_box: &SecretBox,
 ) -> Result<Option<ProviderCredentials>, LoadOAuthCredentialsError> {
-    let row: Option<(String, Vec<u8>)> = sqlx::query_as(
-        "SELECT client_id, client_secret_ciphertext FROM tenant_oauth_providers WHERE tenant_id = $1 AND provider = $2",
+    let row: Option<(String, Vec<u8>, Uuid)> = sqlx::query_as(
+        "SELECT client_id, client_secret_ciphertext, revision FROM tenant_oauth_providers WHERE tenant_id = $1 AND provider = $2",
     )
     .bind(key.tenant_id)
     .bind(key.provider.as_str())
     .fetch_optional(pool)
     .await?;
-    let (client_id, ciphertext) = match row {
-        Some((client_id, ciphertext)) => (client_id, ciphertext),
+    let (client_id, ciphertext, revision) = match row {
+        Some(row) => row,
         None => return Ok(None),
     };
     let secret_bytes = secret_box.open(&ciphertext, &client_secret_context(key))?;
@@ -88,7 +90,24 @@ pub async fn find_provider_credentials(
     Ok(Some(ProviderCredentials {
         client_id,
         client_secret,
+        revision,
     }))
+}
+
+pub async fn is_current_revision(
+    pool: &PgPool,
+    key: ProviderKey,
+    revision: Uuid,
+) -> Result<bool, sqlx::Error> {
+    sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM tenant_oauth_providers
+         WHERE tenant_id = $1 AND provider = $2 AND revision = $3)",
+    )
+    .bind(key.tenant_id)
+    .bind(key.provider.as_str())
+    .bind(revision)
+    .fetch_one(pool)
+    .await
 }
 
 /// Binds the encrypted client secret to its tenant and provider.

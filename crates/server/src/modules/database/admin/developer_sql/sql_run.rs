@@ -48,12 +48,10 @@ pub async fn run_script(
     script: String,
 ) -> Result<SqlResult, ApiError> {
     let (script, statements) = tokio::task::spawn_blocking(move || {
-        let statements = describe_script(&script);
-
-        (script, statements)
+        describe_script(&script).map(|statements| (script, statements))
     })
     .await
-    .map_err(ApiError::internal)?;
+    .map_err(ApiError::internal)??;
     let transaction = &mut *session.transaction;
     let reading = async move {
         let mut result = SqlResult::empty();
@@ -99,22 +97,19 @@ impl SqlResult {
         }
     }
 
-    /// A statement that returned rows reports how many it read (`SELECT 10`): only statements
-    /// without rows count as changes. One without rows that is a query is remembered, so its
-    /// empty result set replaces the previous one.
+    /// Count write completions even when they also return rows. A query without rows still
+    /// replaces the previous result set.
     fn complete_statement(&mut self, outcome: &PgQueryResult, statements: &[ScriptStatement]) {
         let statement_index = self.completed_statements;
         self.completed_statements = statement_index.saturating_add(1);
 
-        if self.starts_new_set {
+        let statement = statements.get(statement_index);
+        if self.starts_new_set || statement.is_some_and(|statement| statement.changes_rows) {
             self.rows_affected = self.rows_affected.saturating_add(outcome.rows_affected());
+        }
 
-            if statements
-                .get(statement_index)
-                .is_some_and(|statement| statement.returns_rows)
-            {
-                self.empty_query = Some(statement_index);
-            }
+        if self.starts_new_set && statement.is_some_and(|statement| statement.returns_rows) {
+            self.empty_query = Some(statement_index);
         }
 
         self.starts_new_set = true;

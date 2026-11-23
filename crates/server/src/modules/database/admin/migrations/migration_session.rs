@@ -37,11 +37,11 @@ impl<'connection> MigrationSession<'connection> {
         sqlx::query("SET LOCAL ROLE nelcota_migrator")
             .execute(&mut *transaction)
             .await?;
-        let guard = QueryGuard {
-            backend: BackendIdentity { pid, started_at },
-            statement_timeout: STATEMENT_TIMEOUT,
-            admin_pool: pool.clone(),
-        };
+        let guard = QueryGuard::new(
+            pool.clone(),
+            BackendIdentity { pid, started_at },
+            STATEMENT_TIMEOUT,
+        );
         let lock = sqlx::query(MIGRATION_LOCK).execute(&mut *transaction);
         guard.run_mapped(lock, sql_error_response).await?;
 

@@ -7,7 +7,6 @@ use utoipa::IntoParams;
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::modules::auth::audit::audit_csv::audit_csv;
 use crate::modules::auth::audit::audit_export::export_audit_events as find_rows;
 use crate::modules::auth::audit::audit_kind::AuditKind;
 use crate::modules::auth::audit::audit_period::{AuditPeriod, PeriodParams};
@@ -45,8 +44,7 @@ pub struct AuditExportQuery {
     pub to: Option<OffsetDateTime>,
 }
 
-/// `GET /admin/audit-events/export`: the matching events as a CSV file, newest first, up to
-/// 100,000 rows.
+/// `GET /admin/audit-events/export`: streams the matching events as a CSV file, newest first.
 ///
 /// Takes the same filters as the activity log, so the file holds what the console shows.
 #[utoipa::path(
@@ -79,8 +77,7 @@ pub async fn export_audit_events(
         period,
         before: None,
     };
-    let rows = find_rows(&admin.pool, &audit_query).await?;
-    let csv = audit_csv(&rows).map_err(ApiError::internal)?;
+    let csv = find_rows(admin.pool, &audit_query);
     let headers = [
         (CONTENT_TYPE, CSV_CONTENT_TYPE),
         (CONTENT_DISPOSITION, CSV_DISPOSITION),

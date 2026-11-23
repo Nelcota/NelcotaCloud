@@ -1,6 +1,7 @@
 import type { JSX, ReactNode, SubmitEvent } from 'react'
 import { useState } from 'react'
 
+import { useReadOnlyReason } from '@/shared/auth/write-access'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/shared/ui/dialog'
 import type { ReviewItem } from '@/shared/ui/review-list'
 import { FocusedError } from '@/shared/ui/step-dialog/focused-error'
@@ -56,6 +57,8 @@ export function StepDialog(props: StepDialogProps): JSX.Element {
   const step = props.steps[index]
   const labels = props.steps.map((candidate) => candidate.label)
   const lastIndex = props.steps.length - 1
+  // A viewer's dialog waits on the same note as a missing value: the API would refuse it.
+  const missing = useReadOnlyReason() ?? step?.missing ?? null
 
   function changeOpen(isOpen: boolean): void {
     if (isWorking) {
@@ -78,7 +81,7 @@ export function StepDialog(props: StepDialogProps): JSX.Element {
   async function advance(event: SubmitEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
 
-    if (step === undefined || step.missing !== null || isWorking) {
+    if (step === undefined || missing !== null || isWorking) {
       return
     }
 
@@ -137,7 +140,7 @@ export function StepDialog(props: StepDialogProps): JSX.Element {
             index={index}
             isLast={index === lastIndex}
             isWorking={isWorking}
-            missing={step?.missing ?? null}
+            missing={missing}
             labels={{ finish: props.finishLabel, working: props.workingLabel ?? 'Salvando…' }}
             onBack={() => setIndex(index - 1)}
             onCancel={() => changeOpen(false)}

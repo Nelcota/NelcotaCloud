@@ -44,6 +44,58 @@ async fn limits_nested_rows_and_refuses_an_over_budget_aggregate() -> TestResult
     server.drop_tenant(&tenant).await
 }
 
+#[tokio::test]
+async fn pages_use_the_full_primary_key_and_json_aliases_round_trip() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    developer_sql(
+        &server,
+        &tenant,
+        r#"
+        CREATE TABLE entries (item int, "group name" int, PRIMARY KEY ("group name", item));
+        INSERT INTO entries VALUES (3, 1), (1, 2), (2, 1);
+        CREATE TABLE properties (payload json);
+        INSERT INTO properties VALUES ('{"enabled":true}');
+        "#,
+    )
+    .await?;
+    let service = Credentials::service(&tenant);
+    let page: Value = rest(
+        &server,
+        service,
+        RestRequest::get("/entries?select=_r:item&limit=1&offset=1").prefer("order=primary-key"),
+    )
+    .await?
+    .error_for_status()?
+    .json()
+    .await?;
+    assert_eq!(page, json!([{ "_r": 3 }]));
+
+    let ordered = rest_json(
+        &server,
+        service,
+        "/entries?select=item&order=item.desc&order=item.asc",
+    )
+    .await?;
+    assert_eq!(
+        ordered,
+        json!([{ "item": 3 }, { "item": 2 }, { "item": 1 }])
+    );
+
+    let properties: Value = rest(
+        &server,
+        service,
+        RestRequest::get("/properties?limit=50").prefer("order=primary-key"),
+    )
+    .await?
+    .error_for_status()?
+    .json()
+    .await?;
+    assert_eq!(properties, json!([{ "payload": { "enabled": true } }]));
+
+    server.drop_tenant(&tenant).await
+}
+
 /// Authors write posts, posts have comments; RLS is on (new tables) but the tests read with the
 /// secret key, which bypasses it.
 const BLOG: &str = "

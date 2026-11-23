@@ -18,6 +18,11 @@ export const MESSAGES_BY_CODE: Record<string, string> = {
   project_access_denied: 'Você não tem mais acesso a este projeto.',
   mascot_save_unconfirmed:
     'A API não confirmou a escolha do mascote. Verifique se o servidor está atualizado.',
+  read_only_member:
+    'Você tem acesso só de leitura neste projeto. Peça a um dono para permitir edição.',
+  notification_channel_limit:
+    'O projeto já tem 5 canais de notificação. Remova um para adicionar outro.',
+  notification_test_failed: 'O canal não aceitou o teste. Confira o endereço ou a URL do webhook.',
   admin_access_denied: 'Você não tem permissão para isso neste projeto.',
   secret_key_required: 'Essa ação exige uma secret key.',
   smtp_delivery_failed:
@@ -49,6 +54,12 @@ export const MESSAGES_BY_CODE: Record<string, string> = {
   internal_error: 'Erro no servidor. Tente de novo em instantes.',
   query_timeout: 'A consulta passou de 15 segundos e foi cancelada.',
   table_not_found: 'Essa tabela não existe mais. Recarregue a página.',
+  invalid_value: 'Algum valor não combina com o tipo da coluna. Confira números, datas e JSON.',
+  filter_required: 'Atualizar ou excluir linhas exige pelo menos um filtro.',
+  database_busy: 'O banco está ocupado. Tente de novo em alguns segundos.',
+  transaction_conflict: 'Outra alteração aconteceu ao mesmo tempo. Tente de novo.',
+  response_too_large: 'A resposta passaria de 16 MiB. Selecione menos colunas ou linhas.',
+  direct_connection_disabled: 'Este servidor não oferece conexão direta ao Postgres.',
   permission_denied: 'Os privilégios ou as políticas da tabela recusaram o acesso.',
   invalid_captcha_secret:
     'O Cloudflare não reconhece essa secret key. Copie de novo do widget do Turnstile.',

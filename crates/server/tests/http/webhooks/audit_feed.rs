@@ -1,7 +1,11 @@
+use reqwest::Method;
 use serde_json::json;
 use sqlx::Connection;
+use uuid::Uuid;
 
-use super::receiver::{WebhookReceiver, body_json, create_endpoint, has_valid_signature};
+use super::receiver::{
+    WebhookReceiver, body_json, create_endpoint, has_valid_signature, webhooks_request,
+};
 use crate::support::{TestResult, TestServer, field, unique_email};
 
 #[tokio::test]
@@ -52,7 +56,10 @@ async fn sends_new_activity_events_to_audit_subscribers() -> TestResult {
     assert_eq!(field(&body, "/data/event/action"), "signed_up");
     assert_eq!(field(&body, "/data/event/user_id"), &json!(session.user.id));
     assert_eq!(field(&body, "/data/event/email"), &json!(email));
-    assert_eq!(field(&body, "/data/event/ip_address"), "127.0.0.1");
+    assert_eq!(
+        field(&body, "/data/event/ip_address"),
+        server.client_ip.to_string().as_str()
+    );
     assert!(has_valid_signature(request, &secret)?);
     server.drop_tenant(&tenant).await
 }
@@ -93,5 +100,61 @@ async fn a_batch_delivers_each_activity_to_every_subscriber() -> TestResult {
         assert_eq!(delivered, ids);
     }
 
+    server.drop_tenant(&tenant).await
+}
+
+#[tokio::test]
+async fn audit_endpoints_receive_only_events_since_their_current_subscription() -> TestResult {
+    let mut server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    let existing = WebhookReceiver::answering(204).await;
+    let added = WebhookReceiver::answering(204).await;
+    let resumed = WebhookReceiver::answering(204).await;
+    create_endpoint(&server, &tenant, (&existing.url(), &["audit.event"])).await?;
+    let (resumed_id, _) =
+        create_endpoint(&server, &tenant, (&resumed.url(), &["audit.event"])).await?;
+    let resumed_path = format!("/{resumed_id}");
+    webhooks_request(&server, &tenant, (Method::PATCH, &resumed_path))
+        .json(&json!({ "is_enabled": false }))
+        .send()
+        .await?
+        .error_for_status()?;
+
+    let mut database = server.tenant_database(&tenant).await?;
+    let insert =
+        "INSERT INTO auth.audit_events (action, actor) VALUES ('logged_in', 'user') RETURNING id";
+    sqlx::query_scalar::<_, i64>(insert)
+        .fetch_one(&mut database)
+        .await?;
+
+    let (added_id, _) = create_endpoint(&server, &tenant, (&added.url(), &["audit.event"])).await?;
+    webhooks_request(&server, &tenant, (Method::PATCH, &resumed_path))
+        .json(&json!({ "is_enabled": true }))
+        .send()
+        .await?
+        .error_for_status()?;
+    let latest: i64 = sqlx::query_scalar(insert).fetch_one(&mut database).await?;
+    server.start_worker().await?;
+
+    existing.wait_for(2).await?;
+    for receiver in [&added, &resumed] {
+        let requests = receiver.wait_for(1).await?;
+        assert_eq!(requests.len(), 1);
+        let delivered = body_json(requests.first().ok_or("missing audit delivery")?)?;
+        assert_eq!(field(&delivered, "/data/event/id"), &json!(latest));
+    }
+
+    let endpoints = [Uuid::parse_str(&added_id)?, Uuid::parse_str(&resumed_id)?];
+    let queued: Vec<i64> = sqlx::query_scalar(
+        "SELECT (event.payload #>> '{data,event,id}')::bigint FROM auth.webhook_deliveries delivery \
+         JOIN auth.webhook_events event ON event.id = delivery.event_id \
+         WHERE delivery.endpoint_id = ANY($1)",
+    )
+    .bind(&endpoints[..])
+    .fetch_all(&mut database)
+    .await?;
+    assert_eq!(queued, vec![latest, latest]);
+
+    database.close().await?;
     server.drop_tenant(&tenant).await
 }

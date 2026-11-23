@@ -1,5 +1,7 @@
 import Crown from '~icons/solar/crown-minimalistic-linear'
+import Eye from '~icons/solar/eye-linear'
 import Logout from '~icons/solar/logout-2-linear'
+import Pen from '~icons/solar/pen-linear'
 import Trash from '~icons/solar/trash-bin-trash-linear'
 import UserDown from '~icons/solar/user-minus-linear'
 
@@ -9,7 +11,7 @@ import type { IconComponent } from '@/shared/ui/icon-component'
 
 const OWNER_POWERS =
   'convidar e remover pessoas, mudar papéis e excluir o projeto com todos os usuários do app'
-const ROLE_NAMES = { owner: 'Dono', member: 'Membro' }
+const ROLE_NAMES = { owner: 'Dono', member: 'Membro', viewer: 'Leitura' }
 
 type ActionCopy = {
   label: string
@@ -68,6 +70,32 @@ export const ACTION_COPY: Record<MemberAction, ActionCopy> = {
     done: (name) => `${name} agora é membro.`,
     ownDone: 'Você agora é membro deste projeto.',
   },
+  restrict: {
+    label: 'Deixar só leitura',
+    icon: Eye,
+    title: (name) => `Deixar ${name} só com leitura?`,
+    description: () =>
+      'Continua vendo tudo no console, mas não muda nada: dados, configurações, chaves, webhooks e o Editor SQL ficam bloqueados.',
+    confirmLabel: 'Deixar só leitura',
+    isDestructive: false,
+    isWeighty: false,
+    from: () => ROLE_NAMES.member,
+    to: ROLE_NAMES.viewer,
+    done: (name) => `${name} agora só tem leitura.`,
+  },
+  'allow-edit': {
+    label: 'Permitir edição',
+    icon: Pen,
+    title: (name) => `Permitir que ${name} edite o projeto?`,
+    description: () =>
+      'Volta a gerenciar o projeto como membro: dados, configurações, chaves, webhooks e o Editor SQL.',
+    confirmLabel: 'Permitir edição',
+    isDestructive: false,
+    isWeighty: false,
+    from: () => ROLE_NAMES.viewer,
+    to: ROLE_NAMES.member,
+    done: (name) => `${name} agora é membro.`,
+  },
   remove: {
     label: 'Remover do projeto',
     icon: Trash,
@@ -77,7 +105,7 @@ export const ACTION_COPY: Record<MemberAction, ActionCopy> = {
     confirmLabel: 'Remover',
     isDestructive: true,
     isWeighty: false,
-    from: () => ROLE_NAMES.member,
+    from: (row) => ROLE_NAMES[row.role],
     to: 'Sem acesso',
     done: (name) => `${name} não tem mais acesso ao projeto.`,
   },

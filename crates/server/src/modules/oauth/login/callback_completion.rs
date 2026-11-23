@@ -9,7 +9,6 @@ use crate::modules::oauth::login::oauth_login_error::OAuthLoginError;
 use crate::modules::oauth::login::oauth_state_repository::{
     PendingAuthorization, take_pending_authorization,
 };
-use crate::modules::tenants::postgres::tenant_pool_registry::TenantPoolRegistry;
 use crate::modules::webhooks::runtime::webhook_runtime::WebhookRuntime;
 use crate::shared::crypto::opaque_token::hash_opaque_token;
 use crate::shared::http::api_error::ApiError;
@@ -45,13 +44,13 @@ pub async fn issue_login_code(
     pending: &PendingAuthorization,
     code: Option<String>,
 ) -> Result<String, OAuthLoginError> {
-    let tenant_pool = services.tenant_pools.pool_for(pending.tenant_id).await?;
+    let tenant_pool = services.tenant_pool;
     // A blank code is no code: treat it as the user denying access, not as a server error.
     let code = code.filter(|code| code.trim().is_empty() == false);
     let webhooks = services.webhooks.recorder(pending.tenant_id).await?;
     let callback = ProviderCallback {
         pending,
-        tenant_pool: &tenant_pool,
+        tenant_pool,
         code,
         webhooks: &webhooks,
     };
@@ -60,12 +59,13 @@ pub async fn issue_login_code(
         user_id: user.id,
         purpose: OneTimeTokenPurpose::OAuthLogin,
         code_challenge: Some(&pending.app_code_challenge),
+        oauth_context: Some((pending.provider.as_str(), pending.provider_revision)),
     };
 
-    Ok(issue_one_time_token(&tenant_pool, request).await?)
+    Ok(issue_one_time_token(tenant_pool, request).await?)
 }
 pub struct CallbackServices<'a> {
-    pub tenant_pools: &'a TenantPoolRegistry,
+    pub tenant_pool: &'a PgPool,
     pub webhooks: &'a WebhookRuntime,
     pub login: OAuthLoginContext<'a>,
 }

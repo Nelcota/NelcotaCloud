@@ -58,7 +58,7 @@ pub fn push_json_rows<'a>(
         true => "coalesce((SELECT value::text FROM _encoded_rows LIMIT 1), 'null')",
         false => "(SELECT coalesce(json_agg(value), '[]')::text FROM _encoded_rows)",
     };
-    sql.push("_encoded_rows AS MATERIALIZED (SELECT row_to_json(_r) AS value FROM (");
+    sql.push("_encoded_rows AS MATERIALIZED (SELECT row_to_json(_r.*) AS value FROM (");
     writer.push_level(sql, root, LevelMode::Rows)?;
     sql.push(") _r) ");
     sql.push(format!(

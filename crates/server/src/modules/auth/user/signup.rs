@@ -2,7 +2,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::modules::auth::email::auth_email_dispatch::{
-    AuthEmailKind, AuthEmailLink, AuthEmailRequest, email_auth_link, send_auth_email,
+    AuthEmailKind, AuthEmailLink, email_auth_link,
 };
 use crate::modules::auth::email::auth_mailer::AuthMailer;
 use crate::modules::auth::one_time_token::one_time_token_repository::issue_one_time_token;
@@ -19,7 +19,7 @@ use crate::modules::auth::user::user_registration::insert_user;
 use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::modules::tenants::audit::audit_action::AuditAction;
 use crate::modules::tenants::audit::audit_entry::NewAuditEvent;
-use crate::modules::tenants::audit::audit_recorder::record_audit_event;
+use crate::modules::tenants::audit::audit_recorder::insert_audit_event;
 use crate::modules::tenants::settings::email_verification_policy::requires_email_verification;
 use crate::modules::webhooks::event::webhook_event_type::WebhookEventType;
 use crate::modules::webhooks::runtime::webhook_runtime::WebhookRuntime;
@@ -77,24 +77,25 @@ async fn sign_up_with_session(
         (WebhookEventType::UserCreated, &user),
     )
     .await?;
-    transaction.commit().await?;
-    record_signup(tenant, user.id, signup).await;
-    let mut connection = tenant.pool.acquire().await?;
-    let verification = AuthEmailRequest {
-        user: &user,
-        kind: AuthEmailKind::Verification,
-    };
-    send_auth_email(&services.mailer, tenant, verification).await?;
+    let kind = AuthEmailKind::Verification;
+    let token = issue_one_time_token(&mut *transaction, kind.token_request(user.id)).await?;
+    let event = signup_event(user.id, signup);
+    insert_audit_event(&mut *transaction, event).await?;
+
     let request = SessionRequest {
         tenant_id: tenant.tenant_id,
-        connection: &mut connection,
+        connection: &mut transaction,
         grant: SessionGrant {
             user,
             family: SessionFamily::new_login(),
         },
     };
+    let tokens = issue_session_with(&services.signing, request).await?;
+    transaction.commit().await?;
 
-    issue_session_with(&services.signing, request).await
+    queue_signup_verification(services, tenant, (signup.email.as_str(), &token)).await;
+
+    Ok(tokens)
 }
 
 /// Answers the same for new and already registered emails, so signup cannot be used to find
@@ -114,28 +115,36 @@ async fn sign_up_pending_verification(
         Some(registration) => registration,
         None => return Ok(()),
     };
-    let user = registration.user();
-    let token_request = AuthEmailKind::Verification.token_request(user.id);
+    let token_request = AuthEmailKind::Verification.token_request(registration.user().id);
     let token = issue_one_time_token(&mut *transaction, token_request).await?;
-    transaction.commit().await?;
 
     if let Registration::Created(created) = &registration {
-        record_signup(tenant, created.id, signup).await;
+        insert_audit_event(&mut *transaction, signup_event(created.id, signup)).await?;
     }
 
-    let link = AuthEmailLink {
-        user,
-        kind: AuthEmailKind::Verification,
-        token: &token,
-    };
+    transaction.commit().await?;
+    queue_signup_verification(services, tenant, (signup.email.as_str(), &token)).await;
 
-    email_auth_link(&services.mailer, tenant.tenant_id, &link).await
+    Ok(())
 }
 
 /// A new account only: taking over an unverified one is not a new signup.
-async fn record_signup(tenant: &TenantContext, user_id: Uuid, signup: &NewSignup) {
-    let origin = signup.origin.clone();
-    let event = NewAuditEvent::by_user(AuditAction::SignedUp, user_id, origin);
+fn signup_event(user_id: Uuid, signup: &NewSignup) -> NewAuditEvent {
+    NewAuditEvent::by_user(AuditAction::SignedUp, user_id, signup.origin.clone())
+}
 
-    record_audit_event(&tenant.pool, event).await;
+async fn queue_signup_verification(
+    services: &SignupServices<'_>,
+    tenant: &TenantContext,
+    (address, token): (&str, &str),
+) {
+    let link = AuthEmailLink {
+        address,
+        kind: AuthEmailKind::Verification,
+        token,
+    };
+
+    if let Err(error) = email_auth_link(&services.mailer, tenant.tenant_id, &link).await {
+        tracing::warn!(%error, "could not schedule signup verification");
+    }
 }

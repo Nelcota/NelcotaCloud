@@ -1,20 +1,16 @@
-use std::sync::Arc;
-
 use uuid::Uuid;
 
 use crate::modules::webhooks::delivery::manual_send_limiter::ManualSendLimiter;
 use crate::modules::webhooks::delivery::webhook_transport::WebhookTransport;
 use crate::modules::webhooks::outbox::webhook_hints::WebhookHints;
 use crate::modules::webhooks::outbox::webhook_recorder::WebhookRecorder;
-use crate::modules::webhooks::outbox::webhook_subscriptions::{
-    SubscriptionsError, WebhookSubscriptions,
-};
+use crate::modules::webhooks::outbox::webhook_subscriptions::WebhookSubscriptions;
 use crate::shared::http::api_error::ApiError;
 
 /// The tenant's subscriptions could not be loaded, so its events cannot be recorded.
 #[derive(Debug, thiserror::Error)]
 #[error("webhook subscriptions are unavailable: {0}")]
-pub struct RecorderUnavailable(#[from] Arc<SubscriptionsError>);
+pub struct RecorderUnavailable(#[from] sqlx::Error);
 
 impl From<RecorderUnavailable> for ApiError {
     fn from(error: RecorderUnavailable) -> Self {

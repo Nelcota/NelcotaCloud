@@ -226,6 +226,33 @@ async fn list_projects(server: &TestServer, account: &Session) -> TestResult<Res
     .await
 }
 
+#[tokio::test]
+async fn the_console_requires_an_active_platform_session() -> TestResult {
+    let server = TestServer::start().await?;
+    let (platform, account) = server
+        .create_platform_account(&unique_email("console-session"))
+        .await?;
+    assert_eq!(
+        list_projects(&server, &account).await?.status(),
+        StatusCode::OK
+    );
+
+    let logout = server
+        .post_auth(
+            "/auth/v1/logout",
+            &platform.publishable_key,
+            json!({ "refresh_token": account.refresh_token }),
+        )
+        .await?;
+    assert_eq!(logout.status(), StatusCode::NO_CONTENT);
+    assert_eq!(
+        list_projects(&server, &account).await?.status(),
+        StatusCode::UNAUTHORIZED
+    );
+
+    server.drop_tenant(&platform).await
+}
+
 /// A user of an ordinary tenant is not a console account, even with a valid token.
 #[tokio::test]
 async fn tokens_of_other_tenants_are_not_platform_accounts() -> TestResult {

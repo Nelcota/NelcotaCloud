@@ -3,6 +3,7 @@ pub mod crypto;
 pub mod database;
 pub mod email;
 pub mod http;
+pub mod image;
 pub mod net;
 pub mod rate_limiting;
 pub mod text;

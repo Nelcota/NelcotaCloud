@@ -19,6 +19,7 @@ pub enum OAuthStateError {
 pub struct PendingAuthorization {
     pub tenant_id: Uuid,
     pub provider: OAuthProvider,
+    pub provider_revision: Uuid,
     pub pkce_verifier_ciphertext: Vec<u8>,
     pub redirect_to: String,
     /// The app's own PKCE challenge, carried to the login code it will redeem.
@@ -29,6 +30,7 @@ pub struct PendingAuthorization {
 struct PendingAuthorizationRow {
     tenant_id: Uuid,
     provider: String,
+    provider_revision: Uuid,
     pkce_verifier_ciphertext: Vec<u8>,
     redirect_to: String,
     app_code_challenge: String,
@@ -40,8 +42,8 @@ pub async fn insert_pending_authorization(
     pending: &PendingAuthorization,
 ) -> Result<(), OAuthStateError> {
     sqlx::query(
-        "INSERT INTO oauth_authorization_states (state_hash, tenant_id, provider, pkce_verifier_ciphertext, redirect_to, app_code_challenge, expires_at) \
-         VALUES ($1, $2, $3, $4, $5, $6, now() + $7::bigint * interval '1 second')",
+        "INSERT INTO oauth_authorization_states (state_hash, tenant_id, provider, pkce_verifier_ciphertext, redirect_to, app_code_challenge, expires_at, provider_revision) \
+         VALUES ($1, $2, $3, $4, $5, $6, now() + $7::bigint * interval '1 second', $8)",
     )
     .bind(state_hash)
     .bind(pending.tenant_id)
@@ -50,6 +52,7 @@ pub async fn insert_pending_authorization(
     .bind(&pending.redirect_to)
     .bind(&pending.app_code_challenge)
     .bind(STATE_LIFETIME.whole_seconds())
+    .bind(pending.provider_revision)
     .execute(pool)
     .await?;
 
@@ -63,7 +66,7 @@ pub async fn take_pending_authorization(
 ) -> Result<Option<PendingAuthorization>, OAuthStateError> {
     let row: Option<PendingAuthorizationRow> = sqlx::query_as(
         "DELETE FROM oauth_authorization_states WHERE state_hash = $1 AND expires_at > now() \
-         RETURNING tenant_id, provider, pkce_verifier_ciphertext, redirect_to, app_code_challenge",
+         RETURNING tenant_id, provider, pkce_verifier_ciphertext, redirect_to, app_code_challenge, provider_revision",
     )
     .bind(state_hash)
     .fetch_optional(pool)
@@ -80,6 +83,7 @@ impl PendingAuthorizationRow {
         Ok(PendingAuthorization {
             tenant_id: self.tenant_id,
             provider,
+            provider_revision: self.provider_revision,
             pkce_verifier_ciphertext: self.pkce_verifier_ciphertext,
             redirect_to: self.redirect_to,
             app_code_challenge: self.app_code_challenge,
@@ -109,6 +113,7 @@ mod tests {
         PendingAuthorizationRow {
             tenant_id: Uuid::new_v4(),
             provider: provider.to_owned(),
+            provider_revision: Uuid::new_v4(),
             pkce_verifier_ciphertext: vec![1, 2, 3],
             redirect_to: "https://app.test/callback".to_owned(),
             app_code_challenge: "challenge".to_owned(),

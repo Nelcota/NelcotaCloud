@@ -1,5 +1,6 @@
 use jsonwebtoken::jwk::{Jwk, PublicKeyUse};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::modules::tenants::signing_keys::signing_key::{SigningKey, SigningKeyError};
@@ -11,6 +12,7 @@ pub struct PreparedSigningKey {
     pub encoding_key: EncodingKey,
     pub decoding_key: DecodingKey,
     pub public_jwk: Jwk,
+    pub verify_until: Option<OffsetDateTime>,
 }
 
 impl PreparedSigningKey {
@@ -26,6 +28,7 @@ impl PreparedSigningKey {
             encoding_key,
             decoding_key,
             public_jwk,
+            verify_until: None,
         })
     }
 }

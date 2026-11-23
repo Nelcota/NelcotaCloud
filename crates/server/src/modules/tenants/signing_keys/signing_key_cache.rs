@@ -9,23 +9,21 @@ use crate::modules::tenants::signing_keys::signing_key_repository::{
     SigningKeyStoreError, load_signing_keys,
 };
 use crate::modules::tenants::signing_keys::tenant_signing_keys::TenantSigningKeys;
-use crate::shared::cache::cache_generation::CacheGeneration;
 use crate::shared::crypto::secret_box::SecretBox;
 
-/// Keys are reloaded after this long, so a future key rotation reaches every instance soon.
+/// Bounds the lifetime of prepared keys which are no longer used.
 const CACHE_TIME_TO_LIVE: Duration = Duration::from_secs(300);
 /// Bounds memory: the least recently used tenants are evicted and reloaded on their next request.
 const MAX_CACHED_TENANTS: u64 = 10_000;
 
-/// Prepared signing keys per tenant, so authenticated requests skip the control plane query,
-/// the AES-GCM decryption and the key derivation.
+/// Prepared signing keys per persisted active key, shared across requests without repeating
+/// the AES-GCM decryption and key derivation.
 ///
 /// Concurrent requests for a tenant whose keys are not cached share a single load.
 pub struct SigningKeyCache {
     control_plane_pool: PgPool,
     secret_box: Arc<SecretBox>,
-    entries: Cache<(Uuid, u64), Arc<TenantSigningKeys>>,
-    generation: CacheGeneration,
+    entries: Cache<(Uuid, Uuid), Arc<TenantSigningKeys>>,
 }
 
 impl SigningKeyCache {
@@ -39,7 +37,6 @@ impl SigningKeyCache {
             control_plane_pool,
             secret_box,
             entries,
-            generation: CacheGeneration::new(),
         }
     }
 
@@ -48,6 +45,14 @@ impl SigningKeyCache {
         &self,
         tenant_id: Uuid,
     ) -> Result<Arc<TenantSigningKeys>, Arc<SigningKeyStoreError>> {
+        let active: Option<Uuid> = sqlx::query_scalar(
+            "SELECT id FROM tenant_signing_keys WHERE tenant_id = $1 AND is_active",
+        )
+        .bind(tenant_id)
+        .fetch_optional(&self.control_plane_pool)
+        .await
+        .map_err(SigningKeyStoreError::from)?;
+        let active = active.ok_or(SigningKeyStoreError::NoActiveKey(tenant_id))?;
         let load = async {
             let keys =
                 load_signing_keys(&self.control_plane_pool, tenant_id, &self.secret_box).await?;
@@ -55,15 +60,6 @@ impl SigningKeyCache {
             Ok(Arc::new(keys))
         };
 
-        let cache_key = (tenant_id, self.generation.of(tenant_id));
-
-        self.entries.try_get_with(cache_key, load).await
-    }
-
-    /// Forgets the tenant's cached keys after a rotation or removal committed, so this instance
-    /// uses a rotated key right away. Other instances pick it up within the cache lifetime; tokens of
-    /// the old key keep verifying meanwhile.
-    pub fn forget(&self, tenant_id: Uuid) {
-        self.generation.advance(tenant_id);
+        self.entries.try_get_with((tenant_id, active), load).await
     }
 }

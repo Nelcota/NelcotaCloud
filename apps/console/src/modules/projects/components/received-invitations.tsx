@@ -30,14 +30,14 @@ export function ReceivedInvitations(): JSX.Element | null {
 
   return (
     <section aria-label="Convites recebidos" className="grid gap-3">
-      <ErrorAlert error={acceptance.error ?? refusal.error} />
+      <ErrorAlert error={acceptance.error} />
       {received.map((invitation) => (
         <InvitationCard
           key={invitation.id}
           invitation={invitation}
           isPending={isAnswering(invitation.id, [acceptance, refusal])}
           onAccept={() => accept(invitation.id)}
-          onDecline={() => refusal.mutate(invitation.id)}
+          onDecline={() => refusal.mutateAsync(invitation.id)}
         />
       ))}
     </section>

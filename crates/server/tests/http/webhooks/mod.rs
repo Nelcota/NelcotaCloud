@@ -1,8 +1,10 @@
 mod audit_feed;
+mod delivery_insights;
 mod delivery_leases;
 mod endpoint_atomicity;
+mod endpoint_health;
 mod endpoints;
 mod queue_health;
-mod receiver;
+pub(super) mod receiver;
 mod webhook_delivery;
 mod webhook_safeguards;

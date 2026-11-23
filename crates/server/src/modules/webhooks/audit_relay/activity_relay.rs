@@ -96,6 +96,8 @@ async fn relay_tenant(
     let window = EventWindow {
         limit: RELAY_BATCH,
         max_age_minutes: WEBHOOK_MAX_AGE_MINUTES,
+        earliest_start: subscriber.earliest_start,
+        observed_at: subscriber.observed_at,
     };
     let events = claim_events(&mut transaction, window).await?;
     if events.is_empty() {
@@ -106,12 +108,11 @@ async fn relay_tenant(
     let event_ids: Vec<i64> = events.iter().map(|event| event.id).collect();
     let outbox_events = events
         .iter()
-        .map(prepare_outbox_event)
+        .map(|event| prepare_outbox_event(event, subscriber.endpoints_at(event.occurred_at)))
         .collect::<Result<Vec<_>, _>>()?;
     let batch = OutboxBatch {
         events: &outbox_events,
         event_type: WebhookEventType::AuditEvent,
-        endpoint_ids: &subscriber.endpoint_ids,
     };
     insert_outbox_batch(&mut transaction, batch).await?;
     finish_events(&mut transaction, &event_ids).await?;
@@ -121,7 +122,10 @@ async fn relay_tenant(
 }
 
 /// One outbox entry per event, timestamped when the event happened.
-fn prepare_outbox_event(event: &RelayedAuditEvent) -> Result<OutboxEvent, WebhookEventError> {
+fn prepare_outbox_event(
+    event: &RelayedAuditEvent,
+    endpoint_ids: Vec<Uuid>,
+) -> Result<OutboxEvent, WebhookEventError> {
     let event_value = serde_json::to_value(event).map_err(WebhookEventError::from)?;
     let webhook_event = WebhookEvent {
         event_type: WebhookEventType::AuditEvent,
@@ -130,5 +134,6 @@ fn prepare_outbox_event(event: &RelayedAuditEvent) -> Result<OutboxEvent, Webhoo
     Ok(OutboxEvent {
         id: Uuid::new_v4(),
         payload: webhook_event.into_payload(event.occurred_at)?,
+        endpoint_ids,
     })
 }

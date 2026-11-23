@@ -8,6 +8,7 @@ const ROLE_OPTIONS: readonly { value: RoleFilter; label: string }[] = [
   { value: 'all', label: 'Todos' },
   { value: 'owner', label: 'Dono' },
   { value: 'member', label: 'Membro' },
+  { value: 'viewer', label: 'Leitura' },
 ]
 
 type ProjectsToolbarProps = {

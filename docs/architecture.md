@@ -37,7 +37,8 @@ through a REST API governed by row-level security.
   `users.sessions_invalidated_at`), so successors created by a concurrent refresh are refused too.
 - Concurrency: paths that change a user lock its `users` row before its token rows (never the
   reverse), expiries are computed with the database clock (`now() + interval`), and login keeps
-  the checked password hash locked (`FOR SHARE`) while it stores the new session.
+  the checked password hash locked (`FOR NO KEY UPDATE`) while it stores the new session and
+  its last sign-in timestamp.
 - Each tenant has a required `site_url`: email links point to it and OAuth only redirects under it.
 - Auth emails (verification, password reset, magic link) are HTML + text (askama template
   `templates/auth_email.html`, auto-escaped), sent in the background through the tenant's own SMTP
@@ -84,6 +85,9 @@ through a REST API governed by row-level security.
   (`POST .../ownership-transfer`); all lock the project's memberships so it always keeps an owner
   (`last_owner`), and promotion respects the 10-owned-projects limit (`owned_project_limit`).
   Ownership is never handed out by invitation: invite as member, then promote.
+  Owners can make a member a `viewer`: `TenantAdmin` refuses every request of a viewer that may
+  write (any method but GET/HEAD; asking for a file's download link is the one POST allowed)
+  with `read_only_member`, so viewers read everything a member reads and change nothing.
 - User administration: the list filters by `status` (`unverified`, `banned`) and sorts by
   creation or by last login (`order=last_sign_in`, with its own `l`-prefixed cursor, never-logged-in
   users last); each user carries `last_sign_in_at` (kept on `users` by a trigger on new refresh
@@ -144,10 +148,16 @@ through a REST API governed by row-level security.
   and shares it with the navigation. `GET /auth/v1/admin/users` serves offset pages and exact counts.
 - Profile photos (`auth/avatar`): `PUT/DELETE /auth/v1/user/avatar` take the raw image (PNG,
   JPEG, WebP, up to 1 MiB); the server decodes it with `image` (size limits against decompression
-  bombs), crops it to a 256px square and re-encodes it as JPEG (no EXIF), stored in the tenant's
+  bombs; `shared/image`), crops it to a 256px square and re-encodes it as JPEG (no EXIF), stored in the tenant's
   `user_avatars`. `GET /auth/v1/users/{id}/avatar?apikey=<publishable key>&version=…` serves it
   publicly (secret keys are refused in URLs); `User.avatar_updated_at` is the version. The console
   crops in a modal (`react-easy-crop`) and uploads through the SDK (`auth.avatar`).
+- Project logos (`tenants/logo`): `GET/PUT/DELETE /auth/v1/admin/logo` (`TenantAdmin`, rate
+  limited per project, recorded in the project audit) go through the same image normalization,
+  stored in the control plane's `tenant_logos`; `logo_updated_at` on the settings and the project
+  list is the version. Only members read it, so the console fetches it with the session
+  (`ProjectMark`, keyed by version) instead of an `<img>` URL; the logo replaces the mascot.
+  Uploaded in Settings › Geral with the same crop modal, square.
 - Tenant settings (`GET/PATCH /auth/v1/admin/settings`): name, `site_url`,
   `require_email_verification` (default true: password login and refresh need a verified email,
   and signup answers the same for new and existing emails).
@@ -174,6 +184,15 @@ through a REST API governed by row-level security.
   and resends are rate limited per project. Receivers must be https on public addresses,
   checked at save and again by the client's DNS resolver on every request (no redirects, no
   proxy); `WEBHOOK_ALLOW_PRIVATE_HOSTS=true` lifts it for local development only.
+  Each attempt records the receiver's answer time and, for a refusal, its first 512 bytes
+  (cleaned of control characters, kept as long as the delivery). The log pages 50 at a time
+  (`?status=&before=<delivery id>`); `POST .../deliveries/retry-failed` queues every given-up
+  delivery again; tests may imitate one of the endpoint's event types with made-up data
+  (`{event_type}`). Endpoints have an optional `description` (80 characters, one line). The
+  worker keeps each endpoint's `failing_since` (first refused attempt since the last
+  success); the API's sweep (`team/notification`, every 5 minutes) emails the project's owners
+  after 6 hours of failures and pauses the endpoint after 5 days (`auto_paused_at`); enabling
+  it again starts its health afresh. The emails never carry the endpoint's URL or name.
 
   The project queue summary reads only delivery metadata from the authorized tenant database.
   It caps individual counts at 10,000 with a truncation flag, uses indexed due-time ordering to
@@ -213,6 +232,36 @@ through a REST API governed by row-level security.
   `unique_violation`, ...); the console's SQL editor (and its schema overview, which never runs
   as the superuser) passes Postgres's message on and keeps at most 1000 rows / 4 MiB of values;
   a last query that found no rows shows its own empty header (prepared again, never re-run).
+  The schema overview also lists each table's indexes (columns, method, size, scans) and its
+  size on disk. The console edits rows in the grid (filters, insert, edit, delete by primary
+  key) through the same Data API as `nelcota_service`.
+- Types (`database/types`): `GET /database/v1/types` reads the `public` catalog through the
+  developer session (one static query) and writes the SDK's `Database` TypeScript type: tables
+  (`Row`, `Insert` without generated columns, `Update`), views, functions (overloads as unions),
+  enums; empty sections are `{ [_ in never]: never }` so table names keep their autocomplete.
+- Direct connections (`database/direct_connection`): each project may get the login role
+  `nelcota_c_<slug>` (NOINHERIT, `SET role = nelcota_developer` as a role default, 60 s statement
+  timeout, CONNECTION LIMIT 10, CONNECT on its own database only). `POST
+  /database/v1/connection/password` sets a random password and returns it once (never stored);
+  `GET /database/v1/connection` shows host, port, database and user. `DATABASE_PUBLIC_HOST`,
+  `_PORT` and `_SSL_MODE` turn it on (unset: `direct_connection_disabled`). Since the developer
+  role owns `public` everywhere, every `tenant_*` database must stay closed to `PUBLIC`
+  (`CLOSE_TENANT_DATABASES`, run at startup, after `CREATE DATABASE` and before a password is
+  set). PgBouncer (`deploy/pgbouncer`, transaction mode, TLS required) authenticates through
+  `pgbouncer.user_lookup`, created by the API when `POOLER_AUTH_PASSWORD` is set and limited to
+  `nelcota_c_*` roles.
+- Data API usage (`database/usage`): a middleware on `/rest/v1` counts each response per
+  project, hour, resource, method and status in memory (`UsageSlot` filled by `DataApiCaller`;
+  404s keep no resource name), flushed every 15 s to the control plane's `data_api_usage`
+  (35 days). `GET /database/v1/usage?period=24h|7d|30d` flushes this instance first, then
+  reports totals, a point per hour or UTC day and the busiest tables and statuses.
+- Notifications (`notifications`): up to 5 channels per project (`notification_channels`:
+  email, or Discord/Slack incoming webhooks limited to their own https hosts; destinations
+  sealed, `target_hint` shown) at `/auth/v1/admin/notifications`, each subscribed to events
+  (`webhook_failing`, `login_failures`, `data_api_errors`, `storage_near_limit`). A sweep every
+  5 minutes checks the measured events only for subscribed projects and claims one alert per
+  event per 6 hours (`notification_alerts`, released when no channel got it); webhook failure
+  alerts also reach the channels. Test sends are rate limited per project.
 - Project database migrations (`/database/v1/migrations`) serialize applies with a transaction
   advisory lock on the project database. The tenant-bound admin route checks the version and SQL
   checksum, runs the script as the developer role, and stores the history entry in the same
@@ -270,10 +319,23 @@ through a REST API governed by row-level security.
   dependencies. It keeps the session, renews it before expiry (one refresh in flight), handles
   OAuth with PKCE, magic links, MFA and sessions, and queries the database
   (`from('t').select(...).eq(...).execute()`, `rpc`) as the logged-in user. On servers,
+  `createClient<Database>()` takes the generated `Database` type (names, rows, inserts, updates,
+  `rpc` arguments and results follow it; without it everything is a plain record).
   `createAccessTokenVerifier` verifies access tokens using cached JWKS (WebCrypto Ed25519),
   and `verifyWebhook` verifies webhooks. Types are generated from `openapi.json`. Uses
   TypeScript 7; `api:types` runs openapi-typescript with its own TypeScript 5.9 through `npx`
   (it needs the compiler API, which TypeScript 7 does not have), like the console.
+- MCP server (`packages/mcp`, `@nelcota/mcp`): stdio MCP server for coding agents, one
+  project per secret key (`NELCOTA_SECRET_KEY`, `NELCOTA_API_URL`): schema, rows, SQL, users,
+  activity and traffic tools over the public API. Depends on `@modelcontextprotocol/sdk` and
+  `zod`; follows the SDK's TypeScript rules.
+- CLI (`packages/cli`, `@nelcota/cli`, bin `nelcota`): no runtime dependencies (`node:util`
+  `parseArgs`, `fetch`), one project per secret key like the MCP server (`NELCOTA_API_URL`,
+  `NELCOTA_SECRET_KEY`, or `--local`). `init`, `migrations new|list|push` (files
+  `nelcota/migrations/<UTC YYYYMMDDHHMMSS>_<name>.sql`, applied through
+  `/database/v1/migrations`), `gen types`, `db url`, `db reset-password`, and `dev start|stop|
+  status` (a local stack in `.nelcota/dev/` with Docker and the API image
+  `ghcr.io/nelcota/nelcota-api`, published by CI from `main`). Follows the SDK's TypeScript rules.
 - Console (`apps/console/`): React + TypeScript SPA built with Vite, TanStack Router and TanStack
   Query, Tailwind CSS and shadcn/ui; see "Console structure". It talks to the API only; the API
   address is fixed at build time by `VITE_API_URL`. It logs in with the SDK (compiled from
@@ -291,9 +353,13 @@ through a REST API governed by row-level security.
   service sends daily encrypted dumps of every database to Cloudflare R2 (`deploy/backup/`). It
   uploads the inventory and checksum manifest last so interrupted uploads are excluded from restore.
   Operations (first boot, platform tenant, backups, staging): `docs/deploy.md`.
+  Direct Postgres connections go through the `pgbouncer` service (profile
+  `direct-connections`, on a DNS-only host; see [deploy](deploy.md)).
 - CI (`.github/workflows/ci.yml`): API (fmt, clippy, tests with Postgres and Mailpit), console and
   SDK (format, lint, generated types, tests, build and package consumer), module boundaries,
   backup verification, and Docker images on pushes to `main`.
+  The MCP server and the CLI have their own jobs (format, lint, types, tests, build), and
+  pushes to `main` publish the API image to `ghcr.io/nelcota/nelcota-api` for `nelcota dev`.
 - Behind Cloudflare (proxied DNS records, recommended so console assets come from the edge):
   SSL/TLS mode "Full (strict)", `CLIENT_IP_HEADER=cf-connecting-ip`, and the VPS firewall allows
   ports 80/443 only from Cloudflare's IP ranges. Caching needs no rule: hashed assets are
@@ -329,7 +395,11 @@ Modular monolith in `crates/server/src/`: one folder per business context under 
     `login` (start, completion, state), `profile` (one file per provider), `identity`
     (identities, account linking).
   - `team/`: `member` (team members, owner checks), `invitation` (invitations, their email,
-    answers by the invited account).
+    answers by the invited account), `notification` (emails to a project's owners, such as
+    failing webhooks).
+  - `notifications/`: `channel` (events, targets, storage, sealed destinations), `delivery`
+    (alert text per channel, email and chat delivery, dispatch), `alerts` (throttle, checks,
+    sweep).
   - `webhooks/`: `audit_relay` (the `audit.event` feed), `event` (event types and payloads), `endpoint` (URL policy, storage, use
     cases), `signing` (secrets, signatures), `outbox` (subscriptions cache, recorder, wake-up
     hints), `scheduling` (durable wake-up times), `delivery` (transport and DNS guard, queue, retries, worker, delivery log,
@@ -342,7 +412,9 @@ Modular monolith in `crates/server/src/`: one folder per business context under 
     query guard, error mapping), `schema` (introspection, cache, relationships, function
     resolution), `query` (URL and `Prefer` parsing into `ReadQuery` and `WriteQuery`), `sql` (statement
     writers), `rows` (read, write and function-call use cases), `admin` (developer session, SQL
-    runner, table and policy DDL, schema overview). HTTP handlers live in `routes/data_api`
+    runner, table and policy DDL, schema overview), `usage` (Data API counters, flush, report),
+    `types` (catalog query, TypeScript writer), `direct_connection` (settings, connection string,
+    password reset). HTTP handlers live in `routes/data_api`
     for `/rest/v1` and `routes/admin` for `/database/v1`. Both receive scoped database
     session dependencies assembled by `AppState`.
 - `shared/`: infrastructure with no business rules (`crypto`, `http` (generic `ApiError`, client
@@ -355,9 +427,13 @@ Modular monolith in `crates/server/src/`: one folder per business context under 
   two endpoints, a rule and its HTTP mapping.
 - Dependencies point one way: `tenants → shared`, `cache → tenants`, `webhooks → tenants`,
   `storage → auth, tenants`,
-  `auth → webhooks, tenants`, `oauth → auth, webhooks, tenants`, `team → auth, tenants`,
-  `database → tenants`.
+  `auth → webhooks, tenants`, `oauth → auth, webhooks, tenants`,
+  `team → auth, notifications, webhooks, tenants`, `notifications → auth, storage, tenants`,
+  `database → auth (session facade), tenants`. Other modules reach Auth only through
+  `auth::integration`. `scripts/check-module-boundaries.py` enforces this.
   Never create a cycle; if two modules need each other, the shared piece belongs in the lower one.
+  Two known exceptions remain to be removed: `auth → team` (account removal) and
+  `tenants → auth` (platform accounts check sessions).
 - A new product of the BaaS starts as a new module; split modules
   into workspace crates only when the compiler-enforced boundary is worth the extra setup.
 - Migrations live in `crates/server/migrations/` (`control_plane/` and `tenant/`). Tenant
@@ -378,7 +454,10 @@ dependencies. In `apps/console/src/`:
   (theme tokens: graphite neutrals, one blue accent; dark by default, light via the account menu;
   font Manrope).
 - `modules/<module>/`: everything one context owns (`account`, `projects`, `overview`, `api-keys`,
-  `users`, `project-settings`, `system-status`, `team`, `webhooks`, `activity`, `database`):
+  `users`, `project-settings`, `system-status`, `team`, `webhooks`, `activity`, `database`,
+  `cache`, `storage`, `notifications`). A viewer's project pages run under `ReadOnlyContext`
+  (`shared/auth/write-access`): submit buttons, confirmations and step dialogs are disabled with
+  the reason; leaving the project stays allowed.
   - `pages/`: one file per route; composes components, no fetching or business logic.
   - `components/`: UI of the module, one component per file.
   - `queries/`: TanStack Query hooks (`use-*-query.ts`, `use-*-mutation.ts`); the only place that

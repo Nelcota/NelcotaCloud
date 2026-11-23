@@ -44,14 +44,21 @@ pub async fn exchange_oauth_code(
     let client_ip = origin.client_ip;
     state
         .rate_limits
-        .token_redemption
-        .check(tenant.tenant_id, client_ip)?;
+        .auth
+        .check_redemption(tenant.tenant_id, client_ip)
+        .await?;
     let exchange = LoginCodeExchange {
         code: &body.code,
         code_verifier: &body.code_verifier,
     };
 
-    let response = exchange_login_code(&state.token_signing(), &tenant, exchange).await?;
+    let response = exchange_login_code(
+        &state.control_plane_pool,
+        &state.token_signing(),
+        &tenant,
+        exchange,
+    )
+    .await?;
     let login = (LoginMethod::Oauth, origin);
     record_login(&tenant.pool, &response, login).await;
 

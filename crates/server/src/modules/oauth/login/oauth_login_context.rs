@@ -1,4 +1,5 @@
 use sqlx::PgPool;
+use uuid::Uuid;
 
 use crate::modules::oauth::client::oauth_client::{
     ConfiguredOAuthClient, OAuthClientSettings, build_oauth_client,
@@ -26,10 +27,11 @@ impl OAuthLoginContext<'_> {
     pub(super) async fn client_for(
         &self,
         key: ProviderKey,
-    ) -> Result<ConfiguredOAuthClient, OAuthLoginError> {
+    ) -> Result<(ConfiguredOAuthClient, Uuid), OAuthLoginError> {
         let credentials =
             find_provider_credentials(self.control_plane_pool, key, self.secret_box).await?;
         let credentials = credentials.ok_or(OAuthLoginError::ProviderNotConfigured)?;
+        let revision = credentials.revision;
         let settings = OAuthClientSettings {
             credentials,
             endpoints: ProviderAdapter::select(key.provider, self.endpoints).endpoints(),
@@ -38,6 +40,6 @@ impl OAuthLoginContext<'_> {
             http_client: self.http_client,
         };
 
-        Ok(build_oauth_client(settings)?)
+        Ok((build_oauth_client(settings)?, revision))
     }
 }

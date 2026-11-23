@@ -28,6 +28,12 @@ GRANT pg_use_reserved_connections TO nelcota_control_runtime;
 ";
 
 const CONTROL_GRANTS: &str = "
+DO $connect$
+BEGIN
+    EXECUTE format('REVOKE ALL ON DATABASE %I FROM PUBLIC', current_database());
+    EXECUTE format('GRANT CONNECT ON DATABASE %I TO nelcota_control_runtime', current_database());
+END
+$connect$;
 GRANT USAGE ON SCHEMA public TO nelcota_control_runtime;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO nelcota_control_runtime;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO nelcota_control_runtime;
@@ -39,6 +45,7 @@ GRANT USAGE ON SCHEMA auth TO nelcota_tenant_runtime;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA auth TO nelcota_tenant_runtime;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA auth TO nelcota_tenant_runtime;
 REVOKE ALL ON TABLE auth._sqlx_migrations, auth.schema_version FROM nelcota_tenant_runtime;
+REVOKE ALL ON auth.tenant_identity FROM nelcota_tenant_runtime;
 GRANT EXECUTE ON FUNCTION auth.terminate_project_backend(integer, timestamptz) TO nelcota_tenant_runtime;
 ";
 

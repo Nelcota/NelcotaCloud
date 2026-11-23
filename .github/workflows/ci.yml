@@ -127,18 +127,75 @@ jobs:
       - run: npm run build
       - run: npm run test:package
 
+  mcp:
+    name: MCP server (format, lint, types, tests, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/mcp
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 26.13.1
+          cache: npm
+          cache-dependency-path: packages/mcp/package-lock.json
+      - run: npm install --global "npm@$NPM_VERSION"
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  cli:
+    name: CLI (format, lint, types, tests, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/cli
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 26.13.1
+          cache: npm
+          cache-dependency-path: packages/cli/package-lock.json
+      - run: npm install --global "npm@$NPM_VERSION"
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
   images:
     name: Docker images build
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
+    # Pushes to main publish the API image, so the job needs packages: write.
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: docker/setup-buildx-action@v4.4.1
+      - name: Log in to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # The API image is published for `nelcota dev start`.
       - uses: docker/build-push-action@v7.4.0
         with:
           context: .
           file: crates/server/Dockerfile
-          push: false
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: |
+            ghcr.io/nelcota/nelcota-api:latest
+            ghcr.io/nelcota/nelcota-api:${{ github.sha }}
           cache-from: type=gha,scope=api
           cache-to: type=gha,mode=max,scope=api
       - uses: docker/build-push-action@v7.4.0
@@ -156,3 +213,10 @@ jobs:
           push: false
           cache-from: type=gha,scope=backup
           cache-to: type=gha,mode=max,scope=backup
+      - uses: docker/build-push-action@v7.4.0
+        with:
+          context: .
+          file: deploy/pgbouncer/Dockerfile
+          push: false
+          cache-from: type=gha,scope=pgbouncer
+          cache-to: type=gha,mode=max,scope=pgbouncer

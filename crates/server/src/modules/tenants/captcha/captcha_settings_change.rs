@@ -4,10 +4,7 @@ use uuid::Uuid;
 use validator::{Validate, ValidationError};
 
 use crate::app_state::AppState;
-use crate::modules::tenants::captcha::captcha_settings_repository::{
-    NewCaptchaSettings, captcha_secret_context, save_captcha_settings,
-};
-use crate::modules::tenants::captcha::captcha_settings_view::CaptchaSettingsView;
+use crate::modules::tenants::captcha::captcha_settings_repository::captcha_secret_context;
 use crate::modules::tenants::captcha::captcha_site_verify::SiteVerifyRequest;
 use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::shared::http::api_error::ApiError;
@@ -38,28 +35,18 @@ fn check_key_characters(key: &str) -> Result<(), ValidationError> {
     Ok(())
 }
 
-/// Checks the secret with Cloudflare, then stores it encrypted.
-pub async fn save_captcha(
+/// Checks the secret with Cloudflare before opening the transaction that stores it.
+pub async fn prepare_captcha_secret(
     state: &AppState,
     tenant_id: Uuid,
     body: &CaptchaSettingsBody,
-) -> Result<CaptchaSettingsView, ApiError> {
+) -> Result<Vec<u8>, ApiError> {
     ensure_secret_is_known(state, &body.secret_key).await?;
     let context = captcha_secret_context(tenant_id);
-    let ciphertext = state
+    state
         .secret_box
         .seal(body.secret_key.as_bytes(), &context)
-        .map_err(ApiError::internal)?;
-    let settings = NewCaptchaSettings {
-        tenant_id,
-        site_key: &body.site_key,
-        secret_key_ciphertext: &ciphertext,
-    };
-    save_captcha_settings(&state.control_plane_pool, settings).await?;
-
-    Ok(CaptchaSettingsView {
-        site_key: Some(body.site_key.clone()),
-    })
+        .map_err(ApiError::internal)
 }
 
 /// A wrong secret would refuse every login, so it is refused here instead.
@@ -82,5 +69,11 @@ async fn ensure_secret_is_known(state: &AppState, secret: &str) -> Result<(), Ap
         return Err(ApiError::from(TenantsRejection::InvalidCaptchaSecret));
     }
 
-    Ok(())
+    // The deliberately invalid response must be the sole refusal. Provider errors do not
+    // establish whether a secret works, so the current settings must stay in force.
+    if outcome.success || outcome.error_codes.as_slice() == ["invalid-input-response"] {
+        return Ok(());
+    }
+
+    Err(TenantsRejection::CaptchaUnavailable.into())
 }

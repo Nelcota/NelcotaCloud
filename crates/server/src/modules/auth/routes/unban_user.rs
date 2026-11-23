@@ -9,7 +9,6 @@ use crate::modules::auth::user::user_response::UserResponse;
 use crate::modules::tenants::access::tenant_admin_context::TenantAdminContext;
 use crate::modules::tenants::audit::audit_action::AuditAction;
 use crate::modules::tenants::audit::audit_entry::NewAuditEvent;
-use crate::modules::tenants::audit::audit_recorder::record_audit_event;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
 
 /// `POST /admin/users/{user_id}/unban`: the user can log in again.
@@ -31,15 +30,13 @@ pub async fn unban_user(
     Path(user_id): Path<Uuid>,
 ) -> Result<Json<UserResponse>, ApiError> {
     let webhooks = state.webhooks.recorder(admin.tenant_id).await?;
-    let change = unban(&admin.pool, user_id, &webhooks).await?;
+    let event = NewAuditEvent::by_admin(AuditAction::UserUnbanned, user_id, admin.author());
+    let change = unban(&admin.pool, user_id, &webhooks, event).await?;
     let user = match change {
         None => return Err(ApiError::NotFound("user")),
         Some(StatusChange::Unchanged(user)) => return Ok(Json(user.into())),
         Some(StatusChange::Changed(user)) => user,
     };
-
-    let event = NewAuditEvent::by_admin(AuditAction::UserUnbanned, user_id, admin.author());
-    record_audit_event(&admin.pool, event).await;
 
     Ok(Json(user.into()))
 }

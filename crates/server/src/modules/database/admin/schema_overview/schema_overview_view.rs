@@ -17,8 +17,11 @@ pub struct TableOverview {
     pub rls_enabled: bool,
     /// The planner's estimate; `null` before the table was ever analyzed.
     pub estimated_rows: Option<i64>,
+    /// Disk taken by the table with its indexes and TOAST data; `0` for views.
+    pub size_bytes: i64,
     pub columns: Vec<ColumnOverview>,
     pub foreign_keys: Vec<ForeignKeyOverview>,
+    pub indexes: Vec<IndexOverview>,
     pub policies: Vec<PolicyOverview>,
 }
 
@@ -42,6 +45,22 @@ pub struct ForeignKeyOverview {
     pub columns: Vec<String>,
     pub foreign_table: String,
     pub foreign_columns: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct IndexOverview {
+    pub name: String,
+    /// Key columns, or expressions (`lower(email)`), in order.
+    pub columns: Vec<String>,
+    /// `btree`, `gin`, `gist`, `hash`, `brin`...
+    pub method: String,
+    pub is_primary: bool,
+    pub is_unique: bool,
+    pub size_bytes: i64,
+    /// Times the planner used it since the statistics were last reset.
+    pub scans: i64,
+    /// The `CREATE INDEX` statement that rebuilds it.
+    pub definition: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]

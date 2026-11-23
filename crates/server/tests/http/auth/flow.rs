@@ -74,6 +74,63 @@ async fn logout_revokes_the_session() -> TestResult {
     let refresh = server.refresh(&tenant, &session.refresh_token).await?;
     assert_eq!(refresh.status(), StatusCode::UNAUTHORIZED);
 
+    let access = server
+        .current_user(&tenant.publishable_key, &session.access_token)
+        .await?;
+    assert_eq!(access.status(), StatusCode::UNAUTHORIZED);
+
+    server.drop_tenant(&tenant).await
+}
+
+#[tokio::test]
+async fn the_data_api_requires_an_active_session() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    let session = server.sign_up(&tenant, "data-session@example.com").await?;
+    let mut database = server.tenant_database(&tenant).await?;
+    sqlx::raw_sql(
+        "CREATE TABLE public.session_fixture (id integer PRIMARY KEY);
+         GRANT SELECT ON public.session_fixture TO nelcota_authenticated;",
+    )
+    .execute(&mut database)
+    .await?;
+    let rows = || {
+        server
+            .client
+            .get(server.url("/rest/v1/session_fixture"))
+            .header("apikey", &tenant.publishable_key)
+            .bearer_auth(&session.access_token)
+    };
+
+    assert_eq!(rows().send().await?.status(), StatusCode::OK);
+    let body = json!({ "refresh_token": session.refresh_token });
+    let logout = server
+        .post_auth("/auth/v1/logout", &tenant.publishable_key, body)
+        .await?;
+    assert_eq!(logout.status(), StatusCode::NO_CONTENT);
+    assert_eq!(rows().send().await?.status(), StatusCode::UNAUTHORIZED);
+
+    server.drop_tenant(&tenant).await
+}
+
+#[tokio::test]
+async fn an_unavailable_refresh_insert_leaves_the_session_renewable() -> TestResult {
+    let server = TestServer::start().await?;
+    let tenant = server.create_tenant().await?;
+    let session = server.sign_up(&tenant, "retry-refresh@example.com").await?;
+    let mut database = server.tenant_database(&tenant).await?;
+    sqlx::query("ALTER TABLE refresh_tokens ADD CONSTRAINT test_refresh_insert CHECK (revoked_at IS NOT NULL) NOT VALID")
+        .execute(&mut database)
+        .await?;
+
+    let unavailable = server.refresh(&tenant, &session.refresh_token).await?;
+    assert_eq!(unavailable.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    sqlx::query("ALTER TABLE refresh_tokens DROP CONSTRAINT test_refresh_insert")
+        .execute(&mut database)
+        .await?;
+
+    let retry = server.refresh(&tenant, &session.refresh_token).await?;
+    assert_eq!(retry.status(), StatusCode::OK);
     server.drop_tenant(&tenant).await
 }
 

@@ -5,7 +5,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::{Validate, ValidationError};
 
-use crate::modules::cache::access::credential_prefix;
+use crate::modules::cache::credentials::cache_token::credential_prefix;
 use crate::modules::cache::management::project_cache_owner::ProjectCacheOwner;
 use crate::modules::cache::rejection::CacheRejection;
 use crate::shared::crypto::opaque_token::OpaqueToken;

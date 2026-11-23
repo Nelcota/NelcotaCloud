@@ -3,6 +3,7 @@ pub mod api_keys;
 pub mod audit;
 pub mod captcha;
 pub mod ip_blocks;
+pub mod logo;
 pub mod platform;
 pub mod postgres;
 pub mod provisioning;

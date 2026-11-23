@@ -1,29 +1,49 @@
 use std::str::FromStr;
+use std::sync::LazyLock;
+use std::time::Duration;
 
 use sqlx::error::DatabaseError;
 use sqlx::postgres::{PgConnectOptions, PgConnection, PgPoolOptions};
-use sqlx::{AssertSqlSafe, Connection};
+use sqlx::{AssertSqlSafe, Connection, PgPool};
+use uuid::Uuid;
 
 use crate::modules::tenants::postgres::authenticator_password::{
     MissingServerPassword, authenticator_password,
 };
 use crate::modules::tenants::postgres::database_role_setup::{
-    CREATE_SHARED_ROLES, drop_tenant_role_statement, tenant_role_statements,
+    CLOSE_TENANT_DATABASES, CREATE_SHARED_ROLES, DIRECT_ROLE_EXISTS, direct_role_statements,
+    drop_tenant_role_statement, tenant_role_statements,
 };
-use crate::modules::tenants::postgres::database_roles::tenant_authenticator_role;
+use crate::modules::tenants::postgres::database_roles::{
+    tenant_authenticator_role, tenant_direct_role,
+};
+use crate::modules::tenants::postgres::pooler_lookup::configure_pooler_lookup;
 use crate::modules::tenants::postgres::runtime_roles::{
     TENANT_RUNTIME_ROLE, configure_runtime_roles, grant_tenant_runtime,
 };
 use crate::modules::tenants::postgres::tenant_migration::{
     TenantMigrationError, migrate_tenant_database,
 };
-use crate::modules::tenants::provisioning::tenant_slug::TenantSlug;
+use crate::modules::tenants::postgres::tenant_pool_limits::TenantPoolLimits;
+use crate::modules::tenants::provisioning::tenant_repository::{find_tenant_id_by_slug, lock_slug};
+use crate::modules::tenants::provisioning::tenant_slug::{InvalidTenantSlug, TenantSlug};
+use crate::shared::crypto::hex_encoding::encode_hex;
+use crate::shared::crypto::opaque_token::hash_opaque_token;
+use crate::shared::database::migrators::TENANT_MIGRATOR;
 
 const MAINTENANCE_DATABASE: &str = "postgres";
 const DUPLICATE_DATABASE_ERROR_CODE: &str = "42P04";
 /// Two concurrent CREATE DATABASE of the same name can also fail on the catalog's unique index.
 const UNIQUE_VIOLATION_ERROR_CODE: &str = "23505";
 const MIGRATION_CONNECTIONS: u32 = 1;
+const MIGRATION_CONNECT_WAIT: Duration = Duration::from_secs(5);
+static REQUIRED_SCHEMA_VERSION: LazyLock<i64> = LazyLock::new(|| {
+    TENANT_MIGRATOR
+        .iter()
+        .map(|migration| migration.version)
+        .max()
+        .unwrap_or_default()
+});
 /// Auth code reads its tables unqualified; they live in `auth`, never in a project's `public`.
 const AUTH_SEARCH_PATH: &str = "auth";
 /// Data API queries name tables of the project's `public` schema.
@@ -31,6 +51,8 @@ const DATA_API_SEARCH_PATH: &str = "public";
 
 #[derive(Debug, thiserror::Error)]
 pub enum TenantDatabaseError {
+    #[error(transparent)]
+    InvalidSlug(#[from] InvalidTenantSlug),
     #[error("a database for this tenant slug already exists")]
     AlreadyExists,
     #[error("database error while managing a tenant database: {0}")]
@@ -63,6 +85,12 @@ impl<'a> TenantDatabaseServer<'a> {
     pub async fn prepare_runtime_role(&self, password: &str) -> Result<(), sqlx::Error> {
         let options = self.database_options(MAINTENANCE_DATABASE)?;
         configure_runtime_roles(options, password).await
+    }
+
+    /// Lets the connection pooler look up direct connection roles (see `pooler_lookup`).
+    pub async fn prepare_pooler_lookup(&self, password: &str) -> Result<(), sqlx::Error> {
+        let options = self.database_options(MAINTENANCE_DATABASE)?;
+        configure_pooler_lookup(options, password).await
     }
 
     pub fn runtime_auth_options(
@@ -105,6 +133,8 @@ impl<'a> TenantDatabaseServer<'a> {
     /// Creates the request roles shared by every project (once per server).
     pub async fn ensure_roles(&self) -> Result<(), sqlx::Error> {
         self.run_maintenance_statement(AssertSqlSafe(CREATE_SHARED_ROLES.to_owned()))
+            .await?;
+        self.run_maintenance_statement(AssertSqlSafe(CLOSE_TENANT_DATABASES.to_owned()))
             .await
     }
 
@@ -117,6 +147,28 @@ impl<'a> TenantDatabaseServer<'a> {
         Ok(())
     }
 
+    /// Creates the project's direct connection role, or replaces its password.
+    pub async fn reset_direct_role(
+        &self,
+        slug: &TenantSlug,
+        password: &str,
+    ) -> Result<(), sqlx::Error> {
+        self.run_maintenance_statement(direct_role_statements(slug, password))
+            .await
+    }
+
+    pub async fn has_direct_role(&self, slug: &TenantSlug) -> Result<bool, sqlx::Error> {
+        let options = self.database_options(MAINTENANCE_DATABASE)?;
+        let mut connection = PgConnection::connect_with(&options).await?;
+        let exists = sqlx::query_scalar(DIRECT_ROLE_EXISTS)
+            .bind(tenant_direct_role(slug))
+            .fetch_one(&mut connection)
+            .await;
+        connection.close().await?;
+
+        exists
+    }
+
     pub async fn create_database(&self, slug: &TenantSlug) -> Result<(), TenantDatabaseError> {
         let database_name = slug.database_name();
         // Identifiers cannot be bound as parameters; TenantSlug only allows [a-z0-9_].
@@ -124,33 +176,102 @@ impl<'a> TenantDatabaseServer<'a> {
         self.run_maintenance_statement(AssertSqlSafe(statement))
             .await
             .map_err(map_duplicate_database)?;
+        // Closed from its first moment, before anything else could connect to it.
+        self.run_maintenance_statement(AssertSqlSafe(CLOSE_TENANT_DATABASES.to_owned()))
+            .await?;
 
         Ok(())
     }
 
-    pub async fn migrate_database(&self, slug: &TenantSlug) -> Result<(), TenantDatabaseError> {
+    /// Backfills existing databases only while the slug still belongs to the expected project.
+    pub async fn prepare_registered_database(
+        &self,
+        control: &PgPool,
+        slug: &TenantSlug,
+        tenant_id: Uuid,
+    ) -> Result<bool, TenantDatabaseError> {
+        let mut transaction = control.begin().await?;
+        sqlx::query("SET LOCAL lock_timeout = '2s'")
+            .execute(&mut *transaction)
+            .await?;
+        lock_slug(&mut transaction, slug).await?;
+
+        if find_tenant_id_by_slug(&mut *transaction, slug).await? != Some(tenant_id) {
+            return Ok(false);
+        }
+
+        self.migrate_database(slug, tenant_id).await?;
+        transaction.commit().await?;
+
+        Ok(true)
+    }
+
+    pub async fn migrate_database(
+        &self,
+        slug: &TenantSlug,
+        tenant_id: Uuid,
+    ) -> Result<(), TenantDatabaseError> {
         // Through a pool: `Migrator::run` on a bare connection yields a non-Send future.
         let tenant_pool = PgPoolOptions::new()
             .max_connections(MIGRATION_CONNECTIONS)
-            .connect_with(self.auth_options(slug)?)
+            .acquire_timeout(MIGRATION_CONNECT_WAIT)
+            .connect_with(
+                self.auth_options(slug)?
+                    .options([("lock_timeout", "5s"), ("statement_timeout", "40s")]),
+            )
             .await?;
-        let migration = self.migrate_with_pool(&tenant_pool).await;
+        let migration = self.migrate_with_pool(&tenant_pool, slug, tenant_id).await;
         tenant_pool.close().await;
-        migration?;
-
-        if self.uses_runtime_role {
-            self.ensure_tenant_role(slug).await?;
-        }
-
-        Ok(())
+        migration
     }
 
-    async fn migrate_with_pool(&self, pool: &sqlx::PgPool) -> Result<(), TenantDatabaseError> {
+    async fn migrate_with_pool(
+        &self,
+        pool: &PgPool,
+        slug: &TenantSlug,
+        tenant_id: Uuid,
+    ) -> Result<(), TenantDatabaseError> {
+        let fingerprint = self
+            .uses_runtime_role
+            .then(|| authenticator_password(self.base_url, slug))
+            .transpose()?
+            .map(|password| {
+                let connection_limit = TenantPoolLimits::DATA_API.connections_per_tenant;
+                encode_hex(&hash_opaque_token(&format!(
+                    "{connection_limit}:{password}"
+                )))
+            });
+
+        if database_already_prepared(pool, tenant_id, fingerprint.as_deref()).await? {
+            return Ok(());
+        }
+
         migrate_tenant_database(pool).await?;
+        let mut connection = pool.acquire().await?;
+        sqlx::query(
+            "INSERT INTO auth.tenant_identity (tenant_id) VALUES ($1) ON CONFLICT DO NOTHING",
+        )
+        .bind(tenant_id)
+        .execute(&mut *connection)
+        .await?;
+        ensure_database_identity(&mut connection, tenant_id).await?;
+        drop(connection);
 
         if self.uses_runtime_role {
             grant_tenant_runtime(pool).await?;
+            self.ensure_tenant_role(slug).await?;
         }
+
+        sqlx::query(
+            "UPDATE auth.tenant_identity
+             SET prepared_through = GREATEST(prepared_through, $1), authenticator_fingerprint = $2
+             WHERE tenant_id = $3",
+        )
+        .bind(*REQUIRED_SCHEMA_VERSION)
+        .bind(fingerprint)
+        .bind(tenant_id)
+        .execute(pool)
+        .await?;
 
         Ok(())
     }
@@ -192,6 +313,81 @@ impl<'a> TenantDatabaseServer<'a> {
 
         Ok(())
     }
+}
+
+/// A pool can reconnect after its original database was dropped and the slug reused.
+pub async fn ensure_database_identity(
+    connection: &mut PgConnection,
+    tenant_id: Uuid,
+) -> Result<(), sqlx::Error> {
+    let actual: Option<Uuid> =
+        sqlx::query_scalar("SELECT tenant_id FROM auth.tenant_identity WHERE singleton")
+            .fetch_optional(connection)
+            .await?;
+
+    if actual != Some(tenant_id) {
+        return Err(sqlx::Error::Protocol(
+            "database does not belong to the requested project".to_owned(),
+        ));
+    }
+
+    Ok(())
+}
+
+pub(crate) async fn ensure_prepared_database(
+    connection: &mut PgConnection,
+    tenant_id: Uuid,
+) -> Result<(), sqlx::Error> {
+    let prepared: Option<(Uuid, i64)> = sqlx::query_as(
+        "SELECT tenant_id, prepared_through FROM auth.tenant_identity WHERE singleton",
+    )
+    .fetch_optional(connection)
+    .await?;
+
+    if prepared
+        .is_some_and(|(actual, version)| actual == tenant_id && version >= *REQUIRED_SCHEMA_VERSION)
+    {
+        return Ok(());
+    }
+
+    Err(sqlx::Error::Protocol(
+        "tenant database identity or schema version is not ready".to_owned(),
+    ))
+}
+
+async fn database_already_prepared(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    fingerprint: Option<&str>,
+) -> Result<bool, sqlx::Error> {
+    let exists: bool = sqlx::query_scalar("SELECT to_regclass('auth.tenant_identity') IS NOT NULL")
+        .fetch_one(pool)
+        .await?;
+
+    if exists == false {
+        return Ok(false);
+    }
+
+    // JSON field access returns NULL for markers written before these columns existed.
+    let marker: Option<(Uuid, Option<i64>, Option<String>)> = sqlx::query_as(
+        "SELECT tenant_id, (to_jsonb(marker)->>'prepared_through')::bigint,
+                to_jsonb(marker)->>'authenticator_fingerprint'
+         FROM auth.tenant_identity AS marker WHERE singleton",
+    )
+    .fetch_optional(pool)
+    .await?;
+    let Some((actual, version, configured_fingerprint)) = marker else {
+        return Ok(false);
+    };
+
+    if actual != tenant_id {
+        return Err(sqlx::Error::Protocol(
+            "database does not belong to the requested project".to_owned(),
+        ));
+    }
+
+    Ok(version == Some(*REQUIRED_SCHEMA_VERSION)
+        && configured_fingerprint.as_deref() == fingerprint)
 }
 
 fn map_duplicate_database(error: sqlx::Error) -> TenantDatabaseError {

@@ -5,6 +5,7 @@ import type { JSX } from 'react'
 
 import { EndpointFormDialog } from '@/modules/webhooks/components/endpoint-form-dialog'
 import { WebhookDeleteIllustration } from '@/modules/webhooks/components/webhook-illustrations'
+import { hostOf } from '@/modules/webhooks/model/endpoint-host'
 import {
   useDeleteWebhookEndpointMutation,
   useUpdateWebhookEndpointMutation,
@@ -75,13 +76,4 @@ export function EndpointActions(props: EndpointActionsProps): JSX.Element {
       </div>
     </div>
   )
-}
-
-/** Titles name the endpoint by its host; the full URL, which can be long, is in the change row. */
-function hostOf(url: string): string {
-  try {
-    return new URL(url).host
-  } catch {
-    return url
-  }
 }

@@ -12,6 +12,7 @@ pub const SERVICE_ROLE: &str = "nelcota_service";
 pub const DEVELOPER_ROLE: &str = "nelcota_developer";
 
 const TENANT_AUTHENTICATOR_PREFIX: &str = "nelcota_t_";
+const TENANT_DIRECT_PREFIX: &str = "nelcota_c_";
 
 /// The login role of one project's Data API pool.
 ///
@@ -21,4 +22,13 @@ const TENANT_AUTHENTICATOR_PREFIX: &str = "nelcota_t_";
 /// 40 characters, so the name is a plain identifier under Postgres's 63.
 pub fn tenant_authenticator_role(slug: &TenantSlug) -> String {
     format!("{TENANT_AUTHENTICATOR_PREFIX}{}", slug.as_str())
+}
+
+/// The login role of one project's direct connections (ORMs, `psql`, through the pooler).
+///
+/// It logs in as itself and becomes the project's developer (`SET role` as a role default),
+/// so it can do what the console's SQL editor does, in its own database only: it is the one
+/// other role allowed to connect there. Its password is shown once and never stored.
+pub fn tenant_direct_role(slug: &TenantSlug) -> String {
+    format!("{TENANT_DIRECT_PREFIX}{}", slug.as_str())
 }

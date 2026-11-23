@@ -1,5 +1,6 @@
 import type { components } from '../../generated/api-schema'
 import type { HttpClient } from '../../http/http-client'
+import { NelcotaError } from '../../http/nelcota-error'
 import type { OAuthProvider, SignInResult } from '../auth-types'
 import { toSignInResult } from '../login-results'
 import { oauthCallbackError } from './oauth-callback-error'
@@ -8,7 +9,8 @@ import type { SessionManager } from '../session/session-manager'
 import type { PkceVerifierStore } from './pkce-verifier-store'
 
 type LoginResponse = components['schemas']['LoginResponse']
-type OAuthVerifierStore = Pick<PkceVerifierStore, 'saveVerifier' | 'takeVerifier'>
+type OAuthVerifierStore = Pick<PkceVerifierStore, 'saveVerifier' | 'takeVerifier'> &
+  Partial<Pick<PkceVerifierStore, 'peekVerifier'>>
 type OAuthContext = {
   http: HttpClient
   manager: SessionManager
@@ -25,6 +27,7 @@ export class OAuthApi {
   private readonly manager: SessionManager
   private readonly store: OAuthVerifierStore
   private readonly now: () => number
+  private readonly exchanges = new Map<string, Promise<SignInResult>>()
 
   constructor(context: OAuthContext) {
     this.http = context.http
@@ -33,12 +36,12 @@ export class OAuthApi {
     this.now = context.now
   }
 
-  /** The URL to send the browser to. `redirectTo` must be under the tenant's site URL. */
+  /** The URL to open in the browser. `redirectTo` must match a registered app callback. */
   async getAuthorizeUrl(request: { provider: OAuthProvider; redirectTo: string }): Promise<string> {
+    const redirectTo = new URL(request.redirectTo)
     const pkce = await createPkcePair()
     const state = createOAuthState()
     this.store.saveVerifier(state, pkce.verifier)
-    const redirectTo = new URL(request.redirectTo)
     redirectTo.searchParams.set('nelcota_state', state)
     const query = new URLSearchParams({
       apikey: this.http.publishableKey,
@@ -58,34 +61,75 @@ export class OAuthApi {
     const parameters = new URL(callbackUrl).searchParams
     const state = parameters.get('nelcota_state')
 
-    // Taken first so a failed or cancelled login never leaves the verifier behind.
-    let verifier: string | null = null
-
-    if (state !== null) {
-      verifier = this.store.takeVerifier(state)
-    }
-
     const error = parameters.get('error')
 
     if (error !== null) {
+      this.discardVerifier(state)
       throw oauthCallbackError(error)
     }
 
     const code = parameters.get('code')
 
     if (code === null) {
+      this.discardVerifier(state)
       throw oauthCallbackError('missing_oauth_code')
     }
+
+    if (state === null) {
+      throw oauthCallbackError('missing_pkce_verifier')
+    }
+
+    const key = JSON.stringify([state, code])
+    const running = this.exchanges.get(key)
+
+    if (running !== undefined) {
+      return running
+    }
+
+    const exchange = this.redeemCode(state, code)
+    this.exchanges.set(key, exchange)
+
+    try {
+      return await exchange
+    } finally {
+      this.exchanges.delete(key)
+    }
+  }
+
+  private async redeemCode(state: string, code: string): Promise<SignInResult> {
+    const readsWithoutRemoval = this.store.peekVerifier !== undefined
+    const verifier = this.store.peekVerifier
+      ? this.store.peekVerifier(state)
+      : this.store.takeVerifier(state)
 
     if (verifier === null) {
       throw oauthCallbackError('missing_pkce_verifier')
     }
 
-    const response = await this.http.request<LoginResponse>({
-      method: 'POST',
-      path: '/auth/v1/oauth/token',
-      body: { code, code_verifier: verifier },
-    })
+    let response: LoginResponse
+
+    try {
+      response = await this.http.request<LoginResponse>({
+        method: 'POST',
+        path: '/auth/v1/oauth/token',
+        body: { code, code_verifier: verifier },
+      })
+    } catch (error) {
+      const definitive = isDefinitiveFailure(error)
+
+      if (definitive && readsWithoutRemoval) {
+        this.discardVerifier(state)
+      } else if (definitive === false && readsWithoutRemoval === false) {
+        this.store.saveVerifier(state, verifier)
+      }
+
+      throw error
+    }
+
+    if (readsWithoutRemoval) {
+      this.discardVerifier(state)
+    }
+
     const result = toSignInResult(response, this.now)
 
     if (result.kind === 'session') {
@@ -94,4 +138,19 @@ export class OAuthApi {
 
     return result
   }
+
+  private discardVerifier(state: string | null): void {
+    if (state !== null) {
+      this.store.takeVerifier(state)
+    }
+  }
+}
+
+function isDefinitiveFailure(error: unknown): boolean {
+  return (
+    error instanceof NelcotaError &&
+    error.status >= 400 &&
+    error.status < 500 &&
+    [408, 425, 429].includes(error.status) === false
+  )
 }

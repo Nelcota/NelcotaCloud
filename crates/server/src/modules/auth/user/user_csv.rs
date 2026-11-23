@@ -1,13 +1,12 @@
-use csv::{Terminator, WriterBuilder};
+use csv::Writer;
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 
 use crate::modules::auth::user::user_display_name::display_name;
-use crate::modules::auth::user::user_record::User;
+use crate::modules::auth::user::user_export::ExportUser;
+use crate::shared::http::api_error::ApiError;
 
-/// Excel opens a UTF-8 file as Latin-1 without it, garbling accented names and emails.
-const BYTE_ORDER_MARK: &str = "\u{feff}";
-const HEADER: [&str; 11] = [
+pub(super) const HEADER: [&str; 11] = [
     "id",
     "email",
     "name",
@@ -25,35 +24,18 @@ const FORMULA_STARTS: [char; 6] = ['=', '+', '-', '@', '\t', '\r'];
 /// Joins the providers in one cell; no provider name contains it.
 const PROVIDER_SEPARATOR: &str = ";";
 
-#[derive(Debug, thiserror::Error)]
-pub enum UserCsvError {
-    #[error(transparent)]
-    Csv(#[from] csv::Error),
-    #[error(transparent)]
-    Time(#[from] time::error::Format),
+pub(super) fn write_user(writer: &mut Writer<Vec<u8>>, user: &ExportUser) -> Result<(), ApiError> {
+    let fields = row_fields(user)
+        .map_err(ApiError::internal)?
+        .map(spreadsheet_text);
+    writer.write_record(fields).map_err(ApiError::internal)
 }
 
-/// The users as a CSV document (RFC 4180, CRLF line ends), ready to open in a spreadsheet.
-pub fn user_csv(users: &[User]) -> Result<Vec<u8>, UserCsvError> {
-    let mut writer = WriterBuilder::new()
-        .terminator(Terminator::CRLF)
-        .from_writer(BYTE_ORDER_MARK.as_bytes().to_vec());
-    writer.write_record(HEADER)?;
-    for user in users {
-        let fields = row_fields(user)?.map(spreadsheet_text);
-        writer.write_record(&fields)?;
-    }
-
-    writer
-        .into_inner()
-        .map_err(|error| UserCsvError::Csv(error.into_error().into()))
-}
-
-fn row_fields(user: &User) -> Result<[String; 11], time::error::Format> {
+fn row_fields(user: &ExportUser) -> Result<[String; 11], time::error::Format> {
     Ok([
         user.id.to_string(),
         user.email.clone(),
-        display_name(&user.user_metadata.0)
+        display_name(&user.name_fields.0)
             .unwrap_or_default()
             .to_owned(),
         status_of(user).to_owned(),
@@ -68,7 +50,7 @@ fn row_fields(user: &User) -> Result<[String; 11], time::error::Format> {
 }
 
 /// The same precedence the console shows: a block wins over an unconfirmed email.
-fn status_of(user: &User) -> &'static str {
+fn status_of(user: &ExportUser) -> &'static str {
     if user.banned_at.is_some() {
         return "banned";
     }
@@ -104,25 +86,38 @@ mod tests {
 
     use super::*;
 
+    use crate::modules::auth::csv_stream::csv_chunk;
+
+    const BYTE_ORDER_MARK: &str = "\u{feff}";
+
+    fn user_csv(users: &[ExportUser]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        let mut writer = csv_chunk(true);
+        writer.write_record(HEADER)?;
+
+        for user in users {
+            write_user(&mut writer, user)?;
+        }
+
+        Ok(writer.into_inner()?)
+    }
+
     type TestResult = Result<(), Box<dyn std::error::Error>>;
 
-    fn user(name: &str) -> Result<User, time::error::ComponentRange> {
+    fn user(name: &str) -> Result<ExportUser, time::error::ComponentRange> {
         let created_at = OffsetDateTime::from_unix_timestamp(1_790_000_000)?;
         let metadata = match json!({ "name": name }) {
             serde_json::Value::Object(map) => map,
             _ => serde_json::Map::new(),
         };
 
-        Ok(User {
+        Ok(ExportUser {
             id: Uuid::from_u128(1),
             email: "ana@example.com".to_owned(),
             email_verified_at: None,
             banned_at: None,
             created_at,
             mfa_enabled: true,
-            avatar_updated_at: None,
-            user_metadata: Json(metadata),
-            app_metadata: Json(serde_json::Map::new()),
+            name_fields: Json(metadata),
             last_sign_in_at: None,
             has_password: true,
             providers: vec!["github".to_owned(), "google".to_owned()],

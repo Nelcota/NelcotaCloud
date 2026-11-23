@@ -2,7 +2,7 @@ use axum::extract::State;
 use axum::http::StatusCode;
 
 use crate::app_state::AppState;
-use crate::modules::cache::access::CacheAccess;
+use crate::modules::cache::access::cache_access::CacheAccess;
 use crate::modules::cache::entries::cache_payload::CacheWriteRequest;
 use crate::modules::cache::rejection::CacheRejection;
 use crate::shared::http::api_error::{ApiError, ErrorBody};
@@ -35,8 +35,8 @@ pub async fn set_cache_entry(
         .as_ref()
         .ok_or(CacheRejection::Unavailable)?;
     let key = access.entry_key(&request.key);
-    let value = request.encode_value()?;
-    store.set(&key, &value, request.ttl_seconds()).await?;
+    let value = request.encoded_value()?;
+    store.set(&key, value, request.ttl_seconds()).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

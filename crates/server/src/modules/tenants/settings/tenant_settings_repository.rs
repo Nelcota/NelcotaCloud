@@ -1,4 +1,4 @@
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
 use crate::modules::tenants::settings::site_url::SiteUrl;
@@ -8,7 +8,9 @@ use crate::modules::tenants::settings::tenant_settings::TenantSettings;
 /// time with `concat!` instead of `format!` on every call.
 macro_rules! settings_columns {
     () => {
-        "name, site_url, require_email_verification, mascot_id"
+        "name, site_url, require_email_verification, mascot_id, \
+         (SELECT updated_at FROM tenant_logos WHERE tenant_logos.tenant_id = tenants.id) \
+         AS logo_updated_at"
     };
 }
 
@@ -35,7 +37,7 @@ pub async fn find_tenant_settings(
 }
 
 pub async fn update_tenant_settings(
-    pool: &PgPool,
+    connection: &mut PgConnection,
     tenant_id: Uuid,
     change: TenantSettingsChange<'_>,
 ) -> Result<Option<TenantSettings>, sqlx::Error> {
@@ -51,7 +53,7 @@ pub async fn update_tenant_settings(
     .bind(change.site_url.map(SiteUrl::as_str))
     .bind(change.require_email_verification)
     .bind(change.mascot_id)
-    .fetch_optional(pool)
+    .fetch_optional(connection)
     .await
 }
 

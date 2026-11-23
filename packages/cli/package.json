@@ -1,0 +1,35 @@
+{
+  "name": "@nelcota/cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Command-line tool for NelcotaCloud projects: SQL migrations, generated types, direct database access and a local stack with Docker.",
+  "license": "UNLICENSED",
+  "bin": {
+    "nelcota": "./dist/index.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "scripts": {
+    "build": "tsdown",
+    "start": "node dist/index.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "oxlint",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "oxfmt": "^0.79.0",
+    "oxlint": "^1.94.0",
+    "tsdown": "^0.23.7",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.1"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "npm@12.2.3"
+}

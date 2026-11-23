@@ -54,6 +54,12 @@ async fn a_magic_link_signs_a_new_user_up_and_works_once() -> TestResult {
     let tenant = server.create_tenant_with_defaults().await?;
     let email = unique_email("magic-new");
     let token = request_link(&server, &tenant, &email).await?;
+    let mut database = server.tenant_database(&tenant).await?;
+    let existing: bool = sqlx::query_scalar("SELECT EXISTS (SELECT FROM users WHERE email = $1)")
+        .bind(&email)
+        .fetch_one(&mut database)
+        .await?;
+    assert!(!existing);
 
     let first = verify(&server, &tenant, &token).await?;
     assert_eq!(first.status(), StatusCode::OK);

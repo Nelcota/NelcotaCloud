@@ -3,8 +3,9 @@ use std::time::Duration;
 use reqwest::StatusCode;
 use server::modules::tenants::provisioning::tenant_deletion::stage_deletion;
 use sqlx::Connection;
+use uuid::Uuid;
 
-use crate::support::{CreatedTenant, TestResult, TestServer};
+use crate::support::{CreatedTenant, TestResult, TestServer, random_slug};
 
 #[tokio::test]
 async fn a_committed_deletion_reserves_its_slug_and_retires_cached_keys() -> TestResult {
@@ -43,6 +44,40 @@ async fn a_committed_deletion_reserves_its_slug_and_retires_cached_keys() -> Tes
     let replacement = server.create_tenant_with_slug(&tenant.slug).await?;
     assert_ne!(replacement.tenant_id, tenant.tenant_id);
     server.drop_tenant(&replacement).await
+}
+
+#[tokio::test]
+async fn maintenance_reclaims_a_database_from_interrupted_provisioning() -> TestResult {
+    let server = TestServer::start().await?;
+    let slug = random_slug();
+    server.create_orphan_database(&slug).await?;
+    let mut control = server.control_plane().await?;
+    sqlx::query(
+        "INSERT INTO tenant_provisioning_intents (slug, tenant_id, recover_after)
+         VALUES ($1, $2, clock_timestamp())",
+    )
+    .bind(&slug)
+    .bind(Uuid::new_v4())
+    .execute(&mut control)
+    .await?;
+
+    for _ in 0..110 {
+        let pending: bool = sqlx::query_scalar(
+            "SELECT EXISTS (SELECT 1 FROM tenant_provisioning_intents WHERE slug = $1)",
+        )
+        .bind(&slug)
+        .fetch_one(&mut control)
+        .await?;
+        if pending == false {
+            assert!(server.tenant_database_exists(&slug).await? == false);
+            let tenant = server.create_tenant_with_slug(&slug).await?;
+            return server.drop_tenant(&tenant).await;
+        }
+
+        tokio::time::sleep(Duration::from_millis(200)).await;
+    }
+
+    Err("maintenance did not reclaim the provisioning intent".into())
 }
 
 #[tokio::test]

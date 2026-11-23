@@ -69,6 +69,64 @@
         "VITE_API_URL": "http://127.0.0.1:8090"
       },
       "port": 5174
+    },
+    {
+      "name": "console-redesign",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "apps/console",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5176",
+        "--strictPort"
+      ],
+      "port": 5176
+    },
+    {
+      "name": "console-webhooks",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "apps/console",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5177",
+        "--strictPort"
+      ],
+      "env": {
+        "VITE_API_URL": "http://127.0.0.1:8090"
+      },
+      "port": 5177
+    },
+    {
+      "name": "api-veloz",
+      "runtimeExecutable": "E:/NelcotaCloud/target/claude-veloz/debug/server.exe",
+      "runtimeArgs": [],
+      "cwd": "E:/NelcotaCloud/target/veloz-stack",
+      "port": 8097
+    },
+    {
+      "name": "console-veloz",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "apps/console",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5189",
+        "--strictPort"
+      ],
+      "env": {
+        "VITE_API_URL": "http://127.0.0.1:8097"
+      },
+      "port": 5189
     }
   ]
 }

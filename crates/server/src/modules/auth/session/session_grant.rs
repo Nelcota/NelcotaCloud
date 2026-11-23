@@ -4,7 +4,6 @@ use uuid::Uuid;
 use crate::modules::auth::session::session_family::SessionFamily;
 use crate::modules::auth::session::session_issuer::{SessionIssuer, SessionTokens};
 use crate::modules::auth::user::user_record::User;
-use crate::modules::tenants::access::tenant_context::TenantContext;
 use crate::modules::tenants::rejection::tenants_rejection::TenantsRejection;
 use crate::modules::tenants::signing_keys::signing_key_cache::SigningKeyCache;
 use crate::shared::http::api_error::ApiError;
@@ -26,22 +25,6 @@ pub struct SessionRequest<'a> {
     pub tenant_id: Uuid,
     pub connection: &'a mut PgConnection,
     pub grant: SessionGrant,
-}
-
-/// Signs with the tenant's active key and stores the refresh token in the tenant database.
-pub async fn issue_session(
-    signing: &TokenSigning<'_>,
-    tenant: &TenantContext,
-    grant: SessionGrant,
-) -> Result<SessionTokens, ApiError> {
-    let mut connection = tenant.pool.acquire().await?;
-    let request = SessionRequest {
-        tenant_id: tenant.tenant_id,
-        connection: &mut connection,
-        grant,
-    };
-
-    issue_session_with(signing, request).await
 }
 
 /// Every way to obtain tokens (login, signup, refresh, OAuth, magic link) ends here, so a ban

@@ -1,11 +1,8 @@
-use std::sync::Arc;
-
 use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::modules::auth::integration::team_notifications::{AuthEmailContent, render_auth_email};
 use crate::modules::tenants::settings::loaded_tenant_settings::load_tenant_settings;
-use crate::modules::tenants::smtp::tenant_email_delivery::send_tenant_email_in_background;
 use crate::shared::http::api_error::ApiError;
 
 /// The console login, opened for an invitation: it names the project and asks for the invited address.
@@ -20,7 +17,7 @@ pub struct InvitationNotice<'a> {
     pub inviter_email: &'a str,
 }
 
-/// Tells the invited person, in the background, to open the console and accept.
+/// Delivers the invitation through the platform sender.
 ///
 /// The email goes through the platform's own sender and links to the console login (the
 /// platform tenant's site), opened for this invitation.
@@ -42,7 +39,12 @@ pub async fn send_invitation_email(
         login_link: &login_link,
     });
     let email = render_auth_email(content, notice.recipient).map_err(ApiError::internal)?;
-    send_tenant_email_in_background(Arc::clone(&state.email_senders), platform_tenant_id, email);
+    let sender = state
+        .email_senders
+        .sender_for(platform_tenant_id)
+        .await
+        .map_err(ApiError::internal)?;
+    sender.send(email).await.map_err(ApiError::internal)?;
 
     Ok(())
 }

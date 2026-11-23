@@ -8,6 +8,7 @@ import {
 } from '@/modules/project-settings/captcha/queries/use-captcha'
 import { Button } from '@/shared/ui/button'
 import { ConfirmButton } from '@/shared/ui/confirm-button'
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
 import { ErrorAlert } from '@/shared/ui/error-alert'
 import { FormField } from '@/shared/ui/form-field'
 import { LoadError } from '@/shared/ui/load-error'
@@ -35,10 +36,26 @@ function CaptchaForm({ projectId, siteKey }: CaptchaFormProps): JSX.Element {
   const remove = useRemoveCaptchaMutation(projectId)
   const [newSiteKey, setNewSiteKey] = useState(siteKey ?? '')
   const [secretKey, setSecretKey] = useState('')
+  const [isConfirming, setIsConfirming] = useState(false)
 
+  // Turning it on refuses every signup and login that comes without a token: ask first.
   function submit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault()
-    save.mutate({ site_key: newSiteKey.trim(), secret_key: secretKey.trim() })
+
+    if (siteKey === null) {
+      setIsConfirming(true)
+      return
+    }
+
+    save.mutate(keys())
+  }
+
+  async function enable(): Promise<void> {
+    await save.mutateAsync(keys())
+  }
+
+  function keys(): { site_key: string; secret_key: string } {
+    return { site_key: newSiteKey.trim(), secret_key: secretKey.trim() }
   }
 
   return (
@@ -78,10 +95,28 @@ function CaptchaForm({ projectId, siteKey }: CaptchaFormProps): JSX.Element {
           value={secretKey}
           onChange={(event) => setSecretKey(event.target.value)}
         />
-        <ErrorAlert error={save.error ?? remove.error} />
+        <ErrorAlert error={sectionError(isConfirming, save.error ?? remove.error)} />
+        <ConfirmDialog
+          isOpen={isConfirming}
+          onOpenChange={setIsConfirming}
+          title="Exigir captcha agora?"
+          description="Cadastro, login com senha e os links por email passam a ser recusados sem o token do Turnstile. Ative só depois que o seu app mostrar o widget e enviar captcha_token."
+          confirmLabel="Ativar captcha"
+          isWeighty
+          onConfirm={enable}
+        />
       </SettingsSection>
     </form>
   )
+}
+
+/** While the confirmation is open, it shows the failure itself, next to the decision. */
+function sectionError(isConfirming: boolean, error: Error | null): Error | null {
+  if (isConfirming) {
+    return null
+  }
+
+  return error
 }
 
 function statusText(siteKey: string | null): string {

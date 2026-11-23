@@ -1,4 +1,5 @@
 use sqlx::{PgConnection, PgPool};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::modules::tenants::signing_keys::prepared_signing_key::PreparedSigningKey;
@@ -72,7 +73,9 @@ pub async fn load_signing_keys(
     // Retired keys verify only within their retention: one rotated out because it leaked must
     // stop verifying even if nobody rotates again (rotation is what deletes it).
     let rows: Vec<StoredSigningKey> = sqlx::query_as(
-        "SELECT id, private_key_ciphertext, is_active FROM tenant_signing_keys WHERE tenant_id = $1 \
+        "SELECT id, private_key_ciphertext, is_active,
+         deactivated_at + $2::bigint * interval '1 second' AS verify_until
+         FROM tenant_signing_keys WHERE tenant_id = $1 \
          AND (is_active OR deactivated_at > now() - $2::bigint * interval '1 second') \
          ORDER BY created_at DESC",
     )
@@ -119,6 +122,7 @@ struct StoredSigningKey {
     id: Uuid,
     private_key_ciphertext: Vec<u8>,
     is_active: bool,
+    verify_until: Option<OffsetDateTime>,
 }
 
 fn open_and_prepare(
@@ -133,7 +137,10 @@ fn open_and_prepare(
         private_key_der,
     };
 
-    Ok(PreparedSigningKey::prepare(&signing_key)?)
+    let mut prepared = PreparedSigningKey::prepare(&signing_key)?;
+    prepared.verify_until = stored.verify_until;
+
+    Ok(prepared)
 }
 
 /// Binds each ciphertext to its tenant and key, so it cannot be replayed in another row.

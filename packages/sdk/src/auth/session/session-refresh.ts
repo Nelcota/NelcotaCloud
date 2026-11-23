@@ -22,10 +22,17 @@ export type RefreshHost = {
 
 /** Renews `session`, or adopts the session another tab already renewed (run under the tab lock). */
 export async function refreshOrAdopt(host: RefreshHost, session: Session): Promise<Session | null> {
+  const current = host.current()
   const stored = host.store.load()
 
-  if (host.current() !== session) {
-    return host.current()
+  if (isSameRefresh(current, session) === false) {
+    return current
+  }
+
+  if (stored === null) {
+    host.end()
+
+    return null
   }
 
   if (renewedElsewhere(stored, session)) {
@@ -33,29 +40,50 @@ export async function refreshOrAdopt(host: RefreshHost, session: Session): Promi
     return stored
   }
 
+  let renewed: Session
   try {
-    const renewed = await renewSession(host.http, session.refreshToken, host.now)
-
-    return adoptRenewal(host, session, renewed)
+    renewed = await renewSession(host.http, session.refreshToken, host.now)
   } catch (error) {
     return endIfRejected(host, session, error)
   }
+
+  return adoptRenewal(host, session, renewed)
 }
 
 /** What the user did meanwhile wins; a sign out in another tab (storage cleared) too. */
 function adoptRenewal(host: RefreshHost, original: Session, renewed: Session): Session | null {
-  if (host.current() !== original) {
-    return host.current()
+  const current = host.current()
+
+  if (isSameRefresh(current, original) === false) {
+    return current
   }
 
-  if (host.store.load() === null) {
+  const stored = host.store.load()
+
+  if (stored === null) {
     host.end()
+
     return null
   }
 
-  host.start(renewed, 'TOKEN_REFRESHED')
+  if (renewedElsewhere(stored, original)) {
+    host.start(stored, sessionChangeEvent(original, stored))
 
-  return renewed
+    return stored
+  }
+
+  const next = withLatestUser(current, original, renewed)
+  host.start(next, 'TOKEN_REFRESHED')
+
+  return next
+}
+
+function withLatestUser(current: Session, original: Session, renewed: Session): Session {
+  if (current.user === original.user) {
+    return renewed
+  }
+
+  return { ...renewed, user: current.user }
 }
 
 /**
@@ -67,8 +95,10 @@ async function endIfRejected(
   original: Session,
   error: unknown,
 ): Promise<Session | null> {
-  if (host.current() !== original) {
-    return host.current()
+  const current = host.current()
+
+  if (isSameRefresh(current, original) === false) {
+    return current
   }
 
   if (isRefusal(error) === false) {
@@ -76,10 +106,11 @@ async function endIfRejected(
   }
 
   await new Promise((resolve) => setTimeout(resolve, STORAGE_SETTLE_MS))
+  const latest = host.current()
   const stored = host.store.load()
 
-  if (host.current() !== original) {
-    return host.current()
+  if (isSameRefresh(latest, original) === false) {
+    return latest
   }
 
   if (renewedElsewhere(stored, original)) {
@@ -93,6 +124,10 @@ async function endIfRejected(
 
 function isRefusal(error: unknown): boolean {
   return error instanceof NelcotaError && [UNAUTHORIZED, FORBIDDEN].includes(error.status)
+}
+
+function isSameRefresh(current: Session | null, original: Session): current is Session {
+  return current !== null && current.refreshToken === original.refreshToken
 }
 
 /** Another tab already renewed the session this tab still holds. */

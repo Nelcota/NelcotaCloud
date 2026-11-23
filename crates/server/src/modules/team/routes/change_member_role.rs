@@ -9,6 +9,7 @@ use validator::Validate;
 use crate::app_state::AppState;
 use crate::modules::team::member::owner_actions::{OwnerAction, change_member_role};
 use crate::modules::team::member::ownership_changes::MembershipTarget;
+use crate::modules::team::member::team_access::TeamAccounts;
 use crate::modules::tenants::access::admin_actor::AdminActor;
 use crate::modules::tenants::audit::audit_action::AuditAction;
 use crate::modules::tenants::audit::project_change::{ProjectChange, record_project_change};
@@ -24,8 +25,8 @@ pub struct MemberRoleBody {
     pub role: ProjectRole,
 }
 
-/// `PATCH /platform/v1/projects/{project_id}/members/{account_id}`: makes a member an owner,
-/// or an owner a member. Owners only; the project always keeps at least one owner.
+/// `PATCH /platform/v1/projects/{project_id}/members/{account_id}`: sets a member's role
+/// (owner, member or viewer). Owners only; the project always keeps at least one owner.
 #[utoipa::path(
     patch,
     path = "/platform/v1/projects/{project_id}/members/{account_id}",
@@ -59,7 +60,14 @@ pub async fn change_role(
         actor_account_id: account.account_id,
         target,
     };
-    change_member_role(&state.control_plane_pool, action, body.role).await?;
+    let mut accounts = TeamAccounts::open(&state).await?;
+    let changed =
+        change_member_role(&state.control_plane_pool, &mut accounts, action, body.role).await?;
+
+    if changed == false {
+        return Ok(StatusCode::NO_CONTENT);
+    }
+
     let change = ProjectChange {
         tenant_id: project_id,
         author: (AdminActor::ConsoleAccount(account.account_id), &origin),
