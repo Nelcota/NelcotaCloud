@@ -44,19 +44,19 @@ Cursor (`.cursor/mcp.json`) and other clients take the same command and variable
 
 ## Tools
 
-| Tool | What it does |
-| --- | --- |
-| `list_tables` | Tables and views, with rows, size and RLS |
-| `describe_table` | Columns, foreign keys, indexes and policies of one table |
-| `query_rows` | Reads rows with `select`, filters, order and pages |
-| `insert_rows` | Inserts up to 1000 rows |
-| `update_rows` | Changes the rows the filters match (filters required) |
-| `delete_rows` | Deletes the rows the filters match (filters required) |
-| `run_sql` | Runs SQL as the developer role (schema changes, policies, functions) |
-| `list_users` | Users of the app, by email or status |
-| `activity_log` | Logins, refused logins and admin actions |
-| `api_traffic` | Requests, errors and the busiest tables over 24h, 7d or 30d |
-| `project_settings` | Name, site URL and email verification |
+| Tool               | What it does                                                         |
+| ------------------ | -------------------------------------------------------------------- |
+| `list_tables`      | Tables and views, with rows, size and RLS                            |
+| `describe_table`   | Columns, foreign keys, indexes and policies of one table             |
+| `query_rows`       | Reads rows with `select`, filters, order and pages                   |
+| `insert_rows`      | Inserts up to 1000 rows                                              |
+| `update_rows`      | Changes the rows the filters match (filters required)                |
+| `delete_rows`      | Deletes the rows the filters match (filters required)                |
+| `run_sql`          | Runs SQL as the developer role (schema changes, policies, functions) |
+| `list_users`       | Users of the app, by email or status                                 |
+| `activity_log`     | Logins, refused logins and admin actions                             |
+| `api_traffic`      | Requests, errors and the busiest tables over 24h, 7d or 30d          |
+| `project_settings` | Name, site URL and email verification                                |
 
 ## Commands
 
