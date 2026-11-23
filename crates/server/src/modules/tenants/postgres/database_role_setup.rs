@@ -40,25 +40,26 @@ SELECT pg_advisory_xact_lock(7120000011);
 DO $close$
 DECLARE
     database_name text;
+    authenticator text;
 BEGIN
+    -- The oid form of has_database_privilege answers NULL for a database dropped meanwhile.
     FOR database_name IN
         SELECT datname FROM pg_database
-        WHERE datname LIKE 'tenant\_%' AND has_database_privilege('public', datname, 'CONNECT')
+        WHERE datname LIKE 'tenant\_%' AND has_database_privilege('public', oid, 'CONNECT')
     LOOP
-        EXECUTE format('REVOKE ALL ON DATABASE %I FROM PUBLIC', database_name);
-        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nelcota_tenant_runtime') THEN
-            EXECUTE format('GRANT CONNECT ON DATABASE %I TO nelcota_tenant_runtime', database_name);
-        END IF;
-        IF EXISTS (
-            SELECT 1 FROM pg_roles
-            WHERE rolname = 'nelcota_t_' || substring(database_name FROM 8)
-        ) THEN
-            EXECUTE format(
-                'GRANT CONNECT ON DATABASE %I TO %I',
-                database_name,
-                'nelcota_t_' || substring(database_name FROM 8)
-            );
-        END IF;
+        authenticator := 'nelcota_t_' || substring(database_name FROM 8);
+        -- A project deleted while this runs takes its database and role with it: skip them.
+        BEGIN
+            EXECUTE format('REVOKE ALL ON DATABASE %I FROM PUBLIC', database_name);
+            IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nelcota_tenant_runtime') THEN
+                EXECUTE format('GRANT CONNECT ON DATABASE %I TO nelcota_tenant_runtime', database_name);
+            END IF;
+            IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = authenticator) THEN
+                EXECUTE format('GRANT CONNECT ON DATABASE %I TO %I', database_name, authenticator);
+            END IF;
+        EXCEPTION WHEN invalid_catalog_name OR undefined_object THEN
+            NULL;
+        END;
     END LOOP;
 END
 $close$;
